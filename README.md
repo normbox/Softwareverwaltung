@@ -20,7 +20,7 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Versionsabgleich über GitHub Releases (Produktkatalog) und winget-Suche für Programme ohne winget-ID (`Test-SoftwareUpdate`) | vorhanden (Etappe 2a) |
 | Versionsabgleich über Herstellerregeln | geplant |
 | Schwachstellen über NVD, CISA KEV und EPSS für Programme mit Katalogeintrag (`Get-SoftwareVulnerability`) | vorhanden (Etappe 2b) |
-| Ampel und HTML-Bericht | geplant |
+| Ampel (Rot, Gelb, Grün, Grau mit Grund) und HTML-Sicherheitsbericht (`Get-SecurityRating`, `Export-SecurityReport`) | vorhanden (Etappe 2c) |
 | Weitere Schwachstellenquellen (OSV, GitHub Security Advisories) | geplant |
 | Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren über winget | geplant |
 | KI-Berater, wahlweise lokal (Ollama) oder Cloud (Claude API) | geplant |
@@ -41,10 +41,10 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
 
 - [x] 1. Inventar-Modul: Registry, winget, Store-Apps, JSON-Snapshots, ohne Oberfläche testbar
 - [x] 1b. Portable Programme und Einstellungen (alles standardmäßig aus)
-- [ ] 2. Versions- und Sicherheitsprüfung: winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel, zunächst HTML-Bericht
+- [x] 2. Versions- und Sicherheitsprüfung: winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel, zunächst HTML-Bericht
   - [x] 2a. Versionsvergleich, Produktkatalog, neueste Version über winget, GitHub und winget-Suche
   - [x] 2b. Schwachstellen: CPE-Zuordnung über den Katalog, NVD, CISA KEV, EPSS
-  - [ ] 2c. Ampel und HTML-Bericht
+  - [x] 2c. Ampel und HTML-Bericht
 - [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
@@ -91,6 +91,9 @@ Compare-SoftwareVersion 24.08 24.9                                    # -1: ält
 Set-InventorySetting -Enable NVD, KEV, EPSS
 (Get-SoftwareInventory | Get-SoftwareVulnerability).Vulnerabilities | Where-Object Kev   # aktiv ausgenutzte Lücken
 
+# Ampel und HTML-Bericht
+@(Get-SoftwareInventory) + @(Get-PortableSoftware) | Get-SecurityRating | Export-SecurityReport -Path .\Sicherheitsbericht.html
+
 # Installiertes und Portables in einem Snapshot
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Save-InventorySnapshot
 ```
@@ -105,7 +108,7 @@ Invoke-Pester ./tests/Integration                          # gegen das echte Sys
 Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
 
-Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
+Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/BERICHT.md](docs/BERICHT.md) (Ampel und Bericht), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
 
 ## Datenschutz
 
