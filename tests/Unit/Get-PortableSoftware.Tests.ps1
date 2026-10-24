@@ -350,3 +350,25 @@ Describe 'Merge-NestedComponent (Bestandteile eines Programms)' {
         $r[0].Evidence | Should -Contain 'Autostart'
     }
 }
+
+Describe 'Dokumentation der festen Ausschlüsse' {
+    It 'nennt jeden festen Ausschluss aus Get-ScanExclusion in docs/INVENTAR-SCHEMA.md' {
+        $doc = Get-Content "$PSScriptRoot/../../docs/INVENTAR-SCHEMA.md" -Raw
+        $section = ($doc -split '## Portable Programme: Suche und Ausschlüsse')[1] -split '\n## ' | Select-Object -First 1
+        $expected = @(
+            '%windir%', '%ProgramFiles%\WindowsApps', 'ProgramData\Microsoft', 'ProgramData\Package Cache',
+            '%LOCALAPPDATA%\Packages', '%LOCALAPPDATA%\Microsoft\WindowsApps', '%LOCALAPPDATA%\*-updater',
+            '$Recycle.Bin', 'System Volume Information', 'Windows.old', '$WinREAgent', '$SysReset',
+            'WindowsApps', 'WpSystem', 'XboxGames', 'C:\Windows\Temp'
+        )
+        foreach ($e in $expected) { $section | Should -BeLike "*$e*" -Because "der Ausschluss '$e' dokumentiert sein muss" }
+
+        # Gegenprobe: Die Namen pro Laufwerk im Code stimmen mit der Liste überein.
+        $code = Get-Content "$PSScriptRoot/../../src/SoftwareInventory/Private/Find-ExecutableFile.ps1" -Raw
+        $line = ($code -split '\n' | Where-Object { $_ -match "foreach \(\`$name in '\`$Recycle" })
+        $line | Should -Not -BeNullOrEmpty
+        foreach ($name in [regex]::Matches($line, "'([^']+)'") | ForEach-Object { $_.Groups[1].Value }) {
+            $section | Should -BeLike "*$name*"
+        }
+    }
+}

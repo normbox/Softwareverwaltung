@@ -77,16 +77,25 @@ Leere Felder sind `null`.
 
 `Get-PortableSoftware` braucht keine Administratorrechte und führt keine Datei aus. Es liest nur, was in den Einstellungen aktiviert ist (siehe unten) oder als Parameter angegeben wird (`-Trace`, `-Path`, `-Drive`, `-IncludeTemp`, `-ComputeHash`). Ohne aktivierte Bereiche scannt es nichts. Die Ausschlüsse installierter Programme beruhen nur auf den aktivierten Inventar-Quellen.
 
-Nicht gemeldet werden:
+Grundsatz: lieber ein Fehlalarm mehr als ein übersehenes Programm.
 
-- Windows-Ordner, `WindowsApps`, `WpSystem`, `XboxGames`, Papierkorb, `System Volume Information`, `ProgramData\Package Cache`
-- Ordner installierter Programme: `InstallLocation`, Ordner des Deinstallationsprogramms und von `DisplayIcon`
-- Herstellerordner unter `Program Files` und `ProgramData`, sobald eine Datei darin vom Herausgeber eines installierten Programms stammt
-- Programme, die mit Name, Version (erste drei Teile) und – falls in der Datei angegeben – Hersteller einem installierten Eintrag entsprechen, samt Unterordnern (z. B. Python ohne Pfad im Uninstall-Eintrag)
+**Feste Ausschlüsse** (werden nie betreten):
+
+- Windows-Ordner (`%windir%`). Damit wird auch `C:\Windows\Temp` derzeit nie durchsucht, auch nicht mit `IncludeTemp`.
+- `%ProgramFiles%\WindowsApps`, `ProgramData\Microsoft`, `ProgramData\Package Cache`
+- `%LOCALAPPDATA%\Packages`, `%LOCALAPPDATA%\Microsoft\WindowsApps`
+- Auf jedem Laufwerk: `$Recycle.Bin` (Papierkorb), `System Volume Information`, `Windows.old`, `$WinREAgent`, `$SysReset`, `WindowsApps`, `WpSystem`, `XboxGames`
 - Update-Zwischenspeicher von Electron-Apps (`%LOCALAPPDATA%\*-updater`)
-- Signierte Dateien in Temp-Ordnern (meist Installer-Reste)
 
-Zusammengefasst werden: .exe-Dateien desselben Produkts in einem Ordner, Dateien in Unterordnern eines erkannten Programms (z. B. `resources\`, `node_modules\`) und identische Kopien.
+**Ordner installierter Programme** (aus den aktivierten Inventar-Quellen): `InstallLocation`, Ordner des Deinstallationsprogramms und von `DisplayIcon`. Zu breite Angaben werden ignoriert, damit ein fehlerhafter Eintrag nicht ganze Bäume ausblendet: Laufwerkswurzeln, Benutzerprofil, Desktop, Dokumente, Downloads, AppData, `%LOCALAPPDATA%\Programs`, Temp-Ordner, Program Files (beide), Common Files (beide), `ProgramData` und der Windows-Ordner.
+
+**Herstellerordner:** Unter `Program Files`, `Common Files` und `ProgramData` gilt ein Ordner wie `Program Files\Brother` als installiert, sobald eine darin gefundene Datei **gültig signiert** ist und ihr Hersteller (Versionsinfo oder Signierer) zugleich Herausgeber eines installierten Programms ist. Ohne gültige Signatur gibt es keine Herstellerzuordnung, denn die Herstellerangabe kann jeder setzen, und `ProgramData` ist für Benutzer beschreibbar.
+
+**Abgleich über Name und Version** für Einträge ohne Pfad (z. B. Python): Eine Datei entspricht einem installierten Eintrag, wenn Name und Version (erste drei Teile) übereinstimmen und – falls die Datei einen Hersteller nennt – auch der Hersteller. Eine Datei mit Herstellerangabe zählt nur bei gültiger Signatur als Treffer; eine unsignierte bleibt sichtbar. Dateien ohne Herstellerangabe werden nur über Name und Version abgeglichen. Der Ordner des Treffers wird samt Unterordnern ausgeblendet (z. B. `Python313\Scripts\pip.exe`), außer er ist ein Sammelordner oder eine Scan-Wurzel (z. B. `D:\Tools`); dann verschwindet nur die Datei selbst. Sichtbar bleiben im ausgeblendeten Ordner Dateien mit eigenem Produktnamen **und** anderem Hersteller als der Treffer.
+
+**Temp-Ordner:** Ohne `IncludeTemp` werden sie nicht durchsucht. Mit `IncludeTemp` verwirft der Dateiscan gültig signierte Dateien (meist Installer-Reste), aber nur, wenn **allein** der Dateiscan sie fand. Hat eine Datei eine Nutzungsspur (Process, UserAssist, Autostart, ScheduledTask), wird sie immer gemeldet.
+
+**Zusammengefasst** werden: .exe-Dateien desselben Produkts in einem Ordner; Dateien in Unterordnern eines erkannten Programms (z. B. `resources\`, `node_modules\`), wobei das Programm nicht direkt in einem Sammelordner oder einer Scan-Wurzel liegen darf und Spuren sowie Warnsignale der Unterdateien übernimmt; identische Kopien.
 
 Mit Administratorrechten (später): Amcache, BAM, Prefetch, Dienste.
 
