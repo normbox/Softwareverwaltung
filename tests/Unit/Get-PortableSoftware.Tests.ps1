@@ -135,6 +135,19 @@ Describe 'Dateiscan und Ausschlüsse' {
         InModuleScope SoftwareInventory -Parameters @{ P = $Path } { Get-VendorDirectory $P } | Should -Be $Expected
     }
 
+    It 'ordnet Herstellerordner nur über gültig signierte Dateien zu (<Signature>)' -TestCases @(
+        @{ Signature = 'Valid'; Expected = $true }
+        @{ Signature = 'NotSigned'; Expected = $false }
+        @{ Signature = 'HashMismatch'; Expected = $false }
+        @{ Signature = $null; Expected = $false }
+    ) {
+        $info = New-Info "$env:ProgramData\Ubisoft\x\helper.exe" 'Helper' '1.0' -Signature $Signature -Company 'Ubisoft Entertainment'
+        InModuleScope SoftwareInventory -Parameters @{ I = $info } {
+            $publishers = [System.Collections.Generic.HashSet[string]]::new([string[]] @('ubisoft'))
+            Test-InstalledProgramFile -Info $I -InstalledPublisher $publishers
+        } | Should -Be $Expected
+    }
+
     It 'normalisiert Versionen auf drei Teile' -TestCases @(
         @{ Version = '26.05'; Expected = '26.5.0' }
         @{ Version = '3.13.15150.1013'; Expected = '3.13.15150' }

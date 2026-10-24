@@ -93,7 +93,9 @@ function Get-VendorDirectory {
         Herstellerordner einer Datei unter Program Files oder ProgramData, z. B.
         C:\Program Files\Brother\iPrint\x.exe -> C:\Program Files\Brother. Sonst $null.
     .DESCRIPTION
-        In diese Ordner schreiben nur Installer mit Administratorrechten.
+        In Program Files schreiben nur Installer mit Administratorrechten; ProgramData ist
+        dagegen für normale Benutzer beschreibbar. Deshalb zählt ein Herstellerordner nur über
+        gültig signierte Dateien (siehe Test-InstalledProgramFile).
         Common Files steht vor Program Files, damit dort der Unterordner zählt.
     #>
     param([string] $Path)
@@ -116,8 +118,12 @@ function Test-InstalledProgramFile {
         Erkennt Dateien unter Program Files oder ProgramData, die zu einer Installation
         gehören, deren Registry-Eintrag keinen Installationsordner nennt: Hersteller der
         Datei ist zugleich Herausgeber eines installierten Programms.
+    .DESCRIPTION
+        Die Herstellerangabe in der Versionsinfo kann jeder setzen; sie zählt daher nur bei
+        gültiger Signatur. Ohne gültige Signatur keine Herstellerzuordnung.
     #>
     param($Info, [System.Collections.Generic.HashSet[string]] $InstalledPublisher)
+    if ($Info.SignatureStatus -ne 'Valid') { return $false }
     if (-not (Get-VendorDirectory $Info.Path)) { return $false }
     foreach ($candidate in $Info.Company, $Info.Signer) {
         $key = Get-PublisherKey $candidate
