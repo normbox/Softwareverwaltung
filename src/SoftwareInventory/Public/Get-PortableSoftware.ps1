@@ -149,7 +149,7 @@ function Get-PortableSoftware {
     $records = foreach ($group in $infos | Group-Object { "$($_.Directory)|$(Get-ExecutableProductName $_)".ToLowerInvariant() }) {
         ConvertTo-PortableRecord -File $group.Group
     }
-    $records = @(Merge-NestedComponent -Record $records)
+    $records = @(Merge-NestedComponent -Record $records -ScanRoot $roots)
     $records = @(Merge-PortableCopy -Record $records)
     Add-MultipleVersionFlag -Record $records
     $records | Sort-Object Name
@@ -238,16 +238,18 @@ function Merge-NestedComponent {
         (z. B. Hilfsprogramme in resources\ oder node_modules\).
     .DESCRIPTION
         Als Programm gilt ein Datensatz mit Produktnamen aus der Versionsinfo, der nicht
-        direkt in einem Sammelordner (Downloads, Desktop, Laufwerkswurzel ...) liegt.
+        direkt in einem Sammelordner (Downloads, Desktop, Laufwerkswurzel ...) oder einer
+        Scan-Wurzel liegt. Spuren und Warnsignale der Unterdateien gehen auf das Programm über.
     #>
-    param([object[]] $Record)
+    param([object[]] $Record, [string[]] $ScanRoot = @())
 
-    $containers = @(Get-ContainerDirectory)
+    $containers = @(Get-ContainerDirectory) + @($ScanRoot | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') })
     $roots = [System.Collections.Generic.List[object]]::new()
     foreach ($r in $Record | Where-Object { $_ } | Sort-Object { $_.InstallLocation.Length }) {
         $parent = $roots | Where-Object { Test-PathExcluded -Path $r.FilePath -Exclusion @($_.InstallLocation) } | Select-Object -First 1
         if ($parent) {
             $parent.Evidence = [string[]] @(@($parent.Evidence) + @($r.Evidence) | Select-Object -Unique | Sort-Object)
+            $parent.Flags = [string[]] @(@($parent.Flags) + @($r.Flags) | Where-Object { $_ } | Select-Object -Unique)
             continue
         }
         if ($r.HasProductName -and $r.InstallLocation.TrimEnd('\') -notin $containers) { $roots.Add($r) }

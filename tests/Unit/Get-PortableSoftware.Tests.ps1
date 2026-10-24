@@ -35,6 +35,8 @@ BeforeAll {
         Mock -ModuleName SoftwareInventory Get-AutostartTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'Autostart' }
         Mock -ModuleName SoftwareInventory Get-ScheduledTaskTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'ScheduledTask' }
         Mock -ModuleName SoftwareInventory Test-Path { $PathType -eq 'Leaf' }
+        # $TestDrive liegt selbst im echten %TEMP%; als Temp-Ordner gilt deshalb nur $TestDrive\Temp.
+        Mock -ModuleName SoftwareInventory Get-TempDirectory { Join-Path $TestDrive 'Temp' }
         Mock -ModuleName SoftwareInventory Find-ExecutableFile { $script:ScenarioScan }
         Mock -ModuleName SoftwareInventory Get-ExecutableInfo { $script:ScenarioInfo[$Path] }
         $params = @{ Trace = 'UserAssist', 'Process', 'Autostart', 'ScheduledTask'; Path = $TestDrive; Inventory = $Inventory }
@@ -319,5 +321,32 @@ Describe 'Signierte Dateien in Temp' {
             Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = $Evidence }) -Parameter @{ IncludeTemp = $true }
         }
         ($r.FilePath -contains $file.Path) | Should -Be $Expected
+    }
+}
+
+Describe 'Merge-NestedComponent (Bestandteile eines Programms)' {
+    It 'zieht keine Dateien unter ein Programm, das direkt in einer Scan-Wurzel liegt' {
+        $root = Join-Path $TestDrive 'Tools'
+        $files = @(
+            New-Info "$root\putty.exe" 'PuTTY' '0.70' -Company 'Simon Tatham'
+            New-Info "$root\other\nmap.exe" 'Nmap' '7.0' -Company 'Insecure.Com'
+        )
+        $r = Invoke-PortableScenario -FileInfo $files -Parameter @{ Path = $root; Trace = @() }
+        $r.FilePath | Should -Contain "$root\putty.exe"
+        $r.FilePath | Should -Contain "$root\other\nmap.exe"
+    }
+
+    It 'übernimmt die Warnsignale der Unterdateien in das Programm' {
+        $app = Join-Path $TestDrive 'Apps\Contoso'
+        $files = @(
+            New-Info "$app\app.exe" 'Contoso App' '2.0' -Signature 'Valid' -Length 5000
+            New-Info "$app\resources\helper.exe" 'Helper' '1.0' -Signature 'HashMismatch'
+        )
+        $r = @(Invoke-PortableScenario -FileInfo $files -Trace @(@{ Path = "$app\resources\helper.exe"; Evidence = 'Autostart' }))
+        $r.Count | Should -Be 1
+        $r[0].FilePath | Should -Be "$app\app.exe"
+        $r[0].Flags | Should -Contain 'InvalidSignature'
+        $r[0].Flags | Should -Contain 'Autostart'
+        $r[0].Evidence | Should -Contain 'Autostart'
     }
 }
