@@ -54,6 +54,31 @@ Describe 'Get-AppxSoftware' {
         $result[0].InstallType | Should -Be 'MSIX'
         $result[0].MatchKeys | Should -Contain 'pfn:mozilla.firefox_n80bbvh6b1yt2'
     }
+
+    It 'ersetzt eine GUID als Herausgeber durch den Klarnamen aus dem Manifest' {
+        $withName = New-Item -ItemType Directory (Join-Path $TestDrive 'named')
+        '<Package><Properties><PublisherDisplayName>WhatsApp Inc.</PublisherDisplayName></Properties></Package>' |
+            Set-Content (Join-Path $withName 'AppxManifest.xml')
+        $withResource = New-Item -ItemType Directory (Join-Path $TestDrive 'resource')
+        '<Package><Properties><PublisherDisplayName>ms-resource:Publisher</PublisherDisplayName></Properties></Package>' |
+            Set-Content (Join-Path $withResource 'AppxManifest.xml')
+
+        Mock -ModuleName SoftwareInventory Get-AppxPackage {
+            foreach ($case in @(
+                    @{ Name = 'WhatsApp'; Location = $withName.FullName }
+                    @{ Name = 'Resource'; Location = $withResource.FullName }
+                    @{ Name = 'NoManifest'; Location = (Join-Path $TestDrive 'missing') })) {
+                [pscustomobject] @{ Name = $case.Name; Publisher = 'CN=24803D75-212C-471A-BC57-9EF86AB91435'
+                    Version = '1.0'; Architecture = 'X64'; PackageFullName = "$($case.Name)_full"; PackageFamilyName = "$($case.Name)_pfn"
+                    InstallLocation = $case.Location; IsFramework = $false; NonRemovable = $false; SignatureKind = 'Store' }
+            }
+        }
+        $result = InModuleScope SoftwareInventory { Get-AppxSoftware }
+
+        ($result | Where-Object Name -eq 'WhatsApp').Publisher | Should -Be 'WhatsApp Inc.'
+        ($result | Where-Object Name -eq 'Resource').Publisher | Should -Be '24803D75-212C-471A-BC57-9EF86AB91435'
+        ($result | Where-Object Name -eq 'NoManifest').Publisher | Should -Be '24803D75-212C-471A-BC57-9EF86AB91435'
+    }
 }
 
 Describe 'Merge-SoftwareRecord' {
