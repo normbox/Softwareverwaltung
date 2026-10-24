@@ -92,6 +92,7 @@ function Get-PortableSoftware {
     }
 
     $infos = [System.Collections.Generic.List[object]]::new()
+    $vendorDirs = [System.Collections.Generic.List[string]]::new()
     $i = 0
     foreach ($c in $candidates.Values) {
         $i++
@@ -105,12 +106,19 @@ function Get-PortableSoftware {
         }
         # Signierte Dateien in Temp sind meist Installer-Reste; gemeldet wird nur das Warnsignal.
         if ($info.SignatureStatus -eq 'Valid' -and (Test-PathExcluded -Path $info.Path -Exclusion $tempDirs)) { continue }
-        if (Test-InstalledProgramFile -Info $info -InstalledPublisher $publishers) { continue }
+        if (Test-InstalledProgramFile -Info $info -InstalledPublisher $publishers) {
+            $vendorDirs.Add((Get-VendorDirectory $info.Path))
+            continue
+        }
         $info | Add-Member -NotePropertyMembers @{ Evidence = [string[]] @($c.Evidence); LastRun = $c.LastRun; RunCount = $c.RunCount }
         $infos.Add($info)
     }
     Write-Progress -Activity 'Prüfe Programmdateien' -Id 2 -Completed
 
+    # Herstellerordner mit nachweislich installierten Dateien gehören ganz zur Installation
+    # (z. B. unsignierte Hilfsprogramme ohne Versionsinfo).
+    $vendorDirs = @($vendorDirs | Select-Object -Unique)
+    $infos = @($infos | Where-Object { -not (Test-PathExcluded -Path $_.Path -Exclusion $vendorDirs) })
     $infos = @(Remove-InstalledMatch -Info $infos -Inventory $Inventory)
     $records = foreach ($group in $infos | Group-Object { "$($_.Directory)|$(Get-ExecutableProductName $_)".ToLowerInvariant() }) {
         ConvertTo-PortableRecord -File $group.Group
@@ -168,12 +176,14 @@ function Remove-InstalledMatch {
     $matchedFiles = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $matchedDirs = [System.Collections.Generic.List[string]]::new()
     foreach ($i in $Info) {
-        $pub = Get-PublisherKey $(if ($i.Company) { $i.Company } else { $i.Signer })
+        # Ohne Herstellerangabe in der Datei (der Signierer ist oft ein anderer) zählen nur Name und Version.
+        $pub = Get-PublisherKey $i.Company
         $ver = Get-VersionPrefix $i.Version
         $name = (Get-ExecutableProductName $i).ToLowerInvariant()
-        if (-not $pub -or -not $ver) { continue }
-        $hit = $index | Where-Object { $_.Publisher -eq $pub -and $_.Version -eq $ver -and ($_.Name.StartsWith($name) -or $name.StartsWith($_.Name)) } |
-            Select-Object -First 1
+        if (-not $ver -or $name.Length -lt 3) { continue }
+        $hit = $index | Where-Object {
+            (-not $pub -or $_.Publisher -eq $pub) -and $_.Version -eq $ver -and ($_.Name.StartsWith($name) -or $name.StartsWith($_.Name))
+        } | Select-Object -First 1
         if (-not $hit) { continue }
         [void] $matchedFiles.Add($i.Path)
         if ($i.Directory.TrimEnd('\') -notin $containers) { $matchedDirs.Add($i.Directory) }

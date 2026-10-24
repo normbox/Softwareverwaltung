@@ -88,8 +88,8 @@ Nicht gemeldet werden:
 
 - Windows-Ordner, `WindowsApps`, `WpSystem`, `XboxGames`, Papierkorb, `System Volume Information`, `ProgramData\Package Cache`
 - Ordner installierter Programme: `InstallLocation`, Ordner des Deinstallationsprogramms und von `DisplayIcon`
-- Dateien unter `Program Files`, deren Hersteller zugleich Herausgeber eines installierten Programms ist
-- Programme, die mit Hersteller, Name und Version (erste drei Teile) einem installierten Eintrag entsprechen, samt Unterordnern (z. B. Python ohne Pfad im Uninstall-Eintrag)
+- Herstellerordner unter `Program Files` und `ProgramData`, sobald eine Datei darin vom Herausgeber eines installierten Programms stammt
+- Programme, die mit Name, Version (erste drei Teile) und – falls in der Datei angegeben – Hersteller einem installierten Eintrag entsprechen, samt Unterordnern (z. B. Python ohne Pfad im Uninstall-Eintrag)
 - Update-Zwischenspeicher von Electron-Apps (`%LOCALAPPDATA%\*-updater`)
 - Signierte Dateien in Temp-Ordnern (meist Installer-Reste)
 

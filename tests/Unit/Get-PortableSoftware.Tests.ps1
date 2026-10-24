@@ -72,6 +72,16 @@ Describe 'Dateiscan und Ausschlüsse' {
         InModuleScope SoftwareInventory -Parameters @{ P = $Path } { Test-SpecificInstallDirectory $P } | Should -Be $Expected
     }
 
+    It 'ermittelt den Herstellerordner unter Program Files und ProgramData' -TestCases @(
+        @{ Path = "$env:ProgramFiles\Brother\iPrint\x.exe"; Expected = "$env:ProgramFiles\Brother" }
+        @{ Path = "$env:CommonProgramFiles\Acronis\Schedule2\s.exe"; Expected = "$env:CommonProgramFiles\Acronis" }
+        @{ Path = "$env:ProgramData\Ubisoft\a\b.exe"; Expected = "$env:ProgramData\Ubisoft" }
+        @{ Path = "$env:ProgramFiles\loose.exe"; Expected = $null }
+        @{ Path = 'D:\Tools\x.exe'; Expected = $null }
+    ) {
+        InModuleScope SoftwareInventory -Parameters @{ P = $Path } { Get-VendorDirectory $P } | Should -Be $Expected
+    }
+
     It 'normalisiert Versionen auf drei Teile' -TestCases @(
         @{ Version = '26.05'; Expected = '26.5.0' }
         @{ Version = '3.13.15150.1013'; Expected = '3.13.15150' }

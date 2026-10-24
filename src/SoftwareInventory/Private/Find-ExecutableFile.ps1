@@ -86,16 +86,38 @@ function Get-PublisherKey {
     if ($word.Length -ge 3) { $word }
 }
 
+function Get-VendorDirectory {
+    <#
+    .SYNOPSIS
+        Herstellerordner einer Datei unter Program Files oder ProgramData, z. B.
+        C:\Program Files\Brother\iPrint\x.exe -> C:\Program Files\Brother. Sonst $null.
+    .DESCRIPTION
+        In diese Ordner schreiben nur Installer mit Administratorrechten.
+        Common Files steht vor Program Files, damit dort der Unterordner zählt.
+    #>
+    param([string] $Path)
+    $bases = @($env:CommonProgramFiles, ${env:CommonProgramFiles(x86)}, $env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData) |
+        Where-Object { $_ }
+    foreach ($base in $bases) {
+        $prefix = $base.TrimEnd('\') + '\'
+        if (-not $Path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { continue }
+        $first = $Path.Substring($prefix.Length).Split('\')[0]
+        # Datei direkt im Basisordner hat keinen Herstellerordner.
+        if ($Path.Substring($prefix.Length) -eq $first) { return $null }
+        return $prefix + $first
+    }
+    $null
+}
+
 function Test-InstalledProgramFile {
     <#
     .SYNOPSIS
-        Erkennt Dateien unter Program Files, die zu einer Installation gehören, deren
-        Registry-Eintrag keinen Installationsordner nennt: Hersteller der Datei ist
-        zugleich Herausgeber eines installierten Programms.
+        Erkennt Dateien unter Program Files oder ProgramData, die zu einer Installation
+        gehören, deren Registry-Eintrag keinen Installationsordner nennt: Hersteller der
+        Datei ist zugleich Herausgeber eines installierten Programms.
     #>
     param($Info, [System.Collections.Generic.HashSet[string]] $InstalledPublisher)
-    $programDirs = @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
-    if (-not (Test-PathExcluded -Path $Info.Path -Exclusion $programDirs)) { return $false }
+    if (-not (Get-VendorDirectory $Info.Path)) { return $false }
     foreach ($candidate in $Info.Company, $Info.Signer) {
         $key = Get-PublisherKey $candidate
         if ($key -and $InstalledPublisher.Contains($key)) { return $true }
