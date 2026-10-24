@@ -93,6 +93,9 @@ function Get-WingetSearchLatestVersion {
     param($Record, $Setting)
 
     if ($Record.WingetId) { return $null }
+    if ($Record.InstallType -eq 'MSIX') {
+        return New-ProviderResult -Source WingetSearch -Reason 'Store-App: Updates über den Microsoft Store'
+    }
     if (-not (Test-ServiceEnabled -Name WingetSearch -Setting $Setting)) {
         return New-ProviderResult -Source WingetSearch -Reason 'Dienst WingetSearch nicht aktiviert'
     }
@@ -102,20 +105,61 @@ function Get-WingetSearchLatestVersion {
     $publisher = Get-PublisherKey $Record.Publisher
     if (-not $publisher) { return New-ProviderResult -Source WingetSearch -Reason 'winget-Suche braucht einen Hersteller' }
 
-    try {
-        $named = @(Find-WingetCandidate -Name $Record.Name | Where-Object { Test-WingetNameMatch -PackageName $_.Name -Name $Record.Name })
-        if ($named.Count -gt $script:WingetSearchMaxCandidates) {
-            return New-ProviderResult -Source WingetSearch -Reason "winget-Suche mehrdeutig ($($named.Count) Pakete mit passendem Namen)"
-        }
-        $hits = @($named | Where-Object { (Get-PublisherKey (Get-WingetPackagePublisher -Id $_.Id -Version $_.Version)) -eq $publisher })
-    }
+    try { $search = Get-WingetSearchResult -Name $Record.Name -PublisherKey $publisher }
     catch { return New-ProviderResult -Source WingetSearch -Reason "winget-Suche fehlgeschlagen: $(Protect-SecretText $_.Exception.Message)" }
+    if ($search.Reason) { return New-ProviderResult -Source WingetSearch -Reason $search.Reason }
 
     # Mehrere Pakete (z. B. x64 und x86) sind eindeutig, wenn sie dieselbe Version haben.
-    $versions = @($hits | ForEach-Object Version | Select-Object -Unique)
-    if ($versions.Count -eq 1) {
-        return New-ProviderResult -Source WingetSearch -LatestVersion $versions[0] -Confirmed $false
-    }
+    $versions = @($search.Versions | Select-Object -Unique)
     if ($versions.Count -gt 1) { return New-ProviderResult -Source WingetSearch -Reason 'winget-Suche mehrdeutig' }
-    New-ProviderResult -Source WingetSearch -Reason 'Kein passendes winget-Paket gefunden'
+    if ($versions.Count -eq 0) { return New-ProviderResult -Source WingetSearch -Reason 'Kein passendes winget-Paket gefunden' }
+
+    if (-not (Test-PlausibleLatestVersion -Installed $Record.Version -Latest $versions[0])) {
+        return New-ProviderResult -Source WingetSearch -Reason "winget-Treffer unplausibel (installiert $($Record.Version), gefunden $($versions[0]))"
+    }
+    New-ProviderResult -Source WingetSearch -LatestVersion $versions[0] -Confirmed $false
+}
+
+function Get-WingetSearchResult {
+    <#
+    .SYNOPSIS
+        Versionen der winget-Pakete mit passendem Namen und Hersteller, 24 Stunden zwischengespeichert.
+    .DESCRIPTION
+        Liefert @{ Versions = ...; Reason = ... }. Fehler der Suche werden nicht gespeichert.
+    #>
+    param([string] $Name, [string] $PublisherKey)
+
+    $key = "wingetsearch/$Name/$PublisherKey".ToLowerInvariant()
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($key)))
+    $cacheFile = Join-Path (Join-Path (Get-CacheDirectory) 'WingetSearch') "$hash.json"
+    $cached = Read-ServiceCache -Path $cacheFile -MaxAge ([timespan]::FromHours(24))
+    if ($null -ne $cached) { return @{ Versions = @($cached.Versions); Reason = $cached.Reason } }
+
+    $named = @(Find-WingetCandidate -Name $Name | Where-Object { Test-WingetNameMatch -PackageName $_.Name -Name $Name })
+    $result = if ($named.Count -gt $script:WingetSearchMaxCandidates) {
+        @{ Versions = @(); Reason = "winget-Suche mehrdeutig ($($named.Count) Pakete mit passendem Namen)" }
+    }
+    else {
+        $hits = @($named | Where-Object { (Get-PublisherKey (Get-WingetPackagePublisher -Id $_.Id -Version $_.Version)) -eq $PublisherKey })
+        @{ Versions = @($hits | ForEach-Object Version); Reason = $null }
+    }
+    Write-ServiceCache -Path $cacheFile -Content ([pscustomobject] $result | ConvertTo-Json -Compress)
+    $result
+}
+
+function Test-PlausibleLatestVersion {
+    <#
+    .SYNOPSIS
+        Prüft, ob eine nur über Name und Hersteller gefundene Version zur installierten passt.
+    .DESCRIPTION
+        Unplausibel ist eine „neueste“ Version mit kleinerer Hauptversion als installiert
+        (z. B. 1.314 → 0.220) oder mit mehr als einer Hauptversion Abstand nach oben
+        (z. B. 1.0 → 154.0). Ist eine Seite nicht lesbar, entscheidet der spätere Vergleich.
+    #>
+    param([string] $Installed, [string] $Latest)
+    $a = ConvertTo-NormalizedVersion $Installed
+    $b = ConvertTo-NormalizedVersion $Latest
+    if (-not $a -or -not $b) { return $true }
+    $diff = $b.Parts[0] - $a.Parts[0]
+    $diff -ge 0 -and $diff -le 1
 }

@@ -16,6 +16,15 @@ Get-SoftwareInventory | Test-SoftwareUpdate | Where-Object Status -eq Outdated
 
 Meldet winget für ein bekanntes Paket kein Update, gilt das Programm als aktuell. Herstellerregeln und KI-Recherche folgen in späteren Etappen.
 
+### Regeln der winget-Suche
+
+- Nicht für Store-Apps (MSIX): deren Updates kommen über den Microsoft Store.
+- Gesucht wird nur in der Quelle `winget`. Ein Paket passt, wenn sein Name gleich dem Programmnamen ist oder mit ihm beginnt, gefolgt von Leerzeichen oder Klammer („PSPad editor (x64)“ passt zu „PSPad“), **und** der Hersteller übereinstimmt.
+- Mehr als 5 Pakete mit passendem Namen gelten als mehrdeutig; dann werden keine Hersteller abgefragt.
+- Mehrere passende Pakete sind nur eindeutig, wenn sie dieselbe Version haben (z. B. x64 und x86).
+- Plausibilität: Verworfen wird ein Treffer, dessen Hauptversion kleiner ist als die installierte oder mehr als eine Hauptversion darüber liegt (z. B. installiert 1.0, gefunden 154.0).
+- Ergebnisse werden 24 Stunden zwischengespeichert, Fehler der Suche nicht.
+
 Externe Dienste sind standardmäßig aus (`Set-InventorySetting -Enable GitHub, WingetSearch`). GitHub-Antworten werden 12 Stunden zwischengespeichert (`%LOCALAPPDATA%\SoftwareInventory\cache`). Ohne Token gelten 60 GitHub-Anfragen pro Stunde; mit `GITHUB_TOKEN` 5.000. Ist das Limit erreicht, entfallen weitere GitHub-Abfragen im selben Lauf.
 
 ## Ergebnis (`SoftwareInventory.UpdateStatus`)

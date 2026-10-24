@@ -113,6 +113,44 @@ Describe 'Test-SoftwareUpdate' {
             Mock -ModuleName SoftwareInventory Get-Command { $true } -ParameterFilter { $Name -eq 'Find-WinGetPackage' }
             $script:Publishers = @{ 'JanFiala.PSPad.x64' = 'Jan Fiala'; 'JanFiala.PSPad.x86' = 'Jan Fiala'; 'Fake.PSPad' = 'Mallory' }
             Mock -ModuleName SoftwareInventory Get-WingetPackagePublisher { $script:Publishers[$Id] }
+            $script:CacheDir = Join-Path $TestDrive "cache-$([guid]::NewGuid())"
+            Mock -ModuleName SoftwareInventory Get-CacheDirectory { $script:CacheDir }
+        }
+
+        It 'lässt Store-Apps aus' {
+            Mock -ModuleName SoftwareInventory Find-WingetCandidate { throw 'darf nicht aufgerufen werden' }
+            $r = InModuleScope SoftwareInventory {
+                New-SoftwareRecord -Name 'Gaming Services' -Source Appx -Property @{ Version = '38.118.9001.0'; Publisher = 'Microsoft Corporation'; InstallType = 'MSIX' }
+            } | Test-SoftwareUpdate
+            $r.Status | Should -Be 'Unknown'
+            $r.Reason | Should -Match 'Store-App'
+        }
+
+        It 'verwirft unplausible Treffer: <Case>' -TestCases @(
+            @{ Case = 'viel neuere Hauptversion'; Installed = '1.0'; Found = '154.0.8037.40' }
+            @{ Case = 'kleinere Hauptversion'; Installed = '3.5.0.0'; Found = '2.9' }
+        ) {
+            $script:Found = $Found
+            $script:Publishers = @{ 'Google.Tool' = 'Google LLC' }
+            Mock -ModuleName SoftwareInventory Find-WingetCandidate { [pscustomobject] @{ Name = 'Tool'; Id = 'Google.Tool'; Version = $script:Found } }
+            $r = New-TestRecord 'Tool' $Installed -Publisher 'Google LLC' | Test-SoftwareUpdate
+            $r.Status | Should -Be 'Unknown'
+            $r.Reason | Should -Match 'unplausibel'
+        }
+
+        It 'akzeptiert eine Hauptversion Abstand nach oben' {
+            $script:Publishers = @{ 'Oven.Bun' = 'Oven' }
+            Mock -ModuleName SoftwareInventory Find-WingetCandidate { [pscustomobject] @{ Name = 'Bun'; Id = 'Oven.Bun'; Version = '2.0.1' } }
+            (New-TestRecord 'Bun' '1.3.3.0' -Publisher 'Oven' | Test-SoftwareUpdate).Status | Should -Be 'Outdated'
+        }
+
+        It 'speichert Suchergebnisse zwischen' {
+            Mock -ModuleName SoftwareInventory Find-WingetCandidate { [pscustomobject] @{ Name = 'PSPad editor (x64)'; Id = 'JanFiala.PSPad.x64'; Version = '5.5.2.851' } }
+            $first = New-TestRecord 'PSPad' '5.0.0.0' -Publisher 'Jan Fiala' | Test-SoftwareUpdate
+            $second = New-TestRecord 'PSPad' '5.0.0.0' -Publisher 'Jan Fiala' | Test-SoftwareUpdate
+            $second.LatestVersion | Should -Be $first.LatestVersion
+            Should -Invoke -ModuleName SoftwareInventory Find-WingetCandidate -Times 1 -Exactly
+            Should -Invoke -ModuleName SoftwareInventory Get-WingetPackagePublisher -Times 1 -Exactly
         }
 
         It 'findet Programme ohne winget-ID über Name und Hersteller, Ergebnis unbestätigt' {
