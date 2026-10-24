@@ -14,6 +14,7 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 - **Oberfläche = .NET 10 WPF** mit Fluent-Design (WPF-UI). Die App ruft das Modul über die eingebettete PowerShell-Engine (`Microsoft.PowerShell.SDK`) auf und enthält selbst keine Fachlogik.
 - **KI-Berater** nutzt die Modulfunktionen als Tools. Zwei austauschbare LLM-Provider: Claude API und Ollama.
 - Nur Windows 10/11; keine Linux-Kompatibilität einbauen.
+- **Keine Zusatzinstallation für Endbenutzer.** Die WPF-App wird self-contained veröffentlicht (.NET-Laufzeit enthalten). PowerShell läuft eingebettet über Microsoft.PowerShell.SDK; ein separat installiertes PowerShell 7 darf nicht vorausgesetzt werden. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
 - Schwerpunkt Sicherheit + KI. Keine eigene Paketverwaltung nachbauen: Updates und Deinstallation über winget (Fallback Registry/msiexec/Appx).
 
 ## Sicherheitsprinzipien
@@ -24,6 +25,13 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 - Vor dem Senden an Cloud-Modelle Benutzername, Rechnername und Benutzerpfade entfernen.
 - API-Schlüssel (Anthropic, NVD, GitHub) nie ins Repository; über Windows-Anmeldeinformationsverwaltung oder Umgebungsvariablen.
 - Ergebnisse aus Web-Recherche als „unbestätigt“ kennzeichnen.
+
+## Git-Arbeitsweise
+
+- `main` bleibt stabil: kein direktes Arbeiten auf `main`.
+- Ein Branch pro Etappe, benannt nach dem Muster `etappe-<nr>-<thema>` (z. B. `etappe-1-inventar`).
+- Nach jedem fertigen, lauffähigen Teilschritt committen (kleine Commits, Message auf Englisch).
+- Ist die Etappe fertig, per Pull Request auf GitHub in `main` mergen.
 
 ## Fahrplan
 
