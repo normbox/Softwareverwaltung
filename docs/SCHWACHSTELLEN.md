@@ -26,6 +26,10 @@ Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das
 1. **CPE bestimmen:** aus dem Katalog (`Cpe`, siehe [KATALOG.md](KATALOG.md)), sonst aus einer vom Benutzer bestätigten Zuordnung (siehe unten). Ohne beides gibt es keine Prüfung („Keine CPE zugeordnet“). `CpeSource` zeigt die Herkunft (`Catalog` oder `User`).
 2. **NVD abfragen** mit der installierten Version. Die NVD wertet Versionsbereiche selbst aus; die Registry-Schreibweise (`24.8.0.0`) wird wie `24.08` behandelt.
 3. **Lokal filtern:** Es zählen nur CVEs, bei denen das Produkt selbst mit `vulnerable=true` eingetragen ist und die Version im angegebenen Bereich liegt. Einträge, in denen das Produkt nur Umgebung ist (z. B. Python bei einer Lücke in PyGreSQL), entfallen. Nicht vergleichbare Bereichsgrenzen zählen als betroffen.
+   Führt die NVD das Produkt **ohne jede Versionsgrenze** (`mozilla:firefox:*`, formal „alle Versionen“, meist Altdaten aus der Zeit vor sauberen Versionsbereichen), gilt:
+   - CVE jünger als 5 Jahre → `PossiblyAffected` mit Hinweis „Versionsbereich in der NVD nicht angegeben“ (Ampel: Gelb mit Hinweis)
+   - älter → `Informational` mit Hinweis „Altdaten ohne Versionsangabe“, ohne Ampelwirkung (z. B. Firefox-CVEs von 2007)
+   - trifft zusätzlich ein Eintrag mit Versionsgrenze zu, ist die CVE normal `Affected`
 4. **KEV abgleichen:** CVEs im KEV-Katalog werden markiert.
 5. **KEV ohne NVD-Versionsdaten:** Seit 2024 analysiert die NVD viele neue CVEs verzögert; solche CVEs findet die CPE-Suche nicht. KEV-Einträge, die laut Katalog (`Kev`) zum Produkt gehören, werden deshalb zusätzlich einzeln in der NVD nachgeschlagen:
    - NVD hat Versionsdaten und die Version ist betroffen → `Affected`
@@ -43,9 +47,9 @@ Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das
 | `Status` | `Checked` (NVD abgefragt) oder `Unknown` |
 | `Reason` | bei `Unknown` immer gesetzt: „Dienst NVD nicht aktiviert“, „Keine CPE zugeordnet …“, „Version '…' nicht lesbar“, „NVD-Anfragelimit erreicht“ … |
 | `Notes` | Hinweise, z. B. „Dienst KEV nicht aktiviert“ |
-| `Vulnerabilities` | Liste, KEV zuerst, dann nach CVSS absteigend |
+| `Vulnerabilities` | Liste, KEV zuerst, dann nach CVSS absteigend; Hinweise (`Informational`) am Ende |
 
-Je Schwachstelle (`SoftwareInventory.Vulnerability`): `CveId`, `Assessment` (`Affected`/`PossiblyAffected`), `Note`, `Score`, `Severity`, `CvssVersion` (höchste vorhandene: 4.0 vor 3.1, 3.0, 2.0; bevorzugt die Bewertung der NVD), `Published`, `Description` (englisch, gekürzt), `Kev`, `KevDateAdded`, `KevRansomware`, `Epss`, `EpssPercentile`, `Url`.
+Je Schwachstelle (`SoftwareInventory.Vulnerability`): `CveId`, `Assessment` (`Affected`, `PossiblyAffected` oder `Informational`), `Note`, `Score`, `Severity`, `CvssVersion` (höchste vorhandene: 4.0 vor 3.1, 3.0, 2.0; bevorzugt die Bewertung der NVD), `Published`, `Description` (englisch, gekürzt), `Kev`, `KevDateAdded`, `KevRansomware`, `Epss`, `EpssPercentile`, `Url`.
 
 ## CPE für Programme ohne Katalogeintrag
 
@@ -63,4 +67,5 @@ Get-CpeMapping | Where-Object Name -like 'GIMP*' | Remove-CpeMapping
 
 - Geprüft werden nur Programme mit Katalogeintrag oder bestätigter CPE-Zuordnung.
 - CVEs ohne CPE-Konfiguration in der NVD werden nur über KEV erfasst, nicht über die CPE-Suche.
+- Verglichen wird die Versionsnummer; Zusatzfelder einer CPE (z. B. `3.15.0:alpha1`, Ausgabe `esr`) werden nicht ausgewertet. Im Zweifel entsteht ein Fehlalarm, kein übersehener Treffer.
 - OSV und GitHub Security Advisories sind noch nicht angebunden.
