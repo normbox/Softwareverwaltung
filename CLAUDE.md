@@ -15,6 +15,7 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 - **KI-Berater** nutzt die Modulfunktionen als Tools. Zwei austauschbare LLM-Provider: Claude API und Ollama.
 - Nur Windows 10/11; keine Linux-Kompatibilität einbauen.
 - **Keine Zusatzinstallation für Endbenutzer.** Die WPF-App wird self-contained veröffentlicht (.NET-Laufzeit enthalten). PowerShell läuft eingebettet über Microsoft.PowerShell.SDK; ein separat installiertes PowerShell 7 darf nicht vorausgesetzt werden. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
+- **Alles manuell einstellbar, keine Automatik nach Einsatzart.** Externe Dienste, KI-Anbieter, Freigabestufen und Scan-Bereiche (welche Ordner, Registry-Zweige, Nutzungsspuren) sind standardmäßig aus und werden einzeln vom Benutzer aktiviert, für alle gleich. Beim ersten Start wird „Privat“ oder „Firma“ abgefragt und gespeichert, aber nur als Information (z. B. für Lizenzhinweise oder spätere Funktionen). Es schaltet nichts automatisch frei oder ab.
 - Schwerpunkt Sicherheit + KI. Keine eigene Paketverwaltung nachbauen: Updates und Deinstallation über winget (Fallback Registry/msiexec/Appx).
 
 ## Sicherheitsprinzipien
