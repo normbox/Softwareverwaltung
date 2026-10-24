@@ -300,3 +300,24 @@ Describe 'Remove-InstalledMatch (Abgleich über Name und Version)' {
         $r.FilePath | Should -Not -Contain "$dir\winuae64.exe"
     }
 }
+
+Describe 'Signierte Dateien in Temp' {
+    It 'verwirft sie nur, wenn allein der Dateiscan sie fand (<Evidence>)' -TestCases @(
+        @{ Evidence = 'FileScan'; Expected = $false }
+        @{ Evidence = 'Process'; Expected = $true }
+        @{ Evidence = 'UserAssist'; Expected = $true }
+        @{ Evidence = 'Autostart'; Expected = $true }
+        @{ Evidence = 'ScheduledTask'; Expected = $true }
+    ) {
+        $temp = Join-Path $TestDrive 'Temp'
+        Mock -ModuleName SoftwareInventory Get-TempDirectory { $temp }
+        $file = New-Info "$temp\signed.exe" 'Signed Tool' '1.0' -Signature 'Valid'
+        $r = if ($Evidence -eq 'FileScan') {
+            Invoke-PortableScenario -FileInfo @($file) -Parameter @{ IncludeTemp = $true }
+        }
+        else {
+            Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = $Evidence }) -Parameter @{ IncludeTemp = $true }
+        }
+        ($r.FilePath -contains $file.Path) | Should -Be $Expected
+    }
+}

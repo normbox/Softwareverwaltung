@@ -9,7 +9,8 @@ function Get-PortableSoftware {
         aktiviert. Mit Parametern gilt nur, was angegeben ist.
         Dateien in Windows-Ordnern und in den Ordnern installierter Programme werden ausgelassen.
         Die Dateien werden nicht ausgeführt; gelesen werden Versionsinfo, Signatur und optional SHA256.
-        Aus Temp-Ordnern werden nur unsignierte oder ungültig signierte Dateien gemeldet.
+        Aus Temp-Ordnern meldet der Dateiscan nur unsignierte oder ungültig signierte Dateien;
+        mit Nutzungsspur wird jede Datei gemeldet.
         Identische Kopien werden zu einem Datensatz zusammengefasst (CopyPaths).
         Benötigt keine Administratorrechte.
     .PARAMETER Trace
@@ -127,8 +128,10 @@ function Get-PortableSoftware {
             Write-Verbose "Nicht lesbar: $($c.Path)"
             continue
         }
-        # Signierte Dateien in Temp sind meist Installer-Reste; gemeldet wird nur das Warnsignal.
-        if ($info.SignatureStatus -eq 'Valid' -and (Test-PathExcluded -Path $info.Path -Exclusion $tempDirs)) { continue }
+        # Signierte Dateien in Temp sind meist Installer-Reste. Verworfen werden sie nur, wenn allein
+        # der Dateiscan sie fand; läuft oder startet etwas aus Temp, wird es immer gemeldet.
+        $onlyFileScan = $c.Evidence.Count -eq 1 -and $c.Evidence.Contains('FileScan')
+        if ($onlyFileScan -and $info.SignatureStatus -eq 'Valid' -and (Test-PathExcluded -Path $info.Path -Exclusion $tempDirs)) { continue }
         if (Test-InstalledProgramFile -Info $info -InstalledPublisher $publishers) {
             $vendorDirs.Add((Get-VendorDirectory $info.Path))
             continue
