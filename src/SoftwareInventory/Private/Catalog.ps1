@@ -64,6 +64,11 @@ function Test-CatalogEntry {
         if (-not $cpe) { continue }
         if ($cpe -notmatch '^cpe:2\.3:[aho]:(\\.|[^:\\])+:(\\.|[^:\\])+$') { "Cpe '$cpe' muss die Form cpe:2.3:a:hersteller:produkt haben (ohne Version)" }
     }
+    $versionPattern = Get-CatalogValue $Entry 'CpeVersionPattern'
+    if ($versionPattern) {
+        try { [void] [regex]::new($versionPattern) } catch { "Ungültiges Muster '$versionPattern'" }
+        if ($versionPattern -notmatch '\(\?<version>') { 'CpeVersionPattern braucht eine Gruppe (?<version>...)' }
+    }
     foreach ($kev in @(Get-CatalogValue $Entry 'Kev')) {
         if (-not $kev) { continue }
         if (-not (& $has $kev 'Vendor')) { 'Kev.Vendor fehlt' }

@@ -41,6 +41,7 @@ Describe 'Test-CatalogEntry' {
         @{ Case = 'CPE ohne Präfix'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["x:x"]}'; Expected = '*cpe:2.3*' }
         @{ Case = 'KEV ohne Hersteller'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"ProductPattern":"^X$"}]}'; Expected = '*Kev.Vendor fehlt*' }
         @{ Case = 'KEV mit ungültigem Muster'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"Vendor":"X","ProductPattern":"(x"}]}'; Expected = '*Ungültiges Muster*' }
+        @{ Case = 'Versionsmuster ohne Gruppe'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"CpeVersionPattern":"^(.+)$"}'; Expected = '*CpeVersionPattern braucht*' }
     ) {
         $problems = InModuleScope SoftwareInventory -Parameters @{ E = ($Json | ConvertFrom-Json) } { Test-CatalogEntry -Entry $E -FileName 'x' }
         ($problems -join "`n") | Should -BeLike $Expected
