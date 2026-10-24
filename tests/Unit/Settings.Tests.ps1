@@ -78,6 +78,29 @@ Describe 'Einstellungen' {
         $s.Usage | Should -BeNullOrEmpty
     }
 
+    It 'hat ohne Angabe keine eigenen Ausschlüsse und SmartExclusions an' {
+        $s = Get-InventorySetting
+        $s.FileScan.ExcludePaths | Should -BeNullOrEmpty
+        $s.FileScan.SmartExclusions | Should -BeTrue
+        '{"FileScan":{"Paths":["C:\\Tools"]}}' | Set-Content $settingsFile
+        (Get-InventorySetting).FileScan.SmartExclusions | Should -BeTrue
+    }
+
+    It 'speichert eigene Ausschlüsse und SmartExclusions; Vorlagen ändern sie nicht, Reset setzt zurück' {
+        Set-InventorySetting -ExcludePath '%USERPROFILE%\Builds', 'D:\Archiv' -SmartExclusions $false | Out-Null
+        $s = Get-InventorySetting
+        $s.FileScan.ExcludePaths | Should -Be @('%USERPROFILE%\Builds', 'D:\Archiv')
+        $s.FileScan.SmartExclusions | Should -BeFalse
+
+        $s = Set-InventorySetting -Preset Quick
+        $s.FileScan.ExcludePaths | Should -Be @('%USERPROFILE%\Builds', 'D:\Archiv')
+        $s.FileScan.SmartExclusions | Should -BeFalse
+
+        $s = Set-InventorySetting -Reset
+        $s.FileScan.ExcludePaths | Should -BeNullOrEmpty
+        $s.FileScan.SmartExclusions | Should -BeTrue
+    }
+
     It 'Get-SoftwareInventory liest ohne aktivierte Quelle nichts' {
         Mock -ModuleName SoftwareInventory Get-RegistrySoftware { throw 'darf nicht gelesen werden' }
         Mock -ModuleName SoftwareInventory Get-AppxSoftware { throw 'darf nicht gelesen werden' }

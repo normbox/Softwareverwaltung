@@ -22,10 +22,12 @@ function New-DefaultSetting {
         Sources       = [pscustomobject] $sources
         Traces        = [pscustomobject] $traces
         FileScan      = [pscustomobject] [ordered]@{
-            Paths       = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
-            Drives      = [string[]] @()
-            IncludeTemp = $false
-            ComputeHash = $false
+            Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
+            Drives          = [string[]] @()
+            IncludeTemp     = $false
+            ComputeHash     = $false
+            ExcludePaths    = [string[]] @()   # eigene Ausschlüsse für Dateiscan und Spuren
+            SmartExclusions = $true            # Herstellerordner-Regel und Abgleich über Name/Version
         }
     }
 }
@@ -58,6 +60,8 @@ function Read-InventorySetting {
         if ($fs.PSObject.Properties['Drives']) { $setting.FileScan.Drives = [string[]] @($fs.Drives | Where-Object { $_ }) }
         if ($fs.PSObject.Properties['IncludeTemp']) { $setting.FileScan.IncludeTemp = [bool] $fs.IncludeTemp }
         if ($fs.PSObject.Properties['ComputeHash']) { $setting.FileScan.ComputeHash = [bool] $fs.ComputeHash }
+        if ($fs.PSObject.Properties['ExcludePaths']) { $setting.FileScan.ExcludePaths = [string[]] @($fs.ExcludePaths | Where-Object { $_ }) }
+        if ($fs.PSObject.Properties['SmartExclusions'] -and $null -ne $fs.SmartExclusions) { $setting.FileScan.SmartExclusions = [bool] $fs.SmartExclusions }
     }
     $setting
 }

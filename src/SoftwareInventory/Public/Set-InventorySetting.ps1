@@ -19,14 +19,24 @@ function Set-InventorySetting {
         Ordner für den Dateiscan (ersetzt die bisherige Liste). Umgebungsvariablen wie %USERPROFILE% erlaubt.
     .PARAMETER ScanDrive
         Laufwerke für den Dateiscan (ersetzt die bisherige Liste), z. B. C, D.
+    .PARAMETER ExcludePath
+        Eigene Ordner, die nie betreten werden – weder vom Dateiscan noch bei Spuren (ersetzt die
+        bisherige Liste). Umgebungsvariablen erlaubt. Vorlagen ändern diese Liste nicht.
+    .PARAMETER SmartExclusions
+        $false schaltet die Herstellerordner-Regel und den Abgleich über Name/Version ab
+        (mehr Treffer). Feste Systemausschlüsse und Ordner installierter Programme bleiben.
+        Standard: $true. Vorlagen ändern den Wert nicht.
     .PARAMETER Reset
-        Setzt alles auf „aus“ zurück (Usage bleibt erhalten).
+        Setzt alles auf den Ausgangszustand zurück: aus, keine eigenen Ausschlüsse,
+        SmartExclusions an (Usage bleibt erhalten).
     .EXAMPLE
         Set-InventorySetting -Enable RegistryMachine, RegistryUser, Winget, Appx
     .EXAMPLE
         Set-InventorySetting -Preset Quick -Disable ScheduledTask
     .EXAMPLE
         Set-InventorySetting -ScanDrive C, D -IncludeTemp $true -ComputeHash $true
+    .EXAMPLE
+        Set-InventorySetting -ExcludePath '%USERPROFILE%\Projekte\Builds' -SmartExclusions $false
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType('SoftwareInventory.Setting')]
@@ -49,6 +59,11 @@ function Set-InventorySetting {
         [bool] $IncludeTemp,
 
         [bool] $ComputeHash,
+
+        [AllowEmptyCollection()]
+        [string[]] $ExcludePath,
+
+        [bool] $SmartExclusions,
 
         [ValidateSet('Private', 'Company')]
         [string] $Usage,
@@ -89,6 +104,8 @@ function Set-InventorySetting {
     }
     if ($PSBoundParameters.ContainsKey('IncludeTemp')) { $setting.FileScan.IncludeTemp = $IncludeTemp }
     if ($PSBoundParameters.ContainsKey('ComputeHash')) { $setting.FileScan.ComputeHash = $ComputeHash }
+    if ($PSBoundParameters.ContainsKey('ExcludePath')) { $setting.FileScan.ExcludePaths = [string[]] @($ExcludePath | Where-Object { $_ }) }
+    if ($PSBoundParameters.ContainsKey('SmartExclusions')) { $setting.FileScan.SmartExclusions = $SmartExclusions }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
 
     if ($PSCmdlet.ShouldProcess((Get-SettingsPath), 'Einstellungen speichern')) {

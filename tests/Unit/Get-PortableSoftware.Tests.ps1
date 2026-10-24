@@ -372,3 +372,68 @@ Describe 'Dokumentation der festen Ausschlüsse' {
         }
     }
 }
+
+Describe 'Eigene Ausschlüsse und SmartExclusions' {
+    BeforeAll {
+        $python = New-InventoryRecord 'Python 3.13.15 (64-bit)' 'Python Software Foundation' '3.13.15150.0'
+        $ubisoft = New-InventoryRecord 'Ubisoft Connect' 'Ubisoft' '174.2'
+    }
+
+    It 'betritt eigene Ausschlüsse weder beim Dateiscan noch bei Spuren' {
+        $skip = Join-Path $TestDrive 'Builds'
+        $files = @(New-Info "$TestDrive\keep\tool.exe" 'Tool' '1.0')
+        $traced = New-Info "$skip\agent.exe" 'Agent' '1.0'
+        $r = Invoke-PortableScenario -FileInfo $files -TraceInfo @($traced) -Trace @(@{ Path = $traced.Path; Evidence = 'Process' }) `
+            -Parameter @{ ExcludePath = @('%TEMP%\gibt-es-nicht', $skip) }
+        $r.FilePath | Should -Contain "$TestDrive\keep\tool.exe"
+        $r.FilePath | Should -Not -Contain $traced.Path
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 1 -Exactly -ParameterFilter { $ExcludeDirectory -contains $skip }
+    }
+
+    It 'übernimmt eigene Ausschlüsse aus den Einstellungen, auch bei expliziten Parametern' {
+        $skip = Join-Path $TestDrive 'FromSettings'
+        Mock -ModuleName SoftwareInventory Read-InventorySetting {
+            $s = InModuleScope SoftwareInventory { New-DefaultSetting }
+            $s.FileScan.ExcludePaths = [string[]] @($skip)
+            $s
+        }
+        $traced = New-Info "$skip\agent.exe" 'Agent' '1.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($traced) -Trace @(@{ Path = $traced.Path; Evidence = 'Autostart' })
+        $r.FilePath | Should -Not -Contain $traced.Path
+    }
+
+    It 'zeigt mit -NoSmartExclusion auch Herstellerordner und Abgleichstreffer' {
+        $vendor = "$env:ProgramData\Ubisoft\Launcher\upc.exe"
+        $files = @(
+            New-Info "$TestDrive\Apps\Python313\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation' -Signature 'Valid'
+            New-Info $vendor 'Ubisoft Connect' '174.2.0' -Company 'Ubisoft Entertainment' -Signature 'Valid'
+        )
+        $with = Invoke-PortableScenario -FileInfo $files -Inventory @($python, $ubisoft)
+        $with.FilePath | Should -Not -Contain $vendor
+        $with.FilePath | Should -Not -Contain "$TestDrive\Apps\Python313\python.exe"
+
+        $without = Invoke-PortableScenario -FileInfo $files -Inventory @($python, $ubisoft) -Parameter @{ NoSmartExclusion = $true }
+        $without.FilePath | Should -Contain $vendor
+        $without.FilePath | Should -Contain "$TestDrive\Apps\Python313\python.exe"
+    }
+
+    It 'lässt Ordner aus InstallLocation auch ohne SmartExclusions aus' {
+        $dir = Join-Path $TestDrive 'Apps\Contoso'
+        $record = New-InventoryRecord 'Contoso' 'Contoso' '1.0' -InstallLocation $dir
+        $traced = New-Info "$dir\contoso.exe" 'Contoso' '1.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($traced) -Trace @(@{ Path = $traced.Path; Evidence = 'Process' }) `
+            -Inventory @($record) -Parameter @{ NoSmartExclusion = $true }
+        $r.FilePath | Should -Not -Contain $traced.Path
+    }
+
+    It 'übernimmt SmartExclusions = aus aus den Einstellungen' {
+        Mock -ModuleName SoftwareInventory Read-InventorySetting {
+            $s = InModuleScope SoftwareInventory { New-DefaultSetting }
+            $s.FileScan.SmartExclusions = $false
+            $s
+        }
+        $files = @(New-Info "$TestDrive\Apps\Python313\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation' -Signature 'Valid')
+        $r = Invoke-PortableScenario -FileInfo $files -Inventory @($python)
+        $r.FilePath | Should -Contain "$TestDrive\Apps\Python313\python.exe"
+    }
+}

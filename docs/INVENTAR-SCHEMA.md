@@ -75,7 +75,7 @@ Leere Felder sind `null`.
 
 ## Portable Programme: Suche und Ausschlüsse
 
-`Get-PortableSoftware` braucht keine Administratorrechte und führt keine Datei aus. Es liest nur, was in den Einstellungen aktiviert ist (siehe unten) oder als Parameter angegeben wird (`-Trace`, `-Path`, `-Drive`, `-IncludeTemp`, `-ComputeHash`). Ohne aktivierte Bereiche scannt es nichts. Die Ausschlüsse installierter Programme beruhen nur auf den aktivierten Inventar-Quellen.
+`Get-PortableSoftware` braucht keine Administratorrechte und führt keine Datei aus. Es liest nur, was in den Einstellungen aktiviert ist (siehe unten) oder als Parameter angegeben wird (`-Trace`, `-Path`, `-Drive`, `-IncludeTemp`, `-ComputeHash`; Ausschlüsse über `-ExcludePath` und `-NoSmartExclusion`). Ohne aktivierte Bereiche scannt es nichts. Die Ausschlüsse installierter Programme beruhen nur auf den aktivierten Inventar-Quellen.
 
 Grundsatz: lieber ein Fehlalarm mehr als ein übersehenes Programm.
 
@@ -109,7 +109,10 @@ Datei: `%APPDATA%\SoftwareInventory\settings.json`. Ohne Datei ist **alles aus**
   "Usage": "Private",
   "Sources":  { "RegistryMachine": true, "RegistryUser": true, "Winget": true, "Appx": false },
   "Traces":   { "UserAssist": true, "Process": false, "Autostart": true, "ScheduledTask": false },
-  "FileScan": { "Paths": ["%USERPROFILE%"], "Drives": ["D:"], "IncludeTemp": false, "ComputeHash": false }
+  "FileScan": {
+    "Paths": ["%USERPROFILE%"], "Drives": ["D:"], "IncludeTemp": false, "ComputeHash": false,
+    "ExcludePaths": ["%USERPROFILE%\\Projekte\\Builds"], "SmartExclusions": true
+  }
 }
 ```
 
@@ -118,13 +121,16 @@ Datei: `%APPDATA%\SoftwareInventory\settings.json`. Ohne Datei ist **alles aus**
 | Inventar-Quellen (`Sources`) | `RegistryMachine` (HKLM, 64- und 32-Bit), `RegistryUser` (HKCU), `Winget`, `Appx` |
 | Nutzungsspuren (`Traces`) | `UserAssist`, `Process`, `Autostart`, `ScheduledTask` |
 | Dateiscan (`FileScan`) | `Paths` (Umgebungsvariablen erlaubt), `Drives`, `IncludeTemp`, `ComputeHash` |
+| Ausschlüsse (`FileScan`) | `ExcludePaths`: eigene Ordner, die nie betreten werden – weder vom Dateiscan noch bei Spuren (Umgebungsvariablen erlaubt). `SmartExclusions`: `false` schaltet die Herstellerordner-Regel und den Abgleich über Name/Version ab (mehr Treffer); feste Systemausschlüsse und Ordner installierter Programme bleiben immer aktiv |
 | `Usage` | `Private` oder `Company`; reine Information, schaltet nichts |
 
-Vorlagen belegen die Schalter nur vor, wenn der Benutzer sie wählt; danach sind sie einzeln änderbar:
+Vorlagen belegen die Schalter nur vor, wenn der Benutzer sie wählt; danach sind sie einzeln änderbar. `ExcludePaths` und `SmartExclusions` ändern Vorlagen nicht:
 
 | Vorlage | Belegung |
 | --- | --- |
 | `Quick` | alle Quellen und Spuren, Dateiscan `%USERPROFILE%` ohne Temp, ohne Hash |
 | `Thorough` | alle Quellen und Spuren, Dateiscan aller festen Laufwerke (zum Zeitpunkt der Wahl) einschließlich Temp, mit SHA256 |
 
-Unbekannte Werte in der Datei werden ignoriert, fehlende gelten als aus.
+`Get-PortableSoftware -ExcludePath …` und `-NoSmartExclusion` überschreiben die gespeicherten Werte für einen Aufruf. Ohne diese Parameter gelten die gespeicherten Werte – auch wenn andere Parameter wie `-Path` angegeben sind.
+
+Unbekannte Werte in der Datei werden ignoriert. Fehlende Werte gelten als aus; ausgenommen sind `ExcludePaths` (leer) und `SmartExclusions` (an), die sich wie bisher verhalten. `Set-InventorySetting -Reset` stellt genau diesen Ausgangszustand her.

@@ -23,6 +23,12 @@ function Get-PortableSoftware {
         Temp-Ordner mit durchsuchen (sonst ausgelassen).
     .PARAMETER ComputeHash
         SHA256 berechnen (liest jede Datei vollständig, kostet Zeit).
+    .PARAMETER ExcludePath
+        Eigene Ordner, die nie betreten werden (Dateiscan und Spuren). Ohne Angabe gilt
+        FileScan.ExcludePaths aus den Einstellungen – auch wenn andere Parameter angegeben sind.
+    .PARAMETER NoSmartExclusion
+        Schaltet Herstellerordner-Regel und Abgleich über Name/Version ab (mehr Treffer).
+        Ohne Angabe gilt FileScan.SmartExclusions aus den Einstellungen (Standard: an).
     .PARAMETER Inventory
         Installierte Programme, deren Ordner ausgelassen werden. Standard: Get-SoftwareInventory
         mit den aktivierten Quellen.
@@ -30,7 +36,7 @@ function Get-PortableSoftware {
         Set-InventorySetting -Preset Quick
         Get-PortableSoftware | Format-Table Name, Version, Flags, FilePath
     .EXAMPLE
-        Get-PortableSoftware -Drive D, E -ComputeHash
+        Get-PortableSoftware -Drive D, E -ComputeHash -NoSmartExclusion
     #>
     [CmdletBinding()]
     [OutputType('SoftwareInventory.SoftwareRecord')]
@@ -46,12 +52,21 @@ function Get-PortableSoftware {
 
         [switch] $ComputeHash,
 
+        [string[]] $ExcludePath = @(),
+
+        [switch] $NoSmartExclusion,
+
         [object[]] $Inventory
     )
 
+    $setting = Read-InventorySetting
+    # Eigene Ausschlüsse und SmartExclusions gelten aus den Einstellungen, solange sie nicht als Parameter kommen.
+    if (-not $PSBoundParameters.ContainsKey('ExcludePath')) { $ExcludePath = @($setting.FileScan.ExcludePaths) }
+    $smart = if ($PSBoundParameters.ContainsKey('NoSmartExclusion')) { -not $NoSmartExclusion } else { [bool] $setting.FileScan.SmartExclusions }
+    $userExclusions = @($ExcludePath | Where-Object { $_ } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_).TrimEnd('\') })
+
     $explicit = 'Trace', 'Path', 'Drive', 'IncludeTemp', 'ComputeHash' | Where-Object { $PSBoundParameters.ContainsKey($_) }
     if (-not $explicit) {
-        $setting = Read-InventorySetting
         $Trace = @(Get-EnabledName $setting.Traces)
         $Path = @($setting.FileScan.Paths)
         $Drive = @($setting.FileScan.Drives)
@@ -70,7 +85,7 @@ function Get-PortableSoftware {
             Write-Warning 'Keine Inventar-Quelle aktiviert: Installierte Programme können nicht ausgelassen werden und erscheinen mit.'
         }
     }
-    $exclusions = @(Get-ScanExclusion -Inventory $Inventory)
+    $exclusions = @(Get-ScanExclusion -Inventory $Inventory) + $userExclusions
     $tempDirs = @(Get-TempDirectory)
     $publishers = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($record in $Inventory) {
@@ -132,11 +147,11 @@ function Get-PortableSoftware {
         # der Dateiscan sie fand; läuft oder startet etwas aus Temp, wird es immer gemeldet.
         $onlyFileScan = $c.Evidence.Count -eq 1 -and $c.Evidence.Contains('FileScan')
         if ($onlyFileScan -and $info.SignatureStatus -eq 'Valid' -and (Test-PathExcluded -Path $info.Path -Exclusion $tempDirs)) { continue }
-        if (Test-InstalledProgramFile -Info $info -InstalledPublisher $publishers) {
+        if ($smart -and (Test-InstalledProgramFile -Info $info -InstalledPublisher $publishers)) {
             $vendorDirs.Add((Get-VendorDirectory $info.Path))
             continue
         }
-        $info | Add-Member -NotePropertyMembers @{ Evidence = [string[]] @($c.Evidence); LastRun = $c.LastRun; RunCount = $c.RunCount }
+        $info | Add-Member -Force -NotePropertyMembers @{ Evidence = [string[]] @($c.Evidence); LastRun = $c.LastRun; RunCount = $c.RunCount }
         $infos.Add($info)
     }
     Write-Progress -Activity 'Prüfe Programmdateien' -Id 2 -Completed
@@ -145,7 +160,7 @@ function Get-PortableSoftware {
     # (z. B. unsignierte Hilfsprogramme ohne Versionsinfo).
     $vendorDirs = @($vendorDirs | Select-Object -Unique)
     $infos = @($infos | Where-Object { -not (Test-PathExcluded -Path $_.Path -Exclusion $vendorDirs) })
-    $infos = @(Remove-InstalledMatch -Info $infos -Inventory $Inventory -ScanRoot $roots)
+    if ($smart) { $infos = @(Remove-InstalledMatch -Info $infos -Inventory $Inventory -ScanRoot $roots) }
     $records = foreach ($group in $infos | Group-Object { "$($_.Directory)|$(Get-ExecutableProductName $_)".ToLowerInvariant() }) {
         ConvertTo-PortableRecord -File $group.Group
     }
