@@ -7,5 +7,6 @@
     "NamePattern": "^Telegram Desktop",
     "Publisher": ["Telegram Messenger LLP", "Telegram FZ-LLC"]
   },
-  "GitHub": { "Repository": "telegramdesktop/tdesktop" }
+  "GitHub": { "Repository": "telegramdesktop/tdesktop" },
+  "Cpe": ["cpe:2.3:a:telegram:telegram_desktop"]
 }

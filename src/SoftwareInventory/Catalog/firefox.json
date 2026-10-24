@@ -1,0 +1,12 @@
+{
+  "Id": "firefox",
+  "Name": "Mozilla Firefox",
+  "Match": {
+    "WingetId": ["Mozilla.Firefox"],
+    "PackageFamilyName": ["Mozilla.Firefox_n80bbvh6b1yt2"],
+    "NamePattern": "^Mozilla Firefox( \\d|$)",
+    "Publisher": ["Mozilla"]
+  },
+  "Cpe": ["cpe:2.3:a:mozilla:firefox"],
+  "Kev": [{ "Vendor": "Mozilla", "ProductPattern": "\\bFirefox\\b(?!\\s+ESR\\b)|^Multiple Products$" }]
+}

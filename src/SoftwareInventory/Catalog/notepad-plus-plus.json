@@ -6,5 +6,7 @@
     "NamePattern": "^Notepad\\+\\+",
     "Publisher": ["Notepad++ Team", "Don HO"]
   },
-  "GitHub": { "Repository": "notepad-plus-plus/notepad-plus-plus" }
+  "GitHub": { "Repository": "notepad-plus-plus/notepad-plus-plus" },
+  "Cpe": ["cpe:2.3:a:notepad-plus-plus:notepad\\+\\+", "cpe:2.3:a:don_ho:notepad\\+\\+"],
+  "Kev": [{ "Vendor": "Notepad++", "ProductPattern": "^Notepad\\+\\+$" }]
 }

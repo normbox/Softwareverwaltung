@@ -1,0 +1,9 @@
+{
+  "Id": "git",
+  "Name": "Git",
+  "Match": {
+    "WingetId": ["Git.Git"]
+  },
+  "Cpe": ["cpe:2.3:a:git-scm:git"],
+  "Kev": [{ "Vendor": "Git", "ProductPattern": "^Git$" }]
+}

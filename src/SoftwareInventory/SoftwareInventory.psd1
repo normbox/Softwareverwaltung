@@ -18,6 +18,11 @@
         'Set-InventorySetting'
         'Compare-SoftwareVersion'
         'Test-SoftwareUpdate'
+        'Get-SoftwareVulnerability'
+        'Find-CpeCandidate'
+        'Set-CpeMapping'
+        'Get-CpeMapping'
+        'Remove-CpeMapping'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

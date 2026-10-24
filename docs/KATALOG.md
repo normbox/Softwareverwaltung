@@ -1,6 +1,6 @@
 # Katalog
 
-Der Katalog liegt unter `src/SoftwareInventory/Catalog/` und wird mit dem Modul ausgeliefert. Pro Produkt gibt es eine JSON-Datei. Er ordnet erfasste Programme einem Produkt zu und nennt Quellen für die neueste Version. CPE-Angaben für die Sicherheitsprüfung kommen mit Etappe 2b hinzu.
+Der Katalog liegt unter `src/SoftwareInventory/Catalog/` und wird mit dem Modul ausgeliefert. Pro Produkt gibt es eine JSON-Datei. Er ordnet erfasste Programme einem Produkt zu und nennt Quellen für die neueste Version (GitHub) und für Schwachstellen (CPE, KEV).
 
 ## Aufbau
 
@@ -28,6 +28,8 @@ Der Katalog liegt unter `src/SoftwareInventory/Catalog/` und wird mit dem Modul 
 | `Match.Publisher` | bei `NamePattern` | erlaubte Hersteller; verglichen wird das erste Wort (mind. 3 Zeichen), z. B. „Acronis International GmbH“ → `acronis` |
 | `GitHub.Repository` | nein | `owner/repo`; abgefragt wird `releases/latest` (ohne Vorabversionen) |
 | `GitHub.TagPattern` | nein | regulärer Ausdruck mit Gruppe `(?<version>…)`, falls der Tag nicht `v1.2.3` oder `1.2.3` lautet (z. B. `Audacity-4.0.1`) |
+| `Cpe` | nein | CPE-Namen ohne Version, z. B. `cpe:2.3:a:videolan:vlc_media_player`; Sonderzeichen wie in der NVD mit `\` (`notepad\+\+`). Mehrere Einträge, wenn die NVD das Produkt unter verschiedenen Herstellern führt. Prüfen unter `https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=<cpe>` |
+| `Kev` | nein | Zuordnung zum CISA-KEV-Katalog: `Vendor` (exakt wie `vendorProject` im Feed, Groß-/Kleinschreibung egal) und `ProductPattern` (regulärer Ausdruck auf `product`, da der Feed Sammelangaben wie „Firefox, Firefox ESR, and Thunderbird“ enthält). Gleicht KEV-Einträge aus, die in der NVD noch keine Versionsdaten haben. |
 
 ## Zuordnung
 

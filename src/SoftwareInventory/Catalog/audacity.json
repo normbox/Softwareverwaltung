@@ -6,5 +6,6 @@
     "NamePattern": "^Audacity",
     "Publisher": ["Audacity Team", "Muse Group"]
   },
-  "GitHub": { "Repository": "audacity/audacity", "TagPattern": "^Audacity-(?<version>\\d.*)$" }
+  "GitHub": { "Repository": "audacity/audacity", "TagPattern": "^Audacity-(?<version>\\d.*)$" },
+  "Cpe": ["cpe:2.3:a:audacity:audacity"]
 }

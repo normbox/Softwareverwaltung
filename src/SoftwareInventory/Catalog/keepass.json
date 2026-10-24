@@ -1,0 +1,10 @@
+{
+  "Id": "keepass",
+  "Name": "KeePass Password Safe",
+  "Match": {
+    "WingetId": ["DominikReichl.KeePass"],
+    "NamePattern": "^KeePass Password Safe",
+    "Publisher": ["Dominik Reichl"]
+  },
+  "Cpe": ["cpe:2.3:a:keepass:keepass"]
+}

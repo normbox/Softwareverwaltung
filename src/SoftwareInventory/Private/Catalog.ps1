@@ -59,6 +59,18 @@ function Test-CatalogEntry {
         $tag = Get-CatalogValue $Entry.GitHub 'TagPattern'
         if ($tag -and $tag -notmatch '\(\?<version>') { 'GitHub.TagPattern braucht eine Gruppe (?<version>...)' }
     }
+    # CPE ohne Version: cpe:2.3:a:<hersteller>:<produkt> (Sonderzeichen mit \ maskiert, z. B. notepad\+\+)
+    foreach ($cpe in @(Get-CatalogValue $Entry 'Cpe')) {
+        if (-not $cpe) { continue }
+        if ($cpe -notmatch '^cpe:2\.3:[aho]:(\\.|[^:\\])+:(\\.|[^:\\])+$') { "Cpe '$cpe' muss die Form cpe:2.3:a:hersteller:produkt haben (ohne Version)" }
+    }
+    foreach ($kev in @(Get-CatalogValue $Entry 'Kev')) {
+        if (-not $kev) { continue }
+        if (-not (& $has $kev 'Vendor')) { 'Kev.Vendor fehlt' }
+        $productPattern = Get-CatalogValue $kev 'ProductPattern'
+        if (-not $productPattern) { 'Kev.ProductPattern fehlt'; continue }
+        try { [void] [regex]::new($productPattern) } catch { "Ungültiges Muster '$productPattern'" }
+    }
 }
 
 function Find-CatalogEntry {

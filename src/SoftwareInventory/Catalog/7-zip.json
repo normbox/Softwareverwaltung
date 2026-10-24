@@ -6,5 +6,7 @@
     "NamePattern": "^7-Zip",
     "Publisher": ["Igor Pavlov"]
   },
-  "GitHub": { "Repository": "ip7z/7zip" }
+  "GitHub": { "Repository": "ip7z/7zip" },
+  "Cpe": ["cpe:2.3:a:7-zip:7-zip"],
+  "Kev": [{ "Vendor": "7-Zip", "ProductPattern": "^7-Zip$" }]
 }
