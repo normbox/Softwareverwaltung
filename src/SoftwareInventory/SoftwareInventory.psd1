@@ -14,6 +14,8 @@
         'Compare-InventorySnapshot'
         'Get-PortableSoftware'
         'Get-ScanDrive'
+        'Get-InventorySetting'
+        'Set-InventorySetting'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

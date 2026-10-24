@@ -3,42 +3,71 @@ function Get-PortableSoftware {
     .SYNOPSIS
         Findet Programme, die in keiner Installationsliste stehen (portable oder herumliegende .exe).
     .DESCRIPTION
-        Wertet Ausführungsspuren aus (UserAssist, laufende Prozesse, Autostart, geplante
-        Aufgaben) und durchsucht Ordner nach .exe-Dateien. Dateien in Windows-Ordnern und
-        in den Ordnern installierter Programme werden ausgelassen. Die Dateien werden nicht
-        ausgeführt; gelesen werden Versionsinfo, Signatur und (gründlich) SHA256.
+        Wertet die aktivierten Nutzungsspuren aus (UserAssist, laufende Prozesse, Autostart,
+        geplante Aufgaben) und durchsucht die aktivierten Ordner und Laufwerke nach .exe-Dateien.
+        Ohne Parameter gelten die Einstellungen (Set-InventorySetting); standardmäßig ist nichts
+        aktiviert. Mit Parametern gilt nur, was angegeben ist.
+        Dateien in Windows-Ordnern und in den Ordnern installierter Programme werden ausgelassen.
+        Die Dateien werden nicht ausgeführt; gelesen werden Versionsinfo, Signatur und optional SHA256.
         Aus Temp-Ordnern werden nur unsignierte oder ungültig signierte Dateien gemeldet.
         Identische Kopien werden zu einem Datensatz zusammengefasst (CopyPaths).
         Benötigt keine Administratorrechte.
-    .PARAMETER Mode
-        Quick: Spuren und Benutzerprofil (Downloads, Desktop, Dokumente, AppData) ohne Temp, ohne Hash.
-        Thorough: Spuren und vollständige Laufwerke (siehe -Drive) einschließlich Temp, mit SHA256.
-    .PARAMETER Drive
-        Laufwerke für den gründlichen Scan, z. B. C, D. Standard: alle festen Laufwerke (Get-ScanDrive).
+    .PARAMETER Trace
+        Auszuwertende Nutzungsspuren: UserAssist, Process, Autostart, ScheduledTask.
     .PARAMETER Path
-        Zusätzliche Ordner, die in jedem Modus durchsucht werden.
+        Ordner für den Dateiscan; Umgebungsvariablen wie %USERPROFILE% erlaubt.
+    .PARAMETER Drive
+        Laufwerke für den Dateiscan, z. B. C, D (siehe Get-ScanDrive).
+    .PARAMETER IncludeTemp
+        Temp-Ordner mit durchsuchen (sonst ausgelassen).
+    .PARAMETER ComputeHash
+        SHA256 berechnen (liest jede Datei vollständig, kostet Zeit).
     .PARAMETER Inventory
-        Installierte Programme, deren Ordner ausgelassen werden. Standard: Registry und Store-Apps.
+        Installierte Programme, deren Ordner ausgelassen werden. Standard: Get-SoftwareInventory
+        mit den aktivierten Quellen.
     .EXAMPLE
-        Get-PortableSoftware | Format-Table Name, Version, FilePath, Flags
+        Set-InventorySetting -Preset Quick
+        Get-PortableSoftware | Format-Table Name, Version, Flags, FilePath
     .EXAMPLE
-        Get-PortableSoftware -Mode Thorough -Drive C, D
+        Get-PortableSoftware -Drive D, E -ComputeHash
     #>
     [CmdletBinding()]
     [OutputType('SoftwareInventory.SoftwareRecord')]
     param(
-        [ValidateSet('Quick', 'Thorough')]
-        [string] $Mode = 'Quick',
-
-        [string[]] $Drive,
+        [ValidateSet('UserAssist', 'Process', 'Autostart', 'ScheduledTask')]
+        [string[]] $Trace = @(),
 
         [string[]] $Path = @(),
+
+        [string[]] $Drive = @(),
+
+        [switch] $IncludeTemp,
+
+        [switch] $ComputeHash,
 
         [object[]] $Inventory
     )
 
+    $explicit = 'Trace', 'Path', 'Drive', 'IncludeTemp', 'ComputeHash' | Where-Object { $PSBoundParameters.ContainsKey($_) }
+    if (-not $explicit) {
+        $setting = Read-InventorySetting
+        $Trace = @(Get-EnabledName $setting.Traces)
+        $Path = @($setting.FileScan.Paths)
+        $Drive = @($setting.FileScan.Drives)
+        $IncludeTemp = [switch] $setting.FileScan.IncludeTemp
+        $ComputeHash = [switch] $setting.FileScan.ComputeHash
+    }
+    $Path = @($Path | Where-Object { $_ } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_) })
+    if (-not $Trace -and -not $Path -and -not $Drive) {
+        Write-Warning 'Keine Nutzungsspuren und keine Scan-Ordner aktiviert. Aktivieren mit Set-InventorySetting, z. B. -Preset Quick.'
+        return
+    }
+
     if (-not $PSBoundParameters.ContainsKey('Inventory')) {
-        $Inventory = @(Get-SoftwareInventory -Source Registry, Appx -WarningAction SilentlyContinue)
+        $Inventory = @(Get-SoftwareInventory -WarningAction SilentlyContinue)
+        if (-not $Inventory) {
+            Write-Warning 'Keine Inventar-Quelle aktiviert: Installierte Programme können nicht ausgelassen werden und erscheinen mit.'
+        }
     }
     $exclusions = @(Get-ScanExclusion -Inventory $Inventory)
     $tempDirs = @(Get-TempDirectory)
@@ -47,17 +76,10 @@ function Get-PortableSoftware {
         $key = Get-PublisherKey $record.Publisher
         if ($key) { [void] $publishers.Add($key) }
     }
-    $scanExclusions = $exclusions
+    $scanExclusions = if ($IncludeTemp) { $exclusions } else { @($exclusions) + @($tempDirs) }
 
     $roots = [System.Collections.Generic.List[string]]::new()
-    if ($Mode -eq 'Quick') {
-        $roots.Add([Environment]::GetFolderPath('UserProfile'))
-        $scanExclusions = $exclusions + $tempDirs
-    }
-    else {
-        $drives = if ($Drive) { $Drive } else { Get-ScanDrive | Where-Object IsDefault | ForEach-Object Drive }
-        foreach ($d in $drives) { $roots.Add((ConvertTo-DriveRoot $d)) }
-    }
+    foreach ($d in $Drive) { $roots.Add((ConvertTo-DriveRoot $d)) }
     foreach ($p in $Path) { $roots.Add($p) }
 
     # Kandidaten: Pfad -> gesammelte Hinweise
@@ -74,12 +96,12 @@ function Get-PortableSoftware {
         if ($RunCount) { $c.RunCount = $RunCount }
     }
 
-    foreach ($source in 'Get-UserAssistTrace', 'Get-ProcessTrace', 'Get-AutostartTrace', 'Get-ScheduledTaskTrace') {
+    foreach ($source in $Trace | ForEach-Object { "Get-${_}Trace" }) {
         try {
-            foreach ($trace in & $source) {
-                if (-not (Test-Path -LiteralPath $trace.Path -PathType Leaf)) { continue }
-                if (Test-PathExcluded -Path $trace.Path -Exclusion $exclusions) { continue }
-                & $addCandidate $trace.Path $trace.Evidence $trace.LastRun $trace.RunCount
+            foreach ($hint in & $source) {
+                if (-not (Test-Path -LiteralPath $hint.Path -PathType Leaf)) { continue }
+                if (Test-PathExcluded -Path $hint.Path -Exclusion $exclusions) { continue }
+                & $addCandidate $hint.Path $hint.Evidence $hint.LastRun $hint.RunCount
             }
         }
         catch {
@@ -87,7 +109,8 @@ function Get-PortableSoftware {
         }
     }
 
-    foreach ($file in Find-ExecutableFile -Root $roots -ExcludeDirectory $scanExclusions) {
+    $files = if ($roots.Count) { Find-ExecutableFile -Root $roots -ExcludeDirectory $scanExclusions } else { @() }
+    foreach ($file in $files) {
         & $addCandidate $file 'FileScan' $null $null
     }
 
@@ -98,7 +121,7 @@ function Get-PortableSoftware {
         $i++
         Write-Progress -Activity 'Prüfe Programmdateien' -Status $c.Path -PercentComplete ($i * 100 / $candidates.Count) -Id 2
         try {
-            $info = Get-ExecutableInfo -Path $c.Path -SkipHash:($Mode -eq 'Quick')
+            $info = Get-ExecutableInfo -Path $c.Path -SkipHash:(-not $ComputeHash)
         }
         catch {
             Write-Verbose "Nicht lesbar: $($c.Path)"

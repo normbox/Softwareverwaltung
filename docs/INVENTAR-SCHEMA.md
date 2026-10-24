@@ -75,14 +75,7 @@ Leere Felder sind `null`.
 
 ## Portable Programme: Suche und Ausschlüsse
 
-`Get-PortableSoftware` braucht keine Administratorrechte und führt keine Datei aus.
-
-| Modus | Durchsucht | Hash |
-| --- | --- | --- |
-| `Quick` (Standard) | Ausführungsspuren + Benutzerprofil ohne Temp | nein |
-| `Thorough` | Ausführungsspuren + ganze Laufwerke (`-Drive`, Standard: alle festen, siehe `Get-ScanDrive`) einschließlich Temp | SHA256 |
-
-`-Path` fügt in beiden Modi weitere Ordner hinzu (auch Netzlaufwerke).
+`Get-PortableSoftware` braucht keine Administratorrechte und führt keine Datei aus. Es liest nur, was in den Einstellungen aktiviert ist (siehe unten) oder als Parameter angegeben wird (`-Trace`, `-Path`, `-Drive`, `-IncludeTemp`, `-ComputeHash`). Ohne aktivierte Bereiche scannt es nichts. Die Ausschlüsse installierter Programme beruhen nur auf den aktivierten Inventar-Quellen.
 
 Nicht gemeldet werden:
 
@@ -96,3 +89,33 @@ Nicht gemeldet werden:
 Zusammengefasst werden: .exe-Dateien desselben Produkts in einem Ordner, Dateien in Unterordnern eines erkannten Programms (z. B. `resources\`, `node_modules\`) und identische Kopien.
 
 Mit Administratorrechten (später): Amcache, BAM, Prefetch, Dienste.
+
+## Einstellungen
+
+Datei: `%APPDATA%\SoftwareInventory\settings.json`. Ohne Datei ist **alles aus**; jeder Bereich wird einzeln aktiviert (`Set-InventorySetting`). Es gibt keine Automatik nach Einsatzart.
+
+```json
+{
+  "SchemaVersion": 1,
+  "Usage": "Private",
+  "Sources":  { "RegistryMachine": true, "RegistryUser": true, "Winget": true, "Appx": false },
+  "Traces":   { "UserAssist": true, "Process": false, "Autostart": true, "ScheduledTask": false },
+  "FileScan": { "Paths": ["%USERPROFILE%"], "Drives": ["D:"], "IncludeTemp": false, "ComputeHash": false }
+}
+```
+
+| Bereich | Schalter |
+| --- | --- |
+| Inventar-Quellen (`Sources`) | `RegistryMachine` (HKLM, 64- und 32-Bit), `RegistryUser` (HKCU), `Winget`, `Appx` |
+| Nutzungsspuren (`Traces`) | `UserAssist`, `Process`, `Autostart`, `ScheduledTask` |
+| Dateiscan (`FileScan`) | `Paths` (Umgebungsvariablen erlaubt), `Drives`, `IncludeTemp`, `ComputeHash` |
+| `Usage` | `Private` oder `Company`; reine Information, schaltet nichts |
+
+Vorlagen belegen die Schalter nur vor, wenn der Benutzer sie wählt; danach sind sie einzeln änderbar:
+
+| Vorlage | Belegung |
+| --- | --- |
+| `Quick` | alle Quellen und Spuren, Dateiscan `%USERPROFILE%` ohne Temp, ohne Hash |
+| `Thorough` | alle Quellen und Spuren, Dateiscan aller festen Laufwerke (zum Zeitpunkt der Wahl) einschließlich Temp, mit SHA256 |
+
+Unbekannte Werte in der Datei werden ignoriert, fehlende gelten als aus.

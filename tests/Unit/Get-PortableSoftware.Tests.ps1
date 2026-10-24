@@ -124,7 +124,8 @@ Describe 'Get-PortableSoftware' {
             [pscustomobject] @{ Path = "$tools\CopyB\tool.exe"; Evidence = 'Autostart'; LastRun = $null; RunCount = $null }
         }
         Mock -ModuleName SoftwareInventory Get-ScheduledTaskTrace { }
-        Mock -ModuleName SoftwareInventory Test-Path { $true } -ParameterFilter { $PathType -eq 'Leaf' }
+        # Spuren gelten als vorhandene Dateien; alles andere (z. B. die Einstellungsdatei) als nicht vorhanden.
+        Mock -ModuleName SoftwareInventory Test-Path { $PathType -eq 'Leaf' }
         Mock -ModuleName SoftwareInventory Find-ExecutableFile { $infos.Keys }
         Mock -ModuleName SoftwareInventory Get-ExecutableInfo { $infos[$Path] }
         Mock -ModuleName SoftwareInventory Get-TempDirectory { $temp }
@@ -132,7 +133,7 @@ Describe 'Get-PortableSoftware' {
         $inventory = @(InModuleScope SoftwareInventory {
                 New-SoftwareRecord -Name 'Python 3.13.15 (64-bit)' -Source Registry -Property @{ Publisher = 'Python Software Foundation'; Version = '3.13.15150.0' }
             })
-        $result = @(Get-PortableSoftware -Mode Thorough -Drive C -Inventory $inventory)
+        $result = @(Get-PortableSoftware -Trace UserAssist, Process, Autostart, ScheduledTask -Drive C -IncludeTemp -Inventory $inventory)
     }
 
     It 'ordnet Dateien in Unterordnern dem Programm zu' {
@@ -177,6 +178,14 @@ Describe 'Get-PortableSoftware' {
     }
 
     It 'lehnt ungültige Laufwerksangaben ab' {
-        { Get-PortableSoftware -Mode Thorough -Drive 'C:\Windows' -Inventory @() } | Should -Throw '*Laufwerksangabe*'
+        { Get-PortableSoftware -Drive 'C:\Windows' -Inventory @() } | Should -Throw '*Laufwerksangabe*'
+    }
+
+    It 'scannt nichts und warnt, wenn nichts aktiviert ist' {
+        Mock -ModuleName SoftwareInventory Get-SettingsPath { Join-Path $TestDrive 'none\settings.json' }
+        $r = Get-PortableSoftware -Inventory @() -WarningVariable w -WarningAction SilentlyContinue
+        $r | Should -BeNullOrEmpty
+        "$w" | Should -Match 'Keine Nutzungsspuren'
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 0 -Exactly
     }
 }

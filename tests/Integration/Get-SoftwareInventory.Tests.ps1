@@ -5,7 +5,7 @@ BeforeAll {
 # Läuft gegen das echte System; prüft nur Struktur und Plausibilität.
 Describe 'Get-SoftwareInventory (echtes System)' -Tag Integration {
     BeforeAll {
-        $inventory = @(Get-SoftwareInventory -WarningAction SilentlyContinue)
+        $inventory = @(Get-SoftwareInventory -Source RegistryMachine, RegistryUser, Winget, Appx -WarningAction SilentlyContinue)
     }
 
     It 'findet installierte Programme' {
@@ -26,7 +26,7 @@ Describe 'Get-SoftwareInventory (echtes System)' -Tag Integration {
     }
 
     It 'findet portable Programme im schnellen Scan mit vollständigen Datensätzen' {
-        $portable = @(Get-PortableSoftware -Mode Quick -Inventory $inventory -WarningAction SilentlyContinue)
+        $portable = @(Get-PortableSoftware -Trace UserAssist, Process, Autostart, ScheduledTask -Path $env:USERPROFILE -Inventory $inventory -WarningAction SilentlyContinue)
         $portable | ForEach-Object {
             $_.InstallType | Should -Be 'Portable'
             $_.FilePath | Should -Match '\.exe$'
