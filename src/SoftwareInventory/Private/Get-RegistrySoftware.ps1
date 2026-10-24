@@ -36,7 +36,7 @@ function Get-RegistrySoftware {
             $keyName = $key.PSChildName
             $isMsi = $key.GetValue('WindowsInstaller') -eq 1
 
-            New-SoftwareRecord -Name $name.Trim() -Source Registry -Property @{
+            $record = New-SoftwareRecord -Name $name.Trim() -Source Registry -Property @{
                 Publisher            = ConvertTo-NullIfEmpty $key.GetValue('Publisher')
                 Version              = ConvertTo-NullIfEmpty $key.GetValue('DisplayVersion')
                 InstallType          = if ($isMsi) { 'MSI' } else { 'EXE' }
@@ -49,6 +49,10 @@ function Get-RegistrySoftware {
                 UninstallString      = ConvertTo-NullIfEmpty $key.GetValue('UninstallString')
                 QuietUninstallString = ConvertTo-NullIfEmpty $key.GetValue('QuietUninstallString')
             }
+            Add-MatchKey -Record $record -Key @(
+                "arp:$keyName".ToLowerInvariant()
+                "arp:$($loc.Scope):$keyName".ToLowerInvariant()
+            )
         }
     }
 }
