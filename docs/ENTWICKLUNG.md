@@ -53,3 +53,18 @@ Folgerungen:
 - Ohne NVD-Schlüssel höchstens 5 Anfragen pro 30 s, mit Schlüssel 50. Der Schlüssel ist optional und darf nie in Protokollen, Snapshots oder Berichten erscheinen.
 - Zeitangaben aus Feeds mit `ConvertFrom-Json -DateKind String` lesen (sonst wandelt PowerShell sie in Ortszeit um).
 - Versionsnormalisierung muss Präfixe wie `v` und Zusätze nach der Versionsnummer entfernen.
+
+### Nachprüfung für Etappe 2b (Versionsformate und Konfigurationen)
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| `cpeName` mit `24.08`, `24.8` und `24.8.0.0` (7-Zip) | jeweils dieselben 14 CVEs – NVD normalisiert Versionen selbst; die Registry-Schreibweise kann direkt verwendet werden |
+| `cpeName` mit `3.13.15` und `3.13.15150.0` (Python) | jeweils dieselben 5 CVEs |
+| Python-Treffer CVE-2009-2940, CVE-2009-3720 | Python steht dort nur als Umgebung (`vulnerable=false`); verwundbar sind PyGreSQL bzw. libexpat |
+| VLC 3.0.20 | 0 CVEs, obwohl CVE-2024-46461 erst in 3.0.21 behoben ist: Die CVE hat den Status „Deferred“ und **keine** CPE-Konfiguration |
+
+Folgerungen:
+
+- Treffer von `cpeName` lokal filtern: Nur CVEs zählen, bei denen das eigene Produkt mit `vulnerable=true` eingetragen ist und die Version im angegebenen Bereich liegt.
+- Sonderzeichen in Versionen nach CPE 2.3 mit `\` maskieren (z. B. `0.4.26\+4`).
+- Die NVD analysiert seit 2024 viele neue CVEs verzögert oder gar nicht. Solche CVEs findet `cpeName` nie. Ausgleich: KEV-Einträge werden zusätzlich über Hersteller/Produkt aus dem Katalog zugeordnet; ohne Versionsdaten gelten sie als „möglicherweise betroffen – Version nicht prüfbar“ (Ampel: Gelb mit Hinweis).
