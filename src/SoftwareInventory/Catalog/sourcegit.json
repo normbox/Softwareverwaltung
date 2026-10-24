@@ -1,0 +1,10 @@
+{
+  "Id": "sourcegit",
+  "Name": "SourceGit",
+  "Match": {
+    "WingetId": ["sourcegit-scm.SourceGit"],
+    "NamePattern": "^SourceGit",
+    "Publisher": ["sourcegit-scm"]
+  },
+  "GitHub": { "Repository": "sourcegit-scm/sourcegit" }
+}

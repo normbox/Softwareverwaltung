@@ -1,0 +1,10 @@
+{
+  "Id": "7-zip",
+  "Name": "7-Zip",
+  "Match": {
+    "WingetId": ["7zip.7zip"],
+    "NamePattern": "^7-Zip",
+    "Publisher": ["Igor Pavlov"]
+  },
+  "GitHub": { "Repository": "ip7z/7zip" }
+}

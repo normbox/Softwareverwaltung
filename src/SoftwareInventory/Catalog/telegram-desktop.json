@@ -1,0 +1,11 @@
+{
+  "Id": "telegram-desktop",
+  "Name": "Telegram Desktop",
+  "Match": {
+    "WingetId": ["Telegram.TelegramDesktop"],
+    "PackageFamilyName": ["TelegramMessengerLLP.TelegramDesktop_t4vj0pshhgkwm"],
+    "NamePattern": "^Telegram Desktop",
+    "Publisher": ["Telegram Messenger LLP", "Telegram FZ-LLC"]
+  },
+  "GitHub": { "Repository": "telegramdesktop/tdesktop" }
+}

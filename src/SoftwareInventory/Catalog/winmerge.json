@@ -1,0 +1,10 @@
+{
+  "Id": "winmerge",
+  "Name": "WinMerge",
+  "Match": {
+    "WingetId": ["WinMerge.WinMerge"],
+    "NamePattern": "^WinMerge(\\s+x(64|86))?(\\s+\\d[\\d.]*)?$",
+    "Publisher": ["Thingamahoochie Software"]
+  },
+  "GitHub": { "Repository": "WinMerge/winmerge" }
+}

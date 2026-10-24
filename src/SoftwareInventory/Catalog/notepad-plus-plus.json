@@ -1,0 +1,10 @@
+{
+  "Id": "notepad-plus-plus",
+  "Name": "Notepad++",
+  "Match": {
+    "WingetId": ["Notepad++.Notepad++"],
+    "NamePattern": "^Notepad\\+\\+",
+    "Publisher": ["Notepad++ Team", "Don HO"]
+  },
+  "GitHub": { "Repository": "notepad-plus-plus/notepad-plus-plus" }
+}
