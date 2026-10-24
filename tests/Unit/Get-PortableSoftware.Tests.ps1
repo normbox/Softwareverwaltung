@@ -24,18 +24,21 @@ BeforeAll {
         #>
         param([object[]] $FileInfo, [object[]] $TraceInfo = @(), [hashtable[]] $Trace = @(), [object[]] $Inventory = @(),
             [hashtable] $Parameter = @{}, [string[]] $ScanFile)
-        $all = @{}
-        foreach ($i in @($FileInfo) + @($TraceInfo)) { $all[$i.Path] = $i }
-        $scan = if ($PSBoundParameters.ContainsKey('ScanFile')) { $ScanFile } else { @($FileInfo | ForEach-Object Path) }
-        foreach ($name in 'UserAssist', 'Process', 'Autostart', 'ScheduledTask') {
-            $hits = @($Trace | Where-Object { $_.Evidence -eq $name } | ForEach-Object {
-                    [pscustomobject] @{ Path = $_.Path; Evidence = $_.Evidence; LastRun = $null; RunCount = $null } })
-            Mock -ModuleName SoftwareInventory "Get-${name}Trace" { $hits }.GetNewClosure()
-        }
+        # Mocks sehen keine Closures; die Daten liegen daher auf Skriptebene der Testdatei.
+        $script:ScenarioInfo = @{}
+        foreach ($i in @($FileInfo) + @($TraceInfo)) { $script:ScenarioInfo[$i.Path] = $i }
+        $script:ScenarioScan = if ($PSBoundParameters.ContainsKey('ScanFile')) { $ScanFile } else { @($FileInfo | ForEach-Object Path) }
+        $script:ScenarioTrace = @($Trace | ForEach-Object {
+                [pscustomobject] @{ Path = $_.Path; Evidence = $_.Evidence; LastRun = $null; RunCount = $null } })
+        Mock -ModuleName SoftwareInventory Get-UserAssistTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'UserAssist' }
+        Mock -ModuleName SoftwareInventory Get-ProcessTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'Process' }
+        Mock -ModuleName SoftwareInventory Get-AutostartTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'Autostart' }
+        Mock -ModuleName SoftwareInventory Get-ScheduledTaskTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'ScheduledTask' }
         Mock -ModuleName SoftwareInventory Test-Path { $PathType -eq 'Leaf' }
-        Mock -ModuleName SoftwareInventory Find-ExecutableFile { $scan }.GetNewClosure()
-        Mock -ModuleName SoftwareInventory Get-ExecutableInfo { $all[$Path] }.GetNewClosure()
-        $params = @{ Trace = 'UserAssist', 'Process', 'Autostart', 'ScheduledTask'; Path = $TestDrive; Inventory = $Inventory } + $Parameter
+        Mock -ModuleName SoftwareInventory Find-ExecutableFile { $script:ScenarioScan }
+        Mock -ModuleName SoftwareInventory Get-ExecutableInfo { $script:ScenarioInfo[$Path] }
+        $params = @{ Trace = 'UserAssist', 'Process', 'Autostart', 'ScheduledTask'; Path = $TestDrive; Inventory = $Inventory }
+        foreach ($key in $Parameter.Keys) { $params[$key] = $Parameter[$key] }
         @(Get-PortableSoftware @params -WarningAction SilentlyContinue)
     }
 }
@@ -170,7 +173,7 @@ Describe 'Get-PortableSoftware' {
                 New-Info "$tools\Old\app.exe" 'Contoso App' '1.0' -Length 5000
                 New-Info "$tools\CopyA\tool.exe" 'Tool' '3.0'
                 New-Info "$tools\CopyB\tool.exe" 'Tool' '3.0'
-                New-Info "$tools\Python313\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation'
+                New-Info "$tools\Python313\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation' -Signature 'Valid'
                 New-Info "$tools\Python313\Scripts\pip.exe" $null $null -Company $null
                 New-Info "$temp\setup_signed.exe" 'Setup' '1.0' -Signature 'Valid'
                 New-Info "$temp\dropper.exe" 'Dropper' '0.1'
@@ -245,5 +248,55 @@ Describe 'Get-PortableSoftware' {
         $r | Should -BeNullOrEmpty
         "$w" | Should -Match 'Keine Nutzungsspuren'
         Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 0 -Exactly
+    }
+}
+
+Describe 'Remove-InstalledMatch (Abgleich über Name und Version)' {
+    BeforeAll {
+        $python = New-InventoryRecord 'Python 3.13.15 (64-bit)' 'Python Software Foundation' '3.13.15150.0'
+    }
+
+    It 'blendet nie eine ganze Scan-Wurzel aus' {
+        $root = Join-Path $TestDrive 'Tools'
+        $files = @(
+            New-Info "$root\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation' -Signature 'Valid'
+            New-Info "$root\sub\tool.exe" $null $null -Company $null
+        )
+        $r = Invoke-PortableScenario -FileInfo $files -Inventory @($python) -Parameter @{ Path = $root; Trace = @() }
+        $r.FilePath | Should -Not -Contain "$root\python.exe"
+        # Ohne Produktname und Hersteller würde tool.exe sonst mit dem Ordner ausgeblendet.
+        $r.FilePath | Should -Contain "$root\sub\tool.exe"
+    }
+
+    It 'behält im ausgeblendeten Ordner Dateien mit eigenem Produkt und anderem Hersteller' {
+        $dir = Join-Path $TestDrive 'Apps\Python313'
+        $files = @(
+            New-Info "$dir\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation' -Signature 'Valid'
+            New-Info "$dir\Scripts\pip.exe" $null $null -Company $null
+            New-Info "$dir\Scripts\helper.exe" 'Python Helper' '3.13' -Company 'Python Software Foundation'
+            New-Info "$dir\Scripts\miner.exe" 'Miner' '1.0' -Company 'Mallory Ltd'
+        )
+        $r = Invoke-PortableScenario -FileInfo $files -Inventory @($python)
+        $r.FilePath | Should -Not -Contain "$dir\Scripts\pip.exe"
+        $r.FilePath | Should -Not -Contain "$dir\Scripts\helper.exe"
+        $r.FilePath | Should -Contain "$dir\Scripts\miner.exe"
+    }
+
+    It 'wertet eine unsignierte Datei mit Herstellerangabe nicht als Treffer' {
+        $dir = Join-Path $TestDrive 'Apps\FakePython'
+        $files = @(
+            New-Info "$dir\python.exe" 'Python' '3.13.15150.1013' -Company 'Python Software Foundation' -Signature 'NotSigned'
+            New-Info "$dir\Scripts\pip.exe" $null $null -Company $null
+        )
+        $r = Invoke-PortableScenario -FileInfo $files -Inventory @($python)
+        $r.FilePath | Should -Contain "$dir\python.exe"
+    }
+
+    It 'wertet Dateien ohne Herstellerangabe wie bisher über Name und Version' {
+        $dir = Join-Path $TestDrive 'Apps\WinUAE'
+        $winuae = New-InventoryRecord 'WinUAE 64-bit 6.0.2' 'Arabuusimiehet' '6.0.2.0'
+        $files = @(New-Info "$dir\winuae64.exe" 'WinUAE' '6.0.2.0' -Company $null -Signature 'NotSigned')
+        $r = Invoke-PortableScenario -FileInfo $files -Inventory @($winuae)
+        $r.FilePath | Should -Not -Contain "$dir\winuae64.exe"
     }
 }

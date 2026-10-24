@@ -142,7 +142,7 @@ function Get-PortableSoftware {
     # (z. B. unsignierte Hilfsprogramme ohne Versionsinfo).
     $vendorDirs = @($vendorDirs | Select-Object -Unique)
     $infos = @($infos | Where-Object { -not (Test-PathExcluded -Path $_.Path -Exclusion $vendorDirs) })
-    $infos = @(Remove-InstalledMatch -Info $infos -Inventory $Inventory)
+    $infos = @(Remove-InstalledMatch -Info $infos -Inventory $Inventory -ScanRoot $roots)
     $records = foreach ($group in $infos | Group-Object { "$($_.Directory)|$(Get-ExecutableProductName $_)".ToLowerInvariant() }) {
         ConvertTo-PortableRecord -File $group.Group
     }
@@ -184,23 +184,27 @@ function Remove-InstalledMatch {
         Entfernt Dateien, die zu einem installierten Programm gehören, dessen Registry-Eintrag
         keinen Pfad nennt (z. B. Python): gleicher Hersteller, Name und Version (erste drei Teile).
     .DESCRIPTION
-        Liegt ein Treffer nicht in einem Sammelordner, wird sein ganzer Ordner samt
-        Unterordnern als installiert betrachtet (z. B. Python313\Scripts\pip.exe).
+        Eine Datei mit Herstellerangabe ist nur bei gültiger Signatur ein Treffer (die Angabe
+        kann jeder setzen); ohne Herstellerangabe zählen Name und Version.
+        Liegt ein Treffer nicht in einem Sammelordner oder einer Scan-Wurzel, wird sein Ordner
+        samt Unterordnern als installiert betrachtet (z. B. Python313\Scripts\pip.exe). Sichtbar
+        bleiben dort Dateien mit eigenem Produktnamen und anderem Hersteller als der Treffer.
     #>
-    param([object[]] $Info, [object[]] $Inventory)
+    param([object[]] $Info, [object[]] $Inventory, [string[]] $ScanRoot = @())
 
     $index = foreach ($record in $Inventory) {
         $pub = Get-PublisherKey $record.Publisher
         $ver = Get-VersionPrefix $record.Version
         if ($pub -and $ver -and $record.Name) { @{ Publisher = $pub; Version = $ver; Name = $record.Name.ToLowerInvariant() } }
     }
-    $containers = @(Get-ContainerDirectory)
+    $containers = @(Get-ContainerDirectory) + @($ScanRoot | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') })
 
     $matchedFiles = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    $matchedDirs = [System.Collections.Generic.List[string]]::new()
+    $matchedDirs = [System.Collections.Generic.List[object]]::new()
     foreach ($i in $Info) {
         # Ohne Herstellerangabe in der Datei (der Signierer ist oft ein anderer) zählen nur Name und Version.
         $pub = Get-PublisherKey $i.Company
+        if ($pub -and $i.SignatureStatus -ne 'Valid') { continue }
         $ver = Get-VersionPrefix $i.Version
         $name = (Get-ExecutableProductName $i).ToLowerInvariant()
         if (-not $ver -or $name.Length -lt 3) { continue }
@@ -209,11 +213,18 @@ function Remove-InstalledMatch {
         } | Select-Object -First 1
         if (-not $hit) { continue }
         [void] $matchedFiles.Add($i.Path)
-        if ($i.Directory.TrimEnd('\') -notin $containers) { $matchedDirs.Add($i.Directory) }
+        if ($i.Directory.TrimEnd('\') -notin $containers) { $matchedDirs.Add(@{ Directory = $i.Directory; Publisher = $hit.Publisher }) }
     }
 
-    $Info | Where-Object {
-        -not $matchedFiles.Contains($_.Path) -and -not (Test-PathExcluded -Path $_.Path -Exclusion $matchedDirs)
+    foreach ($i in $Info) {
+        if ($matchedFiles.Contains($i.Path)) { continue }
+        $dir = $matchedDirs | Where-Object { Test-PathExcluded -Path $i.Path -Exclusion @($_.Directory) } | Select-Object -First 1
+        if ($dir) {
+            $ownProduct = [bool] ($i.Name -or $i.Description)
+            $filePublisher = Get-PublisherKey $i.Company
+            if (-not ($ownProduct -and $filePublisher -and $filePublisher -ne $dir.Publisher)) { continue }
+        }
+        $i
     }
 }
 
