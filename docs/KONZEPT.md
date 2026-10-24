@@ -1,6 +1,6 @@
 # Konzept: Software-Inventar & Update-Berater für Windows
 
-Stand: 24.10.2026 · Ausführliche Fassung mit Begründungen: https://claude.ai/artifact/CaV8Z814y7C3kXwzB7jaKZ
+Stand: 24.10.2026
 
 ## Ziel
 

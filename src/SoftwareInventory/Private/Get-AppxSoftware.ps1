@@ -22,8 +22,15 @@ function Get-AppxSoftware {
     foreach ($pkg in $packages) {
         if ($pkg.IsFramework -or $pkg.NonRemovable -or [string] $pkg.SignatureKind -eq 'System') { continue }
 
+        $publisher = ConvertFrom-DistinguishedName $pkg.Publisher
+        # Store-Pakete tragen oft nur eine GUID als Herausgeber; der Klarname steht im Manifest.
+        if ($publisher -match '^[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$') {
+            $displayName = Get-AppxPublisherDisplayName -InstallLocation $pkg.InstallLocation
+            if ($displayName) { $publisher = $displayName }
+        }
+
         $record = New-SoftwareRecord -Name $pkg.Name -Source Appx -Property @{
-            Publisher         = ConvertFrom-DistinguishedName $pkg.Publisher
+            Publisher         = $publisher
             Version           = [string] $pkg.Version
             InstallType       = 'MSIX'
             Scope             = 'User'
@@ -36,6 +43,21 @@ function Get-AppxSoftware {
             "msix:$($pkg.PackageFullName)".ToLowerInvariant()
             "pfn:$($pkg.PackageFamilyName)".ToLowerInvariant()
         )
+    }
+}
+
+function Get-AppxPublisherDisplayName {
+    # Liest PublisherDisplayName aus AppxManifest.xml; Ressourcenverweise (ms-resource:) werden ignoriert.
+    param([string] $InstallLocation)
+    if (-not $InstallLocation) { return }
+    $manifest = Join-Path $InstallLocation 'AppxManifest.xml'
+    try {
+        $xml = [xml] (Get-Content -LiteralPath $manifest -Raw -ErrorAction Stop)
+        $name = ConvertTo-NullIfEmpty $xml.Package.Properties.PublisherDisplayName
+        if ($name -and $name -notlike 'ms-resource:*') { $name }
+    }
+    catch {
+        Write-Verbose "Manifest nicht lesbar: $manifest"
     }
 }
 
