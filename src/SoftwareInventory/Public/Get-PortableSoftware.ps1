@@ -87,6 +87,7 @@ function Get-PortableSoftware {
     }
     $exclusions = @(Get-ScanExclusion -Inventory $Inventory) + $userExclusions
     $tempDirs = @(Get-TempDirectory)
+    $writableWindowsDirs = @(Get-WritableWindowsDirectory)
     $publishers = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($record in $Inventory) {
         $key = Get-PublisherKey $record.Publisher
@@ -116,7 +117,12 @@ function Get-PortableSoftware {
         try {
             foreach ($hint in & $source) {
                 if (-not (Test-Path -LiteralPath $hint.Path -PathType Leaf)) { continue }
-                if (Test-PathExcluded -Path $hint.Path -Exclusion $exclusions) { continue }
+                if (Test-PathExcluded -Path $hint.Path -Exclusion $userExclusions) { continue }
+                # Läuft oder startet etwas aus einem für Benutzer beschreibbaren Windows-Unterordner,
+                # wird es immer gemeldet – der Windows-Ordner ist sonst ausgeschlossen.
+                $fromWritableWindows = $hint.Evidence -in 'Process', 'Autostart', 'ScheduledTask' -and
+                    (Test-PathExcluded -Path $hint.Path -Exclusion $writableWindowsDirs)
+                if (-not $fromWritableWindows -and (Test-PathExcluded -Path $hint.Path -Exclusion $exclusions)) { continue }
                 & $addCandidate $hint.Path $hint.Evidence $hint.LastRun $hint.RunCount
             }
         }
@@ -173,6 +179,11 @@ function Get-PortableSoftware {
 function Get-TempDirectory {
     @($env:TEMP, [System.IO.Path]::GetTempPath(), (Join-Path $env:windir 'Temp')) |
         Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') } | Select-Object -Unique
+}
+
+function Get-WritableWindowsDirectory {
+    # Unterordner von %windir%, in die normale Benutzer schreiben dürfen (beliebte Ablage für Schadsoftware).
+    'Temp', 'Tasks', 'Tracing' | ForEach-Object { Join-Path $env:windir $_ }
 }
 
 function Get-ContainerDirectory {

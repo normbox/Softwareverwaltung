@@ -81,7 +81,7 @@ Grundsatz: lieber ein Fehlalarm mehr als ein übersehenes Programm.
 
 **Feste Ausschlüsse** (werden nie betreten):
 
-- Windows-Ordner (`%windir%`). Damit wird auch `C:\Windows\Temp` derzeit nie durchsucht, auch nicht mit `IncludeTemp`.
+- Windows-Ordner (`%windir%`). Der Dateiscan durchsucht damit auch `C:\Windows\Temp` derzeit nie, auch nicht mit `IncludeTemp`. Ausnahme bei Spuren: Prozesse, Autostarts und geplante Aufgaben, deren .exe in einem für Benutzer beschreibbaren Windows-Unterordner liegt (`C:\Windows\Temp`, `C:\Windows\Tasks`, `C:\Windows\Tracing`), werden immer gemeldet, unabhängig von `IncludeTemp`. Nur eigene Ausschlüsse (`ExcludePaths`) gehen vor.
 - `%ProgramFiles%\WindowsApps`, `ProgramData\Microsoft`, `ProgramData\Package Cache`
 - `%LOCALAPPDATA%\Packages`, `%LOCALAPPDATA%\Microsoft\WindowsApps`
 - Auf jedem Laufwerk: `$Recycle.Bin` (Papierkorb), `System Volume Information`, `Windows.old`, `$WinREAgent`, `$SysReset`, `WindowsApps`, `WpSystem`, `XboxGames`

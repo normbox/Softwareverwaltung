@@ -437,3 +437,37 @@ Describe 'Eigene Ausschlüsse und SmartExclusions' {
         $r.FilePath | Should -Contain "$TestDrive\Apps\Python313\python.exe"
     }
 }
+
+Describe 'Spuren aus beschreibbaren Windows-Unterordnern' {
+    It 'meldet <Evidence> aus <Folder> immer, auch ohne IncludeTemp' -TestCases @(
+        @{ Evidence = 'Process'; Folder = 'Temp' }
+        @{ Evidence = 'Autostart'; Folder = 'Tasks' }
+        @{ Evidence = 'ScheduledTask'; Folder = 'Tracing' }
+    ) {
+        $file = New-Info "$env:windir\$Folder\dropper.exe" 'Dropper' '1.0' -Signature 'Valid'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = $Evidence })
+        $r.FilePath | Should -Contain $file.Path
+    }
+
+    It 'meldet keine Spuren aus dem übrigen Windows-Ordner und keine UserAssist-Spur aus Windows\Temp' {
+        $system = New-Info "$env:windir\System32\svchost.exe" 'Windows' '10.0' -Signature 'Valid'
+        $ua = New-Info "$env:windir\Temp\viewer.exe" 'Viewer' '1.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($system, $ua) -Trace @(
+            @{ Path = $system.Path; Evidence = 'Process' }
+            @{ Path = $ua.Path; Evidence = 'UserAssist' }
+        )
+        $r | Should -BeNullOrEmpty
+    }
+
+    It 'betritt den Windows-Ordner im Dateiscan weiterhin nicht' {
+        Invoke-PortableScenario -FileInfo @() -Parameter @{ Drive = 'C'; Path = @(); IncludeTemp = $true } | Out-Null
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 1 -Exactly -ParameterFilter { $ExcludeDirectory -contains $env:windir }
+    }
+
+    It 'beachtet eigene Ausschlüsse auch hier' {
+        $file = New-Info "$env:windir\Temp\agent.exe" 'Agent' '1.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = 'Process' }) `
+            -Parameter @{ ExcludePath = @("$env:windir\Temp") }
+        $r | Should -BeNullOrEmpty
+    }
+}
