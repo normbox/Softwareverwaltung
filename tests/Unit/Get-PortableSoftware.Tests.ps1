@@ -1,5 +1,43 @@
 BeforeAll {
     Import-Module "$PSScriptRoot/../../src/SoftwareInventory" -Force
+
+    function New-Info {
+        param([string] $Path, [string] $Name, [string] $Version, [string] $Signature = 'NotSigned', [long] $Length = 1000, [string] $Company = 'Contoso')
+        [pscustomobject] @{
+            Path = $Path; Directory = Split-Path -Parent $Path; Length = $Length; Name = $Name; Description = $null
+            Company = $Company; Version = $Version; Sha256 = $null; SignatureStatus = $Signature; Signer = $null; Machine = 'X64'
+        }
+    }
+
+    function New-InventoryRecord {
+        param([string] $Name, [string] $Publisher, [string] $Version, [string] $InstallLocation)
+        InModuleScope SoftwareInventory -Parameters @{ N = $Name; P = $Publisher; V = $Version; L = $InstallLocation } {
+            New-SoftwareRecord -Name $N -Source Registry -Property @{ Publisher = $P; Version = $V; InstallLocation = $L }
+        }
+    }
+
+    function Invoke-PortableScenario {
+        <#
+            Führt Get-PortableSoftware mit erfundenen Dateien aus. FileScan liefert alle Dateien aus
+            $FileInfo (ohne Spur); $Trace ist eine Liste von @{ Path; Evidence }.
+            Muss innerhalb eines It-Blocks aufgerufen werden (dort gelten die Mocks).
+        #>
+        param([object[]] $FileInfo, [object[]] $TraceInfo = @(), [hashtable[]] $Trace = @(), [object[]] $Inventory = @(),
+            [hashtable] $Parameter = @{}, [string[]] $ScanFile)
+        $all = @{}
+        foreach ($i in @($FileInfo) + @($TraceInfo)) { $all[$i.Path] = $i }
+        $scan = if ($PSBoundParameters.ContainsKey('ScanFile')) { $ScanFile } else { @($FileInfo | ForEach-Object Path) }
+        foreach ($name in 'UserAssist', 'Process', 'Autostart', 'ScheduledTask') {
+            $hits = @($Trace | Where-Object { $_.Evidence -eq $name } | ForEach-Object {
+                    [pscustomobject] @{ Path = $_.Path; Evidence = $_.Evidence; LastRun = $null; RunCount = $null } })
+            Mock -ModuleName SoftwareInventory "Get-${name}Trace" { $hits }.GetNewClosure()
+        }
+        Mock -ModuleName SoftwareInventory Test-Path { $PathType -eq 'Leaf' }
+        Mock -ModuleName SoftwareInventory Find-ExecutableFile { $scan }.GetNewClosure()
+        Mock -ModuleName SoftwareInventory Get-ExecutableInfo { $all[$Path] }.GetNewClosure()
+        $params = @{ Trace = 'UserAssist', 'Process', 'Autostart', 'ScheduledTask'; Path = $TestDrive; Inventory = $Inventory } + $Parameter
+        @(Get-PortableSoftware @params -WarningAction SilentlyContinue)
+    }
 }
 
 Describe 'Ausführungsspuren' {
@@ -72,6 +110,21 @@ Describe 'Dateiscan und Ausschlüsse' {
         InModuleScope SoftwareInventory -Parameters @{ P = $Path } { Test-SpecificInstallDirectory $P } | Should -Be $Expected
     }
 
+    It 'behandelt auch Sammelordner und Common Files als zu breit: <Name>' -TestCases @(
+        @{ Name = 'Desktop'; Path = [Environment]::GetFolderPath('Desktop') }
+        @{ Name = 'Dokumente'; Path = [Environment]::GetFolderPath('MyDocuments') }
+        @{ Name = 'Downloads'; Path = 'DOWNLOADS' }
+        @{ Name = 'Temp'; Path = $env:TEMP }
+        @{ Name = 'CommonProgramFiles'; Path = $env:CommonProgramFiles }
+        @{ Name = 'CommonProgramFiles(x86)'; Path = ${env:CommonProgramFiles(x86)} }
+    ) {
+        InModuleScope SoftwareInventory -Parameters @{ P = $Path } {
+            if ($P -eq 'DOWNLOADS') { $P = (Get-KnownFolderMap)['{374DE290-123F-4565-9164-39C4925E467B}'] }
+            Test-SpecificInstallDirectory "$P\" | Should -BeFalse
+            Test-SpecificInstallDirectory "$P\Contoso" | Should -BeTrue
+        }
+    }
+
     It 'ermittelt den Herstellerordner unter Program Files und ProgramData' -TestCases @(
         @{ Path = "$env:ProgramFiles\Brother\iPrint\x.exe"; Expected = "$env:ProgramFiles\Brother" }
         @{ Path = "$env:CommonProgramFiles\Acronis\Schedule2\s.exe"; Expected = "$env:CommonProgramFiles\Acronis" }
@@ -96,14 +149,6 @@ Describe 'Get-PortableSoftware' {
     BeforeAll {
         $tools = Join-Path $TestDrive 'Tools'
         $temp = Join-Path $TestDrive 'Temp'
-
-        function New-Info {
-            param([string] $Path, [string] $Name, [string] $Version, [string] $Signature = 'NotSigned', [long] $Length = 1000, [string] $Company = 'Contoso')
-            [pscustomobject] @{
-                Path = $Path; Directory = Split-Path -Parent $Path; Length = $Length; Name = $Name; Description = $null
-                Company = $Company; Version = $Version; Sha256 = $null; SignatureStatus = $Signature; Signer = $null; Machine = 'X64'
-            }
-        }
 
         $infos = @{}
         foreach ($i in @(

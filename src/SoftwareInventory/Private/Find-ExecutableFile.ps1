@@ -69,10 +69,11 @@ function Get-ScanExclusion {
             Join-Path $drive.RootDirectory.FullName $name
         }
     }
+    $tooBroad = @(Get-TooBroadDirectory)
     $installed = foreach ($record in $Inventory) {
         $iconDir = if ($record.DisplayIcon -match '\.exe$') { Split-Path -Parent $record.DisplayIcon }
         foreach ($dir in @($record.InstallLocation; (Get-UninstallerDirectory $record.UninstallString); $iconDir)) {
-            if (Test-SpecificInstallDirectory $dir) { $dir.TrimEnd('\') }
+            if (Test-SpecificInstallDirectory -Path $dir -TooBroad $tooBroad) { $dir.TrimEnd('\') }
         }
     }
     @($static) + @($updaterCaches) + @($perDrive) + @($installed) | Where-Object { $_ } | Select-Object -Unique
@@ -133,16 +134,18 @@ function Get-UninstallerDirectory {
     Split-Path -Parent $exe
 }
 
+function Get-TooBroadDirectory {
+    # Sammelordner (Profil, Desktop, Dokumente, Downloads, Temp, Program Files ...) plus Systemordner.
+    @(Get-ContainerDirectory) + @($env:ProgramData, $env:windir, $env:CommonProgramFiles, ${env:CommonProgramFiles(x86)}) |
+        Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') } | Select-Object -Unique
+}
+
 function Test-SpecificInstallDirectory {
     # Verhindert, dass fehlerhafte Einträge (z. B. InstallLocation = C:\Program Files) ganze Bäume ausschließen.
-    param([string] $Path)
+    param([string] $Path, [string[]] $TooBroad = (Get-TooBroadDirectory))
     if ([string]::IsNullOrWhiteSpace($Path) -or $Path -notmatch '^[A-Za-z]:\\') { return $false }
     $normalized = $Path.TrimEnd('\')
-    $tooBroad = @(
-        $env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData, $env:USERPROFILE,
-        $env:LOCALAPPDATA, $env:APPDATA, (Join-Path $env:LOCALAPPDATA 'Programs'), $env:windir
-    ) | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') }
-    if ($normalized -in $tooBroad) { return $false }
+    if ($normalized -in $TooBroad) { return $false }
     # Nur die Laufwerkswurzel selbst ist zu breit; D:\Steam ist ein gültiger Installationsordner.
     ($normalized -split '\\').Count -ge 2
 }
