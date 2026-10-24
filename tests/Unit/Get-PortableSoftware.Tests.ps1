@@ -486,3 +486,22 @@ Describe 'Verschiedene Produkte im selben Ordner' {
         $r.FilePath | Should -Not -Contain "$dir\sub\helper.exe"
     }
 }
+
+Describe 'Reproduzierbare Ergebnisse' {
+    It 'liefert unabhängig von der Fundreihenfolge dasselbe Ergebnis' {
+        $files = @(
+            New-Info "$TestDrive\b\tool.exe" 'Tool' '3.0'
+            New-Info "$TestDrive\a\tool.exe" 'Tool' '3.0'
+            New-Info "$TestDrive\c\x\one.exe" 'Twin' '1.0' -Length 2000
+            New-Info "$TestDrive\c\x\two.exe" 'Twin' '1.0' -Length 2000
+        )
+        $paths = @($files | ForEach-Object Path)
+        $describe = { param($r) $r | ForEach-Object { "$($_.FilePath)|$(@($_.CopyPaths) -join ',')" } }
+        $first = & $describe (Invoke-PortableScenario -FileInfo $files -ScanFile $paths)
+        [array]::Reverse($paths)
+        $second = & $describe (Invoke-PortableScenario -FileInfo $files -ScanFile $paths)
+        $second | Should -Be $first
+        $first | Should -Contain "$TestDrive\a\tool.exe|$TestDrive\b\tool.exe"
+        $first | Should -Contain "$TestDrive\c\x\one.exe|"
+    }
+}

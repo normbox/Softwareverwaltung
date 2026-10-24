@@ -139,7 +139,8 @@ function Get-PortableSoftware {
     $infos = [System.Collections.Generic.List[object]]::new()
     $vendorDirs = [System.Collections.Generic.List[string]]::new()
     $i = 0
-    foreach ($c in $candidates.Values) {
+    # Sortiert, damit Gleichstände (gleiche Größe, gleiche Pfadlänge) immer gleich aufgelöst werden.
+    foreach ($c in $candidates.Keys | Sort-Object | ForEach-Object { $candidates[$_] }) {
         $i++
         Write-Progress -Activity 'Prüfe Programmdateien' -Status $c.Path -PercentComplete ($i * 100 / $candidates.Count) -Id 2
         try {
@@ -173,7 +174,7 @@ function Get-PortableSoftware {
     $records = @(Merge-NestedComponent -Record $records -ScanRoot $roots)
     $records = @(Merge-PortableCopy -Record $records)
     Add-MultipleVersionFlag -Record $records
-    $records | Sort-Object Name
+    $records | Sort-Object Name, FilePath
 }
 
 function Get-TempDirectory {
@@ -271,7 +272,7 @@ function Merge-NestedComponent {
 
     $containers = @(Get-ContainerDirectory) + @($ScanRoot | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') })
     $roots = [System.Collections.Generic.List[object]]::new()
-    foreach ($r in $Record | Where-Object { $_ } | Sort-Object { $_.InstallLocation.Length }) {
+    foreach ($r in $Record | Where-Object { $_ } | Sort-Object { $_.InstallLocation.Length }, FilePath) {
         # Nur echte Unterordner: Andere Produkte im selben Ordner bleiben eigene Datensätze.
         $parent = $roots | Where-Object { Test-PathExcluded -Path $r.InstallLocation -Exclusion @($_.InstallLocation) } | Select-Object -First 1
         if ($parent) {
@@ -297,7 +298,7 @@ function Merge-PortableCopy {
 
     foreach ($group in $Record | Where-Object { $_ } | Group-Object CopyKey) {
         $sorted = @($group.Group | Sort-Object @{ Expression = { @($_.Evidence | Where-Object { $_ -ne 'FileScan' }).Count }; Descending = $true },
-            @{ Expression = { $_.FilePath.Length } })
+            @{ Expression = { $_.FilePath.Length } }, FilePath)
         $main = $sorted[0]
         if ($sorted.Count -gt 1) {
             $others = $sorted | Select-Object -Skip 1
@@ -343,7 +344,7 @@ function ConvertTo-PortableRecord {
     param([object[]] $File)
 
     $main = $File | Sort-Object @{ Expression = { @($_.Evidence | Where-Object { $_ -ne 'FileScan' }).Count -gt 0 }; Descending = $true },
-        @{ Expression = 'Length'; Descending = $true } | Select-Object -First 1
+        @{ Expression = 'Length'; Descending = $true }, Path | Select-Object -First 1
     $evidence = [string[]] @($File | ForEach-Object { $_.Evidence } | Select-Object -Unique | Sort-Object)
     $lastRun = $File | ForEach-Object LastRun | Where-Object { $_ } | Sort-Object -Descending | Select-Object -First 1
     $runCount = ($File | ForEach-Object RunCount | Where-Object { $_ } | Measure-Object -Maximum).Maximum
