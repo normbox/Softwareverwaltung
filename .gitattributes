@@ -1,0 +1,10 @@
+# Zeilenenden: im Repository LF, in der Arbeitskopie CRLF (reines Windows-Projekt).
+* text=auto eol=crlf
+
+*.sh text eol=lf
+
+*.png binary
+*.ico binary
+*.jpg binary
+*.dll binary
+*.exe binary
