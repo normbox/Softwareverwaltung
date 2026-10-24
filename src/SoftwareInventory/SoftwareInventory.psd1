@@ -17,6 +17,7 @@
         'Get-InventorySetting'
         'Set-InventorySetting'
         'Compare-SoftwareVersion'
+        'Test-SoftwareUpdate'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
