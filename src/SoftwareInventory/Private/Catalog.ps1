@@ -10,6 +10,7 @@ function Get-SoftwareCatalog {
         Lädt alle Katalogeinträge; fehlerhafte Dateien werden mit Warnung übersprungen.
     #>
     [CmdletBinding()]
+    [OutputType([object[]])]
     param([string] $Path = $script:CatalogPath, [switch] $Force)
 
     if ($script:CatalogCache -and -not $Force -and $Path -eq $script:CatalogPath) { return $script:CatalogCache }
