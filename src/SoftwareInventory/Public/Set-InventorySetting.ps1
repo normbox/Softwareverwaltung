@@ -9,10 +9,11 @@ function Set-InventorySetting {
     .PARAMETER Preset
         Quick: alle Quellen, alle Nutzungsspuren, Dateiscan im Benutzerprofil ohne Temp und Hash.
         Thorough: wie Quick, aber Dateiscan aller festen Laufwerke einschließlich Temp, mit SHA256.
-        Wird vor den übrigen Parametern angewendet.
+        Wird vor den übrigen Parametern angewendet. Externe Dienste schaltet keine Vorlage ein.
     .PARAMETER Enable
         Einzuschaltende Bereiche: RegistryMachine, RegistryUser, Winget, Appx,
-        UserAssist, Process, Autostart, ScheduledTask.
+        UserAssist, Process, Autostart, ScheduledTask sowie die externen Dienste
+        WingetSearch, GitHub, NVD, KEV, EPSS. Externe Dienste schaltet keine Vorlage ein.
     .PARAMETER Disable
         Auszuschaltende Bereiche (gleiche Namen wie -Enable).
     .PARAMETER ScanPath
@@ -44,10 +45,12 @@ function Set-InventorySetting {
         [ValidateSet('Quick', 'Thorough')]
         [string] $Preset,
 
-        [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask')]
+        [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
+            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')]
         [string[]] $Enable = @(),
 
-        [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask')]
+        [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
+            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')]
         [string[]] $Disable = @(),
 
         [AllowEmptyCollection()]
@@ -116,6 +119,6 @@ function Set-InventorySetting {
 
 function Set-SettingSwitch {
     param($Setting, [string] $Name, [bool] $Value)
-    $group = if ($Name -in $script:InstalledSources) { 'Sources' } else { 'Traces' }
+    $group = if ($Name -in $script:InstalledSources) { 'Sources' } elseif ($Name -in $script:ServiceSources) { 'Services' } else { 'Traces' }
     $Setting.$group.$Name = $Value
 }

@@ -1,0 +1,10 @@
+{
+  "Id": "github-cli",
+  "Name": "GitHub CLI",
+  "Match": {
+    "WingetId": ["GitHub.cli"],
+    "NamePattern": "^GitHub CLI",
+    "Publisher": ["GitHub, Inc.", "GitHub"]
+  },
+  "GitHub": { "Repository": "cli/cli" }
+}

@@ -1,0 +1,10 @@
+{
+  "Id": "jan",
+  "Name": "Jan",
+  "Match": {
+    "WingetId": ["Jan.Jan"],
+    "NamePattern": "^Jan(\\s+\\d[\\d.]*)?$",
+    "Publisher": ["Jan", "Menlo Research"]
+  },
+  "GitHub": { "Repository": "janhq/jan" }
+}

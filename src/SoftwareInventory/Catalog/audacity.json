@@ -1,0 +1,10 @@
+{
+  "Id": "audacity",
+  "Name": "Audacity",
+  "Match": {
+    "WingetId": ["Audacity.Audacity"],
+    "NamePattern": "^Audacity",
+    "Publisher": ["Audacity Team", "Muse Group"]
+  },
+  "GitHub": { "Repository": "audacity/audacity", "TagPattern": "^Audacity-(?<version>\\d.*)$" }
+}

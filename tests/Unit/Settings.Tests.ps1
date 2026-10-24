@@ -101,6 +101,22 @@ Describe 'Einstellungen' {
         $s.FileScan.SmartExclusions | Should -BeTrue
     }
 
+    It 'hat alle externen Dienste standardmäßig aus und schaltet sie einzeln' {
+        (Get-InventorySetting).Services.PSObject.Properties.Value | Should -Not -Contain $true
+        $s = Set-InventorySetting -Enable GitHub
+        $s.Services.GitHub | Should -BeTrue
+        $s.Services.NVD | Should -BeFalse
+        (Get-InventorySetting).Services.GitHub | Should -BeTrue
+        (Set-InventorySetting -Disable GitHub).Services.GitHub | Should -BeFalse
+    }
+
+    It 'schaltet externe Dienste über keine Vorlage ein' {
+        foreach ($preset in 'Quick', 'Thorough') {
+            Mock -ModuleName SoftwareInventory Get-ScanDrive { [pscustomobject] @{ Drive = 'C:'; IsDefault = $true } }
+            (Set-InventorySetting -Preset $preset).Services.PSObject.Properties.Value | Should -Not -Contain $true
+        }
+    }
+
     It 'Get-SoftwareInventory liest ohne aktivierte Quelle nichts' {
         Mock -ModuleName SoftwareInventory Get-RegistrySoftware { throw 'darf nicht gelesen werden' }
         Mock -ModuleName SoftwareInventory Get-AppxSoftware { throw 'darf nicht gelesen werden' }

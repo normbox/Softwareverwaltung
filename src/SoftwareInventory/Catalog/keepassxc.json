@@ -1,0 +1,10 @@
+{
+  "Id": "keepassxc",
+  "Name": "KeePassXC",
+  "Match": {
+    "WingetId": ["KeePassXCTeam.KeePassXC"],
+    "NamePattern": "^KeePassXC",
+    "Publisher": ["KeePassXC Team"]
+  },
+  "GitHub": { "Repository": "keepassxreboot/keepassxc" }
+}

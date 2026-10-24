@@ -1,0 +1,9 @@
+{
+  "Id": "comfyui-desktop",
+  "Name": "ComfyUI Desktop",
+  "Match": {
+    "NamePattern": "^ComfyUI$",
+    "Publisher": ["Comfy Org"]
+  },
+  "GitHub": { "Repository": "Comfy-Org/desktop" }
+}

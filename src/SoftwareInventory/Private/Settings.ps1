@@ -4,6 +4,9 @@
 $script:SettingsSchemaVersion = 1
 $script:InstalledSources = @('RegistryMachine', 'RegistryUser', 'Winget', 'Appx')
 $script:TraceSources = @('UserAssist', 'Process', 'Autostart', 'ScheduledTask')
+# Externe Dienste: senden Produkt-/Herstellernamen, Versionen oder CVE-IDs ins Internet.
+# Werden nur einzeln aktiviert, nie über eine Vorlage.
+$script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')
 
 function Get-SettingsPath {
     Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
@@ -14,6 +17,8 @@ function New-DefaultSetting {
     foreach ($s in $script:InstalledSources) { $sources[$s] = $false }
     $traces = [ordered]@{}
     foreach ($t in $script:TraceSources) { $traces[$t] = $false }
+    $services = [ordered]@{}
+    foreach ($s in $script:ServiceSources) { $services[$s] = $false }
 
     [pscustomobject] [ordered]@{
         PSTypeName    = 'SoftwareInventory.Setting'
@@ -21,6 +26,7 @@ function New-DefaultSetting {
         Usage         = $null   # Private oder Company; schaltet nichts
         Sources       = [pscustomobject] $sources
         Traces        = [pscustomobject] $traces
+        Services      = [pscustomobject] $services
         FileScan      = [pscustomobject] [ordered]@{
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
             Drives          = [string[]] @()
@@ -47,7 +53,7 @@ function Read-InventorySetting {
     }
 
     if ($data.PSObject.Properties['Usage'] -and $data.Usage -in 'Private', 'Company') { $setting.Usage = $data.Usage }
-    foreach ($group in 'Sources', 'Traces') {
+    foreach ($group in 'Sources', 'Traces', 'Services') {
         if (-not $data.PSObject.Properties[$group]) { continue }
         foreach ($name in $setting.$group.PSObject.Properties.Name) {
             $value = $data.$group.PSObject.Properties[$name]
@@ -70,12 +76,18 @@ function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, FileScan |
+    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
 }
 
 function Get-EnabledName {
-    # Namen der eingeschalteten Werte einer Gruppe (Sources oder Traces).
+    # Namen der eingeschalteten Werte einer Gruppe (Sources, Traces oder Services).
     param($Group)
     $Group.PSObject.Properties | Where-Object Value | ForEach-Object Name
+}
+
+function Test-ServiceEnabled {
+    # Ist der externe Dienst in den Einstellungen aktiviert?
+    param([Parameter(Mandatory)] [string] $Name, $Setting = (Read-InventorySetting))
+    [bool] $Setting.Services.$Name
 }

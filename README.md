@@ -17,7 +17,8 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Einstellungen: jede Quelle und jeder Scan-Bereich einzeln schaltbar, standardmäßig aus | vorhanden |
 | Verfügbare Updates laut winget (`AvailableVersion`) | vorhanden |
 | Scans als JSON speichern und vergleichen (neu, entfernt, Version geändert) | vorhanden |
-| Versionsabgleich über weitere Quellen (GitHub Releases, Herstellerregeln) | geplant |
+| Versionsabgleich über GitHub Releases (Produktkatalog) und winget-Suche für Programme ohne winget-ID (`Test-SoftwareUpdate`) | vorhanden (Etappe 2a) |
+| Versionsabgleich über Herstellerregeln | geplant |
 | Sicherheitsprüfung (NVD, CISA KEV, EPSS, OSV) mit Ampel | geplant |
 | Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren über winget | geplant |
 | KI-Berater, wahlweise lokal (Ollama) oder Cloud (Claude API) | geplant |
@@ -39,6 +40,9 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
 - [x] 1. Inventar-Modul: Registry, winget, Store-Apps, JSON-Snapshots, ohne Oberfläche testbar
 - [x] 1b. Portable Programme und Einstellungen (alles standardmäßig aus)
 - [ ] 2. Versions- und Sicherheitsprüfung: winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel, zunächst HTML-Bericht
+  - [x] 2a. Versionsvergleich, Produktkatalog, neueste Version über winget, GitHub und winget-Suche
+  - [ ] 2b. Schwachstellen: CPE-Zuordnung, NVD, CISA KEV, EPSS
+  - [ ] 2c. Ampel und HTML-Bericht
 - [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
@@ -76,6 +80,11 @@ Get-PortableSoftware | Format-Table Name, Version, Flags, FilePath   # mit den a
 Get-ScanDrive                                                        # wählbare Laufwerke
 Get-PortableSoftware -Drive C, D -ComputeHash                        # einmalig ganze Laufwerke, mit SHA256
 
+# Neueste Versionen prüfen (externe Dienste vorher einzeln aktivieren)
+Set-InventorySetting -Enable GitHub, WingetSearch
+@(Get-SoftwareInventory) + @(Get-PortableSoftware) | Test-SoftwareUpdate | Where-Object Status -eq Outdated
+Compare-SoftwareVersion 24.08 24.9                                    # -1: älter
+
 # Installiertes und Portables in einem Snapshot
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Save-InventorySnapshot
 ```
@@ -90,7 +99,7 @@ Invoke-Pester ./tests/Integration                          # gegen das echte Sys
 Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
 
-Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen).
+Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
 
 ## Datenschutz
 
