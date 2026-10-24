@@ -1,0 +1,126 @@
+function Find-ExecutableFile {
+    <#
+    .SYNOPSIS
+        Sucht .exe-Dateien unterhalb der angegebenen Ordner.
+    .DESCRIPTION
+        Durchläuft die Ordner selbst statt Get-ChildItem -Recurse, damit ausgeschlossene
+        Teilbäume (Windows, installierte Programme) gar nicht erst betreten werden.
+        Verknüpfte Ordner (Junctions, Symlinks) und unlesbare Ordner werden übersprungen.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)] [string[]] $Root,
+        [string[]] $ExcludeDirectory = @()
+    )
+
+    $exclude = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($dir in $ExcludeDirectory) { if ($dir) { [void] $exclude.Add($dir.TrimEnd('\')) } }
+
+    $pending = [System.Collections.Generic.Stack[string]]::new()
+    foreach ($r in $Root) { if (Test-Path -LiteralPath $r -PathType Container) { $pending.Push($r.TrimEnd('\') + '\') } }
+    $reparse = [System.IO.FileAttributes]::ReparsePoint
+    $visited = 0
+
+    while ($pending.Count) {
+        $dir = $pending.Pop()
+        $visited++
+        if ($visited % 2000 -eq 0) {
+            Write-Progress -Activity 'Suche nach Programmdateien' -Status $dir -Id 1
+        }
+
+        try {
+            foreach ($file in [System.IO.Directory]::EnumerateFiles($dir, '*.exe')) { $file }
+            foreach ($sub in [System.IO.Directory]::EnumerateDirectories($dir)) {
+                if ($exclude.Contains($sub)) { continue }
+                if (([System.IO.File]::GetAttributes($sub) -band $reparse) -ne 0) { continue }
+                $pending.Push($sub)
+            }
+        }
+        catch {
+            Write-Verbose "Übersprungen: $dir ($($_.Exception.GetType().Name))"
+        }
+    }
+    Write-Progress -Activity 'Suche nach Programmdateien' -Id 1 -Completed
+}
+
+function Get-ScanExclusion {
+    <#
+    .SYNOPSIS
+        Ordner, die beim Dateiscan nicht betreten werden: Windows, Systemordner und
+        die Ordner installierter Programme aus dem Inventar.
+    #>
+    param([object[]] $Inventory = @())
+
+    $static = @(
+        $env:windir
+        (Join-Path $env:ProgramFiles 'WindowsApps')
+        (Join-Path $env:ProgramData 'Package Cache')
+        (Join-Path $env:ProgramData 'Microsoft')
+        (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps')
+        (Join-Path $env:LOCALAPPDATA 'Packages')
+    )
+    # Update-Zwischenspeicher von Electron-Apps (%LOCALAPPDATA%\<app>-updater) enthalten nur Installer.
+    $updaterCaches = Get-ChildItem -LiteralPath $env:LOCALAPPDATA -Directory -Filter '*-updater' -ErrorAction SilentlyContinue |
+        ForEach-Object FullName
+    $perDrive = foreach ($drive in [System.IO.DriveInfo]::GetDrives()) {
+        # Store-Apps und Xbox-Spiele auf anderen Laufwerken verwaltet Windows selbst.
+        foreach ($name in '$Recycle.Bin', 'System Volume Information', 'Windows.old', '$WinREAgent', '$SysReset', 'WindowsApps', 'WpSystem', 'XboxGames') {
+            Join-Path $drive.RootDirectory.FullName $name
+        }
+    }
+    $installed = foreach ($record in $Inventory) {
+        $iconDir = if ($record.DisplayIcon -match '\.exe$') { Split-Path -Parent $record.DisplayIcon }
+        foreach ($dir in @($record.InstallLocation; (Get-UninstallerDirectory $record.UninstallString); $iconDir)) {
+            if (Test-SpecificInstallDirectory $dir) { $dir.TrimEnd('\') }
+        }
+    }
+    @($static) + @($updaterCaches) + @($perDrive) + @($installed) | Where-Object { $_ } | Select-Object -Unique
+}
+
+function Get-PublisherKey {
+    # Vergleichsschlüssel für Hersteller: erstes Wort ohne Satzzeichen, z. B. "Acronis International GmbH" -> "acronis".
+    param([string] $Publisher)
+    if (-not $Publisher) { return $null }
+    $word = ($Publisher.ToLowerInvariant() -replace '[^\p{L}\p{N} ]', ' ').Trim() -split '\s+' | Select-Object -First 1
+    if ($word.Length -ge 3) { $word }
+}
+
+function Test-InstalledProgramFile {
+    <#
+    .SYNOPSIS
+        Erkennt Dateien unter Program Files, die zu einer Installation gehören, deren
+        Registry-Eintrag keinen Installationsordner nennt: Hersteller der Datei ist
+        zugleich Herausgeber eines installierten Programms.
+    #>
+    param($Info, [System.Collections.Generic.HashSet[string]] $InstalledPublisher)
+    $programDirs = @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
+    if (-not (Test-PathExcluded -Path $Info.Path -Exclusion $programDirs)) { return $false }
+    foreach ($candidate in $Info.Company, $Info.Signer) {
+        $key = Get-PublisherKey $candidate
+        if ($key -and $InstalledPublisher.Contains($key)) { return $true }
+    }
+    $false
+}
+
+function Get-UninstallerDirectory {
+    # Ordner des Deinstallationsprogramms; msiexec und rundll32 liegen im Windows-Ordner und zählen nicht.
+    param([string] $UninstallString)
+    $exe = ConvertFrom-CommandLine $UninstallString
+    if (-not $exe -or $exe -match '\\(msiexec|rundll32)\.exe$') { return $null }
+    Split-Path -Parent $exe
+}
+
+function Test-SpecificInstallDirectory {
+    # Verhindert, dass fehlerhafte Einträge (z. B. InstallLocation = C:\Program Files) ganze Bäume ausschließen.
+    param([string] $Path)
+    if ([string]::IsNullOrWhiteSpace($Path) -or $Path -notmatch '^[A-Za-z]:\\') { return $false }
+    $normalized = $Path.TrimEnd('\')
+    $tooBroad = @(
+        $env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData, $env:USERPROFILE,
+        $env:LOCALAPPDATA, $env:APPDATA, (Join-Path $env:LOCALAPPDATA 'Programs'), $env:windir
+    ) | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') }
+    if ($normalized -in $tooBroad) { return $false }
+    # Nur die Laufwerkswurzel selbst ist zu breit; D:\Steam ist ein gültiger Installationsordner.
+    ($normalized -split '\\').Count -ge 2
+}

@@ -4,7 +4,7 @@
     GUID                 = '5d0c1f7e-6b2a-4e8f-9a51-3c7d2e4b8f10'
     Author               = 'normbox'
     Copyright            = '(c) normbox. GPLv3.'
-    Description          = 'Inventarisiert installierte Software unter Windows (Registry, winget, Store-Apps).'
+    Description          = 'Inventarisiert installierte und portable Software unter Windows (Registry, winget, Store-Apps, Ausführungsspuren, Dateiscan).'
     PowerShellVersion    = '7.6'
     CompatiblePSEditions = @('Core')
     FunctionsToExport    = @(
@@ -12,6 +12,8 @@
         'Save-InventorySnapshot'
         'Get-InventorySnapshot'
         'Compare-InventorySnapshot'
+        'Get-PortableSoftware'
+        'Get-ScanDrive'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

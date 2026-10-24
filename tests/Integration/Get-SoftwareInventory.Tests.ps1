@@ -25,6 +25,22 @@ Describe 'Get-SoftwareInventory (echtes System)' -Tag Integration {
         ($keys | Select-Object -Unique).Count | Should -Be @($keys).Count
     }
 
+    It 'findet portable Programme im schnellen Scan mit vollständigen Datensätzen' {
+        $portable = @(Get-PortableSoftware -Mode Quick -Inventory $inventory -WarningAction SilentlyContinue)
+        $portable | ForEach-Object {
+            $_.InstallType | Should -Be 'Portable'
+            $_.FilePath | Should -Match '\.exe$'
+            $_.Sha256 | Should -BeNullOrEmpty
+        }
+        # Nichts aus dem Windows-Ordner und nichts aus Ordnern installierter Programme
+        $portable.FilePath | Where-Object { $_ -like "$env:windir\*" } | Should -BeNullOrEmpty
+        $installedDirs = $inventory | Where-Object InstallLocation | ForEach-Object { $_.InstallLocation.TrimEnd('\') + '\' }
+        foreach ($p in $portable) {
+            $installedDirs | Where-Object { $p.FilePath.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) -and $_.Split('\').Count -gt 3 } |
+                Should -BeNullOrEmpty -Because $p.FilePath
+        }
+    }
+
     It 'speichert und lädt einen Snapshot verlustfrei' {
         $file = $inventory | Save-InventorySnapshot -Directory (Join-Path $TestDrive 'scans')
         $loaded = Get-InventorySnapshot -LiteralPath $file.FullName

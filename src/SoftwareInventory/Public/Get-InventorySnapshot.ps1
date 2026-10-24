@@ -38,7 +38,13 @@ function Get-InventorySnapshot {
             Write-Warning "Snapshot '$file' hat neueres Schema $($data.SchemaVersion) und wird übersprungen."
             continue
         }
-        foreach ($record in $data.Records) { $record.PSObject.TypeNames.Insert(0, 'SoftwareInventory.SoftwareRecord') }
+        foreach ($record in $data.Records) {
+            $record.PSObject.TypeNames.Insert(0, 'SoftwareInventory.SoftwareRecord')
+            # Ältere Schemaversionen kennen neuere Felder noch nicht.
+            foreach ($field in $script:RecordFields) {
+                if (-not $record.PSObject.Properties[$field]) { $record | Add-Member -NotePropertyName $field -NotePropertyValue $null }
+            }
+        }
 
         [pscustomobject] @{
             PSTypeName    = 'SoftwareInventory.Snapshot'
