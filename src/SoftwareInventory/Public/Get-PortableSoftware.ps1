@@ -272,7 +272,8 @@ function Merge-NestedComponent {
     $containers = @(Get-ContainerDirectory) + @($ScanRoot | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') })
     $roots = [System.Collections.Generic.List[object]]::new()
     foreach ($r in $Record | Where-Object { $_ } | Sort-Object { $_.InstallLocation.Length }) {
-        $parent = $roots | Where-Object { Test-PathExcluded -Path $r.FilePath -Exclusion @($_.InstallLocation) } | Select-Object -First 1
+        # Nur echte Unterordner: Andere Produkte im selben Ordner bleiben eigene Datensätze.
+        $parent = $roots | Where-Object { Test-PathExcluded -Path $r.InstallLocation -Exclusion @($_.InstallLocation) } | Select-Object -First 1
         if ($parent) {
             $parent.Evidence = [string[]] @(@($parent.Evidence) + @($r.Evidence) | Select-Object -Unique | Sort-Object)
             $parent.Flags = [string[]] @(@($parent.Flags) + @($r.Flags) | Where-Object { $_ } | Select-Object -Unique)

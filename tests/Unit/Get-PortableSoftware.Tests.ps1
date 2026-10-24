@@ -471,3 +471,18 @@ Describe 'Spuren aus beschreibbaren Windows-Unterordnern' {
         $r | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Verschiedene Produkte im selben Ordner' {
+    It 'bleiben eigene Datensätze und werden nicht als Bestandteil verschluckt' {
+        $dir = Join-Path $TestDrive 'Apps\cli_x64'
+        $files = @(
+            New-Info "$dir\NuGet.exe" 'NuGet' '3.5.0' -Company 'Outercurve' -Length 5000
+            New-Info "$dir\func.exe" 'Azure.Functions.Cli' '1.1.1766' -Company 'Microsoft' -Length 4000
+            New-Info "$dir\sub\helper.exe" 'Helper' '1.0' -Company 'Microsoft'
+        )
+        $r = Invoke-PortableScenario -FileInfo $files
+        $r.FilePath | Should -Contain "$dir\NuGet.exe"
+        $r.FilePath | Should -Contain "$dir\func.exe"
+        $r.FilePath | Should -Not -Contain "$dir\sub\helper.exe"
+    }
+}
