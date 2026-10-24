@@ -19,7 +19,9 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Scans als JSON speichern und vergleichen (neu, entfernt, Version geändert) | vorhanden |
 | Versionsabgleich über GitHub Releases (Produktkatalog) und winget-Suche für Programme ohne winget-ID (`Test-SoftwareUpdate`) | vorhanden (Etappe 2a) |
 | Versionsabgleich über Herstellerregeln | geplant |
-| Sicherheitsprüfung (NVD, CISA KEV, EPSS, OSV) mit Ampel | geplant |
+| Schwachstellen über NVD, CISA KEV und EPSS für Programme mit Katalogeintrag (`Get-SoftwareVulnerability`) | vorhanden (Etappe 2b) |
+| Ampel und HTML-Bericht | geplant |
+| Weitere Schwachstellenquellen (OSV, GitHub Security Advisories) | geplant |
 | Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren über winget | geplant |
 | KI-Berater, wahlweise lokal (Ollama) oder Cloud (Claude API) | geplant |
 
@@ -41,7 +43,7 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
 - [x] 1b. Portable Programme und Einstellungen (alles standardmäßig aus)
 - [ ] 2. Versions- und Sicherheitsprüfung: winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel, zunächst HTML-Bericht
   - [x] 2a. Versionsvergleich, Produktkatalog, neueste Version über winget, GitHub und winget-Suche
-  - [ ] 2b. Schwachstellen: CPE-Zuordnung, NVD, CISA KEV, EPSS
+  - [x] 2b. Schwachstellen: CPE-Zuordnung über den Katalog, NVD, CISA KEV, EPSS
   - [ ] 2c. Ampel und HTML-Bericht
 - [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
@@ -85,6 +87,10 @@ Set-InventorySetting -Enable GitHub, WingetSearch
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Test-SoftwareUpdate | Where-Object Status -eq Outdated
 Compare-SoftwareVersion 24.08 24.9                                    # -1: älter
 
+# Bekannte Sicherheitslücken (externe Dienste vorher einzeln aktivieren; ohne NVD_API_KEY gedrosselt)
+Set-InventorySetting -Enable NVD, KEV, EPSS
+(Get-SoftwareInventory | Get-SoftwareVulnerability).Vulnerabilities | Where-Object Kev   # aktiv ausgenutzte Lücken
+
 # Installiertes und Portables in einem Snapshot
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Save-InventorySnapshot
 ```
@@ -99,7 +105,7 @@ Invoke-Pester ./tests/Integration                          # gegen das echte Sys
 Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
 
-Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
+Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
 
 ## Datenschutz
 
