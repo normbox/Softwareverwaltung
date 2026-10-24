@@ -13,8 +13,8 @@ Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.Power
 ## Tests
 
 ```powershell
-pwsh -c "Invoke-Pester ./tests"                          # Unit-Tests
-pwsh -c "Invoke-Pester ./tests -TagFilter Integration"   # gegen das echte System
+pwsh -c "Invoke-Pester ./tests/Unit"                     # Unit-Tests
+pwsh -c "Invoke-Pester ./tests/Integration"              # gegen das echte System
 pwsh -c "Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1"
 ```
 

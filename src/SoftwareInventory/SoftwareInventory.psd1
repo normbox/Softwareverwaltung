@@ -5,7 +5,7 @@
     Author               = 'normbox'
     Copyright            = '(c) normbox. GPLv3.'
     Description          = 'Inventarisiert installierte Software unter Windows (Registry, winget, Store-Apps).'
-    PowerShellVersion    = '7.4'
+    PowerShellVersion    = '7.6'
     CompatiblePSEditions = @('Core')
     FunctionsToExport    = @(
         'Get-SoftwareInventory'

@@ -1,4 +1,4 @@
-#Requires -Version 7.4
+#Requires -Version 7.6
 Set-StrictMode -Version Latest
 
 # Private zuerst laden, damit öffentliche Funktionen darauf zugreifen können.
