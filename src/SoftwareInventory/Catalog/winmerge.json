@@ -6,5 +6,6 @@
     "NamePattern": "^WinMerge(\\s+x(64|86))?(\\s+\\d[\\d.]*)?$",
     "Publisher": ["Thingamahoochie Software"]
   },
-  "GitHub": { "Repository": "WinMerge/winmerge" }
+  "GitHub": { "Repository": "WinMerge/winmerge" },
+  "Cpe": ["cpe:2.3:a:winmerge:winmerge"]
 }

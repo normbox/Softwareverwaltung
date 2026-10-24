@@ -1,0 +1,9 @@
+{
+  "Id": "python",
+  "Name": "Python",
+  "Match": {
+    "NamePattern": "^Python(\\s+\\d+\\.\\d+(\\.\\d+)?(\\s+\\((64|32)-bit\\))?)?$",
+    "Publisher": ["Python Software Foundation"]
+  },
+  "Cpe": ["cpe:2.3:a:python:python"]
+}

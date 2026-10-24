@@ -37,6 +37,10 @@ Describe 'Test-CatalogEntry' {
         @{ Case = 'falsches Repository'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"GitHub":{"Repository":"nur-ein-teil"}}'; Expected = '*owner/repo*' }
         @{ Case = 'TagPattern ohne Gruppe'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"GitHub":{"Repository":"a/b","TagPattern":"^v(.+)$"}}'; Expected = '*(?<version>*' }
         @{ Case = 'zu kurzer Hersteller'; Json = '{"Id":"x","Name":"X","Match":{"NamePattern":"^X","Publisher":["ai"]}}'; Expected = '*Vergleichsschlüssel*' }
+        @{ Case = 'CPE mit Version'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["cpe:2.3:a:x:x:1.0"]}'; Expected = '*ohne Version*' }
+        @{ Case = 'CPE ohne Präfix'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["x:x"]}'; Expected = '*cpe:2.3*' }
+        @{ Case = 'KEV ohne Hersteller'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"ProductPattern":"^X$"}]}'; Expected = '*Kev.Vendor fehlt*' }
+        @{ Case = 'KEV mit ungültigem Muster'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"Vendor":"X","ProductPattern":"(x"}]}'; Expected = '*Ungültiges Muster*' }
     ) {
         $problems = InModuleScope SoftwareInventory -Parameters @{ E = ($Json | ConvertFrom-Json) } { Test-CatalogEntry -Entry $E -FileName 'x' }
         ($problems -join "`n") | Should -BeLike $Expected

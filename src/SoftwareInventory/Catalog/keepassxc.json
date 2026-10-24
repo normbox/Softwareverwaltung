@@ -6,5 +6,6 @@
     "NamePattern": "^KeePassXC",
     "Publisher": ["KeePassXC Team"]
   },
-  "GitHub": { "Repository": "keepassxreboot/keepassxc" }
+  "GitHub": { "Repository": "keepassxreboot/keepassxc" },
+  "Cpe": ["cpe:2.3:a:keepassxc:keepassxc"]
 }

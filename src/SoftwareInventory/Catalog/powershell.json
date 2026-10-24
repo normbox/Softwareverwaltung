@@ -1,0 +1,8 @@
+{
+  "Id": "powershell",
+  "Name": "PowerShell",
+  "Match": {
+    "WingetId": ["Microsoft.PowerShell"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:powershell"]
+}

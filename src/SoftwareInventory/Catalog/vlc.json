@@ -1,0 +1,11 @@
+{
+  "Id": "vlc",
+  "Name": "VLC media player",
+  "Match": {
+    "WingetId": ["VideoLAN.VLC"],
+    "NamePattern": "^VLC media player",
+    "Publisher": ["VideoLAN"]
+  },
+  "Cpe": ["cpe:2.3:a:videolan:vlc_media_player"],
+  "Kev": [{ "Vendor": "VideoLAN", "ProductPattern": "\\bVLC\\b" }]
+}

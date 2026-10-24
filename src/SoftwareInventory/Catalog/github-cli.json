@@ -6,5 +6,6 @@
     "NamePattern": "^GitHub CLI",
     "Publisher": ["GitHub, Inc.", "GitHub"]
   },
-  "GitHub": { "Repository": "cli/cli" }
+  "GitHub": { "Repository": "cli/cli" },
+  "Cpe": ["cpe:2.3:a:github:cli"]
 }
