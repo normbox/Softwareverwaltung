@@ -48,6 +48,7 @@ function Get-RegistrySoftware {
                 InstallDate          = ConvertFrom-RegistryDate $key.GetValue('InstallDate')
                 UninstallString      = ConvertTo-NullIfEmpty $key.GetValue('UninstallString')
                 QuietUninstallString = ConvertTo-NullIfEmpty $key.GetValue('QuietUninstallString')
+                DisplayIcon          = ConvertFrom-DisplayIcon $key.GetValue('DisplayIcon')
             }
             Add-MatchKey -Record $record -Key @(
                 "arp:$keyName".ToLowerInvariant()
@@ -83,4 +84,13 @@ function ConvertFrom-RegistryDate {
     if ([datetime]::TryParseExact([string] $Value, 'yyyyMMdd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)) {
         $parsed.ToString('yyyy-MM-dd')
     }
+}
+
+function ConvertFrom-DisplayIcon {
+    # "C:\Programme\App\app.exe",0 -> C:\Programme\App\app.exe
+    param($Value)
+    $text = ConvertTo-NullIfEmpty $Value
+    if (-not $text) { return $null }
+    $text = ($text -replace ',\s*-?\d+$', '').Trim('"', ' ')
+    [Environment]::ExpandEnvironmentVariables($text)
 }

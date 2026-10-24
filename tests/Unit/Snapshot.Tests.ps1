@@ -24,7 +24,7 @@ Describe 'Save-InventorySnapshot / Get-InventorySnapshot' {
     It 'schreibt eine JSON-Datei mit Schema und Zeitstempel' {
         $first.Name | Should -Match '^\d{8}-\d{6}-\d{3}\.json$'
         $json = Get-Content $first.FullName -Raw | ConvertFrom-Json
-        $json.SchemaVersion | Should -Be 1
+        $json.SchemaVersion | Should -Be 2
         $json.Records.Count | Should -Be 2
     }
 
@@ -42,6 +42,15 @@ Describe 'Save-InventorySnapshot / Get-InventorySnapshot' {
 
     It 'begrenzt mit -Latest' {
         @(Get-InventorySnapshot -Directory $dir -Latest 1).Count | Should -Be 1
+    }
+
+    It 'ergänzt bei Snapshots mit Schema 1 die neuen Felder' {
+        $old = Join-Path $TestDrive 'v1.json'
+        '{"SchemaVersion":1,"CreatedAt":"2026-10-24T10:00:00Z","Records":[{"Name":"Alt","Version":"1.0","Sources":["Registry"]}]}' | Set-Content $old
+        $record = (Get-InventorySnapshot -LiteralPath $old).Records[0]
+        $record.PSObject.Properties.Name | Should -Contain 'FilePath'
+        $record.FilePath | Should -BeNullOrEmpty
+        Compare-InventorySnapshot -Reference $record -Difference $record | Should -BeNullOrEmpty
     }
 
     It 'überspringt Snapshots mit neuerem Schema' {

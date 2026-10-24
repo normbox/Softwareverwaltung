@@ -13,9 +13,10 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Funktion | Stand |
 | --- | --- |
 | Inventar aus Registry (Rechner und Benutzer), winget und Store-Apps, zusammengeführt zu einem Datensatz pro Programm | vorhanden |
+| Portable und nicht registrierte Programme (Nutzungsspuren, Dateiscan von Ordnern oder Laufwerken, Signaturprüfung, optional SHA256) | vorhanden |
+| Einstellungen: jede Quelle und jeder Scan-Bereich einzeln schaltbar, standardmäßig aus | vorhanden |
 | Verfügbare Updates laut winget (`AvailableVersion`) | vorhanden |
 | Scans als JSON speichern und vergleichen (neu, entfernt, Version geändert) | vorhanden |
-| Portable und nicht registrierte Programme (Nutzungsspuren, Dateiscan, Signaturprüfung) | in Prüfung ([PR #2](https://github.com/normbox/Softwareverwaltung/pull/2)) |
 | Versionsabgleich über weitere Quellen (GitHub Releases, Herstellerregeln) | geplant |
 | Sicherheitsprüfung (NVD, CISA KEV, EPSS, OSV) mit Ampel | geplant |
 | Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren über winget | geplant |
@@ -25,7 +26,7 @@ Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx
 
 ## Grundsätze
 
-- **Alles standardmäßig aus und manuell einstellbar.** Quellen, Scan-Bereiche, externe Dienste und KI-Anbieter werden einzeln vom Benutzer aktiviert, für alle gleich. Es gibt keine Automatik nach Einsatzart. Im Modul umgesetzt mit Etappe 1b (PR #2); bis dahin liest `Get-SoftwareInventory` ohne Angabe alle drei Quellen.
+- **Alles standardmäßig aus und manuell einstellbar.** Quellen, Scan-Bereiche, externe Dienste und KI-Anbieter werden einzeln vom Benutzer aktiviert, für alle gleich. Es gibt keine Automatik nach Einsatzart. Ohne Einstellungen liest das Modul nichts.
 - **Keine Zusatzinstallation für Endbenutzer.** Die spätere App wird self-contained veröffentlicht und bettet PowerShell über `Microsoft.PowerShell.SDK` ein. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
 - **Die KI schlägt nur vor.** Updates und Deinstallationen werden erst nach Bestätigung in der Oberfläche ausgeführt; jede Aktion wird protokolliert.
 - **Freigabestufen für Daten an die KI** (geplant): Der Benutzer legt fest, was an ein Modell übertragen wird. Vor dem Senden an Cloud-Modelle werden Benutzername, Rechnername und Benutzerpfade entfernt.
@@ -36,7 +37,7 @@ Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx
 Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
 
 - [x] 1. Inventar-Modul: Registry, winget, Store-Apps, JSON-Snapshots, ohne Oberfläche testbar
-- [ ] 1b. Portable Programme und Einstellungen (alles standardmäßig aus) – in Prüfung, [PR #2](https://github.com/normbox/Softwareverwaltung/pull/2)
+- [x] 1b. Portable Programme und Einstellungen (alles standardmäßig aus)
 - [ ] 2. Versions- und Sicherheitsprüfung: winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel, zunächst HTML-Bericht
 - [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
@@ -60,11 +61,23 @@ In `pwsh`:
 ```powershell
 Import-Module ./src/SoftwareInventory
 
+# Standardmäßig ist alles aus. Bereiche einzeln aktivieren oder eine Vorlage wählen:
+Set-InventorySetting -Enable RegistryMachine, RegistryUser, Winget, Appx
+Set-InventorySetting -Preset Quick                           # alle Quellen und Spuren, Dateiscan im Benutzerprofil
+Get-InventorySetting                                         # aktuelle Auswahl anzeigen
+
 Get-SoftwareInventory | Format-Table Name, Version, AvailableVersion, Sources
-Get-SoftwareInventory -Source Registry, Appx               # nur bestimmte Quellen
-Get-SoftwareInventory | Where-Object AvailableVersion      # Programme mit Update laut winget
-Get-SoftwareInventory | Save-InventorySnapshot             # Scan unter %LOCALAPPDATA%\SoftwareInventory\scans speichern
-Compare-InventorySnapshot                                  # Unterschied der letzten beiden Scans
+Get-SoftwareInventory | Where-Object AvailableVersion        # Programme mit Update laut winget
+Get-SoftwareInventory | Save-InventorySnapshot               # Scan unter %LOCALAPPDATA%\SoftwareInventory\scans speichern
+Compare-InventorySnapshot                                    # Unterschied der letzten beiden Scans
+
+# Portable und nicht registrierte Programme
+Get-PortableSoftware | Format-Table Name, Version, Flags, FilePath   # mit den aktivierten Bereichen
+Get-ScanDrive                                                        # wählbare Laufwerke
+Get-PortableSoftware -Drive C, D -ComputeHash                        # einmalig ganze Laufwerke, mit SHA256
+
+# Installiertes und Portables in einem Snapshot
+@(Get-SoftwareInventory) + @(Get-PortableSoftware) | Save-InventorySnapshot
 ```
 
 Fehlt `Microsoft.WinGet.Client`, warnt das Modul und liefert Registry und Store-Apps ohne winget-Daten.
@@ -77,11 +90,11 @@ Invoke-Pester ./tests/Integration                          # gegen das echte Sys
 Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
 
-Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots).
+Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen).
 
 ## Datenschutz
 
-Das Modul läuft lokal und sendet keine Daten. Scans werden nur auf dem eigenen Rechner gespeichert (`%LOCALAPPDATA%\SoftwareInventory`). Spätere Funktionen, die externe Dienste nutzen (Schwachstellen-Datenbanken, KI-Anbieter), senden erst nach ausdrücklicher Freigabe durch den Benutzer. Eine ausführliche Datenschutzerklärung folgt als `PRIVACY.md`.
+Das Modul läuft lokal und sendet keine Daten. Scans und Einstellungen werden nur auf dem eigenen Rechner gespeichert (`%LOCALAPPDATA%\SoftwareInventory`, `%APPDATA%\SoftwareInventory\settings.json`). Spätere Funktionen, die externe Dienste nutzen (Schwachstellen-Datenbanken, KI-Anbieter), senden erst nach ausdrücklicher Freigabe durch den Benutzer. Eine ausführliche Datenschutzerklärung folgt als `PRIVACY.md`.
 
 ## Mitmachen
 
