@@ -18,6 +18,7 @@
         'Set-InventorySetting'
         'Compare-SoftwareVersion'
         'Test-SoftwareUpdate'
+        'Get-SoftwareVulnerability'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
