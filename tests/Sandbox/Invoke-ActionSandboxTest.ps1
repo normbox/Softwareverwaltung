@@ -54,6 +54,7 @@ if ($Phase -eq 'Setup') {
     if ($env:USERNAME -ne 'WDAGUtilityAccount') {
         throw 'Dieses Skript installiert und deinstalliert Programme. Nur in Windows Sandbox ausführen (Start-ActionSandbox.ps1).'
     }
+    Start-Transcript -LiteralPath (Join-Path 'C:\Out' ("konsole-setup-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))) | Out-Null
     $work = Join-Path $env:TEMP 'si-setup'
     New-Item -ItemType Directory -Path $work -Force | Out-Null
     $files = @{}
@@ -70,12 +71,14 @@ if ($Phase -eq 'Setup') {
     Add-AppxPackage -Path $files['Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'] -DependencyPath $appx
 
     $pwsh = Join-Path $env:ProgramFiles 'PowerShell\7\pwsh.exe'
+    Stop-Transcript | Out-Null
     & $pwsh -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -Phase Test
     return
 }
 
 # ---------------- Phase „Test“ (PowerShell 7) ----------------
 
+Start-Transcript -LiteralPath (Join-Path 'C:\Out' ("konsole-test-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))) | Out-Null
 $results = [System.Collections.Generic.List[object]]::new()
 function Add-Check {
     param([string] $Step, [bool] $Ok, [string] $Detail)
@@ -85,8 +88,24 @@ function Add-Check {
 }
 function Install-TestPackage {
     param([string[]] $Arguments)
+    # Der App-Alias winget.exe ist direkt nach Add-AppxPackage oft noch nicht registriert.
+    $winget = (Get-Command winget.exe -ErrorAction SilentlyContinue).Source
+    if (-not $winget) {
+        $location = (Get-AppxPackage -Name Microsoft.DesktopAppInstaller).InstallLocation
+        if ($location) { $winget = Join-Path $location 'winget.exe' }
+    }
+    if (-not $winget -or -not (Test-Path -LiteralPath $winget)) {
+        Add-Check "winget install $($Arguments[1])" $false 'winget.exe nicht gefunden'
+        return
+    }
     Write-Host "winget install $($Arguments -join ' ')"
-    winget install @Arguments --silent --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Host
+    $output = & $winget install @Arguments --silent --accept-source-agreements --accept-package-agreements --disable-interactivity 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    Write-Host $output
+    if ($code -ne 0) {
+        $tail = ($output -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -Last 3) -join ' | '
+        Add-Check "winget install $($Arguments[1])" $false ('Exitcode 0x{0:X8}: {1}' -f $code, $tail)
+    }
 }
 function Find-Program {
     param([scriptblock] $Filter)
@@ -153,3 +172,5 @@ $file = Join-Path 'C:\Out' ("ergebnis-{0}.json" -f (Get-Date -Format 'yyyyMMdd-H
 $failed = @($results | Where-Object { -not $_.Ok }).Count
 Write-Host ''
 Write-Host "$($results.Count - $failed) von $($results.Count) Prüfungen bestanden. Ergebnis: $file" -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
+Write-Host 'Fertig. Die Sandbox kann jetzt geschlossen werden; die Ergebnisse bleiben in tests\Sandbox\out.'
+Stop-Transcript | Out-Null
