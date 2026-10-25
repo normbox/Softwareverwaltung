@@ -20,6 +20,27 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+# Die Konsole läuft in der Sandbox unsichtbar. Die Ausgabe wird lokal mitgeschrieben und erst am
+# Ende (oder bei einem Fehler) nach C:\Out kopiert; dauerhaftes Schreiben in den freigegebenen
+# Ordner steht im Verdacht, die Sandbox zu beenden.
+$script:Transcript = $null
+function Start-SandboxTranscript {
+    param([string] $Phase)
+    $script:Transcript = Join-Path $env:TEMP ("konsole-{0}-{1}.txt" -f $Phase, (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    Start-Transcript -LiteralPath $script:Transcript | Out-Null
+}
+function Save-SandboxTranscript {
+    if (-not $script:Transcript) { return }
+    try { Stop-Transcript | Out-Null } catch { }
+    Copy-Item -LiteralPath $script:Transcript -Destination 'C:\Out' -Force
+    $script:Transcript = $null
+}
+trap {
+    Write-Host "FEHLER: $_" -ForegroundColor Red
+    Save-SandboxTranscript
+    break
+}
+
 # Feste Versionen und Prüfsummen (aus den GitHub-Release-Daten, Stand 25.10.2026).
 $Downloads = @(
     @{ Name = 'PowerShell-7.6.8-win-x64.msi'
@@ -54,7 +75,7 @@ if ($Phase -eq 'Setup') {
     if ($env:USERNAME -ne 'WDAGUtilityAccount') {
         throw 'Dieses Skript installiert und deinstalliert Programme. Nur in Windows Sandbox ausführen (Start-ActionSandbox.ps1).'
     }
-    Start-Transcript -LiteralPath (Join-Path 'C:\Out' ("konsole-setup-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))) | Out-Null
+    Start-SandboxTranscript -Phase setup
     $work = Join-Path $env:TEMP 'si-setup'
     New-Item -ItemType Directory -Path $work -Force | Out-Null
     $files = @{}
@@ -71,14 +92,14 @@ if ($Phase -eq 'Setup') {
     Add-AppxPackage -Path $files['Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'] -DependencyPath $appx
 
     $pwsh = Join-Path $env:ProgramFiles 'PowerShell\7\pwsh.exe'
-    Stop-Transcript | Out-Null
+    Save-SandboxTranscript
     & $pwsh -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -Phase Test
     return
 }
 
 # ---------------- Phase „Test“ (PowerShell 7) ----------------
 
-Start-Transcript -LiteralPath (Join-Path 'C:\Out' ("konsole-test-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))) | Out-Null
+Start-SandboxTranscript -Phase test
 $results = [System.Collections.Generic.List[object]]::new()
 function Add-Check {
     param([string] $Step, [bool] $Ok, [string] $Detail)
@@ -173,4 +194,4 @@ $failed = @($results | Where-Object { -not $_.Ok }).Count
 Write-Host ''
 Write-Host "$($results.Count - $failed) von $($results.Count) Prüfungen bestanden. Ergebnis: $file" -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
 Write-Host 'Fertig. Die Sandbox kann jetzt geschlossen werden; die Ergebnisse bleiben in tests\Sandbox\out.'
-Stop-Transcript | Out-Null
+Save-SandboxTranscript
