@@ -110,6 +110,8 @@ Datei: `%APPDATA%\SoftwareInventory\settings.json`. Ohne Datei ist **alles aus**
   "Sources":  { "RegistryMachine": true, "RegistryUser": true, "Winget": true, "Appx": false },
   "Traces":   { "UserAssist": true, "Process": false, "Autostart": true, "ScheduledTask": false },
   "Services": { "WingetSearch": false, "GitHub": true, "NVD": false, "KEV": false, "EPSS": false },
+  "Actions":  { "RestorePoint": false },
+  "Maintenance": { "LogRetentionDays": 30, "LogMaxSizeMB": 100 },
   "FileScan": {
     "Paths": ["%USERPROFILE%"], "Drives": ["D:"], "IncludeTemp": false, "ComputeHash": false,
     "ExcludePaths": ["%USERPROFILE%\\Projekte\\Builds"], "SmartExclusions": true
@@ -122,6 +124,8 @@ Datei: `%APPDATA%\SoftwareInventory\settings.json`. Ohne Datei ist **alles aus**
 | Inventar-Quellen (`Sources`) | `RegistryMachine` (HKLM, 64- und 32-Bit), `RegistryUser` (HKCU), `Winget`, `Appx` |
 | Nutzungsspuren (`Traces`) | `UserAssist`, `Process`, `Autostart`, `ScheduledTask` |
 | Externe Dienste (`Services`) | `WingetSearch` (winget-Suche für Programme ohne winget-ID), `GitHub` (Releases), `NVD`, `KEV`, `EPSS` (ab Etappe 2b). Gesendet werden nur Produkt- und Herstellernamen, Versionen und CVE-IDs, nie Pfade oder Benutzernamen. API-Schlüssel optional über `NVD_API_KEY` bzw. `GITHUB_TOKEN`; sie erscheinen nie in Protokollen, Snapshots oder Berichten. |
+| Aktionen (`Actions`) | `RestorePoint`: vor jedem Aktualisieren/Deinstallieren einen Wiederherstellungspunkt anlegen (eigene UAC-Abfrage). Standardmäßig aus, keine Vorlage schaltet ihn ein. Siehe [AKTIONEN.md](AKTIONEN.md). |
+| Bereinigung (`Maintenance`) | `LogRetentionDays` (Standard 30) und `LogMaxSizeMB` (Standard 100): Grenzen für Logs und Zwischenspeicher, die beim Laden des Moduls bereinigt werden. Scans sind ausgenommen. |
 | Dateiscan (`FileScan`) | `Paths` (Umgebungsvariablen erlaubt), `Drives`, `IncludeTemp`, `ComputeHash` |
 | Ausschlüsse (`FileScan`) | `ExcludePaths`: eigene Ordner, die nie betreten werden – weder vom Dateiscan noch bei Spuren (Umgebungsvariablen erlaubt). `SmartExclusions`: `false` schaltet die Herstellerordner-Regel und den Abgleich über Name/Version ab (mehr Treffer); feste Systemausschlüsse und Ordner installierter Programme bleiben immer aktiv |
 | `Usage` | `Private` oder `Company`; reine Information, schaltet nichts |
@@ -135,4 +139,4 @@ Vorlagen belegen die Schalter nur vor, wenn der Benutzer sie wählt; danach sind
 
 `Get-PortableSoftware -ExcludePath …` und `-NoSmartExclusion` überschreiben die gespeicherten Werte für einen Aufruf. Ohne diese Parameter gelten die gespeicherten Werte – auch wenn andere Parameter wie `-Path` angegeben sind.
 
-Unbekannte Werte in der Datei werden ignoriert. Fehlende Werte gelten als aus; ausgenommen sind `ExcludePaths` (leer) und `SmartExclusions` (an), die sich wie bisher verhalten. `Set-InventorySetting -Reset` stellt genau diesen Ausgangszustand her.
+Unbekannte Werte in der Datei werden ignoriert. Fehlende Werte gelten als aus; ausgenommen sind `ExcludePaths` (leer), `SmartExclusions` (an) und die Grenzen unter `Maintenance` (30 Tage, 100 MB; ungültige Werte gelten als fehlend). `Set-InventorySetting -Reset` stellt genau diesen Ausgangszustand her.

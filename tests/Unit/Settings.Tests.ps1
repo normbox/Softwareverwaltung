@@ -110,6 +110,33 @@ Describe 'Einstellungen' {
         (Set-InventorySetting -Disable GitHub).Services.GitHub | Should -BeFalse
     }
 
+    It 'hat den Wiederherstellungspunkt standardmäßig aus und schaltet ihn einzeln, nie über Vorlagen' {
+        (Get-InventorySetting).Actions.RestorePoint | Should -BeFalse
+        Mock -ModuleName SoftwareInventory Get-ScanDrive { [pscustomobject] @{ Drive = 'C:'; IsDefault = $true } }
+        (Set-InventorySetting -Preset Thorough).Actions.RestorePoint | Should -BeFalse
+        (Set-InventorySetting -Enable RestorePoint).Actions.RestorePoint | Should -BeTrue
+        (Get-InventorySetting).Actions.RestorePoint | Should -BeTrue
+        (Set-InventorySetting -Reset).Actions.RestorePoint | Should -BeFalse
+    }
+
+    It 'hat 30 Tage und 100 MB als Grenzen für Logs und speichert eigene Werte' {
+        $s = Get-InventorySetting
+        $s.Maintenance.LogRetentionDays | Should -Be 30
+        $s.Maintenance.LogMaxSizeMB | Should -Be 100
+        Set-InventorySetting -LogRetentionDays 7 -LogMaxSizeMB 20 | Out-Null
+        $s = Get-InventorySetting
+        $s.Maintenance.LogRetentionDays | Should -Be 7
+        $s.Maintenance.LogMaxSizeMB | Should -Be 20
+        { Set-InventorySetting -LogRetentionDays 0 } | Should -Throw
+    }
+
+    It 'ignoriert ungültige Grenzen in der Datei' {
+        '{"Maintenance":{"LogRetentionDays":-5,"LogMaxSizeMB":"viel"}}' | Set-Content $settingsFile
+        $s = Get-InventorySetting
+        $s.Maintenance.LogRetentionDays | Should -Be 30
+        $s.Maintenance.LogMaxSizeMB | Should -Be 100
+    }
+
     It 'schaltet externe Dienste über keine Vorlage ein' {
         foreach ($preset in 'Quick', 'Thorough') {
             Mock -ModuleName SoftwareInventory Get-ScanDrive { [pscustomobject] @{ Drive = 'C:'; IsDefault = $true } }

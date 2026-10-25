@@ -7,6 +7,11 @@ $script:TraceSources = @('UserAssist', 'Process', 'Autostart', 'ScheduledTask')
 # Externe Dienste: senden Produkt-/Herstellernamen, Versionen oder CVE-IDs ins Internet.
 # Werden nur einzeln aktiviert, nie über eine Vorlage.
 $script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')
+# Optionen für Aktualisieren/Deinstallieren; ebenfalls standardmäßig aus.
+$script:ActionOptions = @('RestorePoint')
+# Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
+$script:DefaultLogRetentionDays = 30
+$script:DefaultLogMaxSizeMB = 100
 
 function Get-SettingsPath {
     Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
@@ -19,6 +24,8 @@ function New-DefaultSetting {
     foreach ($t in $script:TraceSources) { $traces[$t] = $false }
     $services = [ordered]@{}
     foreach ($s in $script:ServiceSources) { $services[$s] = $false }
+    $actions = [ordered]@{}
+    foreach ($a in $script:ActionOptions) { $actions[$a] = $false }
 
     [pscustomobject] [ordered]@{
         PSTypeName    = 'SoftwareInventory.Setting'
@@ -27,6 +34,11 @@ function New-DefaultSetting {
         Sources       = [pscustomobject] $sources
         Traces        = [pscustomobject] $traces
         Services      = [pscustomobject] $services
+        Actions       = [pscustomobject] $actions   # RestorePoint: vor jeder Aktion Wiederherstellungspunkt (UAC)
+        Maintenance   = [pscustomobject] [ordered]@{
+            LogRetentionDays = $script:DefaultLogRetentionDays
+            LogMaxSizeMB     = $script:DefaultLogMaxSizeMB
+        }
         FileScan      = [pscustomobject] [ordered]@{
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
             Drives          = [string[]] @()
@@ -53,11 +65,17 @@ function Read-InventorySetting {
     }
 
     if ($data.PSObject.Properties['Usage'] -and $data.Usage -in 'Private', 'Company') { $setting.Usage = $data.Usage }
-    foreach ($group in 'Sources', 'Traces', 'Services') {
+    foreach ($group in 'Sources', 'Traces', 'Services', 'Actions') {
         if (-not $data.PSObject.Properties[$group]) { continue }
         foreach ($name in $setting.$group.PSObject.Properties.Name) {
             $value = $data.$group.PSObject.Properties[$name]
             if ($value) { $setting.$group.$name = [bool] $value.Value }
+        }
+    }
+    if ($data.PSObject.Properties['Maintenance']) {
+        foreach ($name in 'LogRetentionDays', 'LogMaxSizeMB') {
+            $value = $data.Maintenance.PSObject.Properties[$name]
+            if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
         }
     }
     if ($data.PSObject.Properties['FileScan']) {
@@ -76,12 +94,12 @@ function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, FileScan |
+    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
 }
 
 function Get-EnabledName {
-    # Namen der eingeschalteten Werte einer Gruppe (Sources, Traces oder Services).
+    # Namen der eingeschalteten Werte einer Gruppe (Sources, Traces, Services oder Actions).
     param($Group)
     $Group.PSObject.Properties | Where-Object Value | ForEach-Object Name
 }
