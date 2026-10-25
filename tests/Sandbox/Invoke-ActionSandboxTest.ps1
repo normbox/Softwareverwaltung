@@ -120,7 +120,8 @@ function Install-TestPackage {
         return
     }
     Write-Host "winget install $($Arguments -join ' ')"
-    $output = & $winget install @Arguments --silent --accept-source-agreements --accept-package-agreements --disable-interactivity 2>&1 | Out-String
+    # Ohne --source fragt winget auch die Store-Quelle ab, die in der Sandbox mit 0x8A15003B scheitert.
+    $output = & $winget install @Arguments --source winget --silent --accept-source-agreements --accept-package-agreements --disable-interactivity 2>&1 | Out-String
     $code = $LASTEXITCODE
     Write-Host $output
     if ($code -ne 0) {
