@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Softwareverwaltung</AssemblyName>
+    <RootNamespace>Softwareverwaltung.App</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>Softwareverwaltung</Product>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- PowerShell bringt viele Sprachressourcen mit; Deutsch und Englisch genügen. -->
+    <SatelliteResourceLanguages>de;en</SatelliteResourceLanguages>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF-Projekte lassen System.IO bei den impliziten usings weg. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.6.9" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
+  <!-- Kern-Modul liegt neben der App unter Modules\SoftwareInventory. -->
+  <ItemGroup>
+    <Content Include="..\SoftwareInventory\**\*" LinkBase="Modules\SoftwareInventory" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.WinGet.Client wird mitgeliefert, damit Endbenutzer nichts installieren müssen.
+    Feste Version aus der PowerShell Gallery, beim ersten Build geladen und per SHA256 geprüft.
+    Nur der Teil für PowerShell 7 (net8.0) wird übernommen.
+  -->
+  <PropertyGroup>
+    <WinGetClientVersion>1.29.380</WinGetClientVersion>
+    <WinGetClientSha256>3469E5747EB6B100E51FED3F2057386B5BA60BC8955A6669B5C2EB562E316619</WinGetClientSha256>
+    <WinGetClientPackage>$(MSBuildProjectDirectory)\obj\bundled\Microsoft.WinGet.Client.$(WinGetClientVersion).nupkg</WinGetClientPackage>
+    <WinGetClientDir>$(MSBuildProjectDirectory)\obj\bundled\Microsoft.WinGet.Client\$(WinGetClientVersion)\</WinGetClientDir>
+  </PropertyGroup>
+
+  <Target Name="RestoreWinGetClient" BeforeTargets="AssignTargetPaths" Condition="!Exists('$(WinGetClientDir).complete')">
+    <DownloadFile SourceUrl="https://www.powershellgallery.com/api/v2/package/Microsoft.WinGet.Client/$(WinGetClientVersion)" DestinationFolder="$(MSBuildProjectDirectory)\obj\bundled" DestinationFileName="Microsoft.WinGet.Client.$(WinGetClientVersion).nupkg" />
+    <VerifyFileHash File="$(WinGetClientPackage)" Algorithm="SHA256" Hash="$(WinGetClientSha256)" />
+    <RemoveDir Directories="$(WinGetClientDir)" />
+    <Unzip SourceFiles="$(WinGetClientPackage)" DestinationFolder="$(WinGetClientDir)" />
+    <Touch Files="$(WinGetClientDir).complete" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="IncludeWinGetClient" AfterTargets="RestoreWinGetClient" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <_WinGetClientFile Include="$(WinGetClientDir)**\*" Exclude="$(WinGetClientDir)net48\**;$(WinGetClientDir)_rels\**;$(WinGetClientDir)package\**;$(WinGetClientDir)*.nuspec;$(WinGetClientDir)*Content_Types*.xml;$(WinGetClientDir).complete" />
+      <Content Include="@(_WinGetClientFile)" Link="Modules\Microsoft.WinGet.Client\$(WinGetClientVersion)\%(_WinGetClientFile.RecursiveDir)%(_WinGetClientFile.Filename)%(_WinGetClientFile.Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>
