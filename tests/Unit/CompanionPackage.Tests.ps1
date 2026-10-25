@@ -86,6 +86,17 @@ Describe 'Merge-SoftwareRecord: Begleitpakete' {
         $r | Where-Object Companions | Should -BeNullOrEmpty
     }
 
+    It 'bevorzugt den genau gleichen Namen vor mehreren Präfix-Treffern' {
+        $r = @(Invoke-Merge -Registry @(
+                @{ Name = 'Microsoft Edge'; Publisher = 'Microsoft Corporation' }
+                @{ Name = 'Microsoft Edge Update'; Publisher = $null }
+                @{ Name = 'Microsoft Edge WebView2 Runtime'; Publisher = $null }
+            ) -Sparse @(@{ Name = 'Microsoft.MicrosoftEdge.Stable'; DisplayName = 'Microsoft Edge'; Publisher = 'Microsoft Corporation' }))
+
+        $r.Count | Should -Be 3
+        ($r | Where-Object Name -eq 'Microsoft Edge').Companions | Should -Be @('Microsoft.MicrosoftEdge.Stable_1.0_neutral__x')
+    }
+
     It 'findet den Namen auch als ganze Wörter im Programmnamen' {
         $r = @(Invoke-Merge -Registry @(@{ Name = 'Microsoft OneDrive'; Publisher = 'Microsoft Corporation' }, @{ Name = 'Microsoft 365'; Publisher = 'Microsoft Corporation' }) `
                 -Sparse @(@{ Name = 'Microsoft.OneDriveSync'; DisplayName = 'OneDrive'; Publisher = 'Microsoft Corporation' }))

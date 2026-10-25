@@ -68,8 +68,9 @@ function Join-CompanionPackage {
     .SYNOPSIS
         Hängt Sparse Packages an das klassische Programm, zu dem sie gehören (Feld Companions).
     .DESCRIPTION
-        Zuordnung nur, wenn sie eindeutig ist: genau ein Registry-Programm, dessen Name mit dem
-        Anzeigenamen des Pakets beginnt, sonst genau eines, das ihn als ganze Wörter enthält
+        Zuordnung nur, wenn sie eindeutig ist: genau ein Registry-Programm mit genau diesem Namen,
+        sonst genau eines, dessen Name mit dem Anzeigenamen des Pakets beginnt, sonst genau eines,
+        das ihn als ganze Wörter enthält
         („OneDrive“ in „Microsoft OneDrive“); ersatzweise genau eines mit demselben Hersteller.
         Sonst bleibt das Paket als eigener Eintrag mit Flag SparsePackage stehen
         (lieber ein Eintrag zu viel als ein übersehener).
@@ -85,7 +86,8 @@ function Join-CompanionPackage {
         $ambiguous = $false
         :search foreach ($name in @($info.DisplayName, $companion.Name) | Where-Object { $_ } | Select-Object -Unique) {
             $escaped = [regex]::Escape($name)
-            foreach ($pattern in "^$escaped(\W|$)", "(^|\W)$escaped(\W|$)") {
+            # Vom genauesten zum lockersten Vergleich; der erste eindeutige Treffer zählt.
+            foreach ($pattern in "^$escaped$", "^$escaped(\W|$)", "(^|\W)$escaped(\W|$)") {
                 $byName = @($programs | Where-Object { $_.Name -match $pattern })
                 if ($byName.Count -eq 1) { $target = $byName[0]; break search }
                 if ($byName.Count -gt 1) { $ambiguous = $true; break search }

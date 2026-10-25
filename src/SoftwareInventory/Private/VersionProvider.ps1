@@ -99,8 +99,9 @@ function Get-WingetSearchLatestVersion {
     if (-not (Test-ServiceEnabled -Name WingetSearch -Setting $Setting)) {
         return New-ProviderResult -Source WingetSearch -Reason 'Dienst WingetSearch nicht aktiviert'
     }
-    if (-not (Get-Command Find-WinGetPackage -ErrorAction SilentlyContinue)) {
-        return New-ProviderResult -Source WingetSearch -Reason 'winget-Suche nicht verfügbar (Microsoft.WinGet.Client fehlt)'
+    $problem = Get-WingetClientProblem -Command Find-WinGetPackage
+    if ($problem) {
+        return New-ProviderResult -Source WingetSearch -Reason "winget-Suche nicht verfügbar ($problem)"
     }
     $publisher = Get-PublisherKey $Record.Publisher
     if (-not $publisher) { return New-ProviderResult -Source WingetSearch -Reason 'winget-Suche braucht einen Hersteller' }

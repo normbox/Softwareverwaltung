@@ -79,7 +79,7 @@ Leere Felder sind `null`.
 
 ## Begleitpakete (Sparse Packages)
 
-Manche klassischen Programme registrieren zusätzlich ein Store-Paket, meist für das Kontextmenü (WinMerge, Edge, OneDrive). Erkennbar ist es an `AllowExternalContent` im Manifest. Es wird dem Programm unter `Companions` zugeordnet, wenn genau ein Registry-Programm passt: zuerst über den Anfang des Namens, dann über den Namen als ganze Wörter („OneDrive“ in „Microsoft OneDrive“), zuletzt über den Hersteller ohne Rechtsform. Ist die Zuordnung nicht eindeutig, bleibt das Paket mit `SparsePackage` als eigener Eintrag stehen.
+Manche klassischen Programme registrieren zusätzlich ein Store-Paket, meist für das Kontextmenü (WinMerge, Edge, OneDrive). Erkennbar ist es an `AllowExternalContent` im Manifest. Es wird dem Programm unter `Companions` zugeordnet, wenn genau ein Registry-Programm passt: zuerst über den genau gleichen Namen, dann über den Anfang des Namens, dann über den Namen als ganze Wörter („OneDrive“ in „Microsoft OneDrive“), zuletzt über den Hersteller ohne Rechtsform. Ist die Zuordnung nicht eindeutig, bleibt das Paket mit `SparsePackage` als eigener Eintrag stehen.
 
 ## Portable Programme: Suche und Ausschlüsse
 

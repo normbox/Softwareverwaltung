@@ -25,6 +25,20 @@ function Get-WingetExecutable {
     if (Test-Path -LiteralPath $path -PathType Leaf) { $path } else { $null }
 }
 
+function Get-WingetClientProblem {
+    <#
+    .SYNOPSIS
+        Grund, warum die Cmdlets von Microsoft.WinGet.Client nicht nutzbar sind, oder $null.
+    .DESCRIPTION
+        Die App liefert das Modul mit; winget selbst (App Installer) kann trotzdem fehlen. Die
+        Cmdlets sprechen winget über COM an und dürfen dann gar nicht erst aufgerufen werden.
+    #>
+    param([string] $Command = 'Get-WinGetPackage')
+    if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) { return 'Modul Microsoft.WinGet.Client ist nicht installiert' }
+    if (-not (Get-WingetExecutable)) { return 'winget (App Installer) ist nicht installiert' }
+    $null
+}
+
 function ConvertTo-ArgumentString {
     # Baut aus einzelnen Argumenten eine Befehlszeile nach den Regeln von CommandLineToArgvW.
     param([string[]] $Argument)

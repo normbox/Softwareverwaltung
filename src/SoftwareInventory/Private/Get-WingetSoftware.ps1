@@ -49,8 +49,9 @@ function Get-WingetSoftware {
     [OutputType('SoftwareInventory.SoftwareRecord')]
     param()
 
-    if (-not (Get-Command Get-WinGetPackage -ErrorAction SilentlyContinue)) {
-        Write-Warning 'winget-Daten nicht verfügbar: Modul Microsoft.WinGet.Client ist nicht installiert.'
+    $problem = Get-WingetClientProblem
+    if ($problem) {
+        Write-Warning "winget-Daten nicht verfügbar: $problem."
         return
     }
 

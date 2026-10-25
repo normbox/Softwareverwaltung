@@ -111,6 +111,7 @@ Describe 'Test-SoftwareUpdate' {
         BeforeEach {
             Use-Setting WingetSearch; Use-Catalog @()
             Mock -ModuleName SoftwareInventory Get-Command { $true } -ParameterFilter { $Name -eq 'Find-WinGetPackage' }
+            Mock -ModuleName SoftwareInventory Get-WingetExecutable { 'C:\Program Files\WindowsApps\x\winget.exe' }
             $script:Publishers = @{ 'JanFiala.PSPad.x64' = 'Jan Fiala'; 'JanFiala.PSPad.x86' = 'Jan Fiala'; 'Fake.PSPad' = 'Mallory' }
             Mock -ModuleName SoftwareInventory Get-WingetPackagePublisher { $script:Publishers[$Id] }
             $script:CacheDir = Join-Path $TestDrive "cache-$([guid]::NewGuid())"
