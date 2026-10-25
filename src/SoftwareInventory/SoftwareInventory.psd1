@@ -28,6 +28,7 @@
         'Get-ActionLog'
         'Update-Software'
         'Uninstall-Software'
+        'Test-WingetAvailability'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

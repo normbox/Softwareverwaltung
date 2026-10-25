@@ -24,7 +24,7 @@ Describe 'Save-InventorySnapshot / Get-InventorySnapshot' {
     It 'schreibt eine JSON-Datei mit Schema und Zeitstempel' {
         $first.Name | Should -Match '^\d{8}-\d{6}-\d{3}\.json$'
         $json = Get-Content $first.FullName -Raw | ConvertFrom-Json
-        $json.SchemaVersion | Should -Be 2
+        $json.SchemaVersion | Should -Be 3
         $json.Records.Count | Should -Be 2
     }
 

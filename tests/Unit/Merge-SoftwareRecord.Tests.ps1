@@ -5,6 +5,7 @@ BeforeAll {
 Describe 'Get-WingetSoftware' {
     BeforeAll {
         Mock -ModuleName SoftwareInventory Get-Command { $true } -ParameterFilter { $Name -eq 'Get-WinGetPackage' }
+        Mock -ModuleName SoftwareInventory Get-WingetExecutable { 'C:\Program Files\WindowsApps\x\winget.exe' }
         Mock -ModuleName SoftwareInventory Get-WingetPackageData {
             [pscustomobject] @{ Name = '7-Zip'; Id = '7zip.7zip'; Source = 'winget'; InstalledVersion = '26.05'
                 AvailableVersion = '26.06'; ProductCodes = @('7-Zip'); PackageFamilyNames = @() }
@@ -28,6 +29,14 @@ Describe 'Get-WingetSoftware' {
         ($result | Where-Object Name -eq 'GIMP').MatchKeys | Should -Be @('arp:user:gimp-3_is1')
         ($result | Where-Object Name -eq 'WhatsApp').MatchKeys |
             Should -Be @('msix:5319275a.whatsappdesktop_2.2640.100.0_x64__cv1g1gvanyjgm')
+    }
+
+    It 'ruft das winget-Modul nicht auf, wenn winget selbst fehlt' {
+        Mock -ModuleName SoftwareInventory Get-WingetExecutable { $null }
+        Mock -ModuleName SoftwareInventory Get-WingetPackageData { throw 'darf nicht aufgerufen werden' }
+        $r = InModuleScope SoftwareInventory { Get-WingetSoftware -WarningVariable w -WarningAction SilentlyContinue; $w }
+        "$r" | Should -Match 'App Installer'
+        Should -Invoke -ModuleName SoftwareInventory Get-WingetPackageData -Times 0
     }
 
     It 'warnt und liefert nichts, wenn winget scheitert' {

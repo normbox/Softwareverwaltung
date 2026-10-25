@@ -1,0 +1,162 @@
+<ui:FluentWindow x:Class="Softwareverwaltung.App.Views.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:vm="clr-namespace:Softwareverwaltung.App.ViewModels"
+                 xmlns:models="clr-namespace:Softwareverwaltung.App.Models"
+                 mc:Ignorable="d"
+                 d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+                 Title="Softwareverwaltung"
+                 Width="1200" Height="760" MinWidth="760" MinHeight="480"
+                 WindowStartupLocation="CenterScreen"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Softwareverwaltung" />
+
+        <!-- Werkzeugleiste -->
+        <Grid Grid.Row="1" Margin="16,8,16,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MaxWidth="360" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ui:Button Grid.Column="0" Content="Scannen" Appearance="Primary"
+                       Icon="{ui:SymbolIcon ArrowSync24}"
+                       Command="{Binding ScanCommand}"
+                       ToolTip="Installierte Programme mit den aktivierten Quellen und Diensten neu einlesen" />
+            <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Abbrechen"
+                       Icon="{ui:SymbolIcon Dismiss24}"
+                       Command="{Binding ScanCancelCommand}"
+                       Visibility="{Binding ScanCommand.IsRunning, Converter={StaticResource BoolToVisibility}}" />
+            <ui:TextBox Grid.Column="2" Margin="12,0,0,0"
+                        PlaceholderText="Suchen nach Name oder Hersteller"
+                        Icon="{ui:SymbolIcon Search24}"
+                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                        AutomationProperties.Name="Suche" />
+            <CheckBox Grid.Column="3" Margin="16,0,0,0" VerticalAlignment="Center"
+                      Content="Nur Updates verfügbar" IsChecked="{Binding ShowUpdatesOnly}" />
+            <CheckBox Grid.Column="4" Margin="16,0,0,0" VerticalAlignment="Center"
+                      Content="Nur Sicherheitsrisiken" IsChecked="{Binding ShowRisksOnly}"
+                      ToolTip="Ampel Rot oder bekannte Sicherheitslücken" />
+            <TextBlock Grid.Column="6" VerticalAlignment="Center" Text="{Binding CountText}"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Grid>
+
+        <!-- Hinweise: winget fehlt, keine Quelle aktiviert, Fehler des Moduls -->
+        <ItemsControl Grid.Row="2" Margin="16,0,16,0" ItemsSource="{Binding Notices}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type models:Notice}">
+                    <Border x:Name="Card" Margin="0,0,0,8" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                            Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon x:Name="Icon" Grid.Column="0" Symbol="Info24" Filled="True" FontSize="18"
+                                           VerticalAlignment="Top" Margin="0,1,10,0"
+                                           Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                <ui:HyperlinkButton Content="{Binding LinkText}" NavigateUri="{Binding Link}" Padding="0" Margin="0,4,0,0"
+                                                    Visibility="{Binding Link, Converter={StaticResource NullToVisibility}}" />
+                            </StackPanel>
+                            <ui:Button Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top" Appearance="Transparent"
+                                       Icon="{ui:SymbolIcon Dismiss16}" ToolTip="Ausblenden"
+                                       AutomationProperties.Name="Hinweis ausblenden"
+                                       Command="{Binding DataContext.DismissNoticeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                       CommandParameter="{Binding}" />
+                        </Grid>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:NoticeSeverity.Warning}">
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+                            <Setter TargetName="Icon" Property="Symbol" Value="Warning24" />
+                            <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:NoticeSeverity.Error}">
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                            <Setter TargetName="Icon" Property="Symbol" Value="ErrorCircle24" />
+                            <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Hauptliste -->
+        <Grid Grid.Row="3" Margin="16,0,16,8">
+            <DataGrid ItemsSource="{Binding ItemsView}"
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      SelectionMode="Single" HeadersVisibility="Column"
+                      CanUserReorderColumns="False"
+                      EnableRowVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      AutomationProperties.Name="Installierte Programme">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Ampel" SortMemberPath="Rating" Width="90">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type models:SoftwareItem}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding ReasonText}">
+                                    <Ellipse Width="12" Height="12" Fill="{Binding Rating, Converter={StaticResource RatingToBrush}}" />
+                                    <TextBlock Margin="6,0,0,0" Text="{Binding Rating, Converter={StaticResource RatingToText}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" />
+                    <DataGridTextColumn Header="Hersteller" Binding="{Binding Publisher}" Width="*" />
+                    <DataGridTextColumn Header="Installiert" Binding="{Binding InstalledVersion}" Width="140" />
+                    <DataGridTemplateColumn Header="Neueste" SortMemberPath="LatestVersion" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type models:SoftwareItem}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding LatestVersion}" />
+                                    <TextBlock Margin="4,0,0,0" Text="(unbestätigt)"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               ToolTip="Gefunden über eine Suche nach dem Namen, nicht über eine feste Zuordnung"
+                                               Visibility="{Binding LatestVersionUnconfirmed, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Lücken" Binding="{Binding VulnerabilityCount}" Width="70" />
+                    <DataGridTextColumn Header="Quelle" Binding="{Binding Sources}" Width="140" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibility}}"
+                       Text="Keine Programme gefunden. Die Hinweise oben nennen den Grund, zum Beispiel wenn noch keine Quelle aktiviert ist." />
+        </Grid>
+
+        <!-- Statuszeile -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="16,0,16,10">
+            <ui:ProgressRing Width="16" Height="16" IsIndeterminate="True" Margin="0,0,8,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

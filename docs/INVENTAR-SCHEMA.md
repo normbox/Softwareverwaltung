@@ -4,7 +4,7 @@ Ein Snapshot ist eine JSON-Datei unter `%LOCALAPPDATA%\SoftwareInventory\scans\<
 
 ```json
 {
-  "SchemaVersion": 2,
+  "SchemaVersion": 3,
   "CreatedAt": "2026-10-24T13:36:00.708Z",
   "ModuleVersion": "0.1.0",
   "Records": [ { "Name": "7-Zip 26.05 (x64)", "...": "..." } ]
@@ -17,6 +17,7 @@ Snapshots mit einer höheren `SchemaVersion`, als das Modul kennt, werden beim L
 | --- | --- |
 | 1 | Installierte Programme (Registry, winget, Store-Apps) |
 | 2 | Portable Programme (`FilePath` bis `Flags`), `DisplayIcon` |
+| 3 | `Companions` (zugeordnete Begleitpakete), Flag `SparsePackage` |
 
 ## Datensatz (`SoftwareInventory.SoftwareRecord`)
 
@@ -38,6 +39,8 @@ Snapshots mit einer höheren `SchemaVersion`, als das Modul kennt, werden beim L
 | `InstallDate` | `yyyy-MM-dd`, falls bekannt | Registry |
 | `UninstallString`, `QuietUninstallString` | Deinstallationsbefehle | Registry |
 | `DisplayIcon` | Pfad zur Haupt-.exe bzw. zum Symbol | Registry |
+| `Companions` | `PackageFullName` der Begleitpakete, die zu diesem Programm gehören (z. B. Kontextmenü-Erweiterung als Sparse Package) | Appx |
+| `Flags` | Hinweise, siehe unten; bei Store-Apps `SparsePackage` | Appx, Portable |
 
 ### Nur portable Programme
 
@@ -51,10 +54,11 @@ Snapshots mit einer höheren `SchemaVersion`, als das Modul kennt, werden beim L
 | `LastRun`, `RunCount` | Letzter Start (UTC) und Startanzahl aus UserAssist, falls bekannt |
 | `Flags` | Warnsignale, siehe unten |
 
-Warnsignale (`Flags`):
+Warnsignale und Hinweise (`Flags`):
 
 | Wert | Bedeutung |
 | --- | --- |
+| `SparsePackage` | Store-Paket mit `AllowExternalContent`, das zu einem klassischen Programm gehört, aber nicht eindeutig zugeordnet werden konnte |
 | `Unsigned` | Datei ist nicht signiert |
 | `InvalidSignature` | Signatur vorhanden, aber ungültig oder nicht vertrauenswürdig |
 | `InDownloadsOrTemp` | Liegt im Download- oder Temp-Ordner |
@@ -72,6 +76,10 @@ Leere Felder sind `null`.
 - Registry: Einträge ohne `DisplayName`, `SystemComponent=1`, Unterpakete (`ParentKeyName`), Updates/Hotfixes (`ReleaseType`, `(KBnnnnnnn)` im Namen)
 - Appx: Frameworks, `NonRemovable`, `SignatureKind=System`
 - winget: Einträge, die einer gefilterten Registry-/Appx-Position entsprechen
+
+## Begleitpakete (Sparse Packages)
+
+Manche klassischen Programme registrieren zusätzlich ein Store-Paket, meist für das Kontextmenü (WinMerge, Edge, OneDrive). Erkennbar ist es an `AllowExternalContent` im Manifest. Es wird dem Programm unter `Companions` zugeordnet, wenn genau ein Registry-Programm passt: zuerst über den genau gleichen Namen, dann über den Anfang des Namens, dann über den Namen als ganze Wörter („OneDrive“ in „Microsoft OneDrive“), zuletzt über den Hersteller ohne Rechtsform. Ist die Zuordnung nicht eindeutig, bleibt das Paket mit `SparsePackage` als eigener Eintrag stehen.
 
 ## Portable Programme: Suche und Ausschlüsse
 

@@ -18,6 +18,7 @@ $script:RecordFields = @(
     'UninstallString'
     'QuietUninstallString'
     'DisplayIcon'           # Pfad zur Haupt-.exe bzw. zum Symbol (Registry)
+    'Companions'            # PackageFullName zugeordneter Begleitpakete (z. B. Kontextmenü als Sparse Package)
     # Nur portable Programme:
     'FilePath'
     'CopyPaths'             # weitere Fundorte identischer Kopien

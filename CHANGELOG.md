@@ -4,6 +4,21 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Etappe 3b: WPF-Grundgerüst
+
+#### Hinzugefügt
+
+- WPF-App (.NET 10, Fluent-Design mit WPF-UI), folgt Hell/Dunkel und Akzentfarbe von Windows.
+- Eingebettete PowerShell-Engine (`Microsoft.PowerShell.SDK` 7.6.9). Kern-Modul und das mitgelieferte `Microsoft.WinGet.Client` 1.29.380 werden mit vollem Pfad geladen; Ausführungsrichtlinie „Bypass“ nur für die eigene Sitzung. Aufrufe laufen im Hintergrund und sind abbrechbar.
+- Hauptliste aus `Get-SoftwareInventory | Get-SecurityRating`: Ampel mit Text und Gründen, Name, Hersteller, installierte und neueste Version (mit „unbestätigt“), Zahl der Lücken (leer, wenn nicht geprüft), Quelle. Suche, Filter „Nur Updates verfügbar“ und „Nur Sicherheitsrisiken“.
+- Hinweise oben im Fenster für Warnungen und Fehler des Moduls sowie für fehlendes winget, mit Link zu App Installer im Microsoft Store.
+- `Test-WingetAvailability`: prüft winget.exe und das Modul `Microsoft.WinGet.Client` und beschreibt, was fehlt.
+- Begleitpakete: Store-Pakete mit `AllowExternalContent` (Kontextmenü von WinMerge, Edge, OneDrive …) werden dem Programm unter `Companions` zugeordnet, wenn das eindeutig ist; sonst bleiben sie mit Flag `SparsePackage` stehen. Snapshot-Schema 3.
+- `build/Publish-App.ps1`: self-contained für Windows x64, als Ordner und ZIP.
+- `tests/Sandbox/Start-AppSandbox.ps1`: startet die veröffentlichte App in Windows Sandbox ohne .NET, PowerShell 7 und winget.
+- `THIRD-PARTY-NOTICES.md` mit allen mitgelieferten Komponenten.
+- xUnit-Tests für die eingebettete Engine, die Abbildung der Moduldaten und das ViewModel.
+
 ### Etappe 3a: Aktionen im Modul
 
 #### Hinzugefügt

@@ -61,7 +61,7 @@ function Get-WingetInstalledVersion {
     # Installierte Version laut winget, oder $null (nicht installiert oder Modul fehlt).
     # Mit Quelle, sonst scheitert die Abfrage ganz, wenn eine andere Quelle (z. B. msstore) gestört ist.
     param([string] $Id, [string] $Source)
-    if (-not (Get-Command Get-WinGetPackage -ErrorAction SilentlyContinue)) { return $null }
+    if (Get-WingetClientProblem) { return $null }
     $query = @{ Id = $Id; MatchOption = 'Equals' }
     if ($Source) { $query.Source = $Source }
     try {

@@ -1,0 +1,176 @@
+using System.Management.Automation;
+using System.Management.Automation.Runspaces;
+using System.Threading;
+
+namespace Softwareverwaltung.App.Services;
+
+/// <summary>
+/// Eingebettete PowerShell-Engine (Microsoft.PowerShell.SDK) mit dem Kern-Modul.
+/// Eine Runspace wird wiederverwendet; Aufrufe laufen nacheinander im Hintergrund,
+/// damit die Oberfläche nie blockiert. Fachlogik liegt ausschließlich im Modul.
+/// </summary>
+public sealed class PowerShellHost : IPowerShellHost
+{
+    public const string CoreModuleName = "SoftwareInventory";
+    public const string WinGetModuleName = "Microsoft.WinGet.Client";
+
+    private readonly string _modulesDirectory;
+    private readonly SemaphoreSlim _lock = new(1, 1);
+    private Runspace? _runspace;
+    private bool _disposed;
+
+    public PowerShellHost(string? modulesDirectory = null)
+    {
+        _modulesDirectory = modulesDirectory ?? Path.Combine(AppContext.BaseDirectory, "Modules");
+    }
+
+    /// <summary>Warnungen und Fehler beim Laden der Module (z. B. winget-Modul fehlt).</summary>
+    public IReadOnlyList<string> StartupMessages { get; private set; } = [];
+
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_runspace is not null)
+            {
+                return;
+            }
+
+            var core = FindModuleManifest(CoreModuleName)
+                ?? throw new FileNotFoundException($"Kern-Modul nicht gefunden unter {_modulesDirectory}.");
+            var winget = FindModuleManifest(WinGetModuleName);
+
+            // CreateDefault enthält die eingebauten Cmdlets ohne Modulsuche; die App bringt kein $PSHOME mit.
+            var state = InitialSessionState.CreateDefault();
+            // Nur für diese Sitzung: Das Modul ist nicht signiert. Systemweit ändert sich nichts.
+            state.ExecutionPolicy = Microsoft.PowerShell.ExecutionPolicy.Bypass;
+            state.ThreadOptions = PSThreadOptions.ReuseThread;
+
+            var runspace = RunspaceFactory.CreateRunspace(state);
+            runspace.ApartmentState = ApartmentState.MTA;
+            await Task.Run(runspace.Open, cancellationToken).ConfigureAwait(false);
+
+            var messages = new List<string>();
+            // Mitgelieferte Module mit vollem Pfad laden, damit keine andere installierte Version gewinnt.
+            if (winget is not null)
+            {
+                messages.AddRange(await ImportAsync(runspace, winget, required: false).ConfigureAwait(false));
+            }
+            else
+            {
+                messages.Add($"Mitgeliefertes Modul {WinGetModuleName} fehlt; winget-Daten sind nicht verfügbar.");
+            }
+            messages.AddRange(await ImportAsync(runspace, core, required: true).ConfigureAwait(false));
+
+            StartupMessages = messages;
+            _runspace = runspace;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<PowerShellResult> InvokeAsync(PSCommand command, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var runspace = _runspace ?? throw new InvalidOperationException("PowerShellHost ist nicht initialisiert.");
+
+        await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            using var ps = PowerShell.Create();
+            ps.Runspace = runspace;
+            ps.Commands = command;
+            if (progress is not null)
+            {
+                ps.Streams.Progress.DataAdded += (_, e) =>
+                {
+                    var record = ps.Streams.Progress[e.Index];
+                    if (record.RecordType != ProgressRecordType.Completed)
+                    {
+                        progress.Report(string.IsNullOrWhiteSpace(record.StatusDescription) ? record.Activity : $"{record.Activity}: {record.StatusDescription}");
+                    }
+                };
+            }
+
+            using var registration = cancellationToken.Register(() => ps.BeginStop(null, null));
+            var output = new List<PSObject>();
+            var errors = new List<string>();
+            var cancelled = false;
+            try
+            {
+                output.AddRange(await Task.Run(() => ps.Invoke(), CancellationToken.None).ConfigureAwait(false));
+            }
+            catch (PipelineStoppedException)
+            {
+                cancelled = true;
+            }
+            catch (RuntimeException ex)
+            {
+                errors.Add(ex.ErrorRecord?.ToString() ?? ex.Message);
+            }
+
+            errors.AddRange(ps.Streams.Error.Select(e => e.ToString()));
+            var warnings = ps.Streams.Warning.Select(w => w.Message).ToList();
+            if (cancelled || cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
+            return new PowerShellResult(output, errors, warnings);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        _runspace?.Dispose();
+        _lock.Dispose();
+    }
+
+    private string? FindModuleManifest(string name)
+    {
+        var root = Path.Combine(_modulesDirectory, name);
+        if (!Directory.Exists(root))
+        {
+            return null;
+        }
+        // Mit oder ohne Versionsordner (Modules\Name\1.2.3\Name.psd1).
+        return Directory.EnumerateFiles(root, name + ".psd1", SearchOption.AllDirectories)
+            .OrderByDescending(p => p, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+    }
+
+    private static Task<List<string>> ImportAsync(Runspace runspace, string manifest, bool required) => Task.Run(() =>
+    {
+        using var ps = PowerShell.Create();
+        ps.Runspace = runspace;
+        ps.AddCommand("Import-Module").AddParameter("Name", manifest).AddParameter("Force");
+        var messages = new List<string>();
+        try
+        {
+            ps.Invoke();
+        }
+        catch (RuntimeException ex) when (!required)
+        {
+            messages.Add($"Modul {Path.GetFileNameWithoutExtension(manifest)} konnte nicht geladen werden: {ex.Message}");
+        }
+        if (required && ps.HadErrors && ps.Streams.Error.Count > 0)
+        {
+            throw new InvalidOperationException($"Kern-Modul konnte nicht geladen werden: {ps.Streams.Error[0]}");
+        }
+        messages.AddRange(ps.Streams.Error.Select(e => $"Modul {Path.GetFileNameWithoutExtension(manifest)}: {e}"));
+        messages.AddRange(ps.Streams.Warning.Select(w => w.Message));
+        return messages;
+    });
+}
