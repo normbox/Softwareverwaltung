@@ -14,6 +14,8 @@ function Set-InventorySetting {
         Einzuschaltende Bereiche: RegistryMachine, RegistryUser, Winget, Appx,
         UserAssist, Process, Autostart, ScheduledTask sowie die externen Dienste
         WingetSearch, GitHub, NVD, KEV, EPSS. Externe Dienste schaltet keine Vorlage ein.
+        RestorePoint: vor jedem Aktualisieren/Deinstallieren einen Wiederherstellungspunkt
+        anlegen (eigene UAC-Abfrage). Keine Vorlage schaltet ihn ein.
     .PARAMETER Disable
         Auszuschaltende Bereiche (gleiche Namen wie -Enable).
     .PARAMETER ScanPath
@@ -27,6 +29,10 @@ function Set-InventorySetting {
         $false schaltet die Herstellerordner-Regel und den Abgleich über Name/Version ab
         (mehr Treffer). Feste Systemausschlüsse und Ordner installierter Programme bleiben.
         Standard: $true. Vorlagen ändern den Wert nicht.
+    .PARAMETER LogRetentionDays
+        Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
+    .PARAMETER LogMaxSizeMB
+        Obergrenze für Logs und Zwischenspeicher zusammen; darüber wird das Älteste zuerst gelöscht. Standard: 100.
     .PARAMETER Reset
         Setzt alles auf den Ausgangszustand zurück: aus, keine eigenen Ausschlüsse,
         SmartExclusions an (Usage bleibt erhalten).
@@ -46,11 +52,11 @@ function Set-InventorySetting {
         [string] $Preset,
 
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
-            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')]
+            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint')]
         [string[]] $Enable = @(),
 
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
-            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')]
+            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint')]
         [string[]] $Disable = @(),
 
         [AllowEmptyCollection()]
@@ -67,6 +73,12 @@ function Set-InventorySetting {
         [string[]] $ExcludePath,
 
         [bool] $SmartExclusions,
+
+        [ValidateRange(1, 3650)]
+        [int] $LogRetentionDays,
+
+        [ValidateRange(1, 102400)]
+        [int] $LogMaxSizeMB,
 
         [ValidateSet('Private', 'Company')]
         [string] $Usage,
@@ -109,6 +121,8 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('ComputeHash')) { $setting.FileScan.ComputeHash = $ComputeHash }
     if ($PSBoundParameters.ContainsKey('ExcludePath')) { $setting.FileScan.ExcludePaths = [string[]] @($ExcludePath | Where-Object { $_ }) }
     if ($PSBoundParameters.ContainsKey('SmartExclusions')) { $setting.FileScan.SmartExclusions = $SmartExclusions }
+    if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }
+    if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
 
     if ($PSCmdlet.ShouldProcess((Get-SettingsPath), 'Einstellungen speichern')) {
@@ -119,6 +133,9 @@ function Set-InventorySetting {
 
 function Set-SettingSwitch {
     param($Setting, [string] $Name, [bool] $Value)
-    $group = if ($Name -in $script:InstalledSources) { 'Sources' } elseif ($Name -in $script:ServiceSources) { 'Services' } else { 'Traces' }
+    $group = if ($Name -in $script:InstalledSources) { 'Sources' }
+    elseif ($Name -in $script:ServiceSources) { 'Services' }
+    elseif ($Name -in $script:ActionOptions) { 'Actions' }
+    else { 'Traces' }
     $Setting.$group.$Name = $Value
 }

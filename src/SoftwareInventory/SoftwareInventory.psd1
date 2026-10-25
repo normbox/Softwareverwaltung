@@ -25,6 +25,7 @@
         'Remove-CpeMapping'
         'Get-SecurityRating'
         'Export-SecurityReport'
+        'Get-ActionLog'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
