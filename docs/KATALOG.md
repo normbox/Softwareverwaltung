@@ -29,6 +29,7 @@ Der Katalog liegt unter `src/SoftwareInventory/Catalog/` und wird mit dem Modul 
 | `GitHub.Repository` | nein | `owner/repo`; abgefragt wird `releases/latest` (ohne Vorabversionen) |
 | `GitHub.TagPattern` | nein | regulärer Ausdruck mit Gruppe `(?<version>…)`, falls der Tag nicht `v1.2.3` oder `1.2.3` lautet (z. B. `Audacity-4.0.1`) |
 | `Cpe` | nein | CPE-Namen ohne Version, z. B. `cpe:2.3:a:videolan:vlc_media_player`; Sonderzeichen wie in der NVD mit `\` (`notepad\+\+`). Mehrere Einträge, wenn die NVD das Produkt unter verschiedenen Herstellern führt. Prüfen unter `https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=<cpe>` |
+| `CpeVersionPattern` | nein | regulärer Ausdruck mit Gruppe `(?<version>…)`, der eine produkteigene Versionsangabe vor der NVD-Abfrage umrechnet. Beispiel Python: Die Dateiversion `3.13.15150.0` bedeutet 3.13.15 (Release-Stufe und Serie sind angehängt). Passt das Muster nicht, wird die Version unverändert verwendet. |
 | `Kev` | nein | Zuordnung zum CISA-KEV-Katalog: `Vendor` (exakt wie `vendorProject` im Feed, Groß-/Kleinschreibung egal) und `ProductPattern` (regulärer Ausdruck auf `product`, da der Feed Sammelangaben wie „Firefox, Firefox ESR, and Thunderbird“ enthält). Gleicht KEV-Einträge aus, die in der NVD noch keine Versionsdaten haben. |
 
 ## Zuordnung
