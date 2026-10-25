@@ -4,7 +4,8 @@
 .DESCRIPTION
     Erzeugt eine .wsb-Datei mit den Pfaden dieses Repositorys und startet Windows Sandbox.
     Das Repository wird schreibgeschützt eingebunden; Ergebnisse landen in tests\Sandbox\out.
-    In der Sandbox läuft Invoke-ActionSandboxTest.ps1 automatisch an.
+    In der Sandbox läuft Invoke-ActionSandboxTest.ps1 automatisch in einem sichtbaren Konsolenfenster an.
+    Der Anmeldebefehl geht über explorer.exe, weil Windows Sandbox ihn sonst unsichtbar ausführt.
     Voraussetzung: Windows 10/11 Pro oder Enterprise mit aktivierter Funktion „Windows-Sandbox“.
     Auf dem eigenen Rechner wird nichts installiert oder deinstalliert.
 .EXAMPLE
@@ -39,7 +40,7 @@ $wsb = @"
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -NoExit -File C:\Repo\tests\Sandbox\Invoke-ActionSandboxTest.ps1</Command>
+    <Command>explorer.exe C:\Repo\tests\Sandbox\Start-InSandbox.cmd</Command>
   </LogonCommand>
 </Configuration>
 "@

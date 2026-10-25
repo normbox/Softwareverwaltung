@@ -155,7 +155,7 @@ Den echten Ablauf prüft ein Skript in Windows Sandbox. Dafür muss die Windows-
 .\tests\Sandbox\Start-ActionSandbox.ps1
 ```
 
-Das Repository wird schreibgeschützt eingebunden. In der Sandbox läuft dann automatisch Folgendes ab:
+Das Repository wird schreibgeschützt eingebunden. In der Sandbox öffnet sich ein Konsolenfenster, in dem automatisch Folgendes abläuft. Eingreifen ist nicht nötig. Es darf nur eine Sandbox gleichzeitig laufen, eine alte also vorher schließen.
 
 1. PowerShell 7.6.8 und winget 1.29.380 werden aus den offiziellen GitHub-Releases geladen. Das Skript prüft den fest hinterlegten SHA256 und bei der MSI zusätzlich die Microsoft-Signatur. MSIX-Pakete prüft `Add-AppxPackage` selbst. Danach wird beides installiert.
 2. Das Skript installiert Testprogramme und spielt die Aktionen durch:
@@ -163,7 +163,7 @@ Das Repository wird schreibgeschützt eingebunden. In der Sandbox läuft dann au
    - WinMerge: Deinstallation über `QuietUninstallString`
    - Oh My Posh im Benutzerbereich: Deinstallation über winget ohne Adminrechte
    - eine Store-App, falls vorhanden
-3. Die Ergebnisse stehen in der Konsole und in `tests\Sandbox\out\ergebnis-<Zeit>.json`.
+3. Die Ergebnisse stehen in der Konsole und in `tests\Sandbox\out\ergebnis-<Zeit>.json`, die Konsolenausgabe in `konsole-<Phase>-<Zeit>.txt`. Steht „Fertig“ in der Konsole, kann die Sandbox geschlossen werden.
 
 Die Sandbox-Anmeldung ist bereits Administrator. Den Fall „UAC über ein anderes Adminkonto“ deckt sie deshalb nicht ab. Dafür einmal manuell auf einer VM mit einem Standardbenutzer prüfen:
 
