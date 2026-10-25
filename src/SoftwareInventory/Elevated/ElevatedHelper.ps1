@@ -76,10 +76,18 @@ function Invoke-RestorePoint {
         $code = [long] $call.ReturnValue
     }
     catch {
+        # Dienst deaktiviert kommt meist als Ausnahme (HRESULT 0x80070422), nicht als Rückgabewert.
+        $codes = foreach ($e in @($_.Exception, $_.Exception.InnerException) | Where-Object { $_ }) {
+            $e.HResult
+            if ($e.PSObject.Properties['NativeErrorCode']) { $e.NativeErrorCode }
+        }
+        if (@($codes) | Where-Object { $_ -in $script:RestoreUnavailableCodes }) {
+            return @{ Status = 'NotAvailable'; Message = "Computerschutz ist ausgeschaltet oder der Dienst deaktiviert: $($_.Exception.Message)" }
+        }
         return @{ Status = 'Failed'; Message = "Wiederherstellungspunkt fehlgeschlagen: $($_.Exception.Message)" }
     }
 
-    if ($code -eq 1058 -or $code -eq 1068 -or $code -eq -2147023838) {
+    if ($code -in $script:RestoreUnavailableCodes) {
         return @{ Status = 'NotAvailable'; Message = 'Computerschutz ist ausgeschaltet oder der Dienst deaktiviert' }
     }
     if ($code -ne 0) {
@@ -94,6 +102,9 @@ function Invoke-RestorePoint {
     }
     @{ Status = 'Skipped'; Message = 'Windows hat keinen neuen Punkt angelegt; meist, weil in den letzten 24 Stunden schon einer angelegt wurde' }
 }
+
+# 1058/1068 als Win32-Code und als HRESULT (0x80070422, 0x8007042C): Dienst deaktiviert bzw. Abhängigkeit fehlt.
+$script:RestoreUnavailableCodes = @(1058, 1068, -2147023838, -2147023828)
 
 function Test-HelperFilePath {
     # Letzte Prüfung im Helfer. Die ACL-Prüfung (Test-UserWritablePath) erfolgt vorher ohne

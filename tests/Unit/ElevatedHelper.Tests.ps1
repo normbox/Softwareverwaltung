@@ -43,6 +43,20 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         $r.Message | Should -Match 'Computerschutz'
     }
 
+    It 'meldet NotAvailable, wenn der deaktivierte Dienst als Ausnahme kommt (0x80070422)' {
+        Mock Get-CimInstance { @() }
+        Mock Invoke-CimMethod { throw [System.Runtime.InteropServices.COMException]::new('Dienst deaktiviert', -2147023838) }
+        $r = Invoke-RestorePoint -Description 'Test' -Type 1
+        $r.Status | Should -Be 'NotAvailable'
+        $r.Message | Should -Match 'Computerschutz'
+    }
+
+    It 'meldet NotAvailable bei Win32-Fehler 1058 als Ausnahme' {
+        Mock Get-CimInstance { @() }
+        Mock Invoke-CimMethod { throw [System.ComponentModel.Win32Exception]::new(1058) }
+        (Invoke-RestorePoint -Description 'Test' -Type 1).Status | Should -Be 'NotAvailable'
+    }
+
     It 'meldet NotAvailable, wenn die Klasse fehlt' {
         Mock Get-CimInstance { throw 'Ungültige Klasse' }
         (Invoke-RestorePoint -Description 'Test' -Type 1).Status | Should -Be 'NotAvailable'
