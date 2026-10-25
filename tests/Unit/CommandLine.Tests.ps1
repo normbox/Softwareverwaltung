@@ -67,6 +67,17 @@ Describe 'Test-UserWritablePath' {
         InModuleScope SoftwareInventory { Test-UserWritablePath "$env:USERPROFILE\Downloads\setup.exe" } | Should -BeTrue
     }
 
+    It 'zählt Administratoren, SYSTEM und TrustedInstaller nicht als Benutzer (App läuft bereits erhöht)' {
+        InModuleScope SoftwareInventory {
+            Test-PrivilegedSid 'S-1-5-32-544' | Should -BeTrue
+            Test-PrivilegedSid 'S-1-5-18' | Should -BeTrue
+            Test-PrivilegedSid 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464' | Should -BeTrue
+            Test-PrivilegedSid 'S-1-5-32-545' | Should -BeFalse
+            Test-PrivilegedSid 'S-1-5-11' | Should -BeFalse
+            Test-PrivilegedSid ([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value) | Should -BeFalse
+        }
+    }
+
     It 'erkennt System32 als geschützt' {
         InModuleScope SoftwareInventory { Test-UserWritablePath (Join-Path ([Environment]::GetFolderPath('System')) 'msiexec.exe') } | Should -BeFalse
     }

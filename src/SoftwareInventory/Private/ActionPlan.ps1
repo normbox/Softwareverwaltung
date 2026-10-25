@@ -59,10 +59,13 @@ function Get-AppxPackageByFamily {
 
 function Get-WingetInstalledVersion {
     # Installierte Version laut winget, oder $null (nicht installiert oder Modul fehlt).
-    param([string] $Id)
+    # Mit Quelle, sonst scheitert die Abfrage ganz, wenn eine andere Quelle (z. B. msstore) gestört ist.
+    param([string] $Id, [string] $Source)
     if (-not (Get-Command Get-WinGetPackage -ErrorAction SilentlyContinue)) { return $null }
+    $query = @{ Id = $Id; MatchOption = 'Equals' }
+    if ($Source) { $query.Source = $Source }
     try {
-        $pkg = Get-WinGetPackage -Id $Id -MatchOption Equals -ErrorAction Stop | Select-Object -First 1
+        $pkg = Get-WinGetPackage @query -ErrorAction Stop | Select-Object -First 1
         if ($pkg) { [string] $pkg.InstalledVersion }
     }
     catch {
@@ -127,7 +130,12 @@ function Get-InstalledState {
     }
 
     if ($wingetId) {
-        $state.WingetVersion = Get-WingetInstalledVersion $wingetId
+        $state.WingetVersion = Get-WingetInstalledVersion $wingetId (Get-RecordValue $Record 'WingetSource')
+        if ($state.Identity -eq 'Registry' -and -not $state.Present -and $state.WingetVersion) {
+            # Schlüssel weg, Paket laut winget aber da: typisch für MSI-Updates mit neuem ProductCode.
+            $state.Present = $true
+            $state.Version = $state.WingetVersion
+        }
         if (-not $state.Identity) {
             $state.Identity = 'Winget'
             $state.Present = [bool] $state.WingetVersion

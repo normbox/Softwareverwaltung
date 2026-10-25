@@ -96,9 +96,10 @@ function Invoke-RestorePoint {
 }
 
 function Test-HelperFilePath {
-    # Letzte Prüfung im erhöhten Prozess. Die ACL-Prüfung (Test-UserWritablePath) erfolgt vorher
-    # ohne Adminrechte; hier zusätzlich: keine Benutzer- oder Temp-Ordner, winget nur aus WindowsApps.
-    param([string] $FilePath)
+    # Letzte Prüfung im Helfer. Die ACL-Prüfung (Test-UserWritablePath) erfolgt vorher ohne
+    # Adminrechte; hier zusätzlich: winget nur aus WindowsApps und, nur wenn erhöht wurde, keine
+    # Benutzer- oder Temp-Ordner. Ohne Erhöhung liegen Programme des Benutzers (HKCU) genau dort.
+    param([string] $FilePath, [bool] $Elevated = $true)
     if (-not $FilePath -or -not [System.IO.Path]::IsPathRooted($FilePath)) { return 'Programmpfad fehlt oder ist nicht absolut' }
     $full = [System.IO.Path]::GetFullPath($FilePath)
     if ([System.IO.Path]::GetFileName($full) -ieq 'winget.exe') {
@@ -111,7 +112,7 @@ function Test-HelperFilePath {
     $blocked = @((Join-Path $env:SystemDrive 'Users'), (Join-Path $env:windir 'Temp'), [System.IO.Path]::GetTempPath()) |
         ForEach-Object { $_.TrimEnd('\') + '\' }
     foreach ($root in $blocked) {
-        if ($full.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { return "Programm liegt in einem Benutzer- oder Temp-Ordner ($full)" }
+        if ($Elevated -and $full.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { return "Programm liegt in einem Benutzer- oder Temp-Ordner ($full)" }
     }
     if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return "Programmdatei nicht gefunden: $full" }
     $null
@@ -205,7 +206,9 @@ function Invoke-ElevatedHelperMain {
             $result.RestorePointMessage = $rp.Message
         }
         if ($plan.FilePath) {
-            $problem = Test-HelperFilePath $plan.FilePath
+            # Fehlt die Angabe (ältere App), gilt die strengere Prüfung für erhöhte Aufrufe.
+            $elevated = -not ($plan.PSObject.Properties['Elevate'] -and $plan.Elevate -eq $false)
+            $problem = Test-HelperFilePath $plan.FilePath -Elevated $elevated
             if ($problem) { $result.Error = $problem }
             else { Invoke-HelperProcess -Plan $plan -Result $result }
         }

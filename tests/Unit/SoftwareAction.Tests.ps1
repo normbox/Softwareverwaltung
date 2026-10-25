@@ -161,7 +161,7 @@ Describe 'Update-Software und Uninstall-Software' {
             $r = $userRecord | Uninstall-Software -Confirm:$false
             $r.Result | Should -Be 'Succeeded'
             $r.Elevated | Should -BeFalse
-            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $NoElevation }
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $NoElevation -and -not $HelperPlan.Elevate }
         }
 
         It 'entfernt Store-Apps im Benutzerkontext ohne Helfer' {
@@ -229,6 +229,17 @@ Describe 'Update-Software und Uninstall-Software' {
             $r.VersionBefore | Should -Be '2.1.0'
             $r.VersionAfter | Should -Be '2.2.0'
             Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $HelperPlan.Arguments -like 'upgrade --id Contoso.Tool --exact --source winget*' }
+        }
+
+        It 'erkennt ein MSI-Update mit neuem ProductCode über winget' {
+            $script:wingetVersion = '2.1.0'
+            Mock -ModuleName SoftwareInventory Get-WingetInstalledVersion -ParameterFilter { $Id -eq 'Contoso.Tool' -and $Source -eq 'winget' } { $script:wingetVersion }
+            Set-HelperResult @{ ExitCode = 0 } { Remove-Item "$Machine\$Guid"; $script:wingetVersion = '2.2.0' }
+            $r = $wingetRecord | Update-Software -Confirm:$false
+            $r.Result | Should -Be 'Succeeded'
+            $r.VersionAfter | Should -Be '2.2.0'
+            $r.PresentAfter | Should -BeTrue
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $HelperPlan.Elevate }
         }
 
         It 'meldet NotVerified, wenn die Version gleich bleibt' {

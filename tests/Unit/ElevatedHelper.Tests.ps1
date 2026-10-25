@@ -74,6 +74,14 @@ Describe 'Helferskript: Prüfungen' {
         Test-HelperFilePath 'x.exe' | Should -Match 'nicht absolut'
     }
 
+    It 'erlaubt Programme im Benutzerordner nur ohne Erhöhung (HKCU-Programme)' {
+        $exe = Join-Path $TestDrive 'unins000.exe'
+        Set-Content -LiteralPath $exe -Value 'x'
+        Test-HelperFilePath $exe | Should -Match 'Benutzer- oder Temp'
+        Test-HelperFilePath $exe -Elevated $true | Should -Match 'Benutzer- oder Temp'
+        Test-HelperFilePath $exe -Elevated $false | Should -BeNullOrEmpty
+    }
+
     It 'lehnt winget außerhalb von WindowsApps mit klarer Meldung ab' {
         Test-HelperFilePath "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe" | Should -Match 'winget wurde im Administratorkontext nicht gefunden'
     }

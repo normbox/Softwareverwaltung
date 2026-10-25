@@ -91,6 +91,12 @@ function Format-CommandLine {
     if ($Arguments) { "$quoted $Arguments" } else { $quoted }
 }
 
+function Test-PrivilegedSid {
+    # Administratoren, SYSTEM und TrustedInstaller: Wer diese Rechte hat, braucht keinen Umweg über eine Datei.
+    param([string] $Sid)
+    $Sid -in 'S-1-5-32-544', 'S-1-5-18', 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464'
+}
+
 function Test-UserWritablePath {
     <#
     .SYNOPSIS
@@ -111,9 +117,12 @@ function Test-UserWritablePath {
 
     $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     # Groups enthält nur aktive Gruppen; im Token ohne Adminrechte zählt „Administratoren“ also nicht.
+    # Läuft die App bereits erhöht (z. B. UAC aus), sind die Gruppen aktiv. Schreibrechte dieser
+    # Konten sind aber keine Gefahr, sonst gälte jede Datei unter „Programme“ als beschreibbar.
     $sids = [System.Collections.Generic.HashSet[string]]::new()
-    [void] $sids.Add($identity.User.Value)
-    foreach ($g in $identity.Groups) { [void] $sids.Add($g.Value) }
+    foreach ($sid in @($identity.User.Value) + @($identity.Groups | ForEach-Object Value)) {
+        if (-not (Test-PrivilegedSid $sid)) { [void] $sids.Add($sid) }
+    }
 
     $write = [System.Security.AccessControl.FileSystemRights] 'WriteData, AppendData, WriteAttributes, WriteExtendedAttributes, Delete, DeleteSubdirectoriesAndFiles, ChangePermissions, TakeOwnership'
     foreach ($target in @($full, [System.IO.Path]::GetDirectoryName($full))) {

@@ -138,7 +138,7 @@ function Invoke-ActionPlan {
         }
         else {
             $helperPlan = @{
-                FilePath = $Plan.FilePath; Arguments = $Plan.Arguments; MsiLog = $Plan.MsiLog
+                FilePath = $Plan.FilePath; Arguments = $Plan.Arguments; MsiLog = $Plan.MsiLog; Elevate = [bool] $Plan.Elevated
                 RestorePoint = [bool] ($Plan.RestorePoint -and $Plan.Elevated)
                 RestorePointDescription = Get-RestorePointDescription $Plan; RestorePointType = $script:RestorePointType[$Plan.Action]
             }
