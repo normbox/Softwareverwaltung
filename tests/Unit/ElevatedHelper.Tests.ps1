@@ -51,6 +51,15 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         $r.Message | Should -Match 'Computerschutz'
     }
 
+    It 'erkennt vorzeichenlose HRESULTs und nennt unbekannte Codes in der Meldung' {
+        Get-ExceptionErrorCode ([System.Runtime.InteropServices.COMException]::new('x', -2147023838)) | Should -Contain -2147023838
+        Mock Get-CimInstance { @() }
+        Mock Invoke-CimMethod { throw [System.Runtime.InteropServices.COMException]::new('anders', -2147024891) }
+        $r = Invoke-RestorePoint -Description 'Test' -Type 1
+        $r.Status | Should -Be 'Failed'
+        $r.Message | Should -Match '0x80070005'
+    }
+
     It 'meldet NotAvailable bei Win32-Fehler 1058 als Ausnahme' {
         Mock Get-CimInstance { @() }
         Mock Invoke-CimMethod { throw [System.ComponentModel.Win32Exception]::new(1058) }

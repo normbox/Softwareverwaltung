@@ -76,15 +76,13 @@ function Invoke-RestorePoint {
         $code = [long] $call.ReturnValue
     }
     catch {
-        # Dienst deaktiviert kommt meist als Ausnahme (HRESULT 0x80070422), nicht als Rückgabewert.
-        $codes = foreach ($e in @($_.Exception, $_.Exception.InnerException) | Where-Object { $_ }) {
-            $e.HResult
-            if ($e.PSObject.Properties['NativeErrorCode']) { $e.NativeErrorCode }
-        }
-        if (@($codes) | Where-Object { $_ -in $script:RestoreUnavailableCodes }) {
+        # Dienst deaktiviert kommt meist als Ausnahme, nicht als Rückgabewert.
+        $codes = @(Get-ExceptionErrorCode $_.Exception)
+        if ($codes | Where-Object { $_ -in $script:RestoreUnavailableCodes }) {
             return @{ Status = 'NotAvailable'; Message = "Computerschutz ist ausgeschaltet oder der Dienst deaktiviert: $($_.Exception.Message)" }
         }
-        return @{ Status = 'Failed'; Message = "Wiederherstellungspunkt fehlgeschlagen: $($_.Exception.Message)" }
+        $hex = ($codes | ForEach-Object { '0x{0:X8}' -f $_ }) -join ', '
+        return @{ Status = 'Failed'; Message = "Wiederherstellungspunkt fehlgeschlagen: $($_.Exception.Message) (Codes: $hex)" }
     }
 
     if ($code -in $script:RestoreUnavailableCodes) {
@@ -105,6 +103,33 @@ function Invoke-RestorePoint {
 
 # 1058/1068 als Win32-Code und als HRESULT (0x80070422, 0x8007042C): Dienst deaktiviert bzw. Abhängigkeit fehlt.
 $script:RestoreUnavailableCodes = @(1058, 1068, -2147023838, -2147023828)
+
+function Get-ExceptionErrorCode {
+    <#
+    .SYNOPSIS
+        Fehlercodes einer Ausnahme als vorzeichenbehaftete 32-Bit-Zahlen.
+    .DESCRIPTION
+        HResult, NativeErrorCode (Win32Exception) und bei CimException die Codes aus ErrorData
+        (dort oft vorzeichenlos, z. B. 2147943458 statt -2147023838).
+    #>
+    param($Exception)
+    foreach ($e in @($Exception, $Exception.InnerException) | Where-Object { $_ }) {
+        $values = @($e.HResult)
+        if ($e.PSObject.Properties['NativeErrorCode'] -and $e.NativeErrorCode -is [int]) { $values += $e.NativeErrorCode }
+        if ($e.PSObject.Properties['ErrorData'] -and $e.ErrorData) {
+            foreach ($p in $e.ErrorData.CimInstanceProperties) {
+                if ($p.Name -match 'error_?Code|HResult|StatusCode' -and $null -ne $p.Value) { $values += $p.Value }
+            }
+        }
+        foreach ($v in $values) {
+            $n = 0L
+            if ([long]::TryParse([string] $v, [ref] $n) -and $n -ne 0) {
+                if ($n -gt [int]::MaxValue -and $n -le [uint32]::MaxValue) { $n -= 4294967296L }
+                [int] $n
+            }
+        }
+    }
+}
 
 function Test-HelperFilePath {
     # Letzte Prüfung im Helfer. Die ACL-Prüfung (Test-UserWritablePath) erfolgt vorher ohne
