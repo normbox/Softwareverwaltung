@@ -26,6 +26,8 @@
         'Get-SecurityRating'
         'Export-SecurityReport'
         'Get-ActionLog'
+        'Update-Software'
+        'Uninstall-Software'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

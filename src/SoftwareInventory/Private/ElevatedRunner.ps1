@@ -85,7 +85,8 @@ function Start-ElevatedHelper {
         Hashtable: Status (Completed|ElevationDenied|Failed) und die Felder des Helfers
         (RestorePoint, ExitCode, TimedOut, Output, InstallerLog, Error).
     .PARAMETER NoElevation
-        Nur für Tests: startet den Helfer ohne UAC und lässt den aktuellen Benutzer an die Pipe.
+        Startet den Helfer ohne UAC im aktuellen Benutzer und lässt diesen an die Pipe. So laufen
+        Aktionen ohne Adminrechte (HKCU, unbekannter Bereich) über denselben Weg.
     #>
     param(
         [Parameter(Mandatory)] [hashtable] $HelperPlan,
