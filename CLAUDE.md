@@ -17,6 +17,7 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 - **Keine Zusatzinstallation für Endbenutzer.** Die WPF-App wird self-contained veröffentlicht (.NET-Laufzeit enthalten). PowerShell läuft eingebettet über Microsoft.PowerShell.SDK; ein separat installiertes PowerShell 7 darf nicht vorausgesetzt werden. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
 - **Alles manuell einstellbar, keine Automatik nach Einsatzart.** Externe Dienste, KI-Anbieter, Freigabestufen und Scan-Bereiche (welche Ordner, Registry-Zweige, Nutzungsspuren) sind standardmäßig aus und werden einzeln vom Benutzer aktiviert, für alle gleich. Beim ersten Start wird „Privat“ oder „Firma“ abgefragt und gespeichert, aber nur als Information (z. B. für Lizenzhinweise oder spätere Funktionen). Es schaltet nichts automatisch frei oder ab.
 - Schwerpunkt Sicherheit + KI. Keine eigene Paketverwaltung nachbauen: Updates und Deinstallation über winget (Fallback Registry/msiexec/Appx).
+- **Logs und Zwischenspeicher räumen sich selbst auf.** Alle Logs (Aktionsprotokoll, MSI-/Installer-Logs, Cache) liegen in einem eigenen App-Ordner und werden beim Start bereinigt: höchstens N Tage alt und höchstens X MB insgesamt, beides einstellbar (Standard: 30 Tage, 100 MB). Ältestes zuerst löschen. Installer-Logs nach erfolgreicher Aktion sofort löschen, nur bei Fehlern (komprimiert) länger aufheben. Keine Logs in Temp liegen lassen. Mit Tests absichern.
 
 ## Sicherheitsprinzipien
 
