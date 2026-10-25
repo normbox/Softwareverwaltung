@@ -138,9 +138,9 @@ Install-PSResource -Name Microsoft.WinGet.Client -Version $WingetClientVersion -
 Import-Module C:\Repo\src\SoftwareInventory -Force
 Set-InventorySetting -Enable RegistryMachine, RegistryUser, Winget, Appx | Out-Null
 
-# 1. Aktualisieren über winget mit Adminrechten (7-Zip als MSI in alter Version)
-Install-TestPackage @('--id', '7zip.7zip', '--exact', '--version', '24.08', '--installer-type', 'msi', '--scope', 'machine')
-$sevenZip = Find-Program { $_.Name -like '7-Zip*' }
+# 1. Aktualisieren über winget mit Adminrechten (7-Zip als MSI in alter Version; winget nennt den Typ „wix“)
+Install-TestPackage @('--id', '7zip.7zip', '--exact', '--version', '24.09', '--installer-type', 'wix', '--scope', 'machine')
+$sevenZip = Find-Program { $_.Name -like '7-Zip*' -and $_.RegistryKey }
 Add-Check '7-Zip installiert' ([bool] $sevenZip) "$($sevenZip.Name) $($sevenZip.Version), ProductCode $($sevenZip.ProductCode)"
 if ($sevenZip) {
     $plan = $sevenZip | Update-Software -WhatIf
@@ -149,7 +149,7 @@ if ($sevenZip) {
     Add-Check 'Update über winget (erhöht)' ($r.Result -in 'Succeeded', 'SucceededRebootRequired') "$($r.Result): $($r.VersionBefore) -> $($r.VersionAfter) $($r.Message)"
 
     # 2. Deinstallieren über MSI mit Wiederherstellungspunkt (in der Sandbox meist nicht verfügbar)
-    $sevenZip = Find-Program { $_.Name -like '7-Zip*' }
+    $sevenZip = Find-Program { $_.Name -like '7-Zip*' -and $_.RegistryKey }
     $r = $sevenZip | Uninstall-Software -Method Msi -CreateRestorePoint -Confirm:$false
     Add-Check 'Deinstallation über MSI' ($r.Result -eq 'Succeeded' -and $r.PresentAfter -eq $false) "$($r.Result) $($r.Message)"
     Add-Check 'Wiederherstellungspunkt gemeldet' ($r.RestorePoint -in 'Created', 'Skipped', 'NotAvailable', 'Failed' -and $r.RestorePointMessage) "$($r.RestorePoint): $($r.RestorePointMessage)"
@@ -160,7 +160,8 @@ if ($sevenZip) {
 
 # 3. QuietUninstallString aus HKLM (Inno Setup)
 Install-TestPackage @('--id', 'WinMerge.WinMerge', '--exact', '--scope', 'machine')
-$winMerge = Find-Program { $_.Name -like 'WinMerge*' }
+# WinMerge bringt zusätzlich ein MSIX-Paket für das Kontextmenü mit; gesucht ist der Registry-Eintrag.
+$winMerge = Find-Program { $_.Name -like 'WinMerge*' -and $_.RegistryKey }
 if ($winMerge) {
     $r = $winMerge | Uninstall-Software -Method QuietUninstallString -Confirm:$false
     Add-Check 'Deinstallation über QuietUninstallString' ($r.Result -eq 'Succeeded' -and $r.Elevated) "$($r.Result) $($r.CommandLine)"
@@ -168,13 +169,13 @@ if ($winMerge) {
 else { Add-Check 'WinMerge installiert' $false 'nicht gefunden' }
 
 # 4. Programm des Benutzers (HKCU) über winget ohne Adminrechte
-Install-TestPackage @('--id', 'JanDeDobbeleer.OhMyPosh', '--exact', '--scope', 'user')
-$userApp = Find-Program { $_.Name -like 'Oh My Posh*' }
+Install-TestPackage @('--id', 'WinSCP.WinSCP', '--exact', '--scope', 'user')
+$userApp = Find-Program { $_.Name -like 'WinSCP*' -and $_.RegistryKey }
 if ($userApp) {
     $r = $userApp | Uninstall-Software -Confirm:$false
     Add-Check 'Deinstallation HKCU ohne Adminrechte' ($r.Result -eq 'Succeeded' -and -not $r.Elevated -and $r.Scope -eq 'User') "$($r.Result) $($r.Method) $($r.Message)"
 }
-else { Add-Check 'Oh My Posh installiert' $false 'nicht gefunden' }
+else { Add-Check 'WinSCP installiert' $false 'nicht gefunden' }
 
 # 5. Store-App (falls in der Sandbox vorhanden)
 $app = Find-Program { $_.InstallType -eq 'MSIX' -and $_.PackageFullName -and $_.Name -notlike '*DesktopAppInstaller*' -and $_.Name -notlike '*App Installer*' }

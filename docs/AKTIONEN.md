@@ -159,9 +159,9 @@ Das Repository wird schreibgeschützt eingebunden. In der Sandbox öffnet sich e
 
 1. PowerShell 7.6.8 und winget 1.29.380 werden aus den offiziellen GitHub-Releases geladen. Das Skript prüft den fest hinterlegten SHA256 und bei der MSI zusätzlich die Microsoft-Signatur. MSIX-Pakete prüft `Add-AppxPackage` selbst. Danach wird beides installiert.
 2. Das Skript installiert Testprogramme und spielt die Aktionen durch:
-   - 7-Zip 24.08 als MSI: zuerst Update über winget mit Adminrechten, danach Deinstallation über MSI mit Wiederherstellungspunkt (in der Sandbox meist `NotAvailable`) und erneut, wobei `NotInstalled` erwartet wird
+   - 7-Zip 24.09 als MSI: zuerst Update über winget mit Adminrechten, danach Deinstallation über MSI mit Wiederherstellungspunkt (in der Sandbox meist `NotAvailable`) und erneut, wobei `NotInstalled` erwartet wird
    - WinMerge: Deinstallation über `QuietUninstallString`
-   - Oh My Posh im Benutzerbereich: Deinstallation über winget ohne Adminrechte
+   - WinSCP im Benutzerbereich: Deinstallation über winget ohne Adminrechte
    - eine Store-App, falls vorhanden
 3. Die Ergebnisse stehen in der Konsole und in `tests\Sandbox\out\ergebnis-<Zeit>.json`, die Konsolenausgabe in `konsole-<Phase>-<Zeit>.txt`. Steht „Fertig“ in der Konsole, kann die Sandbox geschlossen werden.
 
