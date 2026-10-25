@@ -3,7 +3,7 @@
 Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete und unsichere Versionen erkennen soll und Updates oder Deinstallationen vorschlägt.
 
 [![Lizenz: GPLv3](https://img.shields.io/badge/Lizenz-GPLv3-blue.svg)](LICENSE)
-![Oberfläche: .NET 10 (geplant)](https://img.shields.io/badge/Oberfl%C3%A4che-.NET%2010%20(geplant)-512BD4.svg)
+![Oberfläche: .NET 10 WPF](https://img.shields.io/badge/Oberfl%C3%A4che-.NET%2010%20WPF-512BD4.svg)
 ![PowerShell 7.6](https://img.shields.io/badge/PowerShell-7.6-5391FE.svg)
 ![Plattform: Windows 10/11](https://img.shields.io/badge/Plattform-Windows%2010%2F11-0078D4.svg)
 ![Status: in Entwicklung](https://img.shields.io/badge/Status-in%20Entwicklung-orange.svg)
@@ -23,7 +23,9 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Ampel (Rot, Gelb, Grün, Grau mit Grund) und HTML-Sicherheitsbericht (`Get-SecurityRating`, `Export-SecurityReport`) | vorhanden (Etappe 2c) |
 | Weitere Schwachstellenquellen (OSV, GitHub Security Advisories) | geplant |
 | Aktualisieren über winget und Deinstallieren (winget, MSI, Store-App, Registry) mit Bestätigung, UAC nur pro Aktion, Prüfung danach, Protokoll und optionalem Wiederherstellungspunkt (`Update-Software`, `Uninstall-Software`, `Get-ActionLog`) | vorhanden (Etappe 3a) |
-| Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren | geplant |
+| Oberfläche (WPF, Fluent-Design): Hauptliste mit Ampel, Suche und Filtern, Hinweis bei fehlendem winget; läuft ohne Zusatzinstallation | vorhanden (Etappe 3b) |
+| Begleitpakete (z. B. Kontextmenü-Erweiterungen als Sparse Package) werden ihrem Programm zugeordnet | vorhanden (Etappe 3b) |
+| Details und Buttons für Aktualisieren und Deinstallieren in der Oberfläche | geplant (Etappe 3c) |
 | KI-Berater, wahlweise lokal (Ollama) oder Cloud (Claude API) | geplant |
 
 Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx). Eine eigene Paketverwaltung wird nicht nachgebaut.
@@ -31,7 +33,7 @@ Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx
 ## Grundsätze
 
 - **Alles standardmäßig aus und manuell einstellbar.** Quellen, Scan-Bereiche, externe Dienste und KI-Anbieter werden einzeln vom Benutzer aktiviert, für alle gleich. Es gibt keine Automatik nach Einsatzart. Ohne Einstellungen liest das Modul nichts.
-- **Keine Zusatzinstallation für Endbenutzer.** Die spätere App wird self-contained veröffentlicht und bettet PowerShell über `Microsoft.PowerShell.SDK` ein. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
+- **Keine Zusatzinstallation für Endbenutzer.** Die App wird self-contained veröffentlicht, bettet PowerShell über `Microsoft.PowerShell.SDK` ein und bringt das winget-Modul mit. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
 - **Die KI schlägt nur vor.** Updates und Deinstallationen werden erst nach Bestätigung in der Oberfläche ausgeführt; jede Aktion wird protokolliert.
 - **Freigabestufen für Daten an die KI** (geplant): Der Benutzer legt fest, was an ein Modell übertragen wird. Vor dem Senden an Cloud-Modelle werden Benutzername, Rechnername und Benutzerpfade entfernt.
 - **Normale Benutzerrechte.** Administratorrechte (UAC) nur für die einzelne Aktion.
@@ -48,7 +50,7 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [x] 2c. Ampel und HTML-Bericht
 - [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
   - [x] 3a. Aktionen im Modul: Aktualisieren, Deinstallieren, Protokoll, Wiederherstellungspunkt
-  - [ ] 3b. WPF-Grundgerüst mit eingebettetem Modul und Hauptliste
+  - [x] 3b. WPF-Grundgerüst mit eingebettetem Modul und Hauptliste
   - [ ] 3c. Details und Aktions-Buttons mit Bestätigung
   - [ ] 3d. Einstellungen in der Oberfläche
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
@@ -109,7 +111,21 @@ Set-InventorySetting -Enable RestorePoint                              # optiona
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Save-InventorySnapshot
 ```
 
-Fehlt `Microsoft.WinGet.Client`, warnt das Modul und liefert Registry und Store-Apps ohne winget-Daten.
+Fehlt `Microsoft.WinGet.Client`, warnt das Modul und liefert Registry und Store-Apps ohne winget-Daten. `Test-WingetAvailability` zeigt, ob winget und das Modul nutzbar sind.
+
+### Oberfläche
+
+Zusätzlich nötig: .NET SDK 10 (`winget install Microsoft.DotNet.SDK.10`). Beim ersten Build wird `Microsoft.WinGet.Client` in fester Version aus der PowerShell Gallery geladen und per SHA256 geprüft.
+
+```powershell
+dotnet build                                               # App und Tests bauen
+dotnet test                                                # Tests der App (eingebettete Engine, ViewModel)
+dotnet run --project src/Softwareverwaltung.App            # App starten
+.\build\Publish-App.ps1                                    # self-contained nach artifacts\ (Ordner und ZIP)
+.\tests\Sandbox\Start-AppSandbox.ps1                       # veröffentlichte App ohne .NET, PowerShell 7 und winget prüfen
+```
+
+Die App liest dieselben Einstellungen wie das Modul. Bis die Einstellungsseite kommt (Etappe 3d), werden Quellen mit `Set-InventorySetting` aktiviert.
 
 Tests:
 
@@ -119,6 +135,8 @@ Invoke-Pester ./tests/Integration                          # gegen das echte Sys
 .\tests\Sandbox\Start-ActionSandbox.ps1                    # Aktionen echt testen, nur in Windows Sandbox
 Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
+
+Fremdkomponenten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/BERICHT.md](docs/BERICHT.md) (Ampel und Bericht), [docs/AKTIONEN.md](docs/AKTIONEN.md) (Aktualisieren, Deinstallieren, Adminrechte, Protokoll), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
 
