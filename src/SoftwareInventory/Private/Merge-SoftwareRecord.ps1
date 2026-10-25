@@ -7,6 +7,8 @@ function Merge-SoftwareRecord {
         Abgleichschlüssel (Registry-Schlüsselname, PackageFullName, PackageFamilyName)
         zugeordnet, ersatzweise über Name und Version. winget-Einträge mit Schlüsseln,
         aber ohne Gegenstück entfallen, da die Grundquellen sie bewusst ausgefiltert haben.
+        Danach werden Begleitpakete (Sparse Packages) ihrem Programm zugeordnet, siehe
+        Join-CompanionPackage.
     #>
     [CmdletBinding()]
     [OutputType('SoftwareInventory.SoftwareRecord')]
@@ -55,10 +57,64 @@ function Merge-SoftwareRecord {
         }
     }
 
-    @($BaseRecord) + $standalone |
-        Where-Object { $null -ne $_ } |
-        ForEach-Object { $_.PSObject.Properties.Remove('MatchKeys'); $_ } |
+    $records = @(@($BaseRecord) + $standalone | Where-Object { $null -ne $_ })
+    Join-CompanionPackage -Record $records |
+        ForEach-Object { $_.PSObject.Properties.Remove('MatchKeys'); $_.PSObject.Properties.Remove('CompanionInfo'); $_ } |
         Sort-Object Name
+}
+
+function Join-CompanionPackage {
+    <#
+    .SYNOPSIS
+        Hängt Sparse Packages an das klassische Programm, zu dem sie gehören (Feld Companions).
+    .DESCRIPTION
+        Zuordnung nur, wenn sie eindeutig ist: genau ein Registry-Programm, dessen Name mit dem
+        Anzeigenamen des Pakets beginnt, sonst genau eines, das ihn als ganze Wörter enthält
+        („OneDrive“ in „Microsoft OneDrive“); ersatzweise genau eines mit demselben Hersteller.
+        Sonst bleibt das Paket als eigener Eintrag mit Flag SparsePackage stehen
+        (lieber ein Eintrag zu viel als ein übersehener).
+    #>
+    param([object[]] $Record)
+
+    $programs = @($Record | Where-Object { $_.InstallType -ne 'MSIX' -and 'Registry' -in $_.Sources })
+    $joined = [System.Collections.Generic.HashSet[object]]::new()
+    foreach ($companion in $Record) {
+        if (-not ($companion.PSObject.Properties['CompanionInfo'] -and $companion.Flags -contains 'SparsePackage')) { continue }
+        $info = $companion.CompanionInfo
+        $target = $null
+        $ambiguous = $false
+        :search foreach ($name in @($info.DisplayName, $companion.Name) | Where-Object { $_ } | Select-Object -Unique) {
+            $escaped = [regex]::Escape($name)
+            foreach ($pattern in "^$escaped(\W|$)", "(^|\W)$escaped(\W|$)") {
+                $byName = @($programs | Where-Object { $_.Name -match $pattern })
+                if ($byName.Count -eq 1) { $target = $byName[0]; break search }
+                if ($byName.Count -gt 1) { $ambiguous = $true; break search }
+            }
+        }
+        if (-not $target -and -not $ambiguous) {
+            $publisher = ConvertTo-PublisherKey $(if ($info.PublisherDisplayName) { $info.PublisherDisplayName } else { $companion.Publisher })
+            if ($publisher) {
+                $byPublisher = @($programs | Where-Object { (ConvertTo-PublisherKey $_.Publisher) -eq $publisher })
+                if ($byPublisher.Count -eq 1) { $target = $byPublisher[0] }
+            }
+        }
+        if ($target) {
+            $target.Companions = [string[]] @(@($target.Companions) + $companion.PackageFullName | Where-Object { $_ } | Select-Object -Unique)
+            [void] $joined.Add($companion)
+            Write-Verbose "Begleitpaket $($companion.PackageFullName) gehört zu $($target.Name)"
+        }
+    }
+    $Record | Where-Object { -not $joined.Contains($_) }
+}
+
+function ConvertTo-PublisherKey {
+    # Herstellername ohne Rechtsform und Satzzeichen, für den Vergleich ("Bitdefender SRL" = "Bitdefender").
+    param([string] $Publisher)
+    if (-not $Publisher) { return $null }
+    $key = $Publisher.ToLowerInvariant() -replace '[^\p{L}\p{N} ]', ' '
+    $key = $key -replace '\b(inc|llc|ltd|limited|gmbh|ag|srl|s r l|sa|bv|corp|corporation|co|company|pbc)\b', ' '
+    $key = ($key -replace '\s+', ' ').Trim()
+    if ($key) { $key } else { $null }
 }
 
 function Merge-WingetIntoRecord {

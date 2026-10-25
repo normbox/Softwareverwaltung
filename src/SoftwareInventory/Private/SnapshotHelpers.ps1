@@ -1,4 +1,4 @@
-$script:SnapshotSchemaVersion = 2   # 2: Felder für portable Programme
+$script:SnapshotSchemaVersion = 3   # 2: Felder für portable Programme, 3: Companions
 
 function Get-DefaultSnapshotDirectory {
     Join-Path $env:LOCALAPPDATA 'SoftwareInventory\scans'

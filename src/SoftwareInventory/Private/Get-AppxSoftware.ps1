@@ -6,6 +6,9 @@ function Get-AppxSoftware {
         Frameworks, Systemkomponenten und nicht entfernbare Pakete werden ausgefiltert.
         Als Name dient der Paketname (z. B. Microsoft.WindowsCalculator); den
         Anzeigenamen ergänzt Merge-SoftwareRecord aus winget, falls vorhanden.
+        Sparse Packages (AllowExternalContent) gehören meist zu einem klassischen Programm,
+        etwa als Kontextmenü-Erweiterung. Sie erhalten das Flag SparsePackage; Merge-SoftwareRecord
+        ordnet sie dem Programm zu, wenn das eindeutig möglich ist.
     #>
     [CmdletBinding()]
     [OutputType('SoftwareInventory.SoftwareRecord')]
@@ -23,10 +26,10 @@ function Get-AppxSoftware {
         if ($pkg.IsFramework -or $pkg.NonRemovable -or [string] $pkg.SignatureKind -eq 'System') { continue }
 
         $publisher = ConvertFrom-DistinguishedName $pkg.Publisher
+        $manifest = Get-AppxManifestInfo -InstallLocation $pkg.InstallLocation
         # Store-Pakete tragen oft nur eine GUID als Herausgeber; der Klarname steht im Manifest.
-        if ($publisher -match '^[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$') {
-            $displayName = Get-AppxPublisherDisplayName -InstallLocation $pkg.InstallLocation
-            if ($displayName) { $publisher = $displayName }
+        if ($publisher -match '^[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$' -and $manifest.PublisherDisplayName) {
+            $publisher = $manifest.PublisherDisplayName
         }
 
         $record = New-SoftwareRecord -Name $pkg.Name -Source Appx -Property @{
@@ -39,6 +42,13 @@ function Get-AppxSoftware {
             PackageFamilyName = $pkg.PackageFamilyName
             InstallLocation   = $pkg.InstallLocation
         }
+        if ($manifest.Sparse) {
+            $record.Flags = [string[]] @('SparsePackage')
+            # Nur für die Zuordnung in Merge-SoftwareRecord; wird dort wieder entfernt.
+            $record | Add-Member -NotePropertyName CompanionInfo -NotePropertyValue @{
+                DisplayName = $manifest.DisplayName; PublisherDisplayName = $manifest.PublisherDisplayName
+            }
+        }
         Add-MatchKey -Record $record -Key @(
             "msix:$($pkg.PackageFullName)".ToLowerInvariant()
             "pfn:$($pkg.PackageFamilyName)".ToLowerInvariant()
@@ -46,19 +56,29 @@ function Get-AppxSoftware {
     }
 }
 
-function Get-AppxPublisherDisplayName {
-    # Liest PublisherDisplayName aus AppxManifest.xml; Ressourcenverweise (ms-resource:) werden ignoriert.
+function Get-AppxManifestInfo {
+    # Liest aus AppxManifest.xml Anzeige- und Herausgebernamen (ohne ms-resource:-Verweise)
+    # und ob es ein Sparse Package ist (uap10:AllowExternalContent).
     param([string] $InstallLocation)
-    if (-not $InstallLocation) { return }
+    $info = @{ DisplayName = $null; PublisherDisplayName = $null; Sparse = $false }
+    if (-not $InstallLocation) { return $info }
     $manifest = Join-Path $InstallLocation 'AppxManifest.xml'
     try {
         $xml = [xml] (Get-Content -LiteralPath $manifest -Raw -ErrorAction Stop)
-        $name = ConvertTo-NullIfEmpty $xml.Package.Properties.PublisherDisplayName
-        if ($name -and $name -notlike 'ms-resource:*') { $name }
+        $properties = $xml.DocumentElement.SelectSingleNode("*[local-name()='Properties']")
+        if (-not $properties) { return $info }
+        foreach ($field in 'DisplayName', 'PublisherDisplayName') {
+            $node = $properties.SelectSingleNode("*[local-name()='$field']")
+            $value = if ($node) { ConvertTo-NullIfEmpty $node.InnerText }
+            if ($value -and $value -notlike 'ms-resource:*') { $info[$field] = $value }
+        }
+        $external = $properties.SelectSingleNode("*[local-name()='AllowExternalContent']")
+        $info.Sparse = [bool] ($external -and $external.InnerText.Trim() -eq 'true')
     }
     catch {
         Write-Verbose "Manifest nicht lesbar: $manifest"
     }
+    $info
 }
 
 function ConvertFrom-DistinguishedName {
