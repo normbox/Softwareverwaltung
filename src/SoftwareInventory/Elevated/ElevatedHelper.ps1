@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Helfer, der genau eine Aktion mit Administratorrechten ausführt.
 .DESCRIPTION

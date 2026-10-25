@@ -8,7 +8,7 @@ pwsh -c "Install-PSResource Pester,PSScriptAnalyzer,Microsoft.WinGet.Client -Sco
 winget install Microsoft.DotNet.SDK.10                    # ab Etappe 3
 ```
 
-Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.PowerShell.SDK` einbettet). Windows PowerShell 5.1 wird nicht unterstützt.
+Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.PowerShell.SDK` einbettet). Windows PowerShell 5.1 wird nicht unterstützt. Einzige Ausnahme ist der erhöhte Helfer `src/SoftwareInventory/Elevated/ElevatedHelper.ps1` (siehe [AKTIONEN.md](AKTIONEN.md)). Er läuft unter 5.1 und unter 7, nutzt nur Sprachmittel von 5.1 und ist als UTF-8 **mit BOM** gespeichert, damit 5.1 Umlaute richtig liest. Dasselbe gilt für `tests/Sandbox/*.ps1`.
 
 ## Tests
 
@@ -16,7 +16,10 @@ Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.Power
 pwsh -c "Invoke-Pester ./tests/Unit"                     # Unit-Tests
 pwsh -c "Invoke-Pester ./tests/Integration"              # gegen das echte System
 pwsh -c "Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1"
+.\tests\Sandbox\Start-ActionSandbox.ps1                  # Aktualisieren/Deinstallieren echt testen, nur in Windows Sandbox
 ```
+
+Die Unit-Tests führen nie echte Installationen, Updates oder Deinstallationen aus; winget, msiexec, Registry, Appx, UAC und CIM werden ersetzt. Echt gestartet wird nur der Helfer unter `powershell.exe` 5.1, ohne Adminrechte und mit harmlosen Programmen (`where.exe`, `timeout.exe`).
 
 ## Machbarkeitsprüfung (24.10.2026)
 

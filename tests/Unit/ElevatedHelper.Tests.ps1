@@ -78,6 +78,13 @@ Describe 'Helferskript: Prüfungen' {
         Test-HelperFilePath "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe" | Should -Match 'winget wurde im Administratorkontext nicht gefunden'
     }
 
+    It 'lässt sich von Windows PowerShell 5.1 fehlerfrei parsen (UTF-8 mit BOM)' {
+        $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path $HelperPath))
+        $bytes[0..2] | Should -Be @(0xEF, 0xBB, 0xBF)
+        $count = & "$System\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command "`$e=`$null; [void][Management.Automation.Language.Parser]::ParseFile('$((Resolve-Path $HelperPath).Path)', [ref]`$null, [ref]`$e); `$e.Count"
+        $count | Should -Be '0'
+    }
+
     It 'entfernt Fortschrittsbalken und Drehstriche aus der Ausgabe' {
         $text = "Gefunden 7-Zip [7zip.7zip]`r`n   -`r   \`r   |`r`n  ██████▒▒▒▒  1.2 MB / 2.0 MB`r`nErfolgreich installiert`r`n"
         Get-OutputTail $text | Should -Be "Gefunden 7-Zip [7zip.7zip]`nErfolgreich installiert"

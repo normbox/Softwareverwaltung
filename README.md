@@ -22,7 +22,8 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Schwachstellen über NVD, CISA KEV und EPSS für Programme mit Katalogeintrag (`Get-SoftwareVulnerability`) | vorhanden (Etappe 2b) |
 | Ampel (Rot, Gelb, Grün, Grau mit Grund) und HTML-Sicherheitsbericht (`Get-SecurityRating`, `Export-SecurityReport`) | vorhanden (Etappe 2c) |
 | Weitere Schwachstellenquellen (OSV, GitHub Security Advisories) | geplant |
-| Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren über winget | geplant |
+| Aktualisieren über winget und Deinstallieren (winget, MSI, Store-App, Registry) mit Bestätigung, UAC nur pro Aktion, Prüfung danach, Protokoll und optionalem Wiederherstellungspunkt (`Update-Software`, `Uninstall-Software`, `Get-ActionLog`) | vorhanden (Etappe 3a) |
+| Oberfläche (WPF) mit Buttons für Aktualisieren und Deinstallieren | geplant |
 | KI-Berater, wahlweise lokal (Ollama) oder Cloud (Claude API) | geplant |
 
 Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx). Eine eigene Paketverwaltung wird nicht nachgebaut.
@@ -46,6 +47,10 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [x] 2b. Schwachstellen: CPE-Zuordnung über den Katalog, NVD, CISA KEV, EPSS
   - [x] 2c. Ampel und HTML-Bericht
 - [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
+  - [x] 3a. Aktionen im Modul: Aktualisieren, Deinstallieren, Protokoll, Wiederherstellungspunkt
+  - [ ] 3b. WPF-Grundgerüst mit eingebettetem Modul und Hauptliste
+  - [ ] 3c. Details und Aktions-Buttons mit Bestätigung
+  - [ ] 3d. Einstellungen in der Oberfläche
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
 - [ ] 6. Firmentauglich: zentrale Sammlung mehrerer PCs, Richtlinien, signierte Skripte
@@ -94,6 +99,12 @@ Set-InventorySetting -Enable NVD, KEV, EPSS
 # Ampel und HTML-Bericht
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Get-SecurityRating | Export-SecurityReport -Path .\Sicherheitsbericht.html
 
+# Aktualisieren und Deinstallieren (erst ansehen, dann ausführen; UAC nur bei Bedarf)
+Get-SoftwareInventory | Where-Object AvailableVersion | Update-Software -WhatIf
+Get-SoftwareInventory | Where-Object Name -eq 'Contoso Tool' | Uninstall-Software
+Get-ActionLog -Last 10 | Format-Table StartedAt, Action, Name, Method, Elevated, Result
+Set-InventorySetting -Enable RestorePoint                              # optional: vorher Wiederherstellungspunkt
+
 # Installiertes und Portables in einem Snapshot
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Save-InventorySnapshot
 ```
@@ -104,15 +115,16 @@ Tests:
 
 ```powershell
 Invoke-Pester ./tests/Unit                                 # Unit-Tests
-Invoke-Pester ./tests/Integration                          # gegen das echte System
+Invoke-Pester ./tests/Integration                          # gegen das echte System (liest nur)
+.\tests\Sandbox\Start-ActionSandbox.ps1                    # Aktionen echt testen, nur in Windows Sandbox
 Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
 
-Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/BERICHT.md](docs/BERICHT.md) (Ampel und Bericht), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
+Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/BERICHT.md](docs/BERICHT.md) (Ampel und Bericht), [docs/AKTIONEN.md](docs/AKTIONEN.md) (Aktualisieren, Deinstallieren, Adminrechte, Protokoll), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
 
 ## Datenschutz
 
-Das Modul läuft lokal und sendet keine Daten. Scans und Einstellungen werden nur auf dem eigenen Rechner gespeichert (`%LOCALAPPDATA%\SoftwareInventory`, `%APPDATA%\SoftwareInventory\settings.json`). Spätere Funktionen, die externe Dienste nutzen (Schwachstellen-Datenbanken, KI-Anbieter), senden erst nach ausdrücklicher Freigabe durch den Benutzer. Eine ausführliche Datenschutzerklärung folgt als `PRIVACY.md`.
+Das Modul läuft lokal und sendet keine Daten. Scans, Aktionsprotokoll und Einstellungen werden nur auf dem eigenen Rechner gespeichert (`%LOCALAPPDATA%\SoftwareInventory`, `%APPDATA%\SoftwareInventory\settings.json`). Logs und Zwischenspeicher räumen sich selbst auf (Standard: 30 Tage, 100 MB). Spätere Funktionen, die externe Dienste nutzen (Schwachstellen-Datenbanken, KI-Anbieter), senden erst nach ausdrücklicher Freigabe durch den Benutzer. Eine ausführliche Datenschutzerklärung folgt als `PRIVACY.md`.
 
 ## Mitmachen
 

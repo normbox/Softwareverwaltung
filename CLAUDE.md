@@ -37,4 +37,4 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 
 ## Fahrplan
 
-Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Aktuell: Etappe 1, Inventar-Modul.
+Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Aktuell: Etappe 3 (Oberfläche), aufgeteilt in 3a Aktionen im Modul, 3b WPF-Grundgerüst, 3c Details und Aktions-Buttons, 3d Einstellungen.
