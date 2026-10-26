@@ -76,6 +76,24 @@ function Test-CatalogEntry {
         if (-not $productPattern) { 'Kev.ProductPattern fehlt'; continue }
         try { [void] [regex]::new($productPattern) } catch { "Ungültiges Muster '$productPattern'" }
     }
+    # KevFixed: CVE-ID → erste nicht mehr betroffene Version (aus NVD oder Herstellerangabe)
+    $kevFixed = Get-CatalogValue $Entry 'KevFixed'
+    if ($kevFixed) {
+        if (-not (& $has $Entry 'Kev')) { 'KevFixed braucht eine Kev-Zuordnung' }
+        foreach ($p in $kevFixed.PSObject.Properties) {
+            if ($p.Name -notmatch '^CVE-\d{4}-\d{4,}$') { "KevFixed: '$($p.Name)' ist keine CVE-ID" }
+            if (-not (ConvertTo-NormalizedVersion ([string] $p.Value))) { "KevFixed: Version '$($p.Value)' für $($p.Name) nicht lesbar" }
+        }
+    }
+}
+
+function Get-KevFixedVersion {
+    # Erste nicht mehr betroffene Version einer KEV-Lücke laut Katalog oder $null.
+    param($Entry, [string] $CveId)
+    $kevFixed = Get-CatalogValue $Entry 'KevFixed'
+    if (-not $kevFixed) { return $null }
+    $value = Get-CatalogValue $kevFixed $CveId
+    if ($value) { [string] $value }
 }
 
 function Find-CatalogEntry {

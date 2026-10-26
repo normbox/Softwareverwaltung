@@ -41,6 +41,9 @@ Describe 'Test-CatalogEntry' {
         @{ Case = 'CPE ohne Präfix'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["x:x"]}'; Expected = '*cpe:2.3*' }
         @{ Case = 'KEV ohne Hersteller'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"ProductPattern":"^X$"}]}'; Expected = '*Kev.Vendor fehlt*' }
         @{ Case = 'KEV mit ungültigem Muster'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"Vendor":"X","ProductPattern":"(x"}]}'; Expected = '*Ungültiges Muster*' }
+        @{ Case = 'KevFixed ohne Kev'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"KevFixed":{"CVE-2025-0001":"1.0"}}'; Expected = '*KevFixed braucht eine Kev-Zuordnung*' }
+        @{ Case = 'KevFixed mit falscher ID'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"Vendor":"X","ProductPattern":"^X$"}],"KevFixed":{"2025-1":"1.0"}}'; Expected = '*keine CVE-ID*' }
+        @{ Case = 'KevFixed mit unlesbarer Version'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"Vendor":"X","ProductPattern":"^X$"}],"KevFixed":{"CVE-2025-0001":"neu"}}'; Expected = '*nicht lesbar*' }
         @{ Case = 'Versionsmuster ohne Gruppe'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"CpeVersionPattern":"^(.+)$"}'; Expected = '*CpeVersionPattern braucht*' }
     ) {
         $problems = InModuleScope SoftwareInventory -Parameters @{ E = ($Json | ConvertFrom-Json) } { Test-CatalogEntry -Entry $E -FileName 'x' }

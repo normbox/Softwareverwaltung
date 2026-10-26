@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:conv="clr-namespace:Softwareverwaltung.App.Converters"
+             xmlns:models="clr-namespace:Softwareverwaltung.App.Models"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
         <ResourceDictionary>
@@ -14,6 +15,18 @@
             <conv:RatingToBrushConverter x:Key="RatingToBrush" />
             <conv:RatingToTextConverter x:Key="RatingToText" />
             <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+
+            <!-- Hinweis zu den Nutzungsbedingungen eines Dienstes (Erststart-Karte und Einstellungen). -->
+            <DataTemplate x:Key="ServiceTermsTemplate" DataType="{x:Type models:ServiceTermsNotice}">
+                <StackPanel Margin="0,6,0,0">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Terms}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding UsageHint}" TextWrapping="Wrap" FontStyle="Italic"
+                               Visibility="{Binding UsageHint, Converter={StaticResource NullToVisibility}}" />
+                    <ui:HyperlinkButton Content="Nutzungsbedingungen" NavigateUri="{Binding Url}" Padding="0" Margin="0,2,0,0"
+                                        Visibility="{Binding Url, Converter={StaticResource NullToVisibility}}" />
+                </StackPanel>
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

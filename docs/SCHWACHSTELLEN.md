@@ -19,7 +19,7 @@ Die Funktion nimmt Datensätze aus `Get-SoftwareInventory` und `Get-PortableSoft
 
 Alle Dienste sind standardmäßig aus und werden einzeln aktiviert. Gesendet werden nur CPE-Namen mit Version (z. B. `cpe:2.3:a:7-zip:7-zip:24.8:*:*:*:*:*:*:*`) und CVE-IDs – keine Pfade, keine Benutzer- oder Rechnernamen.
 
-Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das Modul wartet deshalb 6 Sekunden zwischen zwei Anfragen. Mit Schlüssel (Umgebungsvariable `NVD_API_KEY`, kostenlos bei der NVD) sind es 0,6 Sekunden. Der Schlüssel wird nur als HTTP-Header gesendet und erscheint nie in Meldungen, Zwischenspeicher, Snapshots oder Berichten.
+Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das Modul wartet deshalb 6 Sekunden zwischen zwei Anfragen. Mit Schlüssel (kostenlos bei der NVD; gespeichert mit `Set-ServiceCredential -Service NVD` oder auf der Einstellungsseite der App, alternativ Umgebungsvariable `NVD_API_KEY`) sind es 0,6 Sekunden. Der Schlüssel wird nur als HTTP-Header gesendet und erscheint nie in Meldungen, Zwischenspeicher, Snapshots oder Berichten.
 
 ## Ablauf je Programm
 

@@ -123,7 +123,7 @@ Ein Eintrag enthält:
 - alle Felder des Ergebnisses
 - von der Ausgabe nur die letzten 20 Zeilen
 
-API-Schlüssel (`NVD_API_KEY`, `GITHUB_TOKEN`) werden vor dem Schreiben entfernt. Geschrieben wird nur vom Prozess ohne Adminrechte, unter einem benannten Mutex. So entsteht keine Datei, die der Benutzer nicht lesen kann. Beschädigte oder abgeschnittene Zeilen überspringt `Get-ActionLog` mit einer Warnung.
+API-Schlüssel (aus der Anmeldeinformationsverwaltung und aus `NVD_API_KEY`, `GITHUB_TOKEN`) werden vor dem Schreiben entfernt. Geschrieben wird nur vom Prozess ohne Adminrechte, unter einem benannten Mutex. So entsteht keine Datei, die der Benutzer nicht lesen kann. Beschädigte oder abgeschnittene Zeilen überspringt `Get-ActionLog` mit einer Warnung.
 
 ```powershell
 Get-ActionLog -After (Get-Date).AddDays(-7)

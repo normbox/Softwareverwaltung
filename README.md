@@ -52,7 +52,7 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [x] 3a. Aktionen im Modul: Aktualisieren, Deinstallieren, Protokoll, Wiederherstellungspunkt
   - [x] 3b. WPF-Grundgerüst mit eingebettetem Modul und Hauptliste
   - [ ] 3c. Details und Aktions-Buttons mit Bestätigung
-  - [ ] 3d. Einstellungen in der Oberfläche
+  - [x] 3d. Einstellungen in der Oberfläche
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
 - [ ] 6. Firmentauglich: zentrale Sammlung mehrerer PCs, Richtlinien, signierte Skripte
@@ -94,7 +94,8 @@ Set-InventorySetting -Enable GitHub, WingetSearch
 @(Get-SoftwareInventory) + @(Get-PortableSoftware) | Test-SoftwareUpdate | Where-Object Status -eq Outdated
 Compare-SoftwareVersion 24.08 24.9                                    # -1: älter
 
-# Bekannte Sicherheitslücken (externe Dienste vorher einzeln aktivieren; ohne NVD_API_KEY gedrosselt)
+# Bekannte Sicherheitslücken (externe Dienste vorher einzeln aktivieren; ohne NVD-Schlüssel gedrosselt)
+Set-ServiceCredential -Service NVD -Secret (Read-Host "NVD-API-Schlüssel" -AsSecureString)   # optional, Windows-Anmeldeinformationsverwaltung
 Set-InventorySetting -Enable NVD, KEV, EPSS
 (Get-SoftwareInventory | Get-SoftwareVulnerability).Vulnerabilities | Where-Object Kev   # aktiv ausgenutzte Lücken
 
@@ -125,7 +126,7 @@ dotnet run --project src/Softwareverwaltung.App            # App starten
 .\tests\Sandbox\Start-AppSandbox.ps1                       # veröffentlichte App ohne .NET, PowerShell 7 und winget prüfen
 ```
 
-Die App liest dieselben Einstellungen wie das Modul. Bis die Einstellungsseite kommt (Etappe 3d), werden Quellen mit `Set-InventorySetting` aktiviert.
+Die App liest dieselben Einstellungen wie das Modul. Auf der Seite „Einstellungen“ lassen sich alle Schalter, der Dateiscan, die externen Dienste, die API-Schlüssel und die Aufbewahrung der Logs einstellen; gespeichert wird mit „Speichern“. Beim ersten Start fragt die App „Privat“ oder „Firma“ ab und zeigt die passenden Hinweise zu den Nutzungsbedingungen der Dienste; eingeschaltet wird dabei nichts.
 
 Tests:
 

@@ -16,6 +16,8 @@
         'Get-ScanDrive'
         'Get-InventorySetting'
         'Set-InventorySetting'
+        'Get-SettingPreset'
+        'Get-ServiceTermsNotice'
         'Compare-SoftwareVersion'
         'Test-SoftwareUpdate'
         'Get-SoftwareVulnerability'
@@ -29,6 +31,9 @@
         'Update-Software'
         'Uninstall-Software'
         'Test-WingetAvailability'
+        'Set-ServiceCredential'
+        'Remove-ServiceCredential'
+        'Get-ServiceCredentialStatus'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

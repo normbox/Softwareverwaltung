@@ -40,11 +40,14 @@ function Get-RatingFromResult {
         $yellow.Add("Update verfügbar: $($UpdateStatus.InstalledVersion) → $($UpdateStatus.LatestVersion) (Quelle $($UpdateStatus.Source)$unconfirmed)")
     }
 
-    if ($red.Count) { return @{ Rating = 'Red'; Reasons = [string[]] @($red) + @($yellow) } }
-    if ($yellow.Count) { return @{ Rating = 'Yellow'; Reasons = [string[]] $yellow } }
+    # Widerlegte KEV-Treffer färben nie, werden aber als Grund genannt (nachvollziehbar statt still).
+    $refuted = @(@(if ($VulnerabilityStatus -and $VulnerabilityStatus.PSObject.Properties['Refuted']) { $VulnerabilityStatus.Refuted }) | Where-Object { $_ } | ForEach-Object Note)
+
+    if ($red.Count) { return @{ Rating = 'Red'; Reasons = [string[]] (@($red) + @($yellow) + $refuted) } }
+    if ($yellow.Count) { return @{ Rating = 'Yellow'; Reasons = [string[]] (@($yellow) + $refuted) } }
 
     if ($VulnerabilityStatus -and $VulnerabilityStatus.Status -eq 'Checked') {
-        $reasons = @('Sicherheitsprüfung ohne Befund')
+        $reasons = @('Sicherheitsprüfung ohne Befund') + $refuted
         if ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $reasons += 'Version aktuell' }
         return @{ Rating = 'Green'; Reasons = [string[]] $reasons }
     }
@@ -52,6 +55,7 @@ function Get-RatingFromResult {
     # Grau: immer mit Grund
     $gray = @()
     $gray += if ($VulnerabilityStatus -and $VulnerabilityStatus.Reason) { "Nicht auf Lücken geprüft: $($VulnerabilityStatus.Reason)" } else { 'Nicht auf Lücken geprüft' }
+    $gray += $refuted
     if ($UpdateStatus -and $UpdateStatus.Status -eq 'Unknown' -and $UpdateStatus.Reason) { $gray += "Versionsstand unbekannt: $($UpdateStatus.Reason)" }
     elseif ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $gray += 'Version aktuell' }
     @{ Rating = 'Gray'; Reasons = [string[]] $gray }

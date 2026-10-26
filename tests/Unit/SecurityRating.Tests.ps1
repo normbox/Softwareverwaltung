@@ -53,6 +53,34 @@ Describe 'Ampelregeln' {
         $r.Reasons | Should -Be @('Sicherheitsprüfung ohne Befund', 'Version aktuell')
     }
 
+    It 'Grau statt Gelb, wenn der einzige KEV-Treffer ohne NVD widerlegt ist, und nennt die Widerlegung' {
+        $v = New-VulnStatus -Status Unknown -Reason 'Dienst NVD nicht aktiviert'
+        $v | Add-Member Refuted @([pscustomobject] @{ CveId = 'CVE-2025-0411'; Source = 'Catalog'; Note = 'KEV-Treffer CVE-2025-0411 widerlegt: behoben ab 24.09 (Katalog), installiert 26.05' })
+        $r = Get-Rating (New-UpdateStatus) $v
+        $r.Rating | Should -Be 'Gray'
+        $r.Reasons | Should -Be @('Nicht auf Lücken geprüft: Dienst NVD nicht aktiviert', 'KEV-Treffer CVE-2025-0411 widerlegt: behoben ab 24.09 (Katalog), installiert 26.05', 'Version aktuell')
+    }
+
+    It 'Grün mit Widerlegung als Grund, wenn NVD geprüft hat' {
+        $v = New-VulnStatus
+        $v | Add-Member Refuted @([pscustomobject] @{ CveId = 'CVE-2025-0411'; Source = 'NVD'; Note = 'KEV-Treffer CVE-2025-0411 widerlegt: Version 26.05 laut NVD nicht betroffen' })
+        $r = Get-Rating (New-UpdateStatus) $v
+        $r.Rating | Should -Be 'Green'
+        $r.Reasons | Should -Contain 'KEV-Treffer CVE-2025-0411 widerlegt: Version 26.05 laut NVD nicht betroffen'
+    }
+
+    It 'jedes Gelb hat einen Grund' {
+        foreach ($case in @(
+                @{ U = (New-UpdateStatus); V = (New-VulnStatus -Vulns @(New-Vuln -Assessment PossiblyAffected -Kev -Note 'Aktiv ausgenutzt; Version nicht prüfbar (Dienst NVD nicht aktiviert)')) }
+                @{ U = (New-UpdateStatus); V = (New-VulnStatus -Vulns @(New-Vuln -Score 5)) }
+                @{ U = (New-UpdateStatus -Status Outdated -Latest '2.0'); V = (New-VulnStatus -Status Unknown -Reason 'x') }
+            )) {
+            $r = Get-Rating $case.U $case.V
+            $r.Rating | Should -Be 'Yellow'
+            @($r.Reasons | Where-Object { $_ }).Count | Should -BeGreaterThan 0
+        }
+    }
+
     It 'Grau mit Grund, auch wenn die Version aktuell ist' {
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Status Unknown -Reason 'Dienst NVD nicht aktiviert')
         $r.Rating | Should -Be 'Gray'
