@@ -48,10 +48,10 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [x] 2a. Versionsvergleich, Produktkatalog, neueste Version über winget, GitHub und winget-Suche
   - [x] 2b. Schwachstellen: CPE-Zuordnung über den Katalog, NVD, CISA KEV, EPSS
   - [x] 2c. Ampel und HTML-Bericht
-- [ ] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
+- [x] 3. Oberfläche: WPF-App mit Liste, Details, Update- und Deinstallations-Buttons
   - [x] 3a. Aktionen im Modul: Aktualisieren, Deinstallieren, Protokoll, Wiederherstellungspunkt
   - [x] 3b. WPF-Grundgerüst mit eingebettetem Modul und Hauptliste
-  - [ ] 3c. Details und Aktions-Buttons mit Bestätigung
+  - [x] 3c. Details und Aktions-Buttons mit Bestätigung
   - [x] 3d. Einstellungen in der Oberfläche
 - [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
