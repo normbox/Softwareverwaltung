@@ -31,6 +31,7 @@
         'Update-Software'
         'Uninstall-Software'
         'Install-WingetPackageManager'
+        'Find-InstalledSoftware'
         'Test-WingetAvailability'
         'Set-ServiceCredential'
         'Remove-ServiceCredential'
