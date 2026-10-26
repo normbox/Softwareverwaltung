@@ -119,6 +119,17 @@ public sealed class SettingsServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ReturnsServiceTermsWithoutChangingSettings()
+    {
+        var company = await _service.GetServiceTermsAsync("Company");
+
+        Assert.Contains(company, t => t.Service == "NVD" && t.Url is not null);
+        Assert.Contains(company, t => t.UsageHint is not null);
+        Assert.All(company, t => Assert.Contains("bleiben aus", t.General));
+        Assert.False(File.Exists(Path.Combine(_directory, "settings.json")));
+    }
+
+    [Fact]
     public async Task ListsDrives()
     {
         var drives = await _service.GetDrivesAsync();

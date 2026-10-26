@@ -115,8 +115,22 @@ public sealed partial class SettingsViewModel : ObservableObject
     private IEnumerable<SettingSwitch> AllSwitches => Sources.Concat(Traces).Concat(Services).Concat(Actions);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(NeedsUsageChoice), nameof(IsPrivate), nameof(IsCompany))]
+    [NotifyPropertyChangedFor(nameof(NeedsUsageChoice), nameof(IsPrivate), nameof(IsCompany), nameof(ServiceTerms), nameof(TermsGeneral))]
     private string? _usage;
+
+    private readonly Dictionary<string, IReadOnlyList<ServiceTermsNotice>> _terms = [];
+
+    /// <summary>Hinweise zu den Nutzungsbedingungen passend zur gewählten Nutzung; leer, solange nichts gewählt ist.</summary>
+    public IReadOnlyList<ServiceTermsNotice> ServiceTerms => Usage is not null && _terms.TryGetValue(Usage, out var terms) ? terms : [];
+
+    public string? TermsGeneral => ServiceTerms.FirstOrDefault()?.General;
+
+    /// <summary>Nach der Wahl beim ersten Start: Hinweise anzeigen, bis der Benutzer „Verstanden“ klickt.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFirstStartCard))]
+    private bool _showTermsNotice;
+
+    public bool ShowFirstStartCard => NeedsUsageChoice || ShowTermsNotice;
 
     /// <summary>Eine Zeile je Ordner; Umgebungsvariablen wie %USERPROFILE% erlaubt.</summary>
     [ObservableProperty]
@@ -173,9 +187,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         set { if (value) { Usage = "Company"; } }
     }
 
-    partial void OnIsLoadedChanged(bool value) => OnPropertyChanged(nameof(NeedsUsageChoice));
+    partial void OnIsLoadedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(NeedsUsageChoice));
+        OnPropertyChanged(nameof(ShowFirstStartCard));
+    }
 
-    partial void OnUsageChanged(string? value) => UpdateDirty();
+    partial void OnUsageChanged(string? value)
+    {
+        OnPropertyChanged(nameof(ShowFirstStartCard));
+        UpdateDirty();
+    }
     partial void OnScanPathsTextChanged(string value) => UpdateDirty();
     partial void OnExcludePathsTextChanged(string value) => UpdateDirty();
     partial void OnIncludeTempChanged(bool value) => UpdateDirty();
@@ -194,6 +216,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             var saved = await _settings.LoadAsync();
             var drives = await _settings.GetDrivesAsync();
             var credentials = await _settings.GetCredentialStatusAsync();
+            foreach (var usage in new[] { "Private", "Company" })
+            {
+                _terms[usage] = await _settings.GetServiceTermsAsync(usage);
+            }
             Drives.Clear();
             foreach (var drive in drives)
             {
@@ -298,7 +324,10 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private bool CanEdit() => IsLoaded && !IsBusy;
 
-    /// <summary>Erster Start: speichert nur Privat/Firma. Schaltet nichts frei oder ab.</summary>
+    /// <summary>
+    /// Erster Start: speichert nur Privat/Firma und zeigt danach die passenden Hinweise zu den
+    /// Nutzungsbedingungen. Schaltet nichts ein oder aus; alles bleibt wie es ist.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private async Task ChooseUsageAsync(string usage)
     {
@@ -309,6 +338,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             var saved = await _settings.SaveUsageAsync(usage);
             _saved = _saved with { Usage = saved.Usage };
             Usage = saved.Usage;
+            ShowTermsNotice = true;
             UpdateDirty();
         }
         catch (Exception ex)
@@ -320,6 +350,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             IsBusy = false;
         }
     }
+
+    [RelayCommand]
+    private void AcknowledgeTerms() => ShowTermsNotice = false;
 
     /// <summary>Speichert einen Schlüssel aus einem Passwortfeld; der Aufrufer leert das Feld danach.</summary>
     public async Task SaveCredentialAsync(CredentialItem item, SecureString secret)

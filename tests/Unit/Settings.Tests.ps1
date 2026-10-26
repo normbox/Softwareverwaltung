@@ -144,6 +144,35 @@ Describe 'Einstellungen' {
         }
     }
 
+    It 'schaltet mit Privat oder Firma nichts ein' {
+        foreach ($usage in 'Private', 'Company') {
+            $s = Set-InventorySetting -Usage $usage
+            $s.Usage | Should -Be $usage
+            foreach ($group in 'Sources', 'Traces', 'Services', 'Actions') {
+                $s.$group.PSObject.Properties.Value | Should -Not -Contain $true
+            }
+            $s.FileScan.Paths | Should -BeNullOrEmpty
+            $s.FileScan.Drives | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'zeigt Hinweise zu den Nutzungsbedingungen für jeden externen Dienst, ohne etwas zu ändern' {
+        $services = InModuleScope SoftwareInventory { $script:ServiceSources }
+        foreach ($usage in 'Private', 'Company') {
+            $terms = @(Get-ServiceTermsNotice -Usage $usage)
+            $terms.Service | Sort-Object | Should -Be ($services | Sort-Object)
+            foreach ($t in $terms) {
+                $t.Terms | Should -Not -BeNullOrEmpty
+                $t.Url | Should -Match '^https://'
+                $t.General | Should -Match 'bleiben aus'
+            }
+        }
+        @(Get-ServiceTermsNotice -Usage Company | Where-Object UsageHint).Count | Should -BeGreaterThan 0
+        @(Get-ServiceTermsNotice -Usage Private | Where-Object UsageHint).Count | Should -Be 0
+        (Get-ServiceTermsNotice -Usage Private | Where-Object Service -eq NVD).Terms | Should -Match 'not endorsed or certified by the NVD'
+        Test-Path $settingsFile | Should -BeFalse
+    }
+
     It 'liefert Vorlagenwerte ohne zu speichern und ohne Dienste oder Aktionen' {
         Mock -ModuleName SoftwareInventory Get-ScanDrive { [pscustomobject] @{ Drive = 'D:'; IsDefault = $true } }
         $quick = Get-SettingPreset -Preset Quick

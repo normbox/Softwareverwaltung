@@ -53,11 +53,18 @@
                 <!-- Nutzung -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="Nutzung" />
                 <TextBlock Style="{StaticResource SectionText}"
-                           Text="Nur eine Information, zum Beispiel für Lizenzhinweise. Schaltet nichts frei oder ab." />
+                           Text="Bestimmt nur, welche Hinweise zu den Nutzungsbedingungen angezeigt werden. Schaltet nichts ein oder aus." />
                 <StackPanel Orientation="Horizontal">
                     <RadioButton Content="Privat" GroupName="Usage" IsChecked="{Binding IsPrivate}" />
                     <RadioButton Content="Firma" GroupName="Usage" Margin="16,0,0,0" IsChecked="{Binding IsCompany}" />
                 </StackPanel>
+                <Expander Header="Hinweise zu den Nutzungsbedingungen der Dienste" Margin="0,8,0,0"
+                          Visibility="{Binding Usage, Converter={StaticResource NullToVisibility}}">
+                    <StackPanel Margin="0,4,0,0">
+                        <TextBlock Text="{Binding TermsGeneral}" TextWrapping="Wrap" />
+                        <ItemsControl ItemsSource="{Binding ServiceTerms}" ItemTemplate="{StaticResource ServiceTermsTemplate}" />
+                    </StackPanel>
+                </Expander>
 
                 <!-- Vorlagen -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="Vorlagen" />

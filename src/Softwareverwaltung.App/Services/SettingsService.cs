@@ -17,6 +17,9 @@ public interface ISettingsService
 
     Task<IReadOnlyList<ScanDrive>> GetDrivesAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Hinweise zu den Nutzungsbedingungen der Dienste für Privat oder Firma. Ändert nichts.</summary>
+    Task<IReadOnlyList<ServiceTermsNotice>> GetServiceTermsAsync(string usage, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<CredentialStatus>> GetCredentialStatusAsync(CancellationToken cancellationToken = default);
 
     Task<CredentialStatus> SetCredentialAsync(string service, SecureString secret, CancellationToken cancellationToken = default);
@@ -58,6 +61,9 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
 
     public async Task<IReadOnlyList<ScanDrive>> GetDrivesAsync(CancellationToken cancellationToken = default) =>
         (await InvokeAsync(new PSCommand().AddCommand("Get-ScanDrive"), cancellationToken).ConfigureAwait(false)).Select(ScanDrive.FromPs).ToList();
+
+    public async Task<IReadOnlyList<ServiceTermsNotice>> GetServiceTermsAsync(string usage, CancellationToken cancellationToken = default) =>
+        (await InvokeAsync(new PSCommand().AddCommand("Get-ServiceTermsNotice").AddParameter("Usage", usage), cancellationToken).ConfigureAwait(false)).Select(ServiceTermsNotice.FromPs).ToList();
 
     public async Task<IReadOnlyList<CredentialStatus>> GetCredentialStatusAsync(CancellationToken cancellationToken = default) =>
         (await InvokeAsync(new PSCommand().AddCommand("Get-ServiceCredentialStatus"), cancellationToken).ConfigureAwait(false)).Select(CredentialStatus.FromPs).ToList();

@@ -126,7 +126,7 @@ dotnet run --project src/Softwareverwaltung.App            # App starten
 .\tests\Sandbox\Start-AppSandbox.ps1                       # veröffentlichte App ohne .NET, PowerShell 7 und winget prüfen
 ```
 
-Die App liest dieselben Einstellungen wie das Modul. Auf der Seite „Einstellungen“ lassen sich alle Schalter, der Dateiscan, die externen Dienste, die API-Schlüssel und die Aufbewahrung der Logs einstellen; gespeichert wird mit „Speichern“. Beim ersten Start fragt die App „Privat“ oder „Firma“ ab (nur als Information).
+Die App liest dieselben Einstellungen wie das Modul. Auf der Seite „Einstellungen“ lassen sich alle Schalter, der Dateiscan, die externen Dienste, die API-Schlüssel und die Aufbewahrung der Logs einstellen; gespeichert wird mit „Speichern“. Beim ersten Start fragt die App „Privat“ oder „Firma“ ab und zeigt die passenden Hinweise zu den Nutzungsbedingungen der Dienste; eingeschaltet wird dabei nichts.
 
 Tests:
 

@@ -86,6 +86,18 @@ public sealed record ScanDrive(string Drive, string? Label, long SizeGB, bool Is
         obj.Properties["IsDefault"]?.Value is true);
 }
 
+/// <summary>Hinweis zu den Nutzungsbedingungen eines Dienstes aus Get-ServiceTermsNotice. Reine Information.</summary>
+public sealed record ServiceTermsNotice(string Service, string Name, string Terms, string? UsageHint, Uri? Url, string? General)
+{
+    public static ServiceTermsNotice FromPs(PSObject obj) => new(
+        obj.Properties["Service"]?.Value?.ToString() ?? "",
+        obj.Properties["Name"]?.Value?.ToString() ?? "",
+        obj.Properties["Terms"]?.Value?.ToString() ?? "",
+        obj.Properties["UsageHint"]?.Value?.ToString(),
+        Uri.TryCreate(obj.Properties["Url"]?.Value?.ToString(), UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null,
+        obj.Properties["General"]?.Value?.ToString());
+}
+
 /// <summary>Status aus Get-ServiceCredentialStatus. Enthält nie den Schlüssel selbst.</summary>
 public sealed record CredentialStatus(string Service, bool Stored, string? EnvironmentVariable, bool EnvironmentSet, string? Source)
 {

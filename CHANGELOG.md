@@ -11,7 +11,8 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 - `Set-ServiceCredential`, `Remove-ServiceCredential`, `Get-ServiceCredentialStatus`: NVD-Schlüssel und GitHub-Token in der Windows-Anmeldeinformationsverwaltung (nur aktueller Benutzer, ohne Zusatzpaket). Ein gespeicherter Schlüssel hat Vorrang vor `NVD_API_KEY`/`GITHUB_TOKEN`; der Status nennt nur „vorhanden“ und die Quelle, nie den Schlüssel. Maskiert werden Schlüssel aus beiden Ablagen.
 - `Get-SettingPreset`: liefert die Werte der Vorlagen „Quick“ und „Thorough“, ohne zu speichern. `Set-InventorySetting -Preset` nutzt dieselbe Funktion.
 - App: Reiter „Programme“ und „Einstellungen“. Die Einstellungsseite zeigt alle Quellen, Nutzungsspuren, den Dateiscan (Ordner, Laufwerke, Temp, Hash, Ausschlüsse), externe Dienste mit Angabe, was gesendet wird, API-Schlüssel, Wiederherstellungspunkt und die Grenzen für Logs. Änderungen gelten erst nach „Speichern“, „Verwerfen“ stellt den gespeicherten Stand wieder her. Die Vorlagen belegen nur vor.
-- Beim ersten Start fragt die App „Privat“ oder „Firma“ ab (nur als Information, schaltet nichts).
+- Beim ersten Start fragt die App „Privat“ oder „Firma“ ab und zeigt danach die passenden Hinweise zu den Nutzungsbedingungen der externen Dienste. Es wird nichts eingeschaltet; alles bleibt aus und wird von Hand eingestellt. Die Hinweise stehen auch auf der Einstellungsseite.
+- `Get-ServiceTermsNotice`: Kurzfassung der Nutzungsbedingungen von winget-Quellen, GitHub, NVD, CISA KEV und FIRST EPSS mit Link zum Original, bei „Firma“ mit Zusatzhinweisen. Ändert keine Einstellung.
 - xUnit-Tests für die Einstellungsseite und für den Einstellungs-Service mit dem echten Modul (umgelenkte Einstellungsdatei, eigener Präfix in der Anmeldeinformationsverwaltung).
 
 ### Etappe 3b: WPF-Grundgerüst

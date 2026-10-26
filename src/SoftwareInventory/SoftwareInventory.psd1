@@ -17,6 +17,7 @@
         'Get-InventorySetting'
         'Set-InventorySetting'
         'Get-SettingPreset'
+        'Get-ServiceTermsNotice'
         'Compare-SoftwareVersion'
         'Test-SoftwareUpdate'
         'Get-SoftwareVulnerability'

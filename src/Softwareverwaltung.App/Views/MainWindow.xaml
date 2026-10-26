@@ -23,27 +23,41 @@
 
         <ui:TitleBar Grid.Row="0" Title="Softwareverwaltung" />
 
-        <!-- Erster Start: Privat oder Firma. Reine Information, schaltet nichts. -->
+        <!--
+            Erster Start: Privat oder Firma, danach die passenden Hinweise zu den Nutzungsbedingungen.
+            Reine Information: Es wird nichts eingeschaltet, alles bleibt aus.
+        -->
         <Border Grid.Row="1" Margin="16,4,16,8" Padding="12,10" CornerRadius="4" BorderThickness="1"
                 Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                Visibility="{Binding Settings.NeedsUsageChoice, Converter={StaticResource BoolToVisibility}}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Wie nutzen Sie diesen PC?" FontWeight="SemiBold" />
-                    <TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
-                               Text="Die Angabe dient nur als Information, zum Beispiel für Lizenzhinweise. Sie schaltet nichts frei oder ab und lässt sich unter „Einstellungen“ ändern." />
+                Visibility="{Binding Settings.ShowFirstStartCard, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <Grid Visibility="{Binding Settings.NeedsUsageChoice, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Wie nutzen Sie diesen PC?" FontWeight="SemiBold" />
+                        <TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
+                                   Text="Danach sehen Sie die passenden Hinweise zu den Nutzungsbedingungen der externen Dienste. Die Angabe schaltet nichts ein: Alles bleibt aus und wird von Ihnen unter „Einstellungen“ eingestellt." />
+                    </StackPanel>
+                    <ui:Button Grid.Column="1" Margin="12,0,0,0" Content="Privat"
+                               Command="{Binding Settings.ChooseUsageCommand}" CommandParameter="Private" />
+                    <ui:Button Grid.Column="2" Margin="8,0,0,0" Content="Firma"
+                               Command="{Binding Settings.ChooseUsageCommand}" CommandParameter="Company" />
+                </Grid>
+                <StackPanel Visibility="{Binding Settings.ShowTermsNotice, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Hinweise zu den Nutzungsbedingungen" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Settings.TermsGeneral}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Settings.ServiceTerms}" ItemTemplate="{StaticResource ServiceTermsTemplate}" />
+                    </ScrollViewer>
+                    <ui:Button Margin="0,10,0,0" Content="Verstanden" Appearance="Primary"
+                               Command="{Binding Settings.AcknowledgeTermsCommand}" />
                 </StackPanel>
-                <ui:Button Grid.Column="1" Margin="12,0,0,0" Content="Privat"
-                           Command="{Binding Settings.ChooseUsageCommand}" CommandParameter="Private" />
-                <ui:Button Grid.Column="2" Margin="8,0,0,0" Content="Firma"
-                           Command="{Binding Settings.ChooseUsageCommand}" CommandParameter="Company" />
-            </Grid>
+            </StackPanel>
         </Border>
 
         <TabControl Grid.Row="2" Margin="8,0,8,0">

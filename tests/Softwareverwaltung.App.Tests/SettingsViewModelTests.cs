@@ -47,23 +47,61 @@ public sealed class SettingsViewModelTests
         Assert.All(vm.Services, s => Assert.False(string.IsNullOrWhiteSpace(s.Description)));
     }
 
-    [Fact]
-    public async Task AsksForUsageOnFirstStartAndSavesOnlyUsage()
+    [Theory]
+    [InlineData("Private")]
+    [InlineData("Company")]
+    public async Task FirstStartChoiceShowsTermsAndSwitchesNothingOn(string usage)
     {
         var fake = new FakeSettings();
         var vm = new SettingsViewModel(fake);
         await vm.LoadAsync();
         Assert.True(vm.NeedsUsageChoice);
+        Assert.True(vm.ShowFirstStartCard);
+        Assert.Empty(vm.ServiceTerms);
+
+        await vm.ChooseUsageCommand.ExecuteAsync(usage);
+
+        Assert.False(vm.NeedsUsageChoice);
+        Assert.Equal(["Usage:" + usage], fake.Calls);
+        Assert.DoesNotContain(true, fake.Saved.Switches.Values);
+        Assert.All(vm.Sources.Concat(vm.Traces).Concat(vm.Services).Concat(vm.Actions), s => Assert.False(s.IsOn));
+        Assert.False(vm.IsDirty);
+
+        // Danach die passenden Hinweise, bis „Verstanden“.
+        Assert.True(vm.ShowTermsNotice);
+        Assert.Equal("NVD", Assert.Single(vm.ServiceTerms).Service);
+        Assert.Equal("Hinweis " + usage, vm.TermsGeneral);
+        vm.AcknowledgeTermsCommand.Execute(null);
+        Assert.False(vm.ShowFirstStartCard);
+    }
+
+    [Fact]
+    public async Task UsageChoiceKeepsOtherUnsavedEditsOpen()
+    {
+        var fake = new FakeSettings();
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
 
         Switch(vm, "Appx").IsOn = true;
         await vm.ChooseUsageCommand.ExecuteAsync("Company");
 
-        Assert.False(vm.NeedsUsageChoice);
         Assert.True(vm.IsCompany);
-        Assert.Equal(["Usage:Company"], fake.Calls);
-        // Die andere, noch nicht gespeicherte Änderung bleibt offen.
         Assert.True(vm.IsDirty);
         Assert.False(fake.Saved.Switches["Appx"]);
+    }
+
+    [Fact]
+    public async Task SettingsShowTermsForSelectedUsage()
+    {
+        var vm = new SettingsViewModel(new FakeSettings { Saved = Off() with { Usage = "Private" } });
+        await vm.LoadAsync();
+        Assert.False(vm.ShowFirstStartCard);
+        Assert.Equal("Hinweis Private", vm.TermsGeneral);
+
+        vm.IsCompany = true;
+
+        Assert.Equal("Hinweis Company", vm.TermsGeneral);
+        Assert.NotNull(Assert.Single(vm.ServiceTerms).UsageHint);
     }
 
     [Fact]
@@ -248,6 +286,10 @@ public sealed class SettingsViewModelTests
 
         public Task<IReadOnlyList<ScanDrive>> GetDrivesAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ScanDrive>>([new("C:", "System", 500, true), new("D:", null, 1000, true)]);
+
+        public Task<IReadOnlyList<ServiceTermsNotice>> GetServiceTermsAsync(string usage, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ServiceTermsNotice>>(
+                [new("NVD", "NVD", "Kostenlos.", usage == "Company" ? "Richtlinien prüfen." : null, new Uri("https://nvd.nist.gov/developers/terms-of-use"), "Hinweis " + usage)]);
 
         public Task<IReadOnlyList<CredentialStatus>> GetCredentialStatusAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<CredentialStatus>>([Status("NVD"), Status("GitHub")]);
