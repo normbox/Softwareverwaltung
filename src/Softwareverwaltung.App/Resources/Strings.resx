@@ -30,6 +30,21 @@
   <data name="DriveRemovable" xml:space="preserve">
     <value>Wechseldatenträger, z. B. USB</value>
   </data>
+  <data name="DriveNotConnected" xml:space="preserve">
+    <value>{0} (nicht verbunden – bleibt gespeichert, wird beim Scan übersprungen)</value>
+  </data>
+  <data name="SettingsPortableTraceSwitch" xml:space="preserve">
+    <value>Nutzungsspuren</value>
+  </data>
+  <data name="SettingsPortableTraceSwitchText" xml:space="preserve">
+    <value>Liest nur, was Windows schon notiert hat (zuletzt gestartet, laufend, Autostart, geplante Aufgaben). Durchsucht keine Laufwerke und findet Programme überall, auch auf USB-Sticks. Unabhängig von der Dateisuche.</value>
+  </data>
+  <data name="SettingsPortableFileSwitch" xml:space="preserve">
+    <value>Dateisuche</value>
+  </data>
+  <data name="SettingsPortableFileSwitchText" xml:space="preserve">
+    <value>Durchsucht ganze Laufwerke oder bestimmte Ordner nach Programmdateien.</value>
+  </data>
 
   <!-- Vorlagen -->
   <data name="PresetsText" xml:space="preserve">
@@ -111,15 +126,6 @@
   </data>
   <data name="SettingsPortableInstalledHint" xml:space="preserve">
     <value>Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>
-  </data>
-  <data name="SettingsPortableHowTitle" xml:space="preserve">
-    <value>Wie suchen</value>
-  </data>
-  <data name="SettingsPortableHowText" xml:space="preserve">
-    <value>Techniken für die Suche. Nutzungsspuren wirken überall, auch außerhalb der gewählten Laufwerke und Ordner. Alles bleibt auf diesem PC.</value>
-  </data>
-  <data name="SettingsPortableTraces" xml:space="preserve">
-    <value>Nutzungsspuren</value>
   </data>
   <data name="SettingsPortableIncludeTemp" xml:space="preserve">
     <value>Temp-Ordner mit durchsuchen</value>

@@ -168,7 +168,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         FolderSuggestionValues.Where(s => !ScanFolders.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
 
     /// <summary>Ganze Laufwerke gewählt und mindestens eines angehakt: Hinweis auf lange Dauer.</summary>
-    public bool ShowDriveDurationHint => IsDrivesMode && Drives.Any(d => d.IsSelected);
+    public bool ShowDriveDurationHint => FileSearchEnabled && IsDrivesMode && Drives.Any(d => d.IsSelected);
 
     [ObservableProperty]
     private string _excludePathsText = "";
@@ -185,6 +185,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Hauptschalter: Suche nach portablen Programmen im Scan. Aus lässt die Einzeleinstellungen unverändert.</summary>
     [ObservableProperty]
     private bool _portableSearchEnabled;
+
+    /// <summary>Unterschalter Nutzungsspuren; erst wenn er an ist, werden die vier Spuren angezeigt.</summary>
+    [ObservableProperty]
+    private bool _traceSearchEnabled;
+
+    /// <summary>Unterschalter Dateisuche; darunter „Wo suchen“, Temp, Prüfsumme und Ausschlüsse.</summary>
+    [ObservableProperty]
+    private bool _fileSearchEnabled;
 
     [ObservableProperty]
     private int _logRetentionDays = 30;
@@ -280,6 +288,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnComputeHashChanged(bool value) => UpdateDirty();
     partial void OnSmartExclusionsChanged(bool value) => UpdateDirty();
     partial void OnPortableSearchEnabledChanged(bool value) => UpdateDirty();
+    partial void OnTraceSearchEnabledChanged(bool value) => UpdateDirty();
+    partial void OnFileSearchEnabledChanged(bool value) => UpdateDirty();
     partial void OnLogRetentionDaysChanged(int value) => UpdateDirty();
     partial void OnLogMaxSizeMBChanged(int value) => UpdateDirty();
 
@@ -297,15 +307,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 _terms[usage] = await _settings.GetServiceTermsAsync(usage);
             }
-            Drives.Clear();
-            foreach (var drive in drives)
-            {
-                var name = string.IsNullOrWhiteSpace(drive.Label) ? drive.Drive : $"{drive.Drive} {drive.Label}";
-                var size = drive.IsRemovable ? $"{drive.SizeGB} GB, {AppText.Get("DriveRemovable")}" : $"{drive.SizeGB} GB";
-                var option = new DriveOption(drive.Drive, $"{name} ({size})", true);
-                option.PropertyChanged += OnEditChanged;
-                Drives.Add(option);
-            }
+            RebuildDrives(drives, []);
             foreach (var item in Credentials)
             {
                 item.Status = credentials.FirstOrDefault(c => c.Service == item.Service);
@@ -336,6 +338,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         ComputeHash = ComputeHash,
         SmartExclusions = SmartExclusions,
         PortableSearch = PortableSearchEnabled,
+        TraceSearch = TraceSearchEnabled,
+        FileSearch = FileSearchEnabled,
         LogRetentionDays = LogRetentionDays,
         LogMaxSizeMB = LogMaxSizeMB,
     };
@@ -473,7 +477,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>
     /// Suche an, aber es wird nichts durchsucht: keine Option gewählt oder die gewählte Option hat keinen Eintrag.
     /// </summary>
-    public bool NoScanLocation => PortableSearchEnabled && ScanMode switch
+    public bool NoScanLocation => PortableSearchEnabled && FileSearchEnabled && ScanMode switch
     {
         "Drives" => !Drives.Any(d => d.IsSelected),
         "Folders" => ScanFolders.Count == 0,
@@ -583,6 +587,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             ComputeHash = settings.ComputeHash;
             SmartExclusions = settings.SmartExclusions;
             PortableSearchEnabled = settings.PortableSearch;
+            TraceSearchEnabled = settings.TraceSearch;
+            FileSearchEnabled = settings.FileSearch;
             LogRetentionDays = settings.LogRetentionDays;
             LogMaxSizeMB = settings.LogMaxSizeMB;
         }
@@ -593,12 +599,61 @@ public sealed partial class SettingsViewModel : ObservableObject
         UpdateDirty();
     }
 
+    /// <summary>
+    /// Laufwerk oder USB-Stick kam dazu oder wurde entfernt: Liste neu aufbauen, ohne Neustart.
+    /// Die Auswahl bleibt; ein gewähltes Laufwerk, das fehlt, steht als „nicht verbunden“ da.
+    /// </summary>
+    public async Task RefreshDrivesAsync()
+    {
+        if (!IsLoaded)
+        {
+            return;
+        }
+        try
+        {
+            var drives = await _settings.GetDrivesAsync();
+            var selected = Drives.Where(d => d.IsSelected).Select(d => d.Drive).ToList();
+            _loading = true;
+            try
+            {
+                RebuildDrives(drives, selected);
+            }
+            finally
+            {
+                _loading = false;
+            }
+            UpdateDirty();
+        }
+        catch (Exception)
+        {
+            // Die Liste bleibt dann wie sie war; beim nächsten Öffnen wird sie neu gelesen.
+        }
+    }
+
+    private void RebuildDrives(IReadOnlyList<ScanDrive> drives, IReadOnlyList<string> selected)
+    {
+        foreach (var option in Drives)
+        {
+            option.PropertyChanged -= OnEditChanged;
+        }
+        Drives.Clear();
+        foreach (var drive in drives)
+        {
+            var name = string.IsNullOrWhiteSpace(drive.Label) ? drive.Drive : $"{drive.Drive} {drive.Label}";
+            var size = drive.IsRemovable ? $"{drive.SizeGB} GB, {AppText.Get("DriveRemovable")}" : $"{drive.SizeGB} GB";
+            var option = new DriveOption(drive.Drive, $"{name} ({size})", true);
+            option.PropertyChanged += OnEditChanged;
+            Drives.Add(option);
+        }
+        SelectDrives(selected);
+    }
+
     private void SelectDrives(IReadOnlyList<string> selected)
     {
         // Gespeicherte, aber gerade nicht verfügbare Laufwerke (z. B. USB) bleiben erhalten.
         foreach (var drive in selected.Where(d => !Drives.Any(o => string.Equals(o.Drive, d, StringComparison.OrdinalIgnoreCase))))
         {
-            var option = new DriveOption(drive, $"{drive} (nicht verbunden)", false);
+            var option = new DriveOption(drive, string.Format(AppText.Get("DriveNotConnected"), drive), false);
             option.PropertyChanged += OnEditChanged;
             Drives.Add(option);
         }
@@ -632,6 +687,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.ComputeHash == b.ComputeHash
         && a.SmartExclusions == b.SmartExclusions
         && a.PortableSearch == b.PortableSearch
+        && a.TraceSearch == b.TraceSearch
+        && a.FileSearch == b.FileSearch
         && a.LogRetentionDays == b.LogRetentionDays
         && a.LogMaxSizeMB == b.LogMaxSizeMB;
 

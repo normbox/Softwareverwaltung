@@ -22,6 +22,10 @@ public sealed record AppSettings
     public bool SmartExclusions { get; init; } = true;
     /// <summary>Hauptschalter der Suche nach portablen Programmen im Scan (PortableSearch.Enabled).</summary>
     public bool PortableSearch { get; init; }
+    /// <summary>Unterschalter: Nutzungsspuren auswerten (PortableSearch.TraceSearch).</summary>
+    public bool TraceSearch { get; init; }
+    /// <summary>Unterschalter: Dateisuche in der gewählten Option „Wo suchen“ (PortableSearch.FileSearch).</summary>
+    public bool FileSearch { get; init; }
     public int LogRetentionDays { get; init; } = 30;
     public int LogMaxSizeMB { get; init; } = 100;
 
@@ -53,6 +57,8 @@ public sealed record AppSettings
             ComputeHash = fileScan?.Properties["ComputeHash"]?.Value is true,
             SmartExclusions = fileScan?.Properties["SmartExclusions"]?.Value is not false,
             PortableSearch = portable?.Properties["Enabled"]?.Value is true,
+            TraceSearch = portable?.Properties["TraceSearch"]?.Value is true,
+            FileSearch = portable?.Properties["FileSearch"]?.Value is true,
             LogRetentionDays = Convert.ToInt32(maintenance?.Properties["LogRetentionDays"]?.Value ?? 30),
             LogMaxSizeMB = Convert.ToInt32(maintenance?.Properties["LogMaxSizeMB"]?.Value ?? 100),
         };

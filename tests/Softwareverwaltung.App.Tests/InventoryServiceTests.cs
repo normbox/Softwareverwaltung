@@ -55,12 +55,12 @@ public sealed class InventoryServiceTests : IAsyncLifetime
     [Fact]
     public async Task SearchWithoutLocationShowsHintAndFindsNothing()
     {
-        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("PortableSearch", true));
+        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("PortableSearch", true).AddParameter("FileSearch", true));
         Assert.Empty(set.Errors);
 
         var result = await _service.ScanAsync();
 
-        Assert.Contains(result.Warnings, w => w.Contains("weder ein Laufwerk", StringComparison.Ordinal));
+        Assert.Contains(result.Warnings, w => w.Contains("keine Dateien durchsucht", StringComparison.Ordinal));
         Assert.DoesNotContain(result.Items, i => i.Sources.Contains("Portable"));
     }
 
@@ -69,7 +69,7 @@ public sealed class InventoryServiceTests : IAsyncLifetime
     {
         Directory.CreateDirectory(_scanFolder);
         File.Copy(Path.Combine(Environment.SystemDirectory, "whoami.exe"), Path.Combine(_scanFolder, "whoami.exe"));
-        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("ScanPath", new[] { _scanFolder }).AddParameter("ScanMode", "Folders").AddParameter("PortableSearch", true));
+        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("ScanPath", new[] { _scanFolder }).AddParameter("ScanMode", "Folders").AddParameter("PortableSearch", true).AddParameter("FileSearch", true));
         Assert.Empty(set.Errors);
 
         var result = await _service.ScanAsync();

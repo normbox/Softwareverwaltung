@@ -224,6 +224,8 @@ public sealed class SettingsViewModelTests
         Assert.False(vm.NoScanLocation);   // Suche aus: kein Hinweis
 
         vm.PortableSearchEnabled = true;
+        Assert.False(vm.NoScanLocation);   // Dateisuche noch aus: kein Hinweis
+        vm.FileSearchEnabled = true;
         Assert.True(vm.NoScanLocation);    // keine Option gewählt
 
         vm.IsDrivesMode = true;
@@ -262,6 +264,7 @@ public sealed class SettingsViewModelTests
         var vm = new SettingsViewModel(new FakeSettings());
         await vm.LoadAsync();
         vm.PortableSearchEnabled = true;
+        vm.FileSearchEnabled = true;
 
         vm.IsDrivesMode = true;
         Assert.False(vm.ShowDriveDurationHint);
@@ -315,6 +318,68 @@ public sealed class SettingsViewModelTests
         Assert.Contains("Wo suchen: Nur bestimmte Ordner", vm.StatusText);
         Assert.Contains("Ordner: %USERPROFILE%", vm.StatusText);
         Assert.False(vm.PortableSearchEnabled);
+    }
+
+    [Fact]
+    public async Task TraceAndFileSearchAreIndependentSwitchesAndAreSaved()
+    {
+        var fake = new FakeSettings();
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+        Assert.False(vm.TraceSearchEnabled);
+        Assert.False(vm.FileSearchEnabled);
+
+        vm.PortableSearchEnabled = true;
+        vm.TraceSearchEnabled = true;
+        Switch(vm, "Process").IsOn = true;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(fake.Saved.PortableSearch);
+        Assert.True(fake.Saved.TraceSearch);
+        Assert.False(fake.Saved.FileSearch);
+        Assert.False(vm.NoScanLocation);   // ohne Dateisuche kein Hinweis auf fehlende Laufwerke/Ordner
+    }
+
+    [Fact]
+    public async Task DriveListFollowsPluggedAndUnpluggedDrivesWithoutLosingSelection()
+    {
+        var fake = new FakeSettings { Saved = Off() with { ScanMode = "Drives", ScanDrives = ["E:"] } };
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+        Assert.True(vm.Drives.Single(d => d.Drive == "E:").IsSelected);
+
+        // USB-Stick E: abgezogen, F: angesteckt
+        fake.DriveList.RemoveAll(d => d.Drive == "E:");
+        fake.DriveList.Add(new("F:", "Neu", 64, false, "Removable"));
+        await vm.RefreshDrivesAsync();
+
+        var e = vm.Drives.Single(d => d.Drive == "E:");
+        Assert.True(e.IsSelected);
+        Assert.False(e.Available);
+        Assert.Contains("nicht verbunden", e.Text);
+        var f = vm.Drives.Single(d => d.Drive == "F:");
+        Assert.False(f.IsSelected);
+        Assert.Contains("USB", f.Text);
+        Assert.False(vm.IsDirty);           // Auswahl unverändert, nichts zu speichern
+
+        // E: wieder angesteckt: wieder normal und weiterhin gewählt
+        fake.DriveList.Add(new("E:", "Stick", 32, false, "Removable"));
+        await vm.RefreshDrivesAsync();
+        Assert.True(vm.Drives.Single(d => d.Drive == "E:").Available);
+        Assert.True(vm.Drives.Single(d => d.Drive == "E:").IsSelected);
+    }
+
+    [Fact]
+    public async Task UnselectedDriveDisappearsWhenUnplugged()
+    {
+        var fake = new FakeSettings();
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+
+        fake.DriveList.RemoveAll(d => d.Drive == "E:");
+        await vm.RefreshDrivesAsync();
+
+        Assert.DoesNotContain(vm.Drives, d => d.Drive == "E:");
     }
 
     private sealed class FakeFolderPicker : IFolderPicker
@@ -440,8 +505,10 @@ public sealed class SettingsViewModelTests
             return Task.FromResult(Preset);
         }
 
+        public List<ScanDrive> DriveList { get; } = [new("C:", "System", 500, true, "Fixed"), new("D:", null, 1000, true, "Fixed"), new("E:", "Stick", 32, false, "Removable")];
+
         public Task<IReadOnlyList<ScanDrive>> GetDrivesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ScanDrive>>([new("C:", "System", 500, true, "Fixed"), new("D:", null, 1000, true, "Fixed"), new("E:", "Stick", 32, false, "Removable")]);
+            Task.FromResult<IReadOnlyList<ScanDrive>>(DriveList.ToList());
 
         public Task<IReadOnlyList<ServiceTermsNotice>> GetServiceTermsAsync(string usage, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ServiceTermsNotice>>(
