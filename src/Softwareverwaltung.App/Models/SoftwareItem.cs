@@ -37,6 +37,10 @@ public sealed record SoftwareItem
     /// <summary>KEV-Treffer, die für diese Version widerlegt sind, mit Begründung.</summary>
     public IReadOnlyList<string> Refuted { get; init; } = [];
     public string Sources { get; init; } = "";
+    public string? WingetId { get; init; }
+    public string? InstallLocation { get; init; }
+    /// <summary>Kurzbeschreibung für die Details, z. B. „MSI · für alle Benutzer · X64“.</summary>
+    public string? InstallInfo { get; init; }
     /// <summary>Originalobjekt des Moduls, für spätere Aktionen (Update-Software, Uninstall-Software).</summary>
     public PSObject? Source { get; init; }
 
@@ -87,8 +91,23 @@ public sealed record SoftwareItem
             Vulnerabilities = vulnerabilities,
             Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => GetString(r, "Note")).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
+            WingetId = record is null ? null : GetString(record, "WingetId"),
+            InstallLocation = record is null ? null : GetString(record, "InstallLocation"),
+            InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,
         };
+    }
+
+    private static string? InstallInfoText(PSObject record)
+    {
+        var scope = GetString(record, "Scope") switch
+        {
+            "Machine" => "für alle Benutzer",
+            "User" => "nur für diesen Benutzer",
+            _ => null,
+        };
+        var parts = new[] { GetString(record, "InstallType"), scope, GetString(record, "Architecture") }.Where(p => p is not null).ToList();
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
     private static T? Get<T>(PSObject obj, string name) where T : class
