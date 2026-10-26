@@ -55,6 +55,7 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [x] 3d. Einstellungen in der Oberfläche
 - [ ] 4. KI-Berater: Tools, lokale Modelle (OpenAI-kompatibel), Chat-Seitenleiste
   - [x] 4a. Tools, Bereinigung und Einstellungen im Modul
+  - [ ] Zwischenetappe: bestehende Texte auslagern (.resx, Import-LocalizedData, Codes), noch ohne Übersetzung
   - [ ] 4b. Anbieter-Schnittstelle und Einstellungen in der App
   - [ ] 4c. Chat-Seitenleiste mit Vorschlagskarten
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
