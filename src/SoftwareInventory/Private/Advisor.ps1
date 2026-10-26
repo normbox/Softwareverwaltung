@@ -1,89 +1,46 @@
 # KI-Berater: Tools, die ein Sprachmodell aufrufen darf. Sie lesen nur Daten oder erzeugen
 # Vorschläge; ausgeführt wird nie etwas (das bestätigt der Benutzer in der Oberfläche).
 # Jede Antwort an das Modell läuft durch Protect-PrivateText (Benutzerpfade, Namen, Schlüssel).
+# Texte stehen in SoftwareInventory.Strings.psd1; hier nur ihre Schlüssel (siehe CLAUDE.md).
 
 $script:AdvisorContext = $null          # Bewertungen (SecurityRating) aus dem letzten Scan
 $script:AdvisorMaxListItems = 200
 
+$script:AdvisorIdProperty = [ordered]@{ id = @{ type = 'string'; Text = 'AdvisorParamId' } }
+$script:AdvisorProposalProperties = [ordered]@{
+    id     = @{ type = 'string'; Text = 'AdvisorParamId' }
+    reason = @{ type = 'string'; Text = 'AdvisorParamReason' }
+}
 $script:AdvisorTools = [ordered]@{
     get_inventory          = @{
-        Kind        = 'Read'
-        Description = 'Listet die installierten Programme aus dem letzten Scan mit Ampel, Versionen und Zahl der Sicherheitslücken. Filterbar; liefert je Programm eine id für die anderen Tools.'
-        Parameters  = [ordered]@{
-            type       = 'object'
-            properties = [ordered]@{
-                filter         = [ordered]@{ type = 'string'; description = 'Teil des Programm- oder Herstellernamens, z. B. "7-Zip". Leer = alle.' }
-                rating         = [ordered]@{ type = 'string'; enum = @('Red', 'Yellow', 'Gray', 'Green'); description = 'Nur Programme mit dieser Ampel.' }
-                updates_only   = [ordered]@{ type = 'boolean'; description = 'Nur Programme mit verfügbarem Update.' }
-                limit          = [ordered]@{ type = 'integer'; minimum = 1; maximum = 200; description = 'Höchstzahl der Einträge (Standard 50).' }
-            }
-            required   = @()
+        Kind = 'Read'; Text = 'AdvisorToolGetInventory'; Required = @()
+        Properties = [ordered]@{
+            filter       = @{ type = 'string'; Text = 'AdvisorParamFilter' }
+            rating       = @{ type = 'string'; enum = @('Red', 'Yellow', 'Gray', 'Green'); Text = 'AdvisorParamRating' }
+            updates_only = @{ type = 'boolean'; Text = 'AdvisorParamUpdatesOnly' }
+            limit        = @{ type = 'integer'; minimum = 1; maximum = 200; Text = 'AdvisorParamLimit' }
         }
     }
-    get_program_details    = @{
-        Kind        = 'Read'
-        Description = 'Details zu einem Programm: alle Gründe der Ampel, bekannte Sicherheitslücken (CVE, KEV, CVSS, EPSS), widerlegte Treffer, Installationsart und winget-ID.'
-        Parameters  = [ordered]@{
-            type       = 'object'
-            properties = [ordered]@{ id = [ordered]@{ type = 'string'; description = 'id aus get_inventory, z. B. "p-1a2b3c4d5e6f".' } }
-            required   = @('id')
-        }
-    }
-    check_latest_version   = @{
-        Kind        = 'Read'
-        Description = 'Prüft jetzt neu, welche Version eines Programms die neueste ist (nur über die vom Benutzer aktivierten Dienste).'
-        Parameters  = [ordered]@{
-            type       = 'object'
-            properties = [ordered]@{ id = [ordered]@{ type = 'string'; description = 'id aus get_inventory.' } }
-            required   = @('id')
-        }
-    }
-    search_vulnerabilities = @{
-        Kind        = 'Read'
-        Description = 'Sucht jetzt neu nach bekannten Sicherheitslücken eines Programms (NVD, CISA KEV, EPSS; nur die vom Benutzer aktivierten Dienste).'
-        Parameters  = [ordered]@{
-            type       = 'object'
-            properties = [ordered]@{ id = [ordered]@{ type = 'string'; description = 'id aus get_inventory.' } }
-            required   = @('id')
-        }
-    }
-    propose_update         = @{
-        Kind        = 'Proposal'
-        Description = 'Schlägt dem Benutzer vor, ein Programm zu aktualisieren. Führt nichts aus: Der Benutzer sieht den Vorschlag als Karte und bestätigt selbst.'
-        Parameters  = [ordered]@{
-            type       = 'object'
-            properties = [ordered]@{
-                id     = [ordered]@{ type = 'string'; description = 'id aus get_inventory.' }
-                reason = [ordered]@{ type = 'string'; description = 'Kurze Begründung für den Benutzer, auf Deutsch.' }
-            }
-            required   = @('id', 'reason')
-        }
-    }
-    propose_uninstall      = @{
-        Kind        = 'Proposal'
-        Description = 'Schlägt dem Benutzer vor, ein Programm zu deinstallieren. Führt nichts aus: Der Benutzer sieht den Vorschlag als Karte und bestätigt selbst.'
-        Parameters  = [ordered]@{
-            type       = 'object'
-            properties = [ordered]@{
-                id     = [ordered]@{ type = 'string'; description = 'id aus get_inventory.' }
-                reason = [ordered]@{ type = 'string'; description = 'Kurze Begründung für den Benutzer, auf Deutsch.' }
-            }
-            required   = @('id', 'reason')
-        }
-    }
+    get_program_details    = @{ Kind = 'Read'; Text = 'AdvisorToolGetProgramDetails'; Required = @('id'); Properties = $script:AdvisorIdProperty }
+    check_latest_version   = @{ Kind = 'Read'; Text = 'AdvisorToolCheckLatestVersion'; Required = @('id'); Properties = $script:AdvisorIdProperty }
+    search_vulnerabilities = @{ Kind = 'Read'; Text = 'AdvisorToolSearchVulnerabilities'; Required = @('id'); Properties = $script:AdvisorIdProperty }
+    propose_update         = @{ Kind = 'Proposal'; Text = 'AdvisorToolProposeUpdate'; Required = @('id', 'reason'); Properties = $script:AdvisorProposalProperties }
+    propose_uninstall      = @{ Kind = 'Proposal'; Text = 'AdvisorToolProposeUninstall'; Required = @('id', 'reason'); Properties = $script:AdvisorProposalProperties }
 }
 
-$script:AdvisorSystemPrompt = @'
-Du bist der Sicherheitsberater der Softwareverwaltung auf einem Windows-PC. Du antwortest auf Deutsch, knapp und in einfachen Worten.
-
-Regeln:
-- Stütze Aussagen über installierte Programme, Versionen und Sicherheitslücken nur auf Ergebnisse der Tools. Was die Tools nicht liefern, weißt du nicht; sag das.
-- Hole dir zuerst mit get_inventory die Programme und ihre id, dann bei Bedarf Details mit get_program_details.
-- Du führst nie etwas aus. Updates und Deinstallationen schlägst du nur mit propose_update oder propose_uninstall vor; der Benutzer bestätigt sie selbst in der App. Sag nie, dass etwas aktualisiert oder entfernt wurde.
-- Ampel: Rot = aktiv ausgenutzte oder kritische Lücke, Gelb = andere Lücken, „möglicherweise betroffen“ oder Update verfügbar, Grün = geprüft ohne Befund, Grau = nicht geprüft (der Grund steht dabei).
-- „Möglicherweise betroffen“ heißt: Die Version ließ sich nicht prüfen. Stelle das nicht als sicher dar.
-- Platzhalter wie %USERPROFILE% oder %USERNAME% stehen für bereinigte persönliche Angaben; frage nicht danach.
-'@
+function ConvertTo-AdvisorSchema {
+    # JSON-Schema der Parameter eines Tools, Beschreibungen in der aktuellen Sprache.
+    param($Tool)
+    $properties = [ordered]@{}
+    foreach ($name in $Tool.Properties.Keys) {
+        $p = $Tool.Properties[$name]
+        $schema = [ordered]@{ type = $p.type }
+        foreach ($key in 'enum', 'minimum', 'maximum') { if ($p.ContainsKey($key)) { $schema[$key] = $p[$key] } }
+        $schema.description = Get-LocalizedString $p.Text
+        $properties[$name] = $schema
+    }
+    [ordered]@{ type = 'object'; properties = $properties; required = @($Tool.Required) }
+}
 
 function Get-AdvisorProgramId {
     # Kurze, neutrale Kennung ohne persönliche Angaben (Hash des stabilen Schlüssels).
@@ -112,16 +69,16 @@ function ConvertTo-AdvisorSummary {
     $v = $Rating.VulnerabilityStatus
     $counted = @(if ($v) { $v.Vulnerabilities | Where-Object { $_.Assessment -in 'Affected', 'PossiblyAffected' } })
     [ordered]@{
-        id                    = Get-AdvisorProgramId $Rating.Record
-        name                  = $Rating.Name
-        publisher             = Get-RecordValue $Rating.Record 'Publisher'
-        version               = $Rating.Version
-        latest_version        = $Rating.LatestVersion
-        update_available      = [bool] ($Rating.UpdateStatus -and $Rating.UpdateStatus.Status -eq 'Outdated')
-        rating                = $Rating.Rating
-        vulnerabilities       = if ($v -and ($v.Status -eq 'Checked' -or $counted)) { $counted.Count } else { $null }
-        possibly_affected     = @($counted | Where-Object Assessment -eq 'PossiblyAffected').Count
-        reasons               = @($Rating.Reasons | Select-Object -First 3)
+        id                = Get-AdvisorProgramId $Rating.Record
+        name              = $Rating.Name
+        publisher         = Get-RecordValue $Rating.Record 'Publisher'
+        version           = $Rating.Version
+        latest_version    = $Rating.LatestVersion
+        update_available  = [bool] ($Rating.UpdateStatus -and $Rating.UpdateStatus.Status -eq 'Outdated')
+        rating            = $Rating.Rating
+        vulnerabilities   = if ($v -and ($v.Status -eq 'Checked' -or $counted)) { $counted.Count } else { $null }
+        possibly_affected = @($counted | Where-Object Assessment -eq 'PossiblyAffected').Count
+        reasons           = @($Rating.Reasons | Select-Object -First 3)
     }
 }
 
@@ -157,12 +114,22 @@ function ConvertTo-AdvisorDetail {
 }
 
 function New-AdvisorToolResult {
-    param([string] $Name, [bool] $Ok, $Data, $Proposal = $null)
+    param([string] $Name, [bool] $Ok, $Data, $Proposal = $null, [string] $Code)
     [pscustomobject] [ordered]@{
         PSTypeName = 'SoftwareInventory.AdvisorToolResult'
         Name       = $Name
         Ok         = $Ok
+        Code       = $Code    # Fehler- oder Statuscode, z. B. UnknownId oder ProposalCreated
         Content    = Protect-PrivateText ($Data | ConvertTo-Json -Depth 8 -Compress)
         Proposal   = $Proposal
     }
+}
+
+function New-AdvisorToolError {
+    # Fehler für das Modell: fester Code plus Meldung in der aktuellen Sprache.
+    param([string] $Name, [string] $Code, [object[]] $Arguments = @())
+    New-AdvisorToolResult -Name $Name -Ok $false -Code $Code -Data ([ordered]@{
+            error_code = $Code
+            error      = Get-LocalizedString "AdvisorError$Code" $Arguments
+        })
 }

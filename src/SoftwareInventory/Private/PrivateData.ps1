@@ -19,7 +19,7 @@ function Protect-PrivateText {
     .DESCRIPTION
         - Eigenes Profil (C:\Users\<Name>) → %USERPROFILE%, auch in JSON mit doppelten Backslashes
           und mit Schrägstrichen.
-        - Profile anderer Benutzer → C:\Users\<Benutzer> (Public und Default bleiben).
+        - Profile anderer Benutzer → C:\Users\%OTHERUSER% (Public und Default bleiben).
         - Benutzername → %USERNAME%, Rechnername → %COMPUTERNAME%, Domäne → %USERDOMAIN%
           (jeweils nur als ganzes Wort).
         - Bekannte API-Schlüssel → ***.
@@ -37,8 +37,8 @@ function Protect-PrivateText {
     # Profile anderer Benutzer: Laufwerk:\Users\<Name>
     $Text = [regex]::Replace($Text, "(?<prefix>\b[A-Za-z]:$sep(?:Users|Benutzer)$sep)(?<name>[^\\/""'\s:*?<>|]+)", {
             param($m)
-            if ($m.Groups['name'].Value -in 'Public', 'Default', 'Default User', 'All Users', '<Benutzer>') { return $m.Value }
-            $m.Groups['prefix'].Value + '<Benutzer>'
+            if ($m.Groups['name'].Value -in 'Public', 'Default', 'Default User', 'All Users', '%OTHERUSER%') { return $m.Value }
+            $m.Groups['prefix'].Value + '%OTHERUSER%'
         }, 'IgnoreCase')
 
     $words = [ordered]@{}

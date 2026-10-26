@@ -81,17 +81,21 @@ Describe 'KI-Berater: Tools' {
         $data.reasons.Count | Should -Be 2
     }
 
-    It 'meldet Fehler verständlich statt zu werfen: <Case>' -TestCases @(
-        @{ Case = 'unbekanntes Tool'; Name = 'delete_everything'; Arguments = '{}'; Expected = 'Unbekanntes Tool' }
-        @{ Case = 'kein JSON'; Name = 'get_inventory'; Arguments = 'nicht json'; Expected = 'kein gültiges JSON' }
-        @{ Case = 'ungültige id'; Name = 'get_program_details'; Arguments = '{"id":"C:\\Windows"}'; Expected = 'Ungültige id' }
-        @{ Case = 'unbekannte id'; Name = 'get_program_details'; Arguments = '{"id":"p-000000000000"}'; Expected = 'Kein Programm' }
-        @{ Case = 'limit zu groß'; Name = 'get_inventory'; Arguments = '{"limit":5000}'; Expected = 'limit muss' }
-        @{ Case = 'falsche Ampel'; Name = 'get_inventory'; Arguments = '{"rating":"Lila"}'; Expected = 'rating muss' }
+    It 'meldet Fehler mit festem Code und Meldung statt zu werfen: <Code>' -TestCases @(
+        @{ Code = 'UnknownTool'; Name = 'delete_everything'; Arguments = '{}' }
+        @{ Code = 'InvalidArguments'; Name = 'get_inventory'; Arguments = 'nicht json' }
+        @{ Code = 'InvalidId'; Name = 'get_program_details'; Arguments = '{"id":"C:\\Windows"}' }
+        @{ Code = 'UnknownId'; Name = 'get_program_details'; Arguments = '{"id":"p-000000000000"}' }
+        @{ Code = 'InvalidLimit'; Name = 'get_inventory'; Arguments = '{"limit":5000}' }
+        @{ Code = 'InvalidRating'; Name = 'get_inventory'; Arguments = '{"rating":"Lila"}' }
     ) {
         $r = Invoke-Tool $Name $Arguments
         $r.Ok | Should -BeFalse
-        (Get-Content2 $r).error | Should -Match $Expected
+        $r.Code | Should -Be $Code
+        $data = Get-Content2 $r
+        $data.error_code | Should -Be $Code
+        $data.error | Should -Not -BeNullOrEmpty
+        $data.error | Should -Not -Be "AdvisorError$Code"   # Text vorhanden, nicht nur der Schlüssel
     }
 
     It 'erzeugt Vorschläge, führt aber nichts aus' {
@@ -104,7 +108,8 @@ Describe 'KI-Berater: Tools' {
         $r.Proposal.Name | Should -Be 'Old Tool'
         $r.Proposal.Reason | Should -Not -Match 'normb'
         $r.Proposal.Rating.Name | Should -Be 'Old Tool'
-        (Get-Content2 $r).status | Should -Match 'Nichts wurde ausgeführt'
+        $r.Code | Should -Be 'ProposalCreated'
+        (Get-Content2 $r).status_code | Should -Be 'ProposalCreated'
         $r.Content | Should -Not -Match 'Rating'
 
         (Invoke-Tool propose_uninstall "{`"id`":`"$zipId`",`"reason`":`"wird nicht mehr gebraucht`"}").Proposal.Action | Should -Be 'Uninstall'
@@ -113,8 +118,8 @@ Describe 'KI-Berater: Tools' {
     }
 
     It 'lehnt Update-Vorschläge ohne bekanntes Update und ohne Begründung ab' {
-        (Get-Content2 (Invoke-Tool propose_update "{`"id`":`"$zipId`",`"reason`":`"x`"}")).error | Should -Match 'kein Update bekannt'
-        (Get-Content2 (Invoke-Tool propose_uninstall "{`"id`":`"$zipId`",`"reason`":`"  `"}")).error | Should -Match 'reason fehlt'
+        (Invoke-Tool propose_update "{`"id`":`"$zipId`",`"reason`":`"x`"}").Code | Should -Be 'NoUpdateKnown'
+        (Invoke-Tool propose_uninstall "{`"id`":`"$zipId`",`"reason`":`"  `"}").Code | Should -Be 'ReasonMissing'
     }
 
     It 'prüft Version und Lücken auf Wunsch neu und bereinigt das Ergebnis' {

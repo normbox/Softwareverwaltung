@@ -1,6 +1,10 @@
 #Requires -Version 7.6
 Set-StrictMode -Version Latest
 
+# Texte zuerst (siehe CLAUDE.md „Mehrsprachig vorbereitet“): Sprache der Oberfläche, sonst Basisdatei.
+Import-LocalizedData -BindingVariable Strings -FileName 'SoftwareInventory.Strings.psd1' -BaseDirectory $PSScriptRoot
+$script:Strings = $Strings
+
 # Private zuerst laden, damit öffentliche Funktionen darauf zugreifen können.
 foreach ($folder in 'Private', 'Public') {
     $path = Join-Path $PSScriptRoot $folder

@@ -11,11 +11,13 @@ $script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')
 $script:ActionOptions = @('RestorePoint')
 # KI-Berater: nur lokale Server mit OpenAI-kompatibler Schnittstelle (Etappe 4). Vorgaben sind
 # Standardadressen bekannter Programme; die Adresse bleibt änderbar. Kein Standardmodell.
+# Produktnamen sind keine Übersetzungstexte; Hinweise und „Eigene Adresse“ stehen in den Texten
+# (AdvisorPresetNote<Name>, AdvisorPresetLabelCustom).
 $script:AdvisorPresets = [ordered]@{
-    Ollama   = @{ Label = 'Ollama'; Endpoint = 'http://localhost:11434/v1'; RequiresApiKey = $false; Note = $null }
-    LMStudio = @{ Label = 'LM Studio'; Endpoint = 'http://localhost:1234/v1'; RequiresApiKey = $false; Note = 'Lokalen Server in LM Studio starten (Developer → Start Server).' }
-    Unsloth  = @{ Label = 'Unsloth Studio'; Endpoint = 'http://localhost:8888/v1'; RequiresApiKey = $true; Note = 'Braucht einen API-Schlüssel (sk-unsloth-…) aus den Einstellungen von Unsloth Studio. Der Port ist nicht fest (oft 8888, manchmal 8000).' }
-    Custom   = @{ Label = 'Eigene Adresse'; Endpoint = $null; RequiresApiKey = $false; Note = 'Jeder Server mit OpenAI-kompatibler Schnittstelle und Tool-Unterstützung (/v1/chat/completions mit tools).' }
+    Ollama   = @{ Label = 'Ollama'; Endpoint = 'http://localhost:11434/v1'; RequiresApiKey = $false }
+    LMStudio = @{ Label = 'LM Studio'; Endpoint = 'http://localhost:1234/v1'; RequiresApiKey = $false }
+    Unsloth  = @{ Label = 'Unsloth Studio'; Endpoint = 'http://localhost:8888/v1'; RequiresApiKey = $true }
+    Custom   = @{ Label = $null; Endpoint = $null; RequiresApiKey = $false }
 }
 # Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
 $script:DefaultLogRetentionDays = 30

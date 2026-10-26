@@ -5,8 +5,11 @@ function Invoke-AdvisorTool {
     .DESCRIPTION
         Für die Gesprächsschleife: Das Modell nennt Tool und Argumente (JSON), diese Funktion prüft
         die Argumente, liest die Daten und gibt Content (JSON-Text für das Modell, ohne Benutzerpfade,
-        Namen und Schlüssel) zurück. Fehler kommen als Ok = $false mit verständlicher Meldung im
-        Content, damit das Modell sich korrigieren kann; es wird nie eine Ausnahme geworfen.
+        Namen und Schlüssel) zurück. Fehler kommen als Ok = $false mit festem Code (Code, im JSON
+        error_code) und einer Meldung in der Sprache der Oberfläche, damit das Modell sich korrigieren
+        kann; es wird nie eine Ausnahme geworfen.
+        Codes: UnknownTool, InvalidArguments, InvalidId, UnknownId, InvalidLimit, InvalidRating,
+        ReasonMissing, NoUpdateKnown, ToolFailed; bei Vorschlägen ProposalCreated.
         propose_update und propose_uninstall führen nichts aus: Proposal enthält den Vorschlag
         (mit der Bewertung als Rating) für die Oberfläche, die den Benutzer bestätigen lässt.
     .PARAMETER Name
@@ -26,25 +29,24 @@ function Invoke-AdvisorTool {
         [string] $ArgumentsJson = '{}'
     )
 
-    $fail = { param($Message) New-AdvisorToolResult -Name $Name -Ok $false -Data ([ordered]@{ error = $Message }) }
     if (-not $script:AdvisorTools.Contains($Name)) {
-        return & $fail "Unbekanntes Tool '$Name'. Verfügbar: $($script:AdvisorTools.Keys -join ', ')."
+        return New-AdvisorToolError $Name UnknownTool @($Name, ($script:AdvisorTools.Keys -join ', '))
     }
     try {
         $arguments = if ([string]::IsNullOrWhiteSpace($ArgumentsJson)) { @{} } else { $ArgumentsJson | ConvertFrom-Json -AsHashtable -ErrorAction Stop }
         if ($arguments -isnot [hashtable]) { throw 'kein Objekt' }
     }
     catch {
-        return & $fail 'Die Argumente sind kein gültiges JSON-Objekt.'
+        return New-AdvisorToolError $Name InvalidArguments
     }
 
     # Programm über die id aus get_inventory
     $rating = $null
-    if ($script:AdvisorTools[$Name].Parameters.required -contains 'id') {
+    if ($script:AdvisorTools[$Name].Required -contains 'id') {
         $id = [string] $arguments['id']
-        if ($id -notmatch '^p-[0-9a-f]{12}$') { return & $fail "Ungültige id '$id'. Erst get_inventory aufrufen und die dortige id verwenden." }
+        if ($id -notmatch '^p-[0-9a-f]{12}$') { return New-AdvisorToolError $Name InvalidId @($id) }
         $rating = Find-AdvisorRating $id
-        if (-not $rating) { return & $fail "Kein Programm mit id '$id' im letzten Scan. Erst get_inventory aufrufen." }
+        if (-not $rating) { return New-AdvisorToolError $Name UnknownId @($id) }
     }
 
     try {
@@ -53,10 +55,10 @@ function Invoke-AdvisorTool {
                 $limit = 50
                 if ($arguments.ContainsKey('limit')) {
                     $limit = $arguments['limit'] -as [int]
-                    if (-not $limit -or $limit -lt 1 -or $limit -gt $script:AdvisorMaxListItems) { return & $fail "limit muss zwischen 1 und $($script:AdvisorMaxListItems) liegen." }
+                    if (-not $limit -or $limit -lt 1 -or $limit -gt $script:AdvisorMaxListItems) { return New-AdvisorToolError $Name InvalidLimit @($script:AdvisorMaxListItems) }
                 }
                 $ratingFilter = [string] $arguments['rating']
-                if ($ratingFilter -and $ratingFilter -notin 'Red', 'Yellow', 'Gray', 'Green') { return & $fail 'rating muss Red, Yellow, Gray oder Green sein.' }
+                if ($ratingFilter -and $ratingFilter -notin 'Red', 'Yellow', 'Gray', 'Green') { return New-AdvisorToolError $Name InvalidRating }
                 $filter = [string] $arguments['filter']
                 $all = @(Get-AdvisorContextRating)
                 $matching = @($all | Where-Object {
@@ -90,11 +92,11 @@ function Invoke-AdvisorTool {
             }
             { $_ -in 'propose_update', 'propose_uninstall' } {
                 $reason = ([string] $arguments['reason']).Trim()
-                if (-not $reason) { return & $fail 'reason fehlt: Begründung für den Benutzer angeben.' }
+                if (-not $reason) { return New-AdvisorToolError $Name ReasonMissing }
                 if ($reason.Length -gt 500) { $reason = $reason.Substring(0, 500) }
                 $action = if ($Name -eq 'propose_update') { 'Update' } else { 'Uninstall' }
                 if ($action -eq 'Update' -and -not ($rating.UpdateStatus -and $rating.UpdateStatus.Status -eq 'Outdated')) {
-                    return & $fail "Für '$($rating.Name)' ist kein Update bekannt. Erst check_latest_version aufrufen."
+                    return New-AdvisorToolError $Name NoUpdateKnown @($rating.Name)
                 }
                 $proposal = [pscustomobject] [ordered]@{
                     PSTypeName = 'SoftwareInventory.AdvisorProposal'
@@ -105,14 +107,15 @@ function Invoke-AdvisorTool {
                     Reason     = Protect-PrivateText $reason
                     Rating     = $rating   # nur für die Oberfläche, geht nicht an das Modell
                 }
-                New-AdvisorToolResult -Name $Name -Ok $true -Proposal $proposal -Data ([ordered]@{
+                New-AdvisorToolResult -Name $Name -Ok $true -Code ProposalCreated -Proposal $proposal -Data ([ordered]@{
                         proposal_id = $proposal.ProposalId
-                        status      = 'Vorschlag wird dem Benutzer angezeigt. Nichts wurde ausgeführt; der Benutzer entscheidet selbst.'
+                        status_code = 'ProposalCreated'
+                        status      = Get-LocalizedString 'AdvisorStatusProposalCreated'
                     })
             }
         }
     }
     catch {
-        & $fail "Fehler bei $($Name): $($_.Exception.Message)"
+        New-AdvisorToolError $Name ToolFailed @($Name, $_.Exception.Message)
     }
 }

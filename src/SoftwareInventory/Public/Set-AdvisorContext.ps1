@@ -20,6 +20,6 @@ function Set-AdvisorContext {
         [switch] $Clear
     )
 
-    if (-not $PSCmdlet.ShouldProcess('KI-Berater', 'Daten des letzten Scans übernehmen')) { return }
+    if (-not $PSCmdlet.ShouldProcess((Get-LocalizedString 'AdvisorContextTarget'), (Get-LocalizedString 'AdvisorContextAction'))) { return }
     $script:AdvisorContext = if ($Clear) { $null } else { @($Rating | Where-Object { $_ -and $_.PSObject.Properties['Record'] }) }
 }

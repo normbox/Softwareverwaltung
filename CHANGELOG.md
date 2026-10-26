@@ -13,6 +13,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 - `Protect-PrivateText`: gemeinsame Bereinigung für Berater und HTML-Bericht – eigenes Profil (auch in JSON und mit `/`), Profile anderer Benutzer, Benutzername, Rechnername, Domäne, API-Schlüssel.
 - Einstellungen `Advisor` (Schalter, Vorgabe, Adresse, Modell; standardmäßig aus, kein Standardmodell) und `Get-AdvisorEndpointPreset` mit den Standardadressen von Ollama, LM Studio und Unsloth Studio sowie „Eigene Adresse“. Schlüssel für den KI-Server über `Set-ServiceCredential -Service Advisor`.
 - Doku `docs/BERATER.md`.
+- Mehrsprachigkeit vorbereitet: neue Texte des Moduls in `SoftwareInventory.Strings.psd1` (geladen mit `Import-LocalizedData`, abgerufen mit `Get-LocalizedString`, Basissprache Deutsch). Fehler und Status des Beraters als feste Codes (`error_code`, `status_code`). Der Platzhalter für fremde Benutzerprofile ist sprachneutral `%OTHERUSER%`. Ein Test prüft, dass jeder verwendete Text-Schlüssel existiert. Regel in CLAUDE.md; bestehende Texte folgen in einer eigenen Etappe.
 
 #### Geändert
 

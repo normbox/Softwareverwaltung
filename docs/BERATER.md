@@ -39,9 +39,10 @@ Stand der Adressen: 26.10.2026. Maßgeblich ist die Dokumentation des jeweiligen
 
 - Die `id` (`p-` plus 12 Hex-Zeichen) ist ein Hash des stabilen Schlüssels eines Programms. Sie enthält keine Pfade und keine Namen.
 - Die Tools arbeiten mit den Daten des letzten Scans. Die App übergibt sie mit `Set-AdvisorContext`. Ohne diesen Aufruf liest das Modul beim ersten Tool-Aufruf einmal selbst ein.
-- Fehler (unbekanntes Tool, ungültiges JSON, falsche id) kommen als `Ok = $false` mit einer verständlichen Meldung zurück, damit das Modell sich korrigieren kann.
+- Fehler kommen als `Ok = $false` mit festem Code (`Code`, im JSON `error_code`) und einer Meldung in der Sprache der Oberfläche zurück, damit das Modell sich korrigieren kann. Codes: `UnknownTool`, `InvalidArguments`, `InvalidId`, `UnknownId`, `InvalidLimit`, `InvalidRating`, `ReasonMissing`, `NoUpdateKnown`, `ToolFailed`; Vorschläge melden `ProposalCreated`.
 - Vorschläge führen nichts aus. `Proposal` enthält Aktion, Programm, Begründung und die Bewertung für die Oberfläche. Das Modell bekommt nur die Vorschlags-ID und den Hinweis, dass der Benutzer selbst entscheidet. Bestätigt und ausgeführt wird wie bei den Buttons, also mit Bestätigungsdialog und genau dem bestätigten Befehl (siehe [AKTIONEN.md](AKTIONEN.md)).
 - `Get-AdvisorTool -SystemPrompt` liefert die Systemanweisung: auf Deutsch antworten, nur auf Tool-Ergebnisse stützen, nur vorschlagen, „möglicherweise betroffen“ nicht als sicher darstellen.
+- Alle Texte (Tool-Beschreibungen, Systemanweisung, Meldungen, Hinweise zu den Vorgaben) stehen in `src/SoftwareInventory/SoftwareInventory.Strings.psd1` und kommen über `Import-LocalizedData` in der Sprache der Oberfläche; vorerst gibt es nur Deutsch.
 
 ## Bereinigung
 
@@ -50,7 +51,7 @@ Jede Tool-Antwort läuft durch `Protect-PrivateText`, **auch bei lokalen Modelle
 | Was | Wird zu |
 | --- | --- |
 | eigenes Profil `C:\Users\<Name>`, auch als `C:\\Users\\…` in JSON und mit `/` | `%USERPROFILE%` |
-| Profile anderer Benutzer | `C:\Users\<Benutzer>` (`Public` und `Default` bleiben) |
+| Profile anderer Benutzer | `C:\Users\%OTHERUSER%` (`Public` und `Default` bleiben) |
 | Benutzername, Rechnername, Domäne (als ganzes Wort) | `%USERNAME%`, `%COMPUTERNAME%`, `%USERDOMAIN%` |
 | gespeicherte API-Schlüssel | `***` |
 

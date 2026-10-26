@@ -22,7 +22,7 @@ Describe 'Protect-PrivateText' {
 
     It 'ersetzt Profile anderer Benutzer, lässt Public und Default stehen' {
         Protect 'C:\Users\anna\Desktop\a.exe; C:\Users\Public\b.exe; D:\Benutzer\max\c.exe' |
-            Should -Be 'C:\Users\<Benutzer>\Desktop\a.exe; C:\Users\Public\b.exe; D:\Benutzer\<Benutzer>\c.exe'
+            Should -Be 'C:\Users\%OTHERUSER%\Desktop\a.exe; C:\Users\Public\b.exe; D:\Benutzer\%OTHERUSER%\c.exe'
     }
 
     It 'ersetzt Benutzername, Rechnername und Domäne nur als ganzes Wort' {

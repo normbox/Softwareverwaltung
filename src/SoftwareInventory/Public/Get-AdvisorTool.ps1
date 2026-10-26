@@ -6,7 +6,8 @@ function Get-AdvisorTool {
         Unabhängig vom Anbieter: Die App oder ein Plugin wandelt die Beschreibung in das Format
         seines Servers um (z. B. OpenAI „tools“ mit type function). Kind ist Read (liest Daten)
         oder Proposal (erzeugt nur einen Vorschlag, den der Benutzer bestätigen muss).
-        Mit -SystemPrompt kommt stattdessen die Systemanweisung für das Modell.
+        Beschreibungen kommen in der Sprache der Oberfläche. Mit -SystemPrompt kommt stattdessen
+        die Systemanweisung für das Modell.
     .EXAMPLE
         Get-AdvisorTool | Format-Table Name, Kind
     .EXAMPLE
@@ -16,15 +17,15 @@ function Get-AdvisorTool {
     [OutputType('SoftwareInventory.AdvisorTool', [string])]
     param([switch] $SystemPrompt)
 
-    if ($SystemPrompt) { return $script:AdvisorSystemPrompt }
+    if ($SystemPrompt) { return Get-LocalizedString 'AdvisorSystemPrompt' }
     foreach ($name in $script:AdvisorTools.Keys) {
         $tool = $script:AdvisorTools[$name]
         [pscustomobject] [ordered]@{
             PSTypeName     = 'SoftwareInventory.AdvisorTool'
             Name           = $name
             Kind           = $tool.Kind
-            Description    = $tool.Description
-            ParametersJson = $tool.Parameters | ConvertTo-Json -Depth 8 -Compress
+            Description    = Get-LocalizedString $tool.Text
+            ParametersJson = ConvertTo-AdvisorSchema $tool | ConvertTo-Json -Depth 8 -Compress
         }
     }
 }

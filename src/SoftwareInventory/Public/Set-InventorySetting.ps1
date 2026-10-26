@@ -141,7 +141,11 @@ function Set-InventorySetting {
         if ($presetEndpoint -and -not $PSBoundParameters.ContainsKey('AdvisorEndpoint')) { $setting.Advisor.Endpoint = $presetEndpoint }
     }
     if ($PSBoundParameters.ContainsKey('AdvisorEndpoint')) {
-        if ($AdvisorEndpoint -and -not (Test-AdvisorEndpoint $AdvisorEndpoint)) { throw "Ungültige Adresse '$AdvisorEndpoint': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1." }
+        if ($AdvisorEndpoint -and -not (Test-AdvisorEndpoint $AdvisorEndpoint)) {
+            $exception = [System.ArgumentException]::new((Get-LocalizedString 'SettingsErrorInvalidAdvisorEndpoint' @($AdvisorEndpoint)), 'AdvisorEndpoint')
+            $exception.Data['Code'] = 'InvalidAdvisorEndpoint'
+            throw $exception
+        }
         $setting.Advisor.Endpoint = if ($AdvisorEndpoint) { $AdvisorEndpoint.TrimEnd('/') } else { $null }
     }
     if ($PSBoundParameters.ContainsKey('AdvisorModel')) { $setting.Advisor.Model = if ($AdvisorModel) { $AdvisorModel } else { $null } }
