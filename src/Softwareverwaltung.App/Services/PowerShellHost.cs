@@ -51,8 +51,15 @@ public sealed class PowerShellHost : IPowerShellHost
             var runspace = RunspaceFactory.CreateRunspace(state);
             runspace.ApartmentState = ApartmentState.MTA;
             await Task.Run(runspace.Open, cancellationToken).ConfigureAwait(false);
+            await SetModulePathAsync(runspace, BuildModulePath(_modulesDirectory)).ConfigureAwait(false);
 
             var messages = new List<string>();
+            // CimCmdlets (Get-CimInstance …) kommt sonst aus einem installierten PowerShell 7; die DLL liefert das SDK mit.
+            var cim = Path.Combine(AppContext.BaseDirectory, "Microsoft.Management.Infrastructure.CimCmdlets.dll");
+            if (File.Exists(cim))
+            {
+                messages.AddRange(await ImportAsync(runspace, cim, required: false).ConfigureAwait(false));
+            }
             // Mitgelieferte Module mit vollem Pfad laden, damit keine andere installierte Version gewinnt.
             if (winget is not null)
             {
@@ -137,6 +144,26 @@ public sealed class PowerShellHost : IPowerShellHost
         _runspace?.Dispose();
         _lock.Dispose();
     }
+
+    /// <summary>
+    /// Modulpfad der eingebetteten Engine: nur die mitgelieferten Module und die Windows-Module aus
+    /// System32 (z. B. Appx für Store-Apps). Ohne Bereinigung erbt die Engine den Pfad des startenden
+    /// Prozesses (Benutzermodule, installiertes PowerShell 7, Program Files) und könnte fremde Module laden.
+    /// </summary>
+    public static string BuildModulePath(string modulesDirectory)
+    {
+        var windowsModules = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "Modules");
+        return string.Join(Path.PathSeparator, modulesDirectory, windowsModules);
+    }
+
+    private static Task SetModulePathAsync(Runspace runspace, string modulePath) => Task.Run(() =>
+    {
+        // Gilt für die ganze App (Prozessumgebung), damit auch der erhöhte Helfer (powershell.exe) ihn erbt.
+        using var ps = PowerShell.Create();
+        ps.Runspace = runspace;
+        ps.AddScript("param($Path) $env:PSModulePath = $Path").AddParameter("Path", modulePath);
+        ps.Invoke();
+    });
 
     private string? FindModuleManifest(string name)
     {

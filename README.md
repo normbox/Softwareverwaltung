@@ -138,7 +138,7 @@ Tests:
 Invoke-Pester ./tests/Unit                                 # Unit-Tests
 Invoke-Pester ./tests/Integration                          # gegen das echte System (liest nur)
 .\tests\Sandbox\Start-ActionSandbox.ps1                    # Aktionen echt testen, nur in Windows Sandbox
-Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+Invoke-ScriptAnalyzer ./src/SoftwareInventory -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 ```
 
 Fremdkomponenten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

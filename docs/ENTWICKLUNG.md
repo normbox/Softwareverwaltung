@@ -15,7 +15,7 @@ Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.Power
 ```powershell
 pwsh -c "Invoke-Pester ./tests/Unit"                     # Unit-Tests
 pwsh -c "Invoke-Pester ./tests/Integration"              # gegen das echte System
-pwsh -c "Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1"
+pwsh -c "Invoke-ScriptAnalyzer ./src/SoftwareInventory -Recurse -Settings ./PSScriptAnalyzerSettings.psd1"
 .\tests\Sandbox\Start-ActionSandbox.ps1                  # Aktualisieren/Deinstallieren echt testen, nur in Windows Sandbox
 ```
 
