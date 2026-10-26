@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:vm="clr-namespace:Softwareverwaltung.App.ViewModels"
+             xmlns:loc="clr-namespace:Softwareverwaltung.App.Localization"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
     <UserControl.Resources>
@@ -12,6 +13,11 @@
             <Setter Property="FontSize" Value="18" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,20,0,4" />
+        </Style>
+        <Style x:Key="SubsectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,12,0,4" />
         </Style>
         <Style x:Key="SectionText" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -84,14 +90,16 @@
                 <TextBlock Style="{StaticResource SectionText}" Text="Woher die Liste der installierten Programme kommt. Alles bleibt auf diesem PC." />
                 <ItemsControl ItemsSource="{Binding Sources}" ItemTemplate="{StaticResource SwitchCard}" />
 
-                <!-- Nutzungsspuren -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Nutzungsspuren" />
-                <TextBlock Style="{StaticResource SectionText}" Text="Findet Programme, die nicht installiert wurden (portable Programme). Alles bleibt auf diesem PC." />
+                <!-- Suche nach portablen Programmen: Nutzungsspuren sowie Ordner und Laufwerke -->
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsPortableTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableIntro}" />
+
+                <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsPortableTracesTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableTracesText}" />
                 <ItemsControl ItemsSource="{Binding Traces}" ItemTemplate="{StaticResource SwitchCard}" />
 
-                <!-- Dateiscan -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Dateiscan" />
-                <TextBlock Style="{StaticResource SectionText}" Text="Sucht in Ordnern und Laufwerken nach Programmdateien. Ohne Ordner und Laufwerke findet kein Dateiscan statt." />
+                <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsPortableFoldersTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableFoldersText}" />
                 <TextBlock Style="{StaticResource FieldLabel}" Text="Ordner (einer pro Zeile, z. B. %USERPROFILE%)" />
                 <ui:TextBox Text="{Binding ScanPathsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
                             MinHeight="64" TextWrapping="NoWrap" AutomationProperties.Name="Ordner für den Dateiscan" />
@@ -110,7 +118,7 @@
                 </ItemsControl>
                 <CheckBox Content="Temp-Ordner mit durchsuchen" IsChecked="{Binding IncludeTemp}" Margin="0,8,0,0" />
                 <CheckBox Content="Prüfsumme (SHA256) berechnen – langsamer" IsChecked="{Binding ComputeHash}" Margin="0,4,0,0" />
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Ausschlüsse (einer pro Zeile; gilt für Dateiscan und Nutzungsspuren)" />
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsPortableExcludes}" />
                 <ui:TextBox Text="{Binding ExcludePathsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
                             MinHeight="64" TextWrapping="NoWrap" AutomationProperties.Name="Ausgeschlossene Ordner" />
                 <CheckBox IsChecked="{Binding SmartExclusions}" Margin="0,8,0,0">

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Texte der App (Basissprache Deutsch). In XAML: {loc:Text Schlüssel}, in C#: AppText.Get("Schlüssel").
+  Weitere Sprachen später als Strings.<Kultur>.resx mit denselben Schlüsseln (siehe CLAUDE.md).
+-->
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="SettingsPortableTitle" xml:space="preserve">
+    <value>Suche nach portablen Programmen</value>
+  </data>
+  <data name="SettingsPortableIntro" xml:space="preserve">
+    <value>Findet Programme, die nicht installiert wurden, z. B. entpackte ZIP-Archive oder Programme auf USB-Sticks. Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>
+  </data>
+  <data name="SettingsPortableTracesTitle" xml:space="preserve">
+    <value>Über Nutzungsspuren</value>
+  </data>
+  <data name="SettingsPortableTracesText" xml:space="preserve">
+    <value>Findet Programme, die Windows als gestartet, laufend oder automatisch startend kennt. Alles bleibt auf diesem PC.</value>
+  </data>
+  <data name="SettingsPortableFoldersTitle" xml:space="preserve">
+    <value>In Ordnern und auf Laufwerken</value>
+  </data>
+  <data name="SettingsPortableFoldersText" xml:space="preserve">
+    <value>Durchsucht die gewählten Ordner und Laufwerke nach Programmdateien. Ohne Ordner und Laufwerke wird hier nicht gesucht.</value>
+  </data>
+  <data name="SettingsPortableExcludes" xml:space="preserve">
+    <value>Ausschlüsse (einer pro Zeile; gilt für Ordner, Laufwerke und Nutzungsspuren)</value>
+  </data>
+</root>
