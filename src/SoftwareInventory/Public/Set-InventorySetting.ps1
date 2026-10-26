@@ -94,20 +94,9 @@ function Set-InventorySetting {
     }
 
     if ($Preset) {
-        foreach ($s in $script:InstalledSources) { $setting.Sources.$s = $true }
-        foreach ($t in $script:TraceSources) { $setting.Traces.$t = $true }
-        if ($Preset -eq 'Quick') {
-            $setting.FileScan.Paths = [string[]] @('%USERPROFILE%')
-            $setting.FileScan.Drives = [string[]] @()
-            $setting.FileScan.IncludeTemp = $false
-            $setting.FileScan.ComputeHash = $false
-        }
-        else {
-            $setting.FileScan.Paths = [string[]] @()
-            $setting.FileScan.Drives = [string[]] @(Get-ScanDrive | Where-Object IsDefault | ForEach-Object Drive)
-            $setting.FileScan.IncludeTemp = $true
-            $setting.FileScan.ComputeHash = $true
-        }
+        $values = Get-SettingPreset -Preset $Preset
+        foreach ($name in $values.Enable) { Set-SettingSwitch -Setting $setting -Name $name -Value $true }
+        foreach ($name in 'Paths', 'Drives', 'IncludeTemp', 'ComputeHash') { $setting.FileScan.$name = $values.FileScan.$name }
     }
 
     foreach ($name in $Enable) { Set-SettingSwitch -Setting $setting -Name $name -Value $true }

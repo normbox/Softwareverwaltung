@@ -144,6 +144,22 @@ Describe 'Einstellungen' {
         }
     }
 
+    It 'liefert Vorlagenwerte ohne zu speichern und ohne Dienste oder Aktionen' {
+        Mock -ModuleName SoftwareInventory Get-ScanDrive { [pscustomobject] @{ Drive = 'D:'; IsDefault = $true } }
+        $quick = Get-SettingPreset -Preset Quick
+        $thorough = Get-SettingPreset -Preset Thorough
+
+        Test-Path $settingsFile | Should -BeFalse
+        $quick.Enable | Should -Contain 'Winget'
+        $quick.Enable | Should -Contain 'UserAssist'
+        foreach ($name in 'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint') {
+            $quick.Enable + $thorough.Enable | Should -Not -Contain $name
+        }
+        $quick.FileScan.Paths | Should -Be @('%USERPROFILE%')
+        $thorough.FileScan.Drives | Should -Be @('D:')
+        $thorough.FileScan.ComputeHash | Should -BeTrue
+    }
+
     It 'Get-SoftwareInventory liest ohne aktivierte Quelle nichts' {
         Mock -ModuleName SoftwareInventory Get-RegistrySoftware { throw 'darf nicht gelesen werden' }
         Mock -ModuleName SoftwareInventory Get-AppxSoftware { throw 'darf nicht gelesen werden' }

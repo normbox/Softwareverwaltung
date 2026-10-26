@@ -16,6 +16,7 @@
         'Get-ScanDrive'
         'Get-InventorySetting'
         'Set-InventorySetting'
+        'Get-SettingPreset'
         'Compare-SoftwareVersion'
         'Test-SoftwareUpdate'
         'Get-SoftwareVulnerability'
