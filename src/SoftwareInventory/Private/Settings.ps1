@@ -55,7 +55,12 @@ function New-DefaultSetting {
             Endpoint = $null    # Basisadresse der OpenAI-kompatiblen Schnittstelle, z. B. http://localhost:11434/v1
             Model    = $null    # vom Benutzer aus den installierten Modellen gewählt; kein Standard
         }
+        # Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
+        # Aus = keine Suche; Nutzungsspuren und FileScan bleiben gespeichert. Keine Vorlage schaltet ihn ein.
+        # Darunter zwei eigene Schalter: Nutzungsspuren (TraceSearch) und Dateisuche (FileSearch), beide standardmäßig aus.
+        PortableSearch = [pscustomobject] [ordered]@{ Enabled = $false; TraceSearch = $false; FileSearch = $false }
         FileScan      = [pscustomobject] [ordered]@{
+            Mode            = $null            # „Wo suchen“: Drives oder Folders; nur diese Liste wird genutzt, die andere bleibt gespeichert
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
             Drives          = [string[]] @()
             IncludeTemp     = $false
@@ -94,6 +99,11 @@ function Read-InventorySetting {
             if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
         }
     }
+    if ($data.PSObject.Properties['PortableSearch'] -and $data.PortableSearch) {
+        foreach ($name in 'Enabled', 'TraceSearch', 'FileSearch') {
+            if ($data.PortableSearch.PSObject.Properties[$name]) { $setting.PortableSearch.$name = [bool] $data.PortableSearch.$name }
+        }
+    }
     if ($data.PSObject.Properties['Advisor'] -and $data.Advisor) {
         $a = $data.Advisor
         if ($a.PSObject.Properties['Enabled']) { $setting.Advisor.Enabled = [bool] $a.Enabled }
@@ -109,6 +119,12 @@ function Read-InventorySetting {
         if ($fs.PSObject.Properties['ComputeHash']) { $setting.FileScan.ComputeHash = [bool] $fs.ComputeHash }
         if ($fs.PSObject.Properties['ExcludePaths']) { $setting.FileScan.ExcludePaths = [string[]] @($fs.ExcludePaths | Where-Object { $_ }) }
         if ($fs.PSObject.Properties['SmartExclusions'] -and $null -ne $fs.SmartExclusions) { $setting.FileScan.SmartExclusions = [bool] $fs.SmartExclusions }
+        if ($fs.PSObject.Properties['Mode']) {
+            if ($fs.Mode -in 'Drives', 'Folders') { $setting.FileScan.Mode = [string] $fs.Mode }
+        }
+        # Ältere Datei ohne Mode: Ordner vorhanden → nur Ordner (schneller), sonst Laufwerke vorhanden → Laufwerke.
+        elseif ($setting.FileScan.Paths) { $setting.FileScan.Mode = 'Folders' }
+        elseif ($setting.FileScan.Drives) { $setting.FileScan.Mode = 'Drives' }
     }
     $setting
 }
@@ -117,8 +133,29 @@ function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, FileScan |
+    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, PortableSearch, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+}
+
+function Get-PortableSearchPlan {
+    # Was die Suche nach portablen Programmen tatsächlich nutzt, nach den Unterschaltern
+    # Nutzungsspuren und Dateisuche (der Hauptschalter wird vom Aufrufer geprüft).
+    param($Setting)
+    $active = Get-ActiveScanLocation $Setting
+    [pscustomobject] @{
+        Trace = [string[]] @(if ($Setting.PortableSearch.TraceSearch) { Get-EnabledName $Setting.Traces })
+        Path  = [string[]] @(if ($Setting.PortableSearch.FileSearch) { $active.Paths })
+        Drive = [string[]] @(if ($Setting.PortableSearch.FileSearch) { $active.Drives })
+    }
+}
+
+function Get-ActiveScanLocation {
+    # Ordner und Laufwerke, die tatsächlich durchsucht werden: nur die Liste der gewählten Option.
+    param($Setting)
+    [pscustomobject] @{
+        Paths  = [string[]] @(if ($Setting.FileScan.Mode -eq 'Folders') { $Setting.FileScan.Paths | Where-Object { $_ } })
+        Drives = [string[]] @(if ($Setting.FileScan.Mode -eq 'Drives') { $Setting.FileScan.Drives | Where-Object { $_ } })
+    }
 }
 
 function Test-AdvisorEndpoint {

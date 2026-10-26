@@ -39,6 +39,10 @@ function Get-SecurityRating {
             $u = $updates[$i]
             $v = $vulns[$i]
             $r = Get-RatingFromResult -UpdateStatus $u -VulnerabilityStatus $v
+            # Treffer aus Nutzungsspuren, deren Laufwerk fehlt: Grund zuerst nennen (statt still zu verwerfen).
+            if (@(Get-RecordValue $records[$i] 'Flags') -contains 'PathUnreachable') {
+                $r.Reasons = [string[]] (@(Get-LocalizedString 'RatingReasonPathUnreachable') + @($r.Reasons))
+            }
             [pscustomobject] @{
                 PSTypeName          = 'SoftwareInventory.SecurityRating'
                 Name                = $records[$i].Name

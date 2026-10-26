@@ -92,7 +92,7 @@ public sealed record SoftwareItem
             Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => GetString(r, "Note")).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
             WingetId = record is null ? null : GetString(record, "WingetId"),
-            InstallLocation = record is null ? null : GetString(record, "InstallLocation"),
+            InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
             InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,
         };

@@ -35,6 +35,7 @@ BeforeAll {
         Mock -ModuleName SoftwareInventory Get-AutostartTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'Autostart' }
         Mock -ModuleName SoftwareInventory Get-ScheduledTaskTrace { $script:ScenarioTrace | Where-Object Evidence -eq 'ScheduledTask' }
         Mock -ModuleName SoftwareInventory Test-Path { $PathType -eq 'Leaf' }
+        Mock -ModuleName SoftwareInventory Test-ScanRoot { $true }
         # $TestDrive liegt selbst im echten %TEMP%; als Temp-Ordner gilt deshalb nur $TestDrive\Temp.
         Mock -ModuleName SoftwareInventory Get-TempDirectory { Join-Path $TestDrive 'Temp' }
         Mock -ModuleName SoftwareInventory Find-ExecutableFile { $script:ScenarioScan }
@@ -189,6 +190,7 @@ Describe 'Get-PortableSoftware' {
         Mock -ModuleName SoftwareInventory Get-ScheduledTaskTrace { }
         # Spuren gelten als vorhandene Dateien; alles andere (z. B. die Einstellungsdatei) als nicht vorhanden.
         Mock -ModuleName SoftwareInventory Test-Path { $PathType -eq 'Leaf' }
+        Mock -ModuleName SoftwareInventory Test-ScanRoot { $true }
         Mock -ModuleName SoftwareInventory Find-ExecutableFile { $infos.Keys }
         Mock -ModuleName SoftwareInventory Get-ExecutableInfo { $infos[$Path] }
         Mock -ModuleName SoftwareInventory Get-TempDirectory { $temp }

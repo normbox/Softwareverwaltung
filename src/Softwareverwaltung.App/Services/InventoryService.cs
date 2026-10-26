@@ -42,8 +42,8 @@ public sealed class InventoryService(IPowerShellHost host) : IInventoryService
 
     public async Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
-        // Wie im Modul dokumentiert: Inventar der aktivierten Quellen, dann Ampel mit den aktivierten Diensten.
-        var command = new PSCommand().AddCommand("Get-SoftwareInventory").AddCommand("Get-SecurityRating");
+        // Wie im Modul dokumentiert: installierte und (falls eingerichtet) portable Programme, dann Ampel mit den aktivierten Diensten.
+        var command = new PSCommand().AddCommand("Invoke-InventoryScan").AddCommand("Get-SecurityRating");
         var result = await host.InvokeAsync(command, progress, cancellationToken).ConfigureAwait(false);
         var items = result.Output.Select(SoftwareItem.FromRating).ToList();
         return new ScanResult(items, result.Warnings.Distinct().ToList(), result.Errors);

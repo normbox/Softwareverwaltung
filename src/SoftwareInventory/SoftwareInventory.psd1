@@ -13,6 +13,7 @@
         'Get-InventorySnapshot'
         'Compare-InventorySnapshot'
         'Get-PortableSoftware'
+        'Invoke-InventoryScan'
         'Get-ScanDrive'
         'Get-InventorySetting'
         'Set-InventorySetting'

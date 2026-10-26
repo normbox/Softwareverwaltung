@@ -20,8 +20,13 @@ public partial class App : Application
 
         _host = new PowerShellHost();
         var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService());
-        var viewModel = new ShellViewModel(programs, new SettingsViewModel(new SettingsService(_host)));
+        var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker());
+        var viewModel = new ShellViewModel(programs, settings);
         var window = new MainWindow { DataContext = viewModel };
+        // Laufwerke und USB-Sticks live: die Liste in den Einstellungen folgt ohne Neustart.
+        var drives = new DriveChangeWatcher();
+        drives.DrivesChanged += async (_, _) => await settings.RefreshDrivesAsync();
+        drives.Attach(window);
         window.Show();
         // Fehler beim Laden der Module zeigen die ViewModels selbst als Hinweis an.
         _ = viewModel.InitializeAsync();
