@@ -4,12 +4,9 @@ $script:RatingLabel = @{ Red = 'Rot'; Yellow = 'Gelb'; Green = 'Grün'; Gray = '
 $script:AssessmentLabel = @{ Affected = 'betroffen'; PossiblyAffected = 'möglicherweise betroffen'; Informational = 'Hinweis' }
 
 function Protect-ReportText {
-    # Benutzerprofil und Rechnername durch Platzhalter ersetzen, Schlüssel entfernen.
+    # Persönliche Angaben und Schlüssel ersetzen (gemeinsame Regel, siehe PrivateData.ps1).
     param([AllowNull()] [AllowEmptyString()] [string] $Text)
-    if (-not $Text) { return $Text }
-    if ($env:USERPROFILE) { $Text = [regex]::Replace($Text, [regex]::Escape($env:USERPROFILE), '%USERPROFILE%', 'IgnoreCase') }
-    if ($env:COMPUTERNAME) { $Text = [regex]::Replace($Text, "\b$([regex]::Escape($env:COMPUTERNAME))\b", '%COMPUTERNAME%', 'IgnoreCase') }
-    Protect-SecretText $Text
+    Protect-PrivateText $Text
 }
 
 function ConvertTo-HtmlText {
