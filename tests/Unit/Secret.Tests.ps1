@@ -14,7 +14,7 @@ Describe 'API-Schlüssel' {
         }
     }
     AfterEach {
-        foreach ($service in 'NVD', 'GitHub') {
+        foreach ($service in 'NVD', 'GitHub', 'Advisor') {
             InModuleScope SoftwareInventory -Parameters @{ Service = $service } {
                 param($Service)
                 Initialize-CredentialInterop
@@ -82,5 +82,26 @@ Describe 'API-Schlüssel' {
         $env:GITHUB_TOKEN = $null
         InModuleScope SoftwareInventory { Protect-SecretText 'nichts Geheimes' } | Should -Be 'nichts Geheimes'
         InModuleScope SoftwareInventory { Protect-SecretText $null } | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'API-Schlüssel für den KI-Berater' {
+    BeforeEach {
+        $saved = $env:SOFTWAREINVENTORY_ADVISOR_KEY
+        $prefix = "SoftwareInventory-Test-$([guid]::NewGuid())"
+        InModuleScope SoftwareInventory -Parameters @{ Prefix = $prefix } { param($Prefix); $script:SavedCredentialPrefix = $script:CredentialPrefix; $script:CredentialPrefix = $Prefix }
+    }
+    AfterEach {
+        InModuleScope SoftwareInventory { Initialize-CredentialInterop; [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget Advisor)); $script:CredentialPrefix = $script:SavedCredentialPrefix }
+        $env:SOFTWAREINVENTORY_ADVISOR_KEY = $saved
+    }
+
+    It 'speichert den Schlüssel, maskiert ihn und gibt ihn im Status nie aus' {
+        $env:SOFTWAREINVENTORY_ADVISOR_KEY = $null
+        (Set-ServiceCredential -Service Advisor -Secret (ConvertTo-SecureString 'sk-unsloth-geheim' -AsPlainText -Force)).Stored | Should -BeTrue
+        InModuleScope SoftwareInventory { Get-ServiceSecret -Service Advisor } | Should -Be 'sk-unsloth-geheim'
+        InModuleScope SoftwareInventory { Protect-SecretText 'Bearer sk-unsloth-geheim' } | Should -Be 'Bearer ***'
+        Get-ServiceCredentialStatus | ConvertTo-Json | Should -Not -Match 'sk-unsloth-geheim'
+        (Get-ServiceCredentialStatus -Service Advisor).EnvironmentVariable | Should -Be 'SOFTWAREINVENTORY_ADVISOR_KEY'
     }
 }

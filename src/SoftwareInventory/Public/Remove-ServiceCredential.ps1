@@ -5,7 +5,7 @@ function Remove-ServiceCredential {
     .DESCRIPTION
         Eine gesetzte Umgebungsvariable bleibt unberührt und wird danach wieder benutzt.
     .PARAMETER Service
-        NVD oder GitHub.
+        NVD, GitHub oder Advisor.
     .EXAMPLE
         Remove-ServiceCredential -Service GitHub
     #>
@@ -13,7 +13,7 @@ function Remove-ServiceCredential {
     [OutputType('SoftwareInventory.CredentialStatus')]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('NVD', 'GitHub')]
+        [ValidateSet('NVD', 'GitHub', 'Advisor')]
         [string] $Service
     )
 

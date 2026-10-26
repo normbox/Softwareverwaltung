@@ -11,7 +11,7 @@ Ein Open-Source-Werkzeug für Windows, das installierte Software erfasst, veralt
 | Einsatz | Zuerst privat auf einem PC, später Firmeneinsatz mit mehreren Rechnern |
 | Plattform | Nur Windows 10/11. Linux wäre ein eigenes Projekt. |
 | Lizenz | GPLv3 (entschieden 24.10.2026) |
-| KI | Cloud (Claude API) und lokal (Ollama) wählbar |
+| KI | lokal über die OpenAI-kompatible Schnittstelle (Ollama, LM Studio, Unsloth Studio); externe Anbieter später als Plugin |
 | Oberfläche | .NET 10 WPF mit Fluent-Design (Bibliothek WPF-UI) |
 | Pflege | So gering wie möglich: wenige Abhängigkeiten, Langzeitversionen |
 
@@ -23,7 +23,7 @@ Leitsatz: Die Logik lebt in einem PowerShell-Modul, das auch ohne Oberfläche l�
 
 ```
  Desktop-App (WPF)        KI-Berater                 MCP-Server (optional)
- Liste, Ampel, Buttons    Claude API oder Ollama     für Claude Desktop u. a.
+ Liste, Ampel, Buttons    lokal (OpenAI-kompatibel)  für Claude Desktop u. a.
         |                        | Tool-Aufrufe              | Tool-Aufrufe
         v                        v                           v
  +--------------------- PowerShell-Modul (Kern) ----------------------+
@@ -98,14 +98,15 @@ Das Modell ruft Modulfunktionen als Tools auf und erklärt die Ergebnisse. Es f�
 
 | Tool | Wirkung | Freigabe |
 | --- | --- | --- |
-| `get_inventory` | Erfasste Software | – |
-| `check_latest_version` | Neueste Version über Provider | – |
-| `search_vulnerabilities` | CVE-, KEV-, EPSS-Daten | – |
-| `web_search` / `fetch_page` | Recherche bei Unbekanntem | Ergebnis unbestätigt |
+| `get_inventory` | Erfasste Software aus dem letzten Scan, filterbar | – |
+| `get_program_details` | Gründe der Ampel, Lücken, widerlegte Treffer | – |
+| `check_latest_version` | Neueste Version über die aktivierten Dienste | – |
+| `search_vulnerabilities` | CVE-, KEV-, EPSS-Daten über die aktivierten Dienste | – |
+| `web_search` / `fetch_page` | Recherche bei Unbekanntem (später) | Ergebnis unbestätigt |
 | `propose_update` | Update vorschlagen | Nutzer bestätigt per Button |
 | `propose_uninstall` | Deinstallation vorschlagen | Nutzer bestätigt per Button |
 
-Abstraktion „LLM-Provider“ mit zwei Umsetzungen: Claude API (Tool-Use) und Ollama/LM Studio (Modell mit Tool-Calling). Vor dem Senden an die Cloud werden Benutzername, Rechnername und Benutzerpfade entfernt; die Einstellungen zeigen, was übertragen wird.
+Entschieden 26.10.2026: Etappe 4 nur lokal. Die App spricht lokale Server über die OpenAI-kompatible Schnittstelle an (`/v1/chat/completions` mit `tools`). Vorgaben: Ollama (`http://localhost:11434/v1`), LM Studio (`http://localhost:1234/v1`), Unsloth Studio (`http://localhost:8888/v1`, mit API-Schlüssel) und eine eigene Adresse; kein Standardmodell, Auswahl aus den installierten Modellen. AnythingLLM fehlt vorerst, weil seine OpenAI-Schnittstelle `tools` nicht weitergibt. Externe Anbieter (z. B. Claude API) kommen später als Plugin über die Anbieter-Schnittstelle der App. Daten werden vor dem Senden immer bereinigt, auch für lokale Modelle (Benutzername, Rechnername, Domäne, Benutzerpfade, API-Schlüssel); die Einstellungen zeigen, was übertragen wird.
 
 ## Oberfläche und Aktionen
 
@@ -122,18 +123,18 @@ Abstraktion „LLM-Provider“ mit zwei Umsetzungen: Claude API (Tool-Use) und O
 - .NET SDK 10: `winget install Microsoft.DotNet.SDK.10`
 - VS Code mit „C# Dev Kit“: `code --install-extension ms-dotnettools.csdevkit`
 - Git, Claude Code (VS-Code-Erweiterung)
-- Optional: NVD-API-Schlüssel, GitHub-Token, Anthropic-API-Schlüssel, Ollama
+- Optional: NVD-API-Schlüssel, GitHub-Token, ein lokaler KI-Server (Ollama, LM Studio oder Unsloth Studio)
 
 ## Fahrplan
 
 1. **Inventar-Modul:** PowerShell-Modul liest Registry, winget, Store-Apps, schreibt JSON. Ohne Oberfläche testbar.
 2. **Versions- und Sicherheitsprüfung:** winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel; zunächst HTML-Bericht.
 3. **Oberfläche:** WPF-App mit Liste, Details, Update- und Deinstallations-Buttons.
-4. **KI-Berater:** Tools, Claude API und Ollama, Chat-Seitenleiste.
+4. **KI-Berater:** Tools, lokale Modelle über die OpenAI-kompatible Schnittstelle, Anbieter-Schnittstelle für spätere Plugins, Chat-Seitenleiste.
 5. **Ausbau:** Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung.
 6. **Firmentauglich:** Zentrale Sammlung mehrerer PCs, Richtlinien, signierte Skripte.
 
 ## Offen
 
 - Endgültiger Projektname (Repo vorerst: github.com/normbox/Softwareverwaltung)
-- Lokales Standardmodell für Ollama
+- Plugin-Format für externe KI-Anbieter (Laden, Signaturprüfung)
