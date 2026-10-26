@@ -19,7 +19,7 @@ public sealed class SettingsViewModelTests
     [Fact]
     public async Task LoadsSavedStateWithoutBeingDirty()
     {
-        var fake = new FakeSettings { Saved = Off("Winget", "NVD") with { Usage = "Private", ScanPaths = ["C:\\Tools", "D:\\Portable"], LogMaxSizeMB = 250 } };
+        var fake = new FakeSettings { Saved = Off("Winget", "NVD") with { Usage = "Private", ScanMode = "Folders", ScanPaths = ["C:\\Tools", "D:\\Portable"], LogMaxSizeMB = 250 } };
         var vm = new SettingsViewModel(fake);
 
         await vm.LoadAsync();
@@ -31,7 +31,9 @@ public sealed class SettingsViewModelTests
         Assert.True(Switch(vm, "Winget").IsOn);
         Assert.True(Switch(vm, "NVD").IsOn);
         Assert.False(Switch(vm, "Appx").IsOn);
-        Assert.Equal("C:\\Tools" + Environment.NewLine + "D:\\Portable", vm.ScanPathsText);
+        Assert.Equal(["C:\\Tools", "D:\\Portable"], vm.ScanFolders);
+        Assert.True(vm.IsFoldersMode);
+        Assert.False(vm.IsDrivesMode);
         Assert.Equal(250, vm.LogMaxSizeMB);
         Assert.False(vm.SaveCommand.CanExecute(null));
     }
@@ -169,7 +171,7 @@ public sealed class SettingsViewModelTests
     {
         var fake = new FakeSettings
         {
-            Preset = new SettingPreset(["RegistryMachine", "Winget", "UserAssist"], [], ["C:"], IncludeTemp: true, ComputeHash: true),
+            Preset = new SettingPreset(["RegistryMachine", "Winget", "UserAssist"], [], ["C:"], IncludeTemp: true, ComputeHash: true, ScanMode: "Drives"),
         };
         var vm = new SettingsViewModel(fake);
         await vm.LoadAsync();
@@ -187,7 +189,8 @@ public sealed class SettingsViewModelTests
         // Nie den Hauptschalter, und jede Änderung wird sichtbar genannt.
         Assert.False(vm.PortableSearchEnabled);
         Assert.StartsWith("Vorlage „Gründlich“ hat gesetzt:", vm.StatusText);
-        foreach (var expected in new[] { "Programme für alle Benutzer: An", "winget-Paketliste: An", "Zuletzt gestartete Programme: An", "Laufwerk C:: An", "Temp-Ordner mit durchsuchen: An", "Prüfsumme (SHA256) berechnen – langsamer: An" })
+        Assert.True(vm.IsDrivesMode);
+        foreach (var expected in new[] { "Wo suchen: Ganze Laufwerke", "Programme für alle Benutzer: An", "winget-Paketliste: An", "Zuletzt gestartete Programme: An", "Laufwerk C:: An", "Temp-Ordner mit durchsuchen: An", "Prüfsumme (SHA256) berechnen – langsamer: An" })
         {
             Assert.Contains(expected, vm.StatusText);
         }
@@ -207,23 +210,118 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
-    public async Task NoDriveIsPreselectedAndHintShowsWhenSearchHasNoLocation()
+    public async Task NothingIsPreselectedAndHintShowsWithoutOptionOrEntry()
     {
         var vm = new SettingsViewModel(new FakeSettings());
         await vm.LoadAsync();
 
+        Assert.Null(vm.ScanMode);
+        Assert.False(vm.IsDrivesMode);
+        Assert.False(vm.IsFoldersMode);
+        Assert.Empty(vm.ScanFolders);
         Assert.All(vm.Drives, d => Assert.False(d.IsSelected));
         Assert.Contains(vm.Drives, d => d.Drive == "E:" && d.Text.Contains("USB"));
         Assert.False(vm.NoScanLocation);   // Suche aus: kein Hinweis
 
         vm.PortableSearchEnabled = true;
-        Assert.True(vm.NoScanLocation);
+        Assert.True(vm.NoScanLocation);    // keine Option gewählt
 
+        vm.IsDrivesMode = true;
+        Assert.True(vm.NoScanLocation);    // Option ohne Eintrag
         vm.Drives.Single(d => d.Drive == "D:").IsSelected = true;
         Assert.False(vm.NoScanLocation);
-        vm.Drives.Single(d => d.Drive == "D:").IsSelected = false;
-        vm.ScanPathsText = @"C:\Tools";
+
+        vm.IsFoldersMode = true;
+        Assert.True(vm.NoScanLocation);    // Laufwerk gespeichert, zählt aber in dieser Option nicht
+        vm.AddFolderCommand.Execute(@"C:\Tools");
         Assert.False(vm.NoScanLocation);
+    }
+
+    [Fact]
+    public async Task SwitchingOptionKeepsTheOtherSelectionAndSavesBoth()
+    {
+        var fake = new FakeSettings();
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+
+        vm.IsDrivesMode = true;
+        vm.Drives.Single(d => d.Drive == "D:").IsSelected = true;
+        vm.IsFoldersMode = true;
+        vm.AddFolderCommand.Execute("%USERPROFILE%");
+
+        Assert.True(vm.Drives.Single(d => d.Drive == "D:").IsSelected);
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal("Folders", fake.Saved.ScanMode);
+        Assert.Equal(["%USERPROFILE%"], fake.Saved.ScanPaths);
+        Assert.Equal(["D:"], fake.Saved.ScanDrives);
+    }
+
+    [Fact]
+    public async Task DriveDurationHintShowsOnlyWithSelectedDrive()
+    {
+        var vm = new SettingsViewModel(new FakeSettings());
+        await vm.LoadAsync();
+        vm.PortableSearchEnabled = true;
+
+        vm.IsDrivesMode = true;
+        Assert.False(vm.ShowDriveDurationHint);
+        vm.Drives.Single(d => d.Drive == "C:").IsSelected = true;
+        Assert.True(vm.ShowDriveDurationHint);
+        vm.IsFoldersMode = true;
+        Assert.False(vm.ShowDriveDurationHint);
+    }
+
+    [Fact]
+    public async Task FoldersAreAddedFromSuggestionsAndPickerAndCanBeRemoved()
+    {
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var picker = new FakeFolderPicker { Next = Path.Combine(profile, "Tools") };
+        var vm = new SettingsViewModel(new FakeSettings(), picker);
+        await vm.LoadAsync();
+        Assert.Equal(["%USERPROFILE%", @"%USERPROFILE%\Downloads"], vm.FolderSuggestions);
+
+        vm.AddFolderCommand.Execute("%USERPROFILE%");
+        vm.AddFolderCommand.Execute("%userprofile%");          // doppelt, egal welche Schreibweise
+        Assert.Equal([@"%USERPROFILE%\Downloads"], vm.FolderSuggestions);
+
+        vm.PickFolderCommand.Execute(null);                     // Profilordner wird als %USERPROFILE%\… gespeichert
+        picker.Next = @"D:\Portable";
+        vm.PickFolderCommand.Execute(null);
+        picker.Next = null;                                     // Dialog abgebrochen
+        vm.PickFolderCommand.Execute(null);
+        Assert.Equal(["%USERPROFILE%", @"%USERPROFILE%\Tools", @"D:\Portable"], vm.ScanFolders);
+
+        vm.RemoveFolderCommand.Execute(@"%USERPROFILE%\Tools");
+        Assert.Equal(["%USERPROFILE%", @"D:\Portable"], vm.ScanFolders);
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task QuickPresetSetsFolderOptionAndEntriesButLeavesDrives()
+    {
+        var fake = new FakeSettings
+        {
+            Saved = Off() with { ScanDrives = ["D:"] },
+            Preset = new SettingPreset([], ["%USERPROFILE%"], [], IncludeTemp: false, ComputeHash: false, ScanMode: "Folders"),
+        };
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+
+        await vm.ApplyPresetCommand.ExecuteAsync("Quick");
+
+        Assert.True(vm.IsFoldersMode);
+        Assert.Equal(["%USERPROFILE%"], vm.ScanFolders);
+        Assert.True(vm.Drives.Single(d => d.Drive == "D:").IsSelected);
+        Assert.Contains("Wo suchen: Nur bestimmte Ordner", vm.StatusText);
+        Assert.Contains("Ordner: %USERPROFILE%", vm.StatusText);
+        Assert.False(vm.PortableSearchEnabled);
+    }
+
+    private sealed class FakeFolderPicker : IFolderPicker
+    {
+        public string? Next { get; set; }
+
+        public string? PickFolder() => Next;
     }
 
     [Fact]

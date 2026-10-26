@@ -61,6 +61,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             ComputeHash = true,
             SmartExclusions = false,
             PortableSearch = true,
+            ScanMode = "Drives",
             LogRetentionDays = 7,
             LogMaxSizeMB = 50,
         });
@@ -77,6 +78,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             Assert.False(settings.IncludeTemp);
             Assert.False(settings.SmartExclusions);
             Assert.True(settings.PortableSearch);
+            Assert.Equal("Drives", settings.ScanMode);
             Assert.Equal(7, settings.LogRetentionDays);
             Assert.Equal(50, settings.LogMaxSizeMB);
         }

@@ -38,6 +38,7 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
         var command = new PSCommand().AddCommand("Set-InventorySetting")
             .AddParameter("Enable", settings.Switches.Where(s => s.Value).Select(s => s.Key).ToArray())
             .AddParameter("Disable", settings.Switches.Where(s => !s.Value).Select(s => s.Key).ToArray())
+            .AddParameter("ScanMode", settings.ScanMode ?? "None")
             .AddParameter("ScanPath", settings.ScanPaths.ToArray())
             .AddParameter("ScanDrive", settings.ScanDrives.ToArray())
             .AddParameter("ExcludePath", settings.ExcludePaths.ToArray())

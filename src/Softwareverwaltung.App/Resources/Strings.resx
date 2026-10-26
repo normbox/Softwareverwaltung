@@ -33,7 +33,7 @@
 
   <!-- Vorlagen -->
   <data name="PresetsText" xml:space="preserve">
-    <value>Setzen sichtbar Schalter und Häkchen bei Quellen, Nutzungsspuren, Laufwerken und Ordnern. Den Schalter „Nach portablen Programmen suchen“ setzen sie nie. Jede Änderung wird unten genannt; gespeichert wird erst mit „Speichern“.</value>
+    <value>Setzen sichtbar Schalter, die Option „Wo suchen“ und deren Einträge. Den Schalter „Nach portablen Programmen suchen“ setzen sie nie. Jede Änderung wird unten genannt; gespeichert wird erst mit „Speichern“.</value>
   </data>
   <data name="PresetQuick" xml:space="preserve">
     <value>Schnell</value>
@@ -42,10 +42,13 @@
     <value>Gründlich</value>
   </data>
   <data name="PresetQuickTooltip" xml:space="preserve">
-    <value>Alle Quellen und Nutzungsspuren, als Ordner das Benutzerprofil, kein Laufwerk, ohne Temp und Prüfsumme</value>
+    <value>Alle Quellen und Nutzungsspuren, „Nur bestimmte Ordner“ mit dem Benutzerprofil, ohne Temp und Prüfsumme</value>
   </data>
   <data name="PresetThoroughTooltip" xml:space="preserve">
-    <value>Alle Quellen und Nutzungsspuren, alle festen Laufwerke, mit Temp und Prüfsumme</value>
+    <value>Alle Quellen und Nutzungsspuren, „Ganze Laufwerke“ mit allen festen Laufwerken, mit Temp und Prüfsumme</value>
+  </data>
+  <data name="PresetChangeMode" xml:space="preserve">
+    <value>Wo suchen: {0}</value>
   </data>
   <data name="PresetApplied" xml:space="preserve">
     <value>Vorlage „{0}“ hat gesetzt: {1}. Prüfen und mit „Speichern“ übernehmen.</value>
@@ -77,16 +80,34 @@
     <value>Wo suchen</value>
   </data>
   <data name="SettingsPortableWhereText" xml:space="preserve">
-    <value>Nur die gewählten Laufwerke und Ordner werden nach Programmdateien durchsucht. Anfangs ist nichts gewählt.</value>
+    <value>Entweder ganze Laufwerke oder nur bestimmte Ordner. Durchsucht wird nur die gewählte Option; die Auswahl der anderen bleibt gespeichert, wird aber nicht genutzt. Anfangs ist nichts gewählt.</value>
+  </data>
+  <data name="SettingsPortableModeDrives" xml:space="preserve">
+    <value>Ganze Laufwerke</value>
+  </data>
+  <data name="SettingsPortableModeFolders" xml:space="preserve">
+    <value>Nur bestimmte Ordner</value>
   </data>
   <data name="SettingsPortableDrives" xml:space="preserve">
     <value>Laufwerke (alle erkannten, auch USB)</value>
   </data>
-  <data name="SettingsPortableFolders" xml:space="preserve">
-    <value>Eigene Ordner (einer pro Zeile, z. B. %USERPROFILE%\Tools)</value>
+  <data name="SettingsPortableDrivesDuration" xml:space="preserve">
+    <value>Ganze Laufwerke werden vollständig durchsucht, das kann je nach Größe lange dauern. Für einen schnellen Scan besser einzelne Ordner wählen.</value>
+  </data>
+  <data name="SettingsPortableFoldersText" xml:space="preserve">
+    <value>Durchsucht gezielt einzelne Verzeichnisse, z. B. das Benutzerprofil oder D:\Tools, auch von verschiedenen Laufwerken. Das ist deutlich schneller als ganze Laufwerke.</value>
+  </data>
+  <data name="SettingsPortableFolderPick" xml:space="preserve">
+    <value>Ordner auswählen…</value>
+  </data>
+  <data name="SettingsPortableFolderRemove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="SettingsPortableFolderSuggestions" xml:space="preserve">
+    <value>Vorschläge:</value>
   </data>
   <data name="SettingsPortableNoLocation" xml:space="preserve">
-    <value>Kein Laufwerk und kein Ordner gewählt: Es werden keine Dateien durchsucht. Eingeschaltete Nutzungsspuren finden trotzdem Programme.</value>
+    <value>Es wird nichts durchsucht: Keine Option gewählt oder die gewählte Option hat keinen Eintrag. Eingeschaltete Nutzungsspuren finden trotzdem Programme.</value>
   </data>
   <data name="SettingsPortableInstalledHint" xml:space="preserve">
     <value>Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>

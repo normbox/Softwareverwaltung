@@ -89,7 +89,7 @@
                 <TextBlock Style="{StaticResource SectionText}" Text="Woher die Liste der installierten Programme kommt. Alles bleibt auf diesem PC." />
                 <ItemsControl ItemsSource="{Binding Sources}" ItemTemplate="{StaticResource SwitchCard}" />
 
-                <!-- Suche nach portablen Programmen: Hauptschalter, dann „Wo suchen“, dann „Wie suchen“ -->
+                <!-- Suche nach portablen Programmen: Hauptschalter, Info, „Wo suchen“ (Entweder-oder), „Wie suchen“ -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsPortableTitle}" />
 
                 <ui:CardControl Margin="0,4,0,4" Padding="14,10">
@@ -104,28 +104,101 @@
                                      OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
                 </ui:CardControl>
 
+                <!-- Neutrale Info direkt unter dem Hauptschalter -->
+                <Border Margin="0,0,0,4" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                        Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Info24" Margin="0,0,10,0" VerticalAlignment="Top"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{loc:Text SettingsPortableInstalledHint}" TextWrapping="Wrap" MaxWidth="800"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Erst aktiv, wenn der Hauptschalter an ist; vorher ausgegraut -->
                 <StackPanel IsEnabled="{Binding PortableSearchEnabled}">
                     <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsPortableWhereTitle}" />
                     <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableWhereText}" />
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsPortableDrives}" />
-                    <ItemsControl ItemsSource="{Binding Drives}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:DriveOption}">
-                                <CheckBox Content="{Binding Text}" IsChecked="{Binding IsSelected}" Margin="0,0,16,4" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsPortableFolders}" />
-                    <ui:TextBox Text="{Binding ScanPathsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                                MinHeight="64" TextWrapping="NoWrap" AutomationProperties.Name="{loc:Text SettingsPortableFolders}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <RadioButton GroupName="ScanMode" Content="{loc:Text SettingsPortableModeDrives}" IsChecked="{Binding IsDrivesMode}" />
+                        <RadioButton GroupName="ScanMode" Content="{loc:Text SettingsPortableModeFolders}" IsChecked="{Binding IsFoldersMode}" Margin="24,0,0,0" />
+                    </StackPanel>
 
-                    <!-- Ohne Laufwerk und Ordner wird nichts durchsucht -->
+                    <!-- Ganze Laufwerke -->
+                    <StackPanel Visibility="{Binding IsDrivesMode, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsPortableDrives}" />
+                        <ItemsControl ItemsSource="{Binding Drives}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:DriveOption}">
+                                    <CheckBox Content="{Binding Text}" IsChecked="{Binding IsSelected}" Margin="0,0,16,4" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                Visibility="{Binding ShowDriveDurationHint, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Clock24" Margin="0,0,10,0" VerticalAlignment="Top"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{loc:Text SettingsPortableDrivesDuration}" TextWrapping="Wrap" MaxWidth="800" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Nur bestimmte Ordner -->
+                    <StackPanel Visibility="{Binding IsFoldersMode, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableFoldersText}" />
+                        <ItemsControl ItemsSource="{Binding ScanFolders}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,4" Padding="12,6" CornerRadius="4" BorderThickness="1"
+                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <ui:Button Grid.Column="1" Content="{loc:Text SettingsPortableFolderRemove}" Icon="{ui:SymbolIcon Delete24}"
+                                                       Appearance="Transparent" Margin="8,0,0,0"
+                                                       Command="{Binding DataContext.RemoveFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <WrapPanel Margin="0,4,0,0">
+                            <ui:Button Content="{loc:Text SettingsPortableFolderPick}" Icon="{ui:SymbolIcon FolderAdd24}"
+                                       Command="{Binding PickFolderCommand}" Margin="0,0,16,4" />
+                            <TextBlock Text="{loc:Text SettingsPortableFolderSuggestions}" VerticalAlignment="Center" Margin="0,0,8,4"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Visibility="{Binding FolderSuggestions.Count, Converter={StaticResource CountToVisibility}}" />
+                            <ItemsControl ItemsSource="{Binding FolderSuggestions}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ui:Button Content="{Binding}" Icon="{ui:SymbolIcon Add16}" Margin="0,0,8,4"
+                                                   Command="{Binding DataContext.AddFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <!-- Nichts gewählt: keine Option oder die gewählte Option ohne Eintrag -->
                     <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="4" BorderThickness="1"
                             Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
                             BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
@@ -134,17 +207,6 @@
                             <ui:SymbolIcon Symbol="Warning24" Filled="True" Margin="0,0,10,0" VerticalAlignment="Top"
                                            Foreground="{DynamicResource SystemFillColorCautionBrush}" />
                             <TextBlock Text="{loc:Text SettingsPortableNoLocation}" TextWrapping="Wrap" MaxWidth="800" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Hinweis zwischen den Unterabschnitten -->
-                    <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="4" BorderThickness="1"
-                            Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
-                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Info24" Filled="True" Margin="0,0,10,0" VerticalAlignment="Top"
-                                           Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                            <TextBlock Text="{loc:Text SettingsPortableInstalledHint}" TextWrapping="Wrap" MaxWidth="800" />
                         </StackPanel>
                     </Border>
 

@@ -63,12 +63,22 @@ public sealed partial class CredentialItem(string service, string title, string 
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
+    private readonly IFolderPicker? _folderPicker;
     private AppSettings _saved = new();
     private bool _loading;
 
-    public SettingsViewModel(ISettingsService settings)
+    /// <summary>Vorschläge für „Nur bestimmte Ordner“, per Klick übernehmbar.</summary>
+    private static readonly string[] FolderSuggestionValues = ["%USERPROFILE%", @"%USERPROFILE%\Downloads"];
+
+    public SettingsViewModel(ISettingsService settings, IFolderPicker? folderPicker = null)
     {
         _settings = settings;
+        _folderPicker = folderPicker;
+        ScanFolders.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(FolderSuggestions));
+            UpdateDirty();
+        };
         Sources =
         [
             new("RegistryMachine", "Programme für alle Benutzer", "Installierte Programme aus der Registry (HKLM)."),
@@ -133,9 +143,32 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public bool ShowFirstStartCard => NeedsUsageChoice || ShowTermsNotice;
 
-    /// <summary>Eine Zeile je Ordner; Umgebungsvariablen wie %USERPROFILE% erlaubt.</summary>
+    /// <summary>„Wo suchen“: Drives, Folders oder null (keine Option). Die Liste der anderen Option bleibt erhalten.</summary>
     [ObservableProperty]
-    private string _scanPathsText = "";
+    [NotifyPropertyChangedFor(nameof(IsDrivesMode), nameof(IsFoldersMode))]
+    private string? _scanMode;
+
+    public bool IsDrivesMode
+    {
+        get => ScanMode == "Drives";
+        set { if (value) { ScanMode = "Drives"; } }
+    }
+
+    public bool IsFoldersMode
+    {
+        get => ScanMode == "Folders";
+        set { if (value) { ScanMode = "Folders"; } }
+    }
+
+    /// <summary>Ordner für „Nur bestimmte Ordner“; Umgebungsvariablen wie %USERPROFILE% erlaubt.</summary>
+    public ObservableCollection<string> ScanFolders { get; } = [];
+
+    /// <summary>Vorschläge, die noch nicht in der Liste stehen.</summary>
+    public IReadOnlyList<string> FolderSuggestions =>
+        FolderSuggestionValues.Where(s => !ScanFolders.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
+
+    /// <summary>Ganze Laufwerke gewählt und mindestens eines angehakt: Hinweis auf lange Dauer.</summary>
+    public bool ShowDriveDurationHint => IsDrivesMode && Drives.Any(d => d.IsSelected);
 
     [ObservableProperty]
     private string _excludePathsText = "";
@@ -203,7 +236,45 @@ public sealed partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowFirstStartCard));
         UpdateDirty();
     }
-    partial void OnScanPathsTextChanged(string value) => UpdateDirty();
+    partial void OnScanModeChanged(string? value) => UpdateDirty();
+
+    [RelayCommand]
+    private void AddFolder(string? folder)
+    {
+        var value = folder?.Trim();
+        if (string.IsNullOrEmpty(value) || ScanFolders.Contains(value, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        ScanFolders.Add(value);
+    }
+
+    [RelayCommand]
+    private void RemoveFolder(string? folder)
+    {
+        var existing = ScanFolders.FirstOrDefault(f => string.Equals(f, folder, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            ScanFolders.Remove(existing);
+        }
+    }
+
+    /// <summary>„Ordner auswählen…“: Windows-Dialog; Ordner im Benutzerprofil werden als %USERPROFILE%\… gespeichert.</summary>
+    [RelayCommand]
+    private void PickFolder()
+    {
+        var picked = _folderPicker?.PickFolder();
+        if (picked is null)
+        {
+            return;
+        }
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(profile) && (picked.Equals(profile, StringComparison.OrdinalIgnoreCase) || picked.StartsWith(profile + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+        {
+            picked = "%USERPROFILE%" + picked[profile.Length..];
+        }
+        AddFolder(picked);
+    }
     partial void OnExcludePathsTextChanged(string value) => UpdateDirty();
     partial void OnIncludeTempChanged(bool value) => UpdateDirty();
     partial void OnComputeHashChanged(bool value) => UpdateDirty();
@@ -257,7 +328,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         Usage = Usage,
         Switches = AllSwitches.ToDictionary(s => s.Name, s => s.IsOn, StringComparer.OrdinalIgnoreCase),
-        ScanPaths = Lines(ScanPathsText),
+        ScanMode = ScanMode,
+        ScanPaths = ScanFolders.ToList(),
         ScanDrives = Drives.Where(d => d.IsSelected).Select(d => d.Drive).ToList(),
         ExcludePaths = Lines(ExcludePathsText),
         IncludeTemp = IncludeTemp,
@@ -314,8 +386,19 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 item.IsOn = true;
             }
-            ScanPathsText = string.Join(Environment.NewLine, values.ScanPaths);
-            SelectDrives(values.ScanDrives);
+            // Option „Wo suchen“ und nur deren Einträge; die Liste der anderen Option bleibt unberührt.
+            if (values.ScanMode is "Folders" or "Drives")
+            {
+                ScanMode = values.ScanMode;
+            }
+            if (values.ScanMode == "Folders")
+            {
+                ReplaceFolders(values.ScanPaths);
+            }
+            else if (values.ScanMode == "Drives")
+            {
+                SelectDrives(values.ScanDrives);
+            }
             IncludeTemp = values.IncludeTemp;
             ComputeHash = values.ComputeHash;
             _loading = false;
@@ -345,6 +428,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         string OnOff(bool on) => AppText.Get(on ? "SwitchOn" : "SwitchOff");
         var changes = new List<string>();
+        if (before.ScanMode != after.ScanMode)
+        {
+            changes.Add(string.Format(AppText.Get("PresetChangeMode"), ModeName(after.ScanMode)));
+        }
         foreach (var item in AllSwitches)
         {
             var was = before.Switches.TryGetValue(item.Name, out var b) && b;
@@ -376,8 +463,31 @@ public sealed partial class SettingsViewModel : ObservableObject
         return changes;
     }
 
-    /// <summary>Suche an, aber weder Laufwerk noch Ordner gewählt: Es werden keine Dateien durchsucht.</summary>
-    public bool NoScanLocation => PortableSearchEnabled && !Drives.Any(d => d.IsSelected) && Lines(ScanPathsText).Count == 0;
+    private static string ModeName(string? mode) => mode switch
+    {
+        "Drives" => AppText.Get("SettingsPortableModeDrives"),
+        "Folders" => AppText.Get("SettingsPortableModeFolders"),
+        _ => AppText.Get("PresetChangeNone"),
+    };
+
+    /// <summary>
+    /// Suche an, aber es wird nichts durchsucht: keine Option gewählt oder die gewählte Option hat keinen Eintrag.
+    /// </summary>
+    public bool NoScanLocation => PortableSearchEnabled && ScanMode switch
+    {
+        "Drives" => !Drives.Any(d => d.IsSelected),
+        "Folders" => ScanFolders.Count == 0,
+        _ => true,
+    };
+
+    private void ReplaceFolders(IEnumerable<string> folders)
+    {
+        ScanFolders.Clear();
+        foreach (var folder in folders.Where(f => !string.IsNullOrWhiteSpace(f)).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            ScanFolders.Add(folder);
+        }
+    }
 
     /// <summary>
     /// Erster Start: speichert nur Privat/Firma und zeigt danach die passenden Hinweise zu den
@@ -465,7 +575,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 item.IsOn = settings.Switches.TryGetValue(item.Name, out var on) && on;
             }
-            ScanPathsText = string.Join(Environment.NewLine, settings.ScanPaths);
+            ScanMode = settings.ScanMode;
+            ReplaceFolders(settings.ScanPaths);
             ExcludePathsText = string.Join(Environment.NewLine, settings.ExcludePaths);
             SelectDrives(settings.ScanDrives);
             IncludeTemp = settings.IncludeTemp;
@@ -507,11 +618,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         IsDirty = !SameSettings(Current, _saved);
         OnPropertyChanged(nameof(NoScanLocation));
+        OnPropertyChanged(nameof(ShowDriveDurationHint));
     }
 
     private static bool SameSettings(AppSettings a, AppSettings b) =>
         a.Usage == b.Usage
         && a.Switches.All(s => (b.Switches.TryGetValue(s.Key, out var on) && on) == s.Value)
+        && a.ScanMode == b.ScanMode
         && a.ScanPaths.SequenceEqual(b.ScanPaths, StringComparer.OrdinalIgnoreCase)
         && a.ScanDrives.Order(StringComparer.OrdinalIgnoreCase).SequenceEqual(b.ScanDrives.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)
         && a.ExcludePaths.SequenceEqual(b.ExcludePaths, StringComparer.OrdinalIgnoreCase)

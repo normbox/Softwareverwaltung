@@ -12,6 +12,8 @@ public sealed record AppSettings
 
     public string? Usage { get; init; }
     public IReadOnlyDictionary<string, bool> Switches { get; init; } = new Dictionary<string, bool>();
+    /// <summary>„Wo suchen“: Drives (ganze Laufwerke), Folders (nur bestimmte Ordner) oder null (keine Option).</summary>
+    public string? ScanMode { get; init; }
     public IReadOnlyList<string> ScanPaths { get; init; } = [];
     public IReadOnlyList<string> ScanDrives { get; init; } = [];
     public IReadOnlyList<string> ExcludePaths { get; init; } = [];
@@ -43,6 +45,7 @@ public sealed record AppSettings
         {
             Usage = obj.Properties["Usage"]?.Value?.ToString(),
             Switches = switches,
+            ScanMode = fileScan?.Properties["Mode"]?.Value?.ToString() is ("Drives" or "Folders") and var mode ? mode : null,
             ScanPaths = Strings(fileScan, "Paths"),
             ScanDrives = Strings(fileScan, "Drives"),
             ExcludePaths = Strings(fileScan, "ExcludePaths"),
@@ -65,8 +68,8 @@ public sealed record AppSettings
     };
 }
 
-/// <summary>Werte einer Vorlage aus Get-SettingPreset; die App belegt damit nur vor.</summary>
-public sealed record SettingPreset(IReadOnlyList<string> Enable, IReadOnlyList<string> ScanPaths, IReadOnlyList<string> ScanDrives, bool IncludeTemp, bool ComputeHash)
+/// <summary>Werte einer Vorlage aus Get-SettingPreset. ScanMode wählt „Wo suchen“; nur die Liste dieser Option ist belegt.</summary>
+public sealed record SettingPreset(IReadOnlyList<string> Enable, IReadOnlyList<string> ScanPaths, IReadOnlyList<string> ScanDrives, bool IncludeTemp, bool ComputeHash, string? ScanMode = null)
 {
     public static SettingPreset FromPs(PSObject obj)
     {
@@ -76,7 +79,8 @@ public sealed record SettingPreset(IReadOnlyList<string> Enable, IReadOnlyList<s
             AppSettings.Strings(fileScan, "Paths"),
             AppSettings.Strings(fileScan, "Drives"),
             fileScan?.Properties["IncludeTemp"]?.Value is true,
-            fileScan?.Properties["ComputeHash"]?.Value is true);
+            fileScan?.Properties["ComputeHash"]?.Value is true,
+            fileScan?.Properties["Mode"]?.Value?.ToString());
     }
 }
 

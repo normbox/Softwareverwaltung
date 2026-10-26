@@ -20,7 +20,7 @@ public partial class App : Application
 
         _host = new PowerShellHost();
         var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService());
-        var viewModel = new ShellViewModel(programs, new SettingsViewModel(new SettingsService(_host)));
+        var viewModel = new ShellViewModel(programs, new SettingsViewModel(new SettingsService(_host), new FolderPicker()));
         var window = new MainWindow { DataContext = viewModel };
         window.Show();
         // Fehler beim Laden der Module zeigen die ViewModels selbst als Hinweis an.
