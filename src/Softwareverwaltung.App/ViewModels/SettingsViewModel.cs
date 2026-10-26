@@ -148,6 +148,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _smartExclusions = true;
 
+    /// <summary>Hauptschalter: Suche nach portablen Programmen im Scan. Aus lässt die Einzeleinstellungen unverändert.</summary>
+    [ObservableProperty]
+    private bool _portableSearchEnabled;
+
     [ObservableProperty]
     private int _logRetentionDays = 30;
 
@@ -203,6 +207,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnIncludeTempChanged(bool value) => UpdateDirty();
     partial void OnComputeHashChanged(bool value) => UpdateDirty();
     partial void OnSmartExclusionsChanged(bool value) => UpdateDirty();
+    partial void OnPortableSearchEnabledChanged(bool value) => UpdateDirty();
     partial void OnLogRetentionDaysChanged(int value) => UpdateDirty();
     partial void OnLogMaxSizeMBChanged(int value) => UpdateDirty();
 
@@ -255,6 +260,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         IncludeTemp = IncludeTemp,
         ComputeHash = ComputeHash,
         SmartExclusions = SmartExclusions,
+        PortableSearch = PortableSearchEnabled,
         LogRetentionDays = LogRetentionDays,
         LogMaxSizeMB = LogMaxSizeMB,
     };
@@ -416,6 +422,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             IncludeTemp = settings.IncludeTemp;
             ComputeHash = settings.ComputeHash;
             SmartExclusions = settings.SmartExclusions;
+            PortableSearchEnabled = settings.PortableSearch;
             LogRetentionDays = settings.LogRetentionDays;
             LogMaxSizeMB = settings.LogMaxSizeMB;
         }
@@ -461,6 +468,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.IncludeTemp == b.IncludeTemp
         && a.ComputeHash == b.ComputeHash
         && a.SmartExclusions == b.SmartExclusions
+        && a.PortableSearch == b.PortableSearch
         && a.LogRetentionDays == b.LogRetentionDays
         && a.LogMaxSizeMB == b.LogMaxSizeMB;
 

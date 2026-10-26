@@ -18,6 +18,8 @@ public sealed record AppSettings
     public bool IncludeTemp { get; init; }
     public bool ComputeHash { get; init; }
     public bool SmartExclusions { get; init; } = true;
+    /// <summary>Hauptschalter der Suche nach portablen Programmen im Scan (PortableSearch.Enabled).</summary>
+    public bool PortableSearch { get; init; }
     public int LogRetentionDays { get; init; } = 30;
     public int LogMaxSizeMB { get; init; } = 100;
 
@@ -36,6 +38,7 @@ public sealed record AppSettings
         }
         var fileScan = obj.Properties["FileScan"]?.Value as PSObject;
         var maintenance = obj.Properties["Maintenance"]?.Value as PSObject;
+        var portable = obj.Properties["PortableSearch"]?.Value as PSObject;
         return new AppSettings
         {
             Usage = obj.Properties["Usage"]?.Value?.ToString(),
@@ -46,6 +49,7 @@ public sealed record AppSettings
             IncludeTemp = fileScan?.Properties["IncludeTemp"]?.Value is true,
             ComputeHash = fileScan?.Properties["ComputeHash"]?.Value is true,
             SmartExclusions = fileScan?.Properties["SmartExclusions"]?.Value is not false,
+            PortableSearch = portable?.Properties["Enabled"]?.Value is true,
             LogRetentionDays = Convert.ToInt32(maintenance?.Properties["LogRetentionDays"]?.Value ?? 30),
             LogMaxSizeMB = Convert.ToInt32(maintenance?.Properties["LogMaxSizeMB"]?.Value ?? 100),
         };

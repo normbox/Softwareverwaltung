@@ -132,6 +132,24 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task PortableSearchSwitchLoadsTracksAndSavesWithoutTouchingTraces()
+    {
+        var fake = new FakeSettings { Saved = Off("UserAssist") with { ScanPaths = ["%USERPROFILE%"] } };
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+        Assert.False(vm.PortableSearchEnabled);
+
+        vm.PortableSearchEnabled = true;
+        Assert.True(vm.IsDirty);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(fake.Saved.PortableSearch);
+        Assert.True(fake.Saved.Switches["UserAssist"]);
+        Assert.Equal(["%USERPROFILE%"], fake.Saved.ScanPaths);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
     public async Task DiscardRestoresSavedState()
     {
         var vm = new SettingsViewModel(new FakeSettings { Saved = Off("Winget") });

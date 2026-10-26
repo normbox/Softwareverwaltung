@@ -33,6 +33,10 @@ function Set-InventorySetting {
         Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
     .PARAMETER LogMaxSizeMB
         Obergrenze für Logs und Zwischenspeicher zusammen; darüber wird das Älteste zuerst gelöscht. Standard: 100.
+    .PARAMETER PortableSearch
+        Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
+        Standard: aus. Aus = keine Suche; Nutzungsspuren, Ordner und Laufwerke bleiben gespeichert.
+        Keine Vorlage schaltet ihn ein. Get-PortableSoftware selbst ist davon nicht betroffen.
     .PARAMETER AdvisorEnabled
         KI-Berater ein- oder ausschalten. Standard: aus. Keine Vorlage schaltet ihn ein.
     .PARAMETER AdvisorPreset
@@ -94,6 +98,8 @@ function Set-InventorySetting {
 
         [bool] $AdvisorEnabled,
 
+        [bool] $PortableSearch,
+
         [ValidateSet('Ollama', 'LMStudio', 'Unsloth', 'Custom')]
         [string] $AdvisorPreset,
 
@@ -134,6 +140,7 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
     if ($PSBoundParameters.ContainsKey('AdvisorEnabled')) { $setting.Advisor.Enabled = $AdvisorEnabled }
+    if ($PSBoundParameters.ContainsKey('PortableSearch')) { $setting.PortableSearch.Enabled = $PortableSearch }
     if ($PSBoundParameters.ContainsKey('AdvisorPreset')) {
         $setting.Advisor.Preset = $AdvisorPreset
         # Vorgabe belegt die Adresse vor; eine ausdrücklich angegebene Adresse gewinnt.

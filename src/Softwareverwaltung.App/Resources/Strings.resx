@@ -20,7 +20,19 @@
     <value>Suche nach portablen Programmen</value>
   </data>
   <data name="SettingsPortableIntro" xml:space="preserve">
-    <value>Findet Programme, die nicht installiert wurden, z. B. entpackte ZIP-Archive oder Programme auf USB-Sticks. Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>
+    <value>Findet Programme, die nicht installiert wurden, z. B. entpackte ZIP-Archive oder Programme auf USB-Sticks. Aus = es wird nicht gesucht; die Einstellungen darunter bleiben erhalten.</value>
+  </data>
+  <data name="SettingsPortableSwitchLabel" xml:space="preserve">
+    <value>Suche nach portablen Programmen beim Scan</value>
+  </data>
+  <data name="SettingsPortableInstalledHint" xml:space="preserve">
+    <value>Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>
+  </data>
+  <data name="SwitchOn" xml:space="preserve">
+    <value>An</value>
+  </data>
+  <data name="SwitchOff" xml:space="preserve">
+    <value>Aus</value>
   </data>
   <data name="SettingsPortableTracesTitle" xml:space="preserve">
     <value>Über Nutzungsspuren</value>

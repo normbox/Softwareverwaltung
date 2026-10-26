@@ -12,7 +12,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 #### Geändert
 
-- Einstellungen: Abschnitt „Suche nach portablen Programmen“ mit den Unterabschnitten „Über Nutzungsspuren“ und „In Ordnern und auf Laufwerken“ und dem Hinweis, dass installierte Programme unabhängig davon erfasst werden.
+- Einstellungen: Abschnitt „Suche nach portablen Programmen“ mit Hauptschalter (`Set-InventorySetting -PortableSearch`, standardmäßig aus, keine Vorlage schaltet ihn ein; aus = keine Suche, die Einzeleinstellungen bleiben erhalten und werden nur abgeschwächt angezeigt), den Unterabschnitten „Über Nutzungsspuren“ und „In Ordnern und auf Laufwerken“ und dazwischen dem Hinweis, dass installierte Programme unabhängig davon erfasst werden. Wer vorher Spuren oder Ordner eingerichtet hatte, muss die Suche einmal einschalten.
 - App-Texte: Grundlage für `.resx` (`Resources/Strings.resx`, `{loc:Text Schlüssel}` in XAML, `AppText.Get` in C#) mit Test, dass jeder verwendete Schlüssel existiert. Die neuen Texte stehen schon dort.
 
 ### Etappe 4a: KI-Berater im Modul

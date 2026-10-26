@@ -57,7 +57,7 @@ public sealed class InventoryServiceTests : IAsyncLifetime
     {
         Directory.CreateDirectory(_scanFolder);
         File.Copy(Path.Combine(Environment.SystemDirectory, "whoami.exe"), Path.Combine(_scanFolder, "whoami.exe"));
-        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("ScanPath", new[] { _scanFolder }));
+        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("ScanPath", new[] { _scanFolder }).AddParameter("PortableSearch", true));
         Assert.Empty(set.Errors);
 
         var result = await _service.ScanAsync();

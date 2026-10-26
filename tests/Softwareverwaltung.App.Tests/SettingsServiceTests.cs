@@ -60,6 +60,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             ExcludePaths = ["%USERPROFILE%\\Builds"],
             ComputeHash = true,
             SmartExclusions = false,
+            PortableSearch = true,
             LogRetentionDays = 7,
             LogMaxSizeMB = 50,
         });
@@ -75,6 +76,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             Assert.True(settings.ComputeHash);
             Assert.False(settings.IncludeTemp);
             Assert.False(settings.SmartExclusions);
+            Assert.True(settings.PortableSearch);
             Assert.Equal(7, settings.LogRetentionDays);
             Assert.Equal(50, settings.LogMaxSizeMB);
         }

@@ -44,6 +44,7 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
             .AddParameter("IncludeTemp", settings.IncludeTemp)
             .AddParameter("ComputeHash", settings.ComputeHash)
             .AddParameter("SmartExclusions", settings.SmartExclusions)
+            .AddParameter("PortableSearch", settings.PortableSearch)
             .AddParameter("LogRetentionDays", settings.LogRetentionDays)
             .AddParameter("LogMaxSizeMB", settings.LogMaxSizeMB);
         if (settings.Usage is not null)

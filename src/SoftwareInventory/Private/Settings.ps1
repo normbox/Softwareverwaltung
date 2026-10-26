@@ -55,6 +55,9 @@ function New-DefaultSetting {
             Endpoint = $null    # Basisadresse der OpenAI-kompatiblen Schnittstelle, z. B. http://localhost:11434/v1
             Model    = $null    # vom Benutzer aus den installierten Modellen gewählt; kein Standard
         }
+        # Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
+        # Aus = keine Suche; Nutzungsspuren und FileScan bleiben gespeichert. Keine Vorlage schaltet ihn ein.
+        PortableSearch = [pscustomobject] [ordered]@{ Enabled = $false }
         FileScan      = [pscustomobject] [ordered]@{
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
             Drives          = [string[]] @()
@@ -94,6 +97,9 @@ function Read-InventorySetting {
             if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
         }
     }
+    if ($data.PSObject.Properties['PortableSearch'] -and $data.PortableSearch -and $data.PortableSearch.PSObject.Properties['Enabled']) {
+        $setting.PortableSearch.Enabled = [bool] $data.PortableSearch.Enabled
+    }
     if ($data.PSObject.Properties['Advisor'] -and $data.Advisor) {
         $a = $data.Advisor
         if ($a.PSObject.Properties['Enabled']) { $setting.Advisor.Enabled = [bool] $a.Enabled }
@@ -117,7 +123,7 @@ function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, FileScan |
+    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, PortableSearch, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
 }
 

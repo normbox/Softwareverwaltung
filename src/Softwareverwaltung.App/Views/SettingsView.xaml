@@ -92,11 +92,45 @@
 
                 <!-- Suche nach portablen Programmen: Nutzungsspuren sowie Ordner und Laufwerke -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsPortableTitle}" />
-                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableIntro}" />
 
+                <!-- Hauptschalter: aus = keine Suche; die Einzeleinstellungen darunter bleiben gespeichert -->
+                <ui:CardControl Margin="0,4,0,4" Padding="14,10">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Text SettingsPortableSwitchLabel}" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Text SettingsPortableIntro}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch IsChecked="{Binding PortableSearchEnabled}" AutomationProperties.Name="{loc:Text SettingsPortableSwitchLabel}"
+                                     OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
+                </ui:CardControl>
+
+                <!-- Bei ausgeschalteter Suche nur abgeschwächt, nicht gesperrt: An/Aus der Einzelschalter bleibt erkennbar. -->
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PortableSearchEnabled}" Value="False">
+                                    <Setter Property="Opacity" Value="0.55" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
                 <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsPortableTracesTitle}" />
                 <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableTracesText}" />
                 <ItemsControl ItemsSource="{Binding Traces}" ItemTemplate="{StaticResource SwitchCard}" />
+
+                <!-- Hinweis zwischen den Unterabschnitten -->
+                <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                        Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Info24" Filled="True" Margin="0,0,10,0" VerticalAlignment="Top"
+                                       Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                        <TextBlock Text="{loc:Text SettingsPortableInstalledHint}" TextWrapping="Wrap" MaxWidth="800" />
+                    </StackPanel>
+                </Border>
 
                 <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsPortableFoldersTitle}" />
                 <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableFoldersText}" />
@@ -125,6 +159,7 @@
                     <TextBlock TextWrapping="Wrap"
                                Text="Intelligente Ausschlüsse: Herstellerordner und bereits installierte Programme überspringen (aus = mehr Treffer)" />
                 </CheckBox>
+                </StackPanel>
 
                 <!-- Externe Dienste -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="Externe Dienste" />
