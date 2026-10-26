@@ -42,6 +42,11 @@ function Set-InventorySetting {
         Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
         Standard: aus. Aus = keine Suche; Nutzungsspuren, Ordner und Laufwerke bleiben gespeichert.
         Keine Vorlage schaltet ihn ein. Get-PortableSoftware selbst ist davon nicht betroffen.
+    .PARAMETER TraceSearch
+        Unterschalter: Nutzungsspuren auswerten (welche, legen -Enable/-Disable fest). Liest nur, was Windows
+        schon notiert hat, durchsucht keine Laufwerke und findet Programme überall. Standard: aus.
+    .PARAMETER FileSearch
+        Unterschalter: Dateisuche in der gewählten Option „Wo suchen“ (-ScanMode). Standard: aus.
     .PARAMETER AdvisorEnabled
         KI-Berater ein- oder ausschalten. Standard: aus. Keine Vorlage schaltet ihn ein.
     .PARAMETER AdvisorPreset
@@ -59,7 +64,7 @@ function Set-InventorySetting {
     .EXAMPLE
         Set-InventorySetting -Preset Quick -Disable ScheduledTask
     .EXAMPLE
-        Set-InventorySetting -PortableSearch $true -ScanMode Drives -ScanDrive C, D -IncludeTemp $true -ComputeHash $true
+        Set-InventorySetting -PortableSearch $true -FileSearch $true -ScanMode Drives -ScanDrive C, D -IncludeTemp $true -ComputeHash $true
     .EXAMPLE
         Set-InventorySetting -PortableSearch $true -ScanMode Folders -ScanPath '%USERPROFILE%', 'D:\Tools'
     .EXAMPLE
@@ -110,6 +115,10 @@ function Set-InventorySetting {
 
         [bool] $PortableSearch,
 
+        [bool] $TraceSearch,
+
+        [bool] $FileSearch,
+
         [ValidateSet('Ollama', 'LMStudio', 'Unsloth', 'Custom')]
         [string] $AdvisorPreset,
 
@@ -156,6 +165,8 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
     if ($PSBoundParameters.ContainsKey('AdvisorEnabled')) { $setting.Advisor.Enabled = $AdvisorEnabled }
     if ($PSBoundParameters.ContainsKey('PortableSearch')) { $setting.PortableSearch.Enabled = $PortableSearch }
+    if ($PSBoundParameters.ContainsKey('TraceSearch')) { $setting.PortableSearch.TraceSearch = $TraceSearch }
+    if ($PSBoundParameters.ContainsKey('FileSearch')) { $setting.PortableSearch.FileSearch = $FileSearch }
     if ($PSBoundParameters.ContainsKey('AdvisorPreset')) {
         $setting.Advisor.Preset = $AdvisorPreset
         # Vorgabe belegt die Adresse vor; eine ausdrücklich angegebene Adresse gewinnt.

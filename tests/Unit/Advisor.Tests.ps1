@@ -133,6 +133,22 @@ Describe 'KI-Berater: Tools' {
         (Get-Content2 $v).refuted | Should -Be @('KEV-Treffer CVE-2025-0411 widerlegt')
     }
 
+    It 'gibt keine Nutzungsspuren (Zeitstempel, Startzähler, Spurenart) und keine Pfade an die KI, auch nicht für Treffer auf nicht erreichbaren Laufwerken' {
+        $usb = New-TestRating 'tool' Gray @{
+            FilePath = 'F:\Users\normb\PortableApps\tool.exe'; InstallLocation = 'F:\Users\normb\PortableApps'
+            Evidence = [string[]] @('UserAssist', 'Process'); LastRun = '2026-10-01T10:00:00.0000000Z'; RunCount = 4711
+            Flags = [string[]] @('PathUnreachable')
+        } -VulnStatus Unknown -Reasons @('Pfad nicht erreichbar: Das Laufwerk ist gerade nicht verbunden (z. B. abgezogener USB-Stick). Gefunden über Nutzungsspuren.')
+        Set-AdvisorContext -Rating @($usb)
+        $id = InModuleScope SoftwareInventory -Parameters @{ R = $usb.Record } { Get-AdvisorProgramId $R }
+
+        $all = (Invoke-Tool get_inventory).Content + (Invoke-Tool get_program_details "{`"id`":`"$id`"}").Content
+        foreach ($forbidden in 'LastRun', 'last_run', 'RunCount', 'run_count', '4711', '2026-10-01', 'Evidence', 'UserAssist', 'PortableApps', 'normb') {
+            $all | Should -Not -Match ([regex]::Escape($forbidden)) -Because "'$forbidden' darf nicht an die KI gehen"
+        }
+        $all | Should -Match 'Pfad nicht erreichbar'
+    }
+
     It 'liest ohne übergebene Daten einmal selbst ein' {
         Set-AdvisorContext -Clear
         Mock -ModuleName SoftwareInventory Get-SoftwareInventory { $script:ratings[2].Record }

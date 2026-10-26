@@ -55,8 +55,14 @@ Regeln:
     AdvisorPresetLabelCustom                = 'Eigene Adresse'
 
     # Suche nach portablen Programmen (Invoke-InventoryScan)
-    PortableSearchNoLocation                = 'Suche nach portablen Programmen: Kein Laufwerk und kein Ordner gewählt, daher wurden keine Dateien durchsucht. Gefunden wird nur über die Nutzungsspuren.'
-    PortableSearchNothingSelected           = 'Suche nach portablen Programmen ist eingeschaltet, aber weder ein Laufwerk, ein Ordner noch eine Nutzungsspur ist gewählt. Es wurde nichts durchsucht.'
+    PortableSearchNoLocation                = 'Dateisuche: Keine Option „Wo suchen“ gewählt oder die gewählte Option hat keinen Eintrag, daher wurden keine Dateien durchsucht.'
+    PortableSearchNoTrace                   = 'Nutzungsspuren sind eingeschaltet, aber keine der Spuren ist gewählt.'
+    PortableSearchNothingSelected           = 'Suche nach portablen Programmen ist eingeschaltet, aber weder Nutzungsspuren noch Dateisuche. Es wurde nichts durchsucht.'
+    PortableDriveNotConnected               = 'Laufwerk {0} ist nicht verbunden und wurde übersprungen.'
+    PortableFolderNotFound                  = 'Ordner {0} wurde nicht gefunden und übersprungen.'
+
+    # Ampel: zusätzliche Gründe
+    RatingReasonPathUnreachable             = 'Pfad nicht erreichbar: Das Laufwerk ist gerade nicht verbunden (z. B. abgezogener USB-Stick). Gefunden über Nutzungsspuren.'
 
     # Einstellungen (Schlüssel = SettingsError + Code)
     SettingsErrorInvalidAdvisorEndpoint     = 'Ungültige Adresse ''{0}'': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1.'

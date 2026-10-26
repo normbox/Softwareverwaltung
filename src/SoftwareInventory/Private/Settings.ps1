@@ -57,7 +57,8 @@ function New-DefaultSetting {
         }
         # Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
         # Aus = keine Suche; Nutzungsspuren und FileScan bleiben gespeichert. Keine Vorlage schaltet ihn ein.
-        PortableSearch = [pscustomobject] [ordered]@{ Enabled = $false }
+        # Darunter zwei eigene Schalter: Nutzungsspuren (TraceSearch) und Dateisuche (FileSearch), beide standardmäßig aus.
+        PortableSearch = [pscustomobject] [ordered]@{ Enabled = $false; TraceSearch = $false; FileSearch = $false }
         FileScan      = [pscustomobject] [ordered]@{
             Mode            = $null            # „Wo suchen“: Drives oder Folders; nur diese Liste wird genutzt, die andere bleibt gespeichert
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
@@ -98,8 +99,10 @@ function Read-InventorySetting {
             if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
         }
     }
-    if ($data.PSObject.Properties['PortableSearch'] -and $data.PortableSearch -and $data.PortableSearch.PSObject.Properties['Enabled']) {
-        $setting.PortableSearch.Enabled = [bool] $data.PortableSearch.Enabled
+    if ($data.PSObject.Properties['PortableSearch'] -and $data.PortableSearch) {
+        foreach ($name in 'Enabled', 'TraceSearch', 'FileSearch') {
+            if ($data.PortableSearch.PSObject.Properties[$name]) { $setting.PortableSearch.$name = [bool] $data.PortableSearch.$name }
+        }
     }
     if ($data.PSObject.Properties['Advisor'] -and $data.Advisor) {
         $a = $data.Advisor
@@ -132,6 +135,18 @@ function Write-InventorySetting {
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
     $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, PortableSearch, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+}
+
+function Get-PortableSearchPlan {
+    # Was die Suche nach portablen Programmen tatsächlich nutzt, nach den Unterschaltern
+    # Nutzungsspuren und Dateisuche (der Hauptschalter wird vom Aufrufer geprüft).
+    param($Setting)
+    $active = Get-ActiveScanLocation $Setting
+    [pscustomobject] @{
+        Trace = [string[]] @(if ($Setting.PortableSearch.TraceSearch) { Get-EnabledName $Setting.Traces })
+        Path  = [string[]] @(if ($Setting.PortableSearch.FileSearch) { $active.Paths })
+        Drive = [string[]] @(if ($Setting.PortableSearch.FileSearch) { $active.Drives })
+    }
 }
 
 function Get-ActiveScanLocation {

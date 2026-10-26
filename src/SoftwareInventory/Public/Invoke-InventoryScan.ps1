@@ -6,11 +6,12 @@ function Invoke-InventoryScan {
         Liest die installierten Programme der aktivierten Quellen (Get-SoftwareInventory). Ist der
         Hauptschalter PortableSearch an, sucht es zusätzlich portable Programme (Get-PortableSoftware)
         und gibt dabei die installierten weiter, damit sie nicht doppelt gelesen und ihre Ordner
-        ausgelassen werden:
-          - Dateien werden nur in der Liste der gewählten Option „Wo suchen“ durchsucht (ganze
-            Laufwerke oder bestimmte Ordner, FileScan.Mode). Ohne Option oder mit leerer Liste läuft
-            kein Dateiscan, und es gibt einen Hinweis (Warnung).
-          - Eingeschaltete Nutzungsspuren wirken unabhängig von dieser Auswahl.
+        ausgelassen werden. Darunter wirken zwei unabhängige Schalter:
+          - Nutzungsspuren (TraceSearch): die gewählten Spuren, überall, ohne Laufwerke zu durchsuchen.
+          - Dateisuche (FileSearch): nur die Liste der gewählten Option „Wo suchen“ (ganze Laufwerke
+            oder bestimmte Ordner, FileScan.Mode). Ohne Option oder mit leerer Liste läuft kein Dateiscan.
+        Fehlt etwas, gibt es einen Hinweis (Warnung) statt eines Fehlers; nicht verbundene Laufwerke
+        werden übersprungen.
         Ist der Hauptschalter aus, wird nicht gesucht und nichts gemeldet; die Suche ist freiwillig.
     .EXAMPLE
         Invoke-InventoryScan | Get-SecurityRating
@@ -24,13 +25,15 @@ function Invoke-InventoryScan {
 
     $setting = Read-InventorySetting
     if (-not $setting.PortableSearch.Enabled) { return }
-    $traces = @(Get-EnabledName $setting.Traces)
-    $active = Get-ActiveScanLocation $setting
-    $hasLocation = [bool] (@($active.Paths) + @($active.Drives))
-    if (-not $hasLocation) {
-        Write-Warning (Get-LocalizedString $(if ($traces) { 'PortableSearchNoLocation' } else { 'PortableSearchNothingSelected' }))
+    $search = Get-PortableSearchPlan $setting
+    if (-not $setting.PortableSearch.TraceSearch -and -not $setting.PortableSearch.FileSearch) {
+        Write-Warning (Get-LocalizedString 'PortableSearchNothingSelected')
+        return
     }
-    if ($hasLocation -or $traces) {
-        Get-PortableSoftware -Inventory $installed
+    if ($setting.PortableSearch.TraceSearch -and -not $search.Trace) { Write-Warning (Get-LocalizedString 'PortableSearchNoTrace') }
+    if ($setting.PortableSearch.FileSearch -and -not ($search.Path -or $search.Drive)) { Write-Warning (Get-LocalizedString 'PortableSearchNoLocation') }
+    if ($search.Trace -or $search.Path -or $search.Drive) {
+        Get-PortableSoftware -Inventory $installed -Trace $search.Trace -Path $search.Path -Drive $search.Drive `
+            -IncludeTemp:$setting.FileScan.IncludeTemp -ComputeHash:$setting.FileScan.ComputeHash
     }
 }

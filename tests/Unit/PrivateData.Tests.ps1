@@ -30,6 +30,16 @@ Describe 'Protect-PrivateText' {
             Should -Be 'Angemeldet: %USERDOMAIN%\%USERNAME% an %COMPUTERNAME%; normbox bleibt'
     }
 
+    It 'bereinigt Pfade auf Wechseldatenträgern und nicht erreichbaren Laufwerken: <Case>' -TestCases @(
+        @{ Case = 'eigenes Profil auf USB-Stick'; Text = 'F:\Users\normb\PortableApps\tool.exe'; Expected = 'F:\Users\%USERNAME%\PortableApps\tool.exe' }
+        @{ Case = 'Benutzername als Ordner auf USB-Stick'; Text = 'G:\normb\Tools\tool.exe'; Expected = 'G:\%USERNAME%\Tools\tool.exe' }
+        @{ Case = 'fremdes Profil auf nicht erreichbarem Laufwerk'; Text = 'X:\Users\anna\Desktop\a.exe'; Expected = 'X:\Users\%OTHERUSER%\Desktop\a.exe' }
+        @{ Case = 'Netzlaufwerk mit Rechnername'; Text = '\\NORM-PC\Freigabe\normb\b.exe'; Expected = '\\%COMPUTERNAME%\Freigabe\%USERNAME%\b.exe' }
+        @{ Case = 'JSON eines Spurentreffers'; Text = '{"FilePath":"F:\\Users\\normb\\x.exe","Flags":["PathUnreachable"]}'; Expected = '{"FilePath":"F:\\Users\\%USERNAME%\\x.exe","Flags":["PathUnreachable"]}' }
+    ) {
+        Protect $Text | Should -Be $Expected
+    }
+
     It 'lässt Texte ohne persönliche Angaben unverändert' {
         Protect '7-Zip 26.05 (x64), C:\Program Files\7-Zip' | Should -Be '7-Zip 26.05 (x64), C:\Program Files\7-Zip'
         Protect $null | Should -BeNullOrEmpty
