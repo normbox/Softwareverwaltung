@@ -127,7 +127,16 @@ function Complete-InstallerLog {
     try {
         if (-not $Keep) { return $null }
         $zip = [System.IO.Path]::ChangeExtension($Path, '.zip')
-        Compress-Archive -LiteralPath $Path -DestinationPath $zip -Force
+        # System.IO.Compression statt Compress-Archive: kein Modul-Autoload (Microsoft.PowerShell.Archive),
+        # das in der eingebetteten Engine der App fehlen kann.
+        if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+        $archive = [System.IO.Compression.ZipFile]::Open($zip, [System.IO.Compression.ZipArchiveMode]::Create)
+        try {
+            [void] [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $Path, [System.IO.Path]::GetFileName($Path), [System.IO.Compression.CompressionLevel]::Optimal)
+        }
+        finally {
+            $archive.Dispose()
+        }
         $zip
     }
     catch {

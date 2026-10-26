@@ -29,6 +29,32 @@ public sealed class PowerShellHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ModulePathContainsOnlyBundledAndWindowsModules()
+    {
+        var result = await _host.InvokeAsync(new PSCommand().AddScript("$env:PSModulePath -split [IO.Path]::PathSeparator"));
+
+        Assert.Empty(result.Errors);
+        var expected = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "Modules"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "Modules"),
+        };
+        Assert.Equal(expected, result.Output.Select(o => o.BaseObject.ToString()), StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain(result.Output, o => o.BaseObject.ToString()!.Contains(@"\Documents\", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task UserModulesAreNotAutoloaded()
+    {
+        // Ein Benutzermodul mit eindeutigem Befehl im (vorher üblichen) Dokumente-Pfad darf nicht gefunden werden.
+        var result = await _host.InvokeAsync(new PSCommand().AddScript(
+            "[bool] (Get-Module -ListAvailable | Where-Object { $_.Path -like '*\\Documents\\*' -or $_.Path -like '*\\Program Files\\PowerShell\\*' })"));
+
+        Assert.Empty(result.Errors);
+        Assert.False((bool)result.Output.Single().BaseObject);
+    }
+
+    [Fact]
     public async Task ReturnsWingetStatusFromModule()
     {
         var result = await _host.InvokeAsync(new PSCommand().AddCommand("Test-WingetAvailability"));

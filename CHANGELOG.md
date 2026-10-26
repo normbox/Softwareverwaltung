@@ -4,6 +4,18 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Wartung
+
+#### Behoben
+
+- Eingebettete Engine: `PSModulePath` enthält nur noch die mitgelieferten Module und die Windows-Module aus System32 (z. B. Appx). Vorher erbte sie den Pfad des startenden Prozesses und konnte Benutzermodule oder Module eines installierten PowerShell 7 laden. Dabei zeigte sich, dass `CimCmdlets` bisher aus einem installierten PowerShell 7 kam; die App lädt es jetzt aus der mitgelieferten DLL.
+- Installer-Logs werden mit `System.IO.Compression` statt `Compress-Archive` gepackt (kein Modul-Autoload nötig).
+
+#### Geändert
+
+- `Get-CpeMapping` und `Remove-CpeMapping` stehen jeweils in einer eigenen Datei unter `Public/`.
+- Analyzer-Befehl in README und `docs/ENTWICKLUNG.md` prüft nur `./src/SoftwareInventory`, nicht die Modulkopien in `bin`.
+
 ### Etappe 4a: KI-Berater im Modul
 
 #### Hinzugefügt

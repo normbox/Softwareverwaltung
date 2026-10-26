@@ -119,6 +119,25 @@ Describe 'Installer-Logs' {
         Test-Path $zip | Should -BeTrue
         Test-Path $bad | Should -BeFalse
     }
+
+    It 'packt das Log mit System.IO.Compression lesbar ein, ohne Compress-Archive, und ersetzt ein altes ZIP' {
+        Mock -ModuleName SoftwareInventory Compress-Archive { throw 'darf nicht benutzt werden' }
+        $log = Join-Path $TestDrive 'msi.log'
+        Set-Content $log 'alter Inhalt'
+        InModuleScope SoftwareInventory -Parameters @{ P = $log } { Complete-InstallerLog -Path $P -Keep $true } | Out-Null
+        Set-Content $log "Zeile 1`nFehler 1603"
+        $zip = InModuleScope SoftwareInventory -Parameters @{ P = $log } { Complete-InstallerLog -Path $P -Keep $true }
+
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+        try {
+            $archive.Entries.Count | Should -Be 1
+            $archive.Entries[0].Name | Should -Be 'msi.log'
+            $reader = [System.IO.StreamReader]::new($archive.Entries[0].Open())
+            try { $reader.ReadToEnd() | Should -Match 'Fehler 1603' } finally { $reader.Dispose() }
+        }
+        finally { $archive.Dispose() }
+        Should -Invoke -ModuleName SoftwareInventory Compress-Archive -Times 0
+    }
 }
 
 Describe 'Invoke-AppDataCleanup' {
