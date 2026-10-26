@@ -8,5 +8,6 @@
   },
   "GitHub": { "Repository": "ip7z/7zip" },
   "Cpe": ["cpe:2.3:a:7-zip:7-zip"],
-  "Kev": [{ "Vendor": "7-Zip", "ProductPattern": "^7-Zip$" }]
+  "Kev": [{ "Vendor": "7-Zip", "ProductPattern": "^7-Zip$" }],
+  "KevFixed": { "CVE-2025-0411": "24.09" }
 }
