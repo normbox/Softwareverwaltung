@@ -59,6 +59,7 @@ function New-DefaultSetting {
         # Aus = keine Suche; Nutzungsspuren und FileScan bleiben gespeichert. Keine Vorlage schaltet ihn ein.
         PortableSearch = [pscustomobject] [ordered]@{ Enabled = $false }
         FileScan      = [pscustomobject] [ordered]@{
+            Mode            = $null            # „Wo suchen“: Drives oder Folders; nur diese Liste wird genutzt, die andere bleibt gespeichert
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
             Drives          = [string[]] @()
             IncludeTemp     = $false
@@ -115,6 +116,12 @@ function Read-InventorySetting {
         if ($fs.PSObject.Properties['ComputeHash']) { $setting.FileScan.ComputeHash = [bool] $fs.ComputeHash }
         if ($fs.PSObject.Properties['ExcludePaths']) { $setting.FileScan.ExcludePaths = [string[]] @($fs.ExcludePaths | Where-Object { $_ }) }
         if ($fs.PSObject.Properties['SmartExclusions'] -and $null -ne $fs.SmartExclusions) { $setting.FileScan.SmartExclusions = [bool] $fs.SmartExclusions }
+        if ($fs.PSObject.Properties['Mode']) {
+            if ($fs.Mode -in 'Drives', 'Folders') { $setting.FileScan.Mode = [string] $fs.Mode }
+        }
+        # Ältere Datei ohne Mode: Ordner vorhanden → nur Ordner (schneller), sonst Laufwerke vorhanden → Laufwerke.
+        elseif ($setting.FileScan.Paths) { $setting.FileScan.Mode = 'Folders' }
+        elseif ($setting.FileScan.Drives) { $setting.FileScan.Mode = 'Drives' }
     }
     $setting
 }
@@ -125,6 +132,15 @@ function Write-InventorySetting {
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
     $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, PortableSearch, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+}
+
+function Get-ActiveScanLocation {
+    # Ordner und Laufwerke, die tatsächlich durchsucht werden: nur die Liste der gewählten Option.
+    param($Setting)
+    [pscustomobject] @{
+        Paths  = [string[]] @(if ($Setting.FileScan.Mode -eq 'Folders') { $Setting.FileScan.Paths | Where-Object { $_ } })
+        Drives = [string[]] @(if ($Setting.FileScan.Mode -eq 'Drives') { $Setting.FileScan.Drives | Where-Object { $_ } })
+    }
 }
 
 function Test-AdvisorEndpoint {

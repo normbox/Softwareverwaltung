@@ -7,9 +7,11 @@ function Set-InventorySetting {
         danach lassen sie sich einzeln ändern. Usage (Privat/Firma) ist reine Information
         und schaltet nichts frei oder ab.
     .PARAMETER Preset
-        Quick: alle Quellen, alle Nutzungsspuren, Dateiscan im Benutzerprofil ohne Temp und Hash.
-        Thorough: wie Quick, aber Dateiscan aller festen Laufwerke einschließlich Temp, mit SHA256.
-        Wird vor den übrigen Parametern angewendet. Externe Dienste schaltet keine Vorlage ein.
+        Quick: alle Quellen, alle Nutzungsspuren, „Nur bestimmte Ordner“ mit dem Benutzerprofil, ohne Temp und Hash.
+        Thorough: wie Quick, aber „Ganze Laufwerke“ mit allen festen Laufwerken, einschließlich Temp, mit SHA256.
+        Eine Vorlage setzt die Option und nur deren Liste; die Liste der anderen Option bleibt.
+        Wird vor den übrigen Parametern angewendet. Externe Dienste und den Hauptschalter
+        PortableSearch schaltet keine Vorlage ein.
     .PARAMETER Enable
         Einzuschaltende Bereiche: RegistryMachine, RegistryUser, Winget, Appx,
         UserAssist, Process, Autostart, ScheduledTask sowie die externen Dienste
@@ -18,10 +20,13 @@ function Set-InventorySetting {
         anlegen (eigene UAC-Abfrage). Keine Vorlage schaltet ihn ein.
     .PARAMETER Disable
         Auszuschaltende Bereiche (gleiche Namen wie -Enable).
+    .PARAMETER ScanMode
+        „Wo suchen“: Drives (ganze Laufwerke), Folders (nur bestimmte Ordner) oder None. Durchsucht wird
+        nur die Liste dieser Option; die andere bleibt gespeichert, wird aber nicht genutzt.
     .PARAMETER ScanPath
-        Ordner für den Dateiscan (ersetzt die bisherige Liste). Umgebungsvariablen wie %USERPROFILE% erlaubt.
+        Ordner für „Nur bestimmte Ordner“ (ersetzt die bisherige Liste). Umgebungsvariablen wie %USERPROFILE% erlaubt.
     .PARAMETER ScanDrive
-        Laufwerke für den Dateiscan (ersetzt die bisherige Liste), z. B. C, D.
+        Laufwerke für „Ganze Laufwerke“ (ersetzt die bisherige Liste), z. B. C, D.
     .PARAMETER ExcludePath
         Eigene Ordner, die nie betreten werden – weder vom Dateiscan noch bei Spuren (ersetzt die
         bisherige Liste). Umgebungsvariablen erlaubt. Vorlagen ändern diese Liste nicht.
@@ -54,7 +59,9 @@ function Set-InventorySetting {
     .EXAMPLE
         Set-InventorySetting -Preset Quick -Disable ScheduledTask
     .EXAMPLE
-        Set-InventorySetting -ScanDrive C, D -IncludeTemp $true -ComputeHash $true
+        Set-InventorySetting -PortableSearch $true -ScanMode Drives -ScanDrive C, D -IncludeTemp $true -ComputeHash $true
+    .EXAMPLE
+        Set-InventorySetting -PortableSearch $true -ScanMode Folders -ScanPath '%USERPROFILE%', 'D:\Tools'
     .EXAMPLE
         Set-InventorySetting -ExcludePath '%USERPROFILE%\Projekte\Builds' -SmartExclusions $false
     #>
@@ -71,6 +78,9 @@ function Set-InventorySetting {
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
             'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint')]
         [string[]] $Disable = @(),
+
+        [ValidateSet('None', 'Drives', 'Folders')]
+        [string] $ScanMode,
 
         [AllowEmptyCollection()]
         [string[]] $ScanPath,
@@ -122,12 +132,17 @@ function Set-InventorySetting {
     if ($Preset) {
         $values = Get-SettingPreset -Preset $Preset
         foreach ($name in $values.Enable) { Set-SettingSwitch -Setting $setting -Name $name -Value $true }
-        foreach ($name in 'Paths', 'Drives', 'IncludeTemp', 'ComputeHash') { $setting.FileScan.$name = $values.FileScan.$name }
+        # Option „Wo suchen“ und nur deren Liste; die Liste der anderen Option bleibt unberührt.
+        $setting.FileScan.Mode = $values.FileScan.Mode
+        $list = if ($values.FileScan.Mode -eq 'Folders') { 'Paths' } else { 'Drives' }
+        $setting.FileScan.$list = $values.FileScan.$list
+        foreach ($name in 'IncludeTemp', 'ComputeHash') { $setting.FileScan.$name = $values.FileScan.$name }
     }
 
     foreach ($name in $Enable) { Set-SettingSwitch -Setting $setting -Name $name -Value $true }
     foreach ($name in $Disable) { Set-SettingSwitch -Setting $setting -Name $name -Value $false }
 
+    if ($PSBoundParameters.ContainsKey('ScanMode')) { $setting.FileScan.Mode = if ($ScanMode -eq 'None') { $null } else { $ScanMode } }
     if ($PSBoundParameters.ContainsKey('ScanPath')) { $setting.FileScan.Paths = [string[]] @($ScanPath | Where-Object { $_ }) }
     if ($PSBoundParameters.ContainsKey('ScanDrive')) {
         $setting.FileScan.Drives = [string[]] @($ScanDrive | Where-Object { $_ } | ForEach-Object { (ConvertTo-DriveRoot $_).TrimEnd('\') })

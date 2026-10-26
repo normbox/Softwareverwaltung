@@ -6,7 +6,8 @@ function Get-PortableSoftware {
         Wertet die aktivierten Nutzungsspuren aus (UserAssist, laufende Prozesse, Autostart,
         geplante Aufgaben) und durchsucht die aktivierten Ordner und Laufwerke nach .exe-Dateien.
         Ohne Parameter gelten die Einstellungen (Set-InventorySetting); standardmäßig ist nichts
-        aktiviert. Mit Parametern gilt nur, was angegeben ist.
+        aktiviert. Von Ordnern und Laufwerken zählt dann nur die Liste der gewählten Option
+        (FileScan.Mode: Folders oder Drives). Mit Parametern gilt nur, was angegeben ist.
         Dateien in Windows-Ordnern und in den Ordnern installierter Programme werden ausgelassen.
         Die Dateien werden nicht ausgeführt; gelesen werden Versionsinfo, Signatur und optional SHA256.
         Aus Temp-Ordnern meldet der Dateiscan nur unsignierte oder ungültig signierte Dateien;
@@ -68,8 +69,10 @@ function Get-PortableSoftware {
     $explicit = 'Trace', 'Path', 'Drive', 'IncludeTemp', 'ComputeHash' | Where-Object { $PSBoundParameters.ContainsKey($_) }
     if (-not $explicit) {
         $Trace = @(Get-EnabledName $setting.Traces)
-        $Path = @($setting.FileScan.Paths)
-        $Drive = @($setting.FileScan.Drives)
+        # Nur die Liste der gewählten Option „Wo suchen“ (FileScan.Mode)
+        $active = Get-ActiveScanLocation $setting
+        $Path = @($active.Paths)
+        $Drive = @($active.Drives)
         $IncludeTemp = [switch] $setting.FileScan.IncludeTemp
         $ComputeHash = [switch] $setting.FileScan.ComputeHash
     }

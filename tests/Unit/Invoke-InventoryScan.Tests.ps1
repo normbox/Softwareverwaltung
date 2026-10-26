@@ -34,8 +34,8 @@ Describe 'Invoke-InventoryScan' {
     }
 
     It 'sucht portable Programme bei <Case> ohne Hinweis und gibt die installierten weiter' -TestCases @(
-        @{ Case = 'gewähltem Ordner'; Arguments = @{ ScanPath = '%USERPROFILE%' } }
-        @{ Case = 'gewähltem Laufwerk'; Arguments = @{ ScanDrive = 'C' } }
+        @{ Case = 'gewähltem Ordner'; Arguments = @{ ScanMode = 'Folders'; ScanPath = '%USERPROFILE%' } }
+        @{ Case = 'gewähltem Laufwerk'; Arguments = @{ ScanMode = 'Drives'; ScanDrive = 'C' } }
     ) {
         Set-InventorySetting @Arguments -PortableSearch $true | Out-Null
         @(Invoke-InventoryScan -WarningVariable w).Name | Should -Be @('Installiert', 'Portabel')
@@ -66,10 +66,35 @@ Describe 'Kein Dateiscan ohne Laufwerk oder Ordner' {
         Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 0
     }
 
-    It 'der vollständige Scan durchsucht genau die gewählten Laufwerke und Ordner' {
-        Set-InventorySetting -PortableSearch $true -ScanDrive D -ScanPath 'E:\Tools' | Out-Null
+    It 'durchsucht nur die Liste der aktiven Option <Mode>; die andere bleibt gespeichert, wird aber nicht genutzt' -TestCases @(
+        @{ Mode = 'Drives'; Expected = 'D:\' }
+        @{ Mode = 'Folders'; Expected = 'E:\Tools' }
+    ) {
+        Set-InventorySetting -PortableSearch $true -ScanDrive D -ScanPath 'E:\Tools' -ScanMode $Mode | Out-Null
         Invoke-InventoryScan | Out-Null
-        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 1 -Exactly -ParameterFilter { @($Root) -contains 'D:\' -and @($Root) -contains 'E:\Tools' -and @($Root).Count -eq 2 }
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 1 -Exactly -ParameterFilter { @($Root).Count -eq 1 -and @($Root)[0] -eq $Expected }
+        $s = Get-InventorySetting
+        $s.FileScan.Drives | Should -Be @('D:')
+        $s.FileScan.Paths | Should -Be @('E:\Tools')
+    }
+
+    It 'durchsucht ohne gewählte Option keine Dateien, auch wenn Listen gespeichert sind' {
+        Set-InventorySetting -PortableSearch $true -ScanDrive D -ScanPath 'E:\Tools' -ScanMode None | Out-Null
+        Invoke-InventoryScan -WarningVariable w -WarningAction SilentlyContinue | Out-Null
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 0
+        "$w" | Should -Match 'weder ein Laufwerk'
+    }
+
+    It 'durchsucht bei gewählter Option mit leerer Liste keine Dateien' {
+        Set-InventorySetting -PortableSearch $true -ScanMode Folders -ScanDrive D | Out-Null
+        Invoke-InventoryScan -WarningAction SilentlyContinue | Out-Null
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 0
+    }
+
+    It 'Get-PortableSoftware ohne Parameter nutzt ebenfalls nur die aktive Option' {
+        Set-InventorySetting -ScanDrive D -ScanPath 'E:\Tools' -ScanMode Folders | Out-Null
+        Get-PortableSoftware -Inventory @() | Out-Null
+        Should -Invoke -ModuleName SoftwareInventory Find-ExecutableFile -Times 1 -Exactly -ParameterFilter { @($Root).Count -eq 1 -and @($Root)[0] -eq 'E:\Tools' }
     }
 }
 
@@ -96,5 +121,55 @@ Describe 'Hauptschalter PortableSearch' {
         $s = Set-InventorySetting -PortableSearch $false
         $s.Traces.UserAssist | Should -BeTrue
         $s.FileScan.Paths | Should -Be @('D:\Tools')
+    }
+}
+
+Describe 'Option „Wo suchen“ (FileScan.Mode)' {
+    BeforeEach {
+        $settingsFile = Join-Path $TestDrive "settings-$([guid]::NewGuid()).json"
+        Mock -ModuleName SoftwareInventory Get-SettingsPath { $settingsFile }
+        Mock -ModuleName SoftwareInventory Get-ScanDrive { [pscustomobject] @{ Drive = 'C:'; IsDefault = $true } }
+    }
+
+    It 'ist anfangs ohne Option und ohne Einträge' {
+        $s = Get-InventorySetting
+        $s.FileScan.Mode | Should -BeNullOrEmpty
+        $s.FileScan.Paths | Should -BeNullOrEmpty
+        $s.FileScan.Drives | Should -BeNullOrEmpty
+    }
+
+    It 'übernimmt ältere Einstellungen ohne Option: <Case>' -TestCases @(
+        @{ Case = 'Ordner → Nur bestimmte Ordner'; Json = '{"FileScan":{"Paths":["%USERPROFILE%"],"Drives":[]}}'; Expected = 'Folders' }
+        @{ Case = 'nur Laufwerke → Ganze Laufwerke'; Json = '{"FileScan":{"Paths":[],"Drives":["C:"]}}'; Expected = 'Drives' }
+        @{ Case = 'beides → Ordner (schneller)'; Json = '{"FileScan":{"Paths":["D:\\Tools"],"Drives":["C:"]}}'; Expected = 'Folders' }
+        @{ Case = 'nichts → keine Option'; Json = '{"FileScan":{"Paths":[],"Drives":[]}}'; Expected = $null }
+    ) {
+        $Json | Set-Content $settingsFile
+        (Get-InventorySetting).FileScan.Mode | Should -Be $Expected
+    }
+
+    It 'behält eine bewusst leere Option und ignoriert ungültige Werte' {
+        '{"FileScan":{"Mode":null,"Paths":["%USERPROFILE%"]}}' | Set-Content $settingsFile
+        (Get-InventorySetting).FileScan.Mode | Should -BeNullOrEmpty
+        '{"FileScan":{"Mode":"Alles","Paths":["%USERPROFILE%"]}}' | Set-Content $settingsFile
+        (Get-InventorySetting).FileScan.Mode | Should -BeNullOrEmpty
+    }
+
+    It 'die übernommene alte Einstellung %USERPROFILE% wird als „Nur bestimmte Ordner“ gespeichert' {
+        '{"FileScan":{"Paths":["%USERPROFILE%"],"Drives":[]}}' | Set-Content $settingsFile
+        Set-InventorySetting -PortableSearch $true | Out-Null
+        (Get-Content $settingsFile -Raw | ConvertFrom-Json).FileScan.Mode | Should -Be 'Folders'
+    }
+
+    It 'Vorlage <Preset> setzt Option und nur deren Liste, die andere bleibt' -TestCases @(
+        @{ Preset = 'Quick'; Mode = 'Folders'; Paths = @('%USERPROFILE%'); Drives = @('F:') }
+        @{ Preset = 'Thorough'; Mode = 'Drives'; Paths = @('D:\Eigen'); Drives = @('C:') }
+    ) {
+        Set-InventorySetting -ScanPath 'D:\Eigen' -ScanDrive F | Out-Null
+        $s = Set-InventorySetting -Preset $Preset
+        $s.FileScan.Mode | Should -Be $Mode
+        $s.FileScan.Paths | Should -Be $Paths
+        $s.FileScan.Drives | Should -Be $Drives
+        $s.PortableSearch.Enabled | Should -BeFalse
     }
 }
