@@ -23,6 +23,10 @@ function Update-Software {
         (Set-InventorySetting -Enable RestorePoint; standardmäßig aus). Windows legt höchstens einen
         Punkt pro 24 Stunden an; das Ergebnis meldet Created, Skipped, NotAvailable oder Failed.
         Ein fehlgeschlagener Wiederherstellungspunkt bricht die Aktion nicht ab.
+    .PARAMETER ConfirmedCommandLine
+        CommandLine aus dem -WhatIf-Ergebnis, das der Benutzer bestätigt hat. Ergibt die erneute
+        Prüfung einen anderen Befehl, wird nichts ausgeführt (Result Cancelled, Message nennt den neuen Befehl).
+        Für Oberflächen, die zwischen Bestätigen und Ausführen Zeit vergehen lassen.
     .PARAMETER TimeoutMinutes
         Höchstens so lange auf das Ende warten (Standard 60). Danach Result „Timeout“; das Programm
         wird nicht beendet.
@@ -40,7 +44,9 @@ function Update-Software {
         [switch] $CreateRestorePoint,
 
         [ValidateRange(1, 1440)]
-        [int] $TimeoutMinutes = 60
+        [int] $TimeoutMinutes = 60,
+
+        [string] $ConfirmedCommandLine
     )
 
     begin {
@@ -49,7 +55,7 @@ function Update-Software {
     process {
         foreach ($item in $InputObject) {
             if ($null -eq $item) { continue }
-            $prepared = Resolve-SoftwareAction -Action Update -InputObject $item -RestorePoint $restorePoint
+            $prepared = Resolve-SoftwareAction -Action Update -InputObject $item -RestorePoint $restorePoint -ConfirmedCommandLine $ConfirmedCommandLine
             if (-not $prepared) { continue }
             if ($prepared.Result) { $prepared.Result; continue }
             if ($PSCmdlet.ShouldProcess($prepared.Plan.Name, $prepared.Description)) {

@@ -30,6 +30,7 @@
         'Get-ActionLog'
         'Update-Software'
         'Uninstall-Software'
+        'Install-WingetPackageManager'
         'Test-WingetAvailability'
         'Set-ServiceCredential'
         'Remove-ServiceCredential'

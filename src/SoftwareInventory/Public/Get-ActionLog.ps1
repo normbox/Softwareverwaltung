@@ -26,7 +26,7 @@ function Get-ActionLog {
         [datetime] $After,
         [datetime] $Before,
         [string] $Name,
-        [ValidateSet('Update', 'Uninstall')]
+        [ValidateSet('Update', 'Uninstall', 'InstallWinget')]
         [string] $Action,
         [string[]] $Result,
         [ValidateRange(1, [int]::MaxValue)]
