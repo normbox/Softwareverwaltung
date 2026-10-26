@@ -26,7 +26,7 @@ Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete 
 | Oberfläche (WPF, Fluent-Design): Hauptliste mit Ampel, Suche und Filtern, Hinweis bei fehlendem winget; läuft ohne Zusatzinstallation | vorhanden (Etappe 3b) |
 | Begleitpakete (z. B. Kontextmenü-Erweiterungen als Sparse Package) werden ihrem Programm zugeordnet | vorhanden (Etappe 3b) |
 | Details und Buttons für Aktualisieren und Deinstallieren in der Oberfläche | geplant (Etappe 3c) |
-| KI-Berater, wahlweise lokal (Ollama) oder Cloud (Claude API) | geplant |
+| KI-Berater mit lokalen Modellen (Ollama, LM Studio, Unsloth Studio), externe Anbieter später als Plugin | in Arbeit |
 
 Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx). Eine eigene Paketverwaltung wird nicht nachgebaut.
 
@@ -35,7 +35,7 @@ Updates und Deinstallationen laufen über winget (Fallback Registry/msiexec/Appx
 - **Alles standardmäßig aus und manuell einstellbar.** Quellen, Scan-Bereiche, externe Dienste und KI-Anbieter werden einzeln vom Benutzer aktiviert, für alle gleich. Es gibt keine Automatik nach Einsatzart. Ohne Einstellungen liest das Modul nichts.
 - **Keine Zusatzinstallation für Endbenutzer.** Die App wird self-contained veröffentlicht, bettet PowerShell über `Microsoft.PowerShell.SDK` ein und bringt das winget-Modul mit. PowerShell 7 wird nur zum Entwickeln und Testen gebraucht.
 - **Die KI schlägt nur vor.** Updates und Deinstallationen werden erst nach Bestätigung in der Oberfläche ausgeführt; jede Aktion wird protokolliert.
-- **Freigabestufen für Daten an die KI** (geplant): Der Benutzer legt fest, was an ein Modell übertragen wird. Vor dem Senden an Cloud-Modelle werden Benutzername, Rechnername und Benutzerpfade entfernt.
+- **Freigabestufen für Daten an die KI** (geplant): Der Benutzer legt fest, was an ein Modell übertragen wird. Vor dem Senden an ein Modell, auch an ein lokales, werden Benutzername, Rechnername und Benutzerpfade entfernt.
 - **Normale Benutzerrechte.** Administratorrechte (UAC) nur für die einzelne Aktion.
 
 ## Stand und Fahrplan
@@ -53,7 +53,10 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [x] 3b. WPF-Grundgerüst mit eingebettetem Modul und Hauptliste
   - [x] 3c. Details und Aktions-Buttons mit Bestätigung
   - [x] 3d. Einstellungen in der Oberfläche
-- [ ] 4. KI-Berater: Tools, Claude API und Ollama, Chat-Seitenleiste
+- [ ] 4. KI-Berater: Tools, lokale Modelle (OpenAI-kompatibel), Chat-Seitenleiste
+  - [x] 4a. Tools, Bereinigung und Einstellungen im Modul
+  - [ ] 4b. Anbieter-Schnittstelle und Einstellungen in der App
+  - [ ] 4c. Chat-Seitenleiste mit Vorschlagskarten
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
 - [ ] 6. Firmentauglich: zentrale Sammlung mehrerer PCs, Richtlinien, signierte Skripte
 
@@ -139,7 +142,7 @@ Invoke-ScriptAnalyzer ./src -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
 
 Fremdkomponenten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/BERICHT.md](docs/BERICHT.md) (Ampel und Bericht), [docs/AKTIONEN.md](docs/AKTIONEN.md) (Aktualisieren, Deinstallieren, Adminrechte, Protokoll), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
+Weitere Unterlagen: [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) (Einrichtung, Machbarkeitsprüfung), [docs/INVENTAR-SCHEMA.md](docs/INVENTAR-SCHEMA.md) (Aufbau der Datensätze und Snapshots, Ausschlussregeln, Einstellungen), [docs/VERSIONSABGLEICH.md](docs/VERSIONSABGLEICH.md) (Quellen und Versionsvergleich), [docs/SCHWACHSTELLEN.md](docs/SCHWACHSTELLEN.md) (NVD, KEV, EPSS), [docs/BERICHT.md](docs/BERICHT.md) (Ampel und Bericht), [docs/AKTIONEN.md](docs/AKTIONEN.md) (Aktualisieren, Deinstallieren, Adminrechte, Protokoll), [docs/BERATER.md](docs/BERATER.md) (KI-Berater, Tools, Bereinigung), [docs/KATALOG.md](docs/KATALOG.md) (Produktkatalog, Beiträge).
 
 ## Datenschutz
 
