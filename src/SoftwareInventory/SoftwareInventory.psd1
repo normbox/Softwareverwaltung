@@ -29,6 +29,9 @@
         'Update-Software'
         'Uninstall-Software'
         'Test-WingetAvailability'
+        'Set-ServiceCredential'
+        'Remove-ServiceCredential'
+        'Get-ServiceCredentialStatus'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
