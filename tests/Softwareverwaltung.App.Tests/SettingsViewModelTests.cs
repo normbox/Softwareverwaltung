@@ -184,6 +184,46 @@ public sealed class SettingsViewModelTests
         Assert.True(Assert.Single(vm.Drives, d => d.Drive == "C:").IsSelected);
         Assert.True(vm.IncludeTemp);
         Assert.True(vm.ComputeHash);
+        // Nie den Hauptschalter, und jede Änderung wird sichtbar genannt.
+        Assert.False(vm.PortableSearchEnabled);
+        Assert.StartsWith("Vorlage „Gründlich“ hat gesetzt:", vm.StatusText);
+        foreach (var expected in new[] { "Programme für alle Benutzer: An", "winget-Paketliste: An", "Zuletzt gestartete Programme: An", "Laufwerk C:: An", "Temp-Ordner mit durchsuchen: An", "Prüfsumme (SHA256) berechnen – langsamer: An" })
+        {
+            Assert.Contains(expected, vm.StatusText);
+        }
+        Assert.DoesNotContain("Laufwerk D:", vm.StatusText);
+    }
+
+    [Fact]
+    public async Task PresetReportsWhenNothingChanges()
+    {
+        var vm = new SettingsViewModel(new FakeSettings { Preset = new SettingPreset([], [], [], false, false) });
+        await vm.LoadAsync();
+
+        await vm.ApplyPresetCommand.ExecuteAsync("Quick");
+
+        Assert.Equal("Vorlage „Schnell“: keine Änderung, alles war schon so eingestellt.", vm.StatusText);
+        Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public async Task NoDriveIsPreselectedAndHintShowsWhenSearchHasNoLocation()
+    {
+        var vm = new SettingsViewModel(new FakeSettings());
+        await vm.LoadAsync();
+
+        Assert.All(vm.Drives, d => Assert.False(d.IsSelected));
+        Assert.Contains(vm.Drives, d => d.Drive == "E:" && d.Text.Contains("USB"));
+        Assert.False(vm.NoScanLocation);   // Suche aus: kein Hinweis
+
+        vm.PortableSearchEnabled = true;
+        Assert.True(vm.NoScanLocation);
+
+        vm.Drives.Single(d => d.Drive == "D:").IsSelected = true;
+        Assert.False(vm.NoScanLocation);
+        vm.Drives.Single(d => d.Drive == "D:").IsSelected = false;
+        vm.ScanPathsText = @"C:\Tools";
+        Assert.False(vm.NoScanLocation);
     }
 
     [Fact]
@@ -303,7 +343,7 @@ public sealed class SettingsViewModelTests
         }
 
         public Task<IReadOnlyList<ScanDrive>> GetDrivesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ScanDrive>>([new("C:", "System", 500, true), new("D:", null, 1000, true)]);
+            Task.FromResult<IReadOnlyList<ScanDrive>>([new("C:", "System", 500, true, "Fixed"), new("D:", null, 1000, true, "Fixed"), new("E:", "Stick", 32, false, "Removable")]);
 
         public Task<IReadOnlyList<ServiceTermsNotice>> GetServiceTermsAsync(string usage, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ServiceTermsNotice>>(

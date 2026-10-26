@@ -16,40 +16,100 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="SettingsPortableTitle" xml:space="preserve">
-    <value>Suche nach portablen Programmen</value>
-  </data>
-  <data name="SettingsPortableIntro" xml:space="preserve">
-    <value>Findet Programme, die nicht installiert wurden, z. B. entpackte ZIP-Archive oder Programme auf USB-Sticks. Aus = es wird nicht gesucht; die Einstellungen darunter bleiben erhalten.</value>
-  </data>
-  <data name="SettingsPortableSwitchLabel" xml:space="preserve">
-    <value>Suche nach portablen Programmen beim Scan</value>
-  </data>
-  <data name="SettingsPortableInstalledHint" xml:space="preserve">
-    <value>Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>
-  </data>
+
+  <!-- Allgemein -->
   <data name="SwitchOn" xml:space="preserve">
     <value>An</value>
   </data>
   <data name="SwitchOff" xml:space="preserve">
     <value>Aus</value>
   </data>
-  <data name="SettingsPortableTracesTitle" xml:space="preserve">
-    <value>Über Nutzungsspuren</value>
-  </data>
-  <data name="SettingsPortableTracesText" xml:space="preserve">
-    <value>Findet Programme, die Windows als gestartet, laufend oder automatisch startend kennt. Alles bleibt auf diesem PC.</value>
-  </data>
-  <data name="SettingsPortableFoldersTitle" xml:space="preserve">
-    <value>In Ordnern und auf Laufwerken</value>
-  </data>
-  <data name="SettingsPortableFoldersText" xml:space="preserve">
-    <value>Durchsucht die gewählten Ordner und Laufwerke nach Programmdateien. Ohne Ordner und Laufwerke wird hier nicht gesucht.</value>
-  </data>
-  <data name="SettingsPortableExcludes" xml:space="preserve">
-    <value>Ausschlüsse (einer pro Zeile; gilt für Ordner, Laufwerke und Nutzungsspuren)</value>
-  </data>
   <data name="ScanRunning" xml:space="preserve">
     <value>Scanne Programme …</value>
+  </data>
+  <data name="DriveRemovable" xml:space="preserve">
+    <value>Wechseldatenträger, z. B. USB</value>
+  </data>
+
+  <!-- Vorlagen -->
+  <data name="PresetsText" xml:space="preserve">
+    <value>Setzen sichtbar Schalter und Häkchen bei Quellen, Nutzungsspuren, Laufwerken und Ordnern. Den Schalter „Nach portablen Programmen suchen“ setzen sie nie. Jede Änderung wird unten genannt; gespeichert wird erst mit „Speichern“.</value>
+  </data>
+  <data name="PresetQuick" xml:space="preserve">
+    <value>Schnell</value>
+  </data>
+  <data name="PresetThorough" xml:space="preserve">
+    <value>Gründlich</value>
+  </data>
+  <data name="PresetQuickTooltip" xml:space="preserve">
+    <value>Alle Quellen und Nutzungsspuren, als Ordner das Benutzerprofil, kein Laufwerk, ohne Temp und Prüfsumme</value>
+  </data>
+  <data name="PresetThoroughTooltip" xml:space="preserve">
+    <value>Alle Quellen und Nutzungsspuren, alle festen Laufwerke, mit Temp und Prüfsumme</value>
+  </data>
+  <data name="PresetApplied" xml:space="preserve">
+    <value>Vorlage „{0}“ hat gesetzt: {1}. Prüfen und mit „Speichern“ übernehmen.</value>
+  </data>
+  <data name="PresetNoChanges" xml:space="preserve">
+    <value>Vorlage „{0}“: keine Änderung, alles war schon so eingestellt.</value>
+  </data>
+  <data name="PresetChangeDrive" xml:space="preserve">
+    <value>Laufwerk {0}: {1}</value>
+  </data>
+  <data name="PresetChangeFolders" xml:space="preserve">
+    <value>Ordner: {0}</value>
+  </data>
+  <data name="PresetChangeNone" xml:space="preserve">
+    <value>keine</value>
+  </data>
+
+  <!-- Suche nach portablen Programmen -->
+  <data name="SettingsPortableTitle" xml:space="preserve">
+    <value>Suche nach portablen Programmen</value>
+  </data>
+  <data name="SettingsPortableSwitchLabel" xml:space="preserve">
+    <value>Nach portablen Programmen suchen</value>
+  </data>
+  <data name="SettingsPortableIntro" xml:space="preserve">
+    <value>Findet Programme, die nicht installiert wurden, z. B. entpackte ZIP-Archive oder Programme auf USB-Sticks. Erst wenn der Schalter an ist, gelten die Einstellungen darunter; aus = es wird nicht gesucht, die Einstellungen bleiben erhalten.</value>
+  </data>
+  <data name="SettingsPortableWhereTitle" xml:space="preserve">
+    <value>Wo suchen</value>
+  </data>
+  <data name="SettingsPortableWhereText" xml:space="preserve">
+    <value>Nur die gewählten Laufwerke und Ordner werden nach Programmdateien durchsucht. Anfangs ist nichts gewählt.</value>
+  </data>
+  <data name="SettingsPortableDrives" xml:space="preserve">
+    <value>Laufwerke (alle erkannten, auch USB)</value>
+  </data>
+  <data name="SettingsPortableFolders" xml:space="preserve">
+    <value>Eigene Ordner (einer pro Zeile, z. B. %USERPROFILE%\Tools)</value>
+  </data>
+  <data name="SettingsPortableNoLocation" xml:space="preserve">
+    <value>Kein Laufwerk und kein Ordner gewählt: Es werden keine Dateien durchsucht. Eingeschaltete Nutzungsspuren finden trotzdem Programme.</value>
+  </data>
+  <data name="SettingsPortableInstalledHint" xml:space="preserve">
+    <value>Installierte Programme werden unabhängig davon über den Abschnitt „Installierte Programme“ erfasst; dafür muss hier nichts eingeschaltet sein.</value>
+  </data>
+  <data name="SettingsPortableHowTitle" xml:space="preserve">
+    <value>Wie suchen</value>
+  </data>
+  <data name="SettingsPortableHowText" xml:space="preserve">
+    <value>Techniken für die Suche. Nutzungsspuren wirken überall, auch außerhalb der gewählten Laufwerke und Ordner. Alles bleibt auf diesem PC.</value>
+  </data>
+  <data name="SettingsPortableTraces" xml:space="preserve">
+    <value>Nutzungsspuren</value>
+  </data>
+  <data name="SettingsPortableIncludeTemp" xml:space="preserve">
+    <value>Temp-Ordner mit durchsuchen</value>
+  </data>
+  <data name="SettingsPortableComputeHash" xml:space="preserve">
+    <value>Prüfsumme (SHA256) berechnen – langsamer</value>
+  </data>
+  <data name="SettingsPortableExcludes" xml:space="preserve">
+    <value>Ausschlüsse (einer pro Zeile; gilt für Laufwerke, Ordner und Nutzungsspuren)</value>
+  </data>
+  <data name="SettingsPortableSmartExclusions" xml:space="preserve">
+    <value>Intelligente Ausschlüsse: Herstellerordner und bereits installierte Programme überspringen (aus = mehr Treffer)</value>
   </data>
 </root>

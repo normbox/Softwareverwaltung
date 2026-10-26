@@ -53,6 +53,18 @@ public sealed class InventoryServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SearchWithoutLocationShowsHintAndFindsNothing()
+    {
+        var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("PortableSearch", true));
+        Assert.Empty(set.Errors);
+
+        var result = await _service.ScanAsync();
+
+        Assert.Contains(result.Warnings, w => w.Contains("weder ein Laufwerk", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Items, i => i.Sources.Contains("Portable"));
+    }
+
+    [Fact]
     public async Task FindsPortableProgramsInConfiguredFolder()
     {
         Directory.CreateDirectory(_scanFolder);

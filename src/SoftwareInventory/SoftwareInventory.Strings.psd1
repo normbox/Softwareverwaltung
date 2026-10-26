@@ -54,6 +54,10 @@ Regeln:
     AdvisorPresetNoteCustom                 = 'Jeder Server mit OpenAI-kompatibler Schnittstelle und Tool-Unterstützung (/v1/chat/completions mit tools).'
     AdvisorPresetLabelCustom                = 'Eigene Adresse'
 
+    # Suche nach portablen Programmen (Invoke-InventoryScan)
+    PortableSearchNoLocation                = 'Suche nach portablen Programmen: Kein Laufwerk und kein Ordner gewählt, daher wurden keine Dateien durchsucht. Gefunden wird nur über die Nutzungsspuren.'
+    PortableSearchNothingSelected           = 'Suche nach portablen Programmen ist eingeschaltet, aber weder ein Laufwerk, ein Ordner noch eine Nutzungsspur ist gewählt. Es wurde nichts durchsucht.'
+
     # Einstellungen (Schlüssel = SettingsError + Code)
     SettingsErrorInvalidAdvisorEndpoint     = 'Ungültige Adresse ''{0}'': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1.'
 }

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Models;
 using Softwareverwaltung.App.Services;
 
@@ -228,7 +229,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             Drives.Clear();
             foreach (var drive in drives)
             {
-                var option = new DriveOption(drive.Drive, string.IsNullOrWhiteSpace(drive.Label) ? $"{drive.Drive} ({drive.SizeGB} GB)" : $"{drive.Drive} {drive.Label} ({drive.SizeGB} GB)", true);
+                var name = string.IsNullOrWhiteSpace(drive.Label) ? drive.Drive : $"{drive.Drive} {drive.Label}";
+                var size = drive.IsRemovable ? $"{drive.SizeGB} GB, {AppText.Get("DriveRemovable")}" : $"{drive.SizeGB} GB";
+                var option = new DriveOption(drive.Drive, $"{name} ({size})", true);
                 option.PropertyChanged += OnEditChanged;
                 Drives.Add(option);
             }
@@ -304,6 +307,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             var values = await _settings.GetPresetAsync(preset);
+            // Vorlagen setzen nur sichtbare Schalter und Häkchen (nie den Hauptschalter) und nennen jede Änderung.
+            var before = Current;
             _loading = true;
             foreach (var item in AllSwitches.Where(s => values.Enable.Contains(s.Name, StringComparer.OrdinalIgnoreCase)))
             {
@@ -315,7 +320,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             ComputeHash = values.ComputeHash;
             _loading = false;
             UpdateDirty();
-            StatusText = "Vorlage übernommen. Prüfen und mit „Speichern“ bestätigen.";
+            var changes = DescribeChanges(before, Current);
+            StatusText = changes.Count == 0
+                ? string.Format(AppText.Get("PresetNoChanges"), PresetName(preset))
+                : string.Format(AppText.Get("PresetApplied"), PresetName(preset), string.Join("; ", changes));
         }
         catch (Exception ex)
         {
@@ -329,6 +337,47 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     private bool CanEdit() => IsLoaded && !IsBusy;
+
+    private static string PresetName(string preset) => AppText.Get("Preset" + preset);
+
+    /// <summary>Jede sichtbare Änderung zwischen zwei Ständen, z. B. „Laufende Prozesse: An“.</summary>
+    private List<string> DescribeChanges(AppSettings before, AppSettings after)
+    {
+        string OnOff(bool on) => AppText.Get(on ? "SwitchOn" : "SwitchOff");
+        var changes = new List<string>();
+        foreach (var item in AllSwitches)
+        {
+            var was = before.Switches.TryGetValue(item.Name, out var b) && b;
+            if (was != item.IsOn)
+            {
+                changes.Add($"{item.Label}: {OnOff(item.IsOn)}");
+            }
+        }
+        foreach (var drive in Drives)
+        {
+            var was = before.ScanDrives.Contains(drive.Drive, StringComparer.OrdinalIgnoreCase);
+            if (was != drive.IsSelected)
+            {
+                changes.Add(string.Format(AppText.Get("PresetChangeDrive"), drive.Drive, OnOff(drive.IsSelected)));
+            }
+        }
+        if (!before.ScanPaths.SequenceEqual(after.ScanPaths, StringComparer.OrdinalIgnoreCase))
+        {
+            changes.Add(string.Format(AppText.Get("PresetChangeFolders"), after.ScanPaths.Count == 0 ? AppText.Get("PresetChangeNone") : string.Join(", ", after.ScanPaths)));
+        }
+        if (before.IncludeTemp != after.IncludeTemp)
+        {
+            changes.Add($"{AppText.Get("SettingsPortableIncludeTemp")}: {OnOff(after.IncludeTemp)}");
+        }
+        if (before.ComputeHash != after.ComputeHash)
+        {
+            changes.Add($"{AppText.Get("SettingsPortableComputeHash")}: {OnOff(after.ComputeHash)}");
+        }
+        return changes;
+    }
+
+    /// <summary>Suche an, aber weder Laufwerk noch Ordner gewählt: Es werden keine Dateien durchsucht.</summary>
+    public bool NoScanLocation => PortableSearchEnabled && !Drives.Any(d => d.IsSelected) && Lines(ScanPathsText).Count == 0;
 
     /// <summary>
     /// Erster Start: speichert nur Privat/Firma und zeigt danach die passenden Hinweise zu den
@@ -457,6 +506,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
         }
         IsDirty = !SameSettings(Current, _saved);
+        OnPropertyChanged(nameof(NoScanLocation));
     }
 
     private static bool SameSettings(AppSettings a, AppSettings b) =>

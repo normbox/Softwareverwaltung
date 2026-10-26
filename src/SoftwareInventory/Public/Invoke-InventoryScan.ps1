@@ -1,13 +1,16 @@
 function Invoke-InventoryScan {
     <#
     .SYNOPSIS
-        Vollständiger Scan nach den Einstellungen: installierte und, falls aktiviert, portable Programme.
+        Vollständiger Scan nach den Einstellungen: installierte und, falls eingeschaltet, portable Programme.
     .DESCRIPTION
         Liest die installierten Programme der aktivierten Quellen (Get-SoftwareInventory). Ist der
-        Hauptschalter PortableSearch an und sind Nutzungsspuren, Scan-Ordner oder Laufwerke eingerichtet,
-        sucht es zusätzlich portable Programme (Get-PortableSoftware) und gibt dabei die installierten
-        weiter, damit sie nicht doppelt gelesen und ihre Ordner ausgelassen werden. Ist die Suche aus
-        oder nicht eingerichtet, gibt es dazu keine Warnung; sie ist freiwillig.
+        Hauptschalter PortableSearch an, sucht es zusätzlich portable Programme (Get-PortableSoftware)
+        und gibt dabei die installierten weiter, damit sie nicht doppelt gelesen und ihre Ordner
+        ausgelassen werden:
+          - Dateien werden nur auf den gewählten Laufwerken und in den gewählten Ordnern durchsucht.
+            Ohne Auswahl läuft kein Dateiscan, und es gibt einen Hinweis (Warnung).
+          - Eingeschaltete Nutzungsspuren wirken unabhängig von dieser Auswahl.
+        Ist der Hauptschalter aus, wird nicht gesucht und nichts gemeldet; die Suche ist freiwillig.
     .EXAMPLE
         Invoke-InventoryScan | Get-SecurityRating
     #>
@@ -17,14 +20,15 @@ function Invoke-InventoryScan {
 
     $installed = @(Get-SoftwareInventory)
     foreach ($record in $installed) { $record }
-    if (Test-PortableScanEnabled (Read-InventorySetting)) {
+
+    $setting = Read-InventorySetting
+    if (-not $setting.PortableSearch.Enabled) { return }
+    $traces = @(Get-EnabledName $setting.Traces)
+    $hasLocation = [bool] (@($setting.FileScan.Paths | Where-Object { $_ }) + @($setting.FileScan.Drives | Where-Object { $_ }))
+    if (-not $hasLocation) {
+        Write-Warning (Get-LocalizedString $(if ($traces) { 'PortableSearchNoLocation' } else { 'PortableSearchNothingSelected' }))
+    }
+    if ($hasLocation -or $traces) {
         Get-PortableSoftware -Inventory $installed
     }
-}
-
-function Test-PortableScanEnabled {
-    # Hauptschalter an und Suche eingerichtet (Spuren, Ordner oder Laufwerke)?
-    param($Setting)
-    if (-not $Setting.PortableSearch.Enabled) { return $false }
-    [bool] (@(Get-EnabledName $Setting.Traces) + @($Setting.FileScan.Paths | Where-Object { $_ }) + @($Setting.FileScan.Drives | Where-Object { $_ }))
 }

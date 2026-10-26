@@ -81,13 +81,17 @@ public sealed record SettingPreset(IReadOnlyList<string> Enable, IReadOnlyList<s
 }
 
 /// <summary>Laufwerk aus Get-ScanDrive.</summary>
-public sealed record ScanDrive(string Drive, string? Label, long SizeGB, bool IsDefault)
+public sealed record ScanDrive(string Drive, string? Label, long SizeGB, bool IsDefault, string? Type = null)
 {
+    /// <summary>Wechseldatenträger wie USB-Sticks (Get-ScanDrive Type = Removable).</summary>
+    public bool IsRemovable => string.Equals(Type, "Removable", StringComparison.OrdinalIgnoreCase);
+
     public static ScanDrive FromPs(PSObject obj) => new(
         obj.Properties["Drive"]?.Value?.ToString() ?? "",
         obj.Properties["Label"]?.Value?.ToString(),
         Convert.ToInt64(obj.Properties["SizeGB"]?.Value ?? 0),
-        obj.Properties["IsDefault"]?.Value is true);
+        obj.Properties["IsDefault"]?.Value is true,
+        obj.Properties["Type"]?.Value?.ToString());
 }
 
 /// <summary>Hinweis zu den Nutzungsbedingungen eines Dienstes aus Get-ServiceTermsNotice. Reine Information.</summary>

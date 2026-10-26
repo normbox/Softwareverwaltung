@@ -12,7 +12,9 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 #### Geändert
 
-- Einstellungen: Abschnitt „Suche nach portablen Programmen“ mit Hauptschalter (`Set-InventorySetting -PortableSearch`, standardmäßig aus, keine Vorlage schaltet ihn ein; aus = keine Suche, die Einzeleinstellungen bleiben erhalten und werden nur abgeschwächt angezeigt), den Unterabschnitten „Über Nutzungsspuren“ und „In Ordnern und auf Laufwerken“ und dazwischen dem Hinweis, dass installierte Programme unabhängig davon erfasst werden. Wer vorher Spuren oder Ordner eingerichtet hatte, muss die Suche einmal einschalten.
+- Einstellungen: Abschnitt „Suche nach portablen Programmen“ neu aufgebaut. Hauptschalter „Nach portablen Programmen suchen“ (`Set-InventorySetting -PortableSearch`, standardmäßig aus, keine Vorlage schaltet ihn ein); erst wenn er an ist, ist der Rest aktiv, vorher ausgegraut. Dann „Wo suchen“: alle erkannten Laufwerke einzeln (auch Wechseldatenträger wie USB, gekennzeichnet; keines vorausgewählt) und eigene Ordner. Dann „Wie suchen“: Nutzungsspuren, Temp, Prüfsumme, Ausschlüsse. Dazwischen der Hinweis, dass installierte Programme unabhängig davon erfasst werden. Wer vorher Spuren oder Ordner eingerichtet hatte, muss die Suche einmal einschalten.
+- Ohne Laufwerk und Ordner läuft kein Dateiscan; Nutzungsspuren wirken unabhängig davon. Die Einstellungsseite zeigt das als Hinweis, der Scan meldet es ebenfalls (Text in den Modultexten).
+- Vorlagen setzen nur sichtbare Schalter und Häkchen, nie den Hauptschalter, und die Statuszeile nennt jede Änderung (z. B. „Laufwerk C:: An“).
 - App-Texte: Grundlage für `.resx` (`Resources/Strings.resx`, `{loc:Text Schlüssel}` in XAML, `AppText.Get` in C#) mit Test, dass jeder verwendete Schlüssel existiert. Die neuen Texte stehen schon dort.
 
 ### Etappe 4a: KI-Berater im Modul
