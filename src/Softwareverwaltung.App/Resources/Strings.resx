@@ -37,4 +37,7 @@
   <data name="SettingsPortableExcludes" xml:space="preserve">
     <value>Ausschlüsse (einer pro Zeile; gilt für Ordner, Laufwerke und Nutzungsspuren)</value>
   </data>
+  <data name="ScanRunning" xml:space="preserve">
+    <value>Scanne Programme …</value>
+  </data>
 </root>
