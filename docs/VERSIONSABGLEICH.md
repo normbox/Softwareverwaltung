@@ -25,7 +25,7 @@ Meldet winget für ein bekanntes Paket kein Update, gilt das Programm als aktuel
 - Plausibilität: Verworfen wird ein Treffer, dessen Hauptversion kleiner ist als die installierte oder mehr als eine Hauptversion darüber liegt (z. B. installiert 1.0, gefunden 154.0).
 - Ergebnisse werden 24 Stunden zwischengespeichert, Fehler der Suche nicht.
 
-Externe Dienste sind standardmäßig aus (`Set-InventorySetting -Enable GitHub, WingetSearch`). GitHub-Antworten werden 12 Stunden zwischengespeichert (`%LOCALAPPDATA%\SoftwareInventory\cache`). Ohne Token gelten 60 GitHub-Anfragen pro Stunde; mit `GITHUB_TOKEN` 5.000. Ist das Limit erreicht, entfallen weitere GitHub-Abfragen im selben Lauf.
+Externe Dienste sind standardmäßig aus (`Set-InventorySetting -Enable GitHub, WingetSearch`). GitHub-Antworten werden 12 Stunden zwischengespeichert (`%LOCALAPPDATA%\SoftwareInventory\cache`). Ohne Token gelten 60 GitHub-Anfragen pro Stunde; mit Token (`Set-ServiceCredential -Service GitHub` oder `GITHUB_TOKEN`) 5.000. Ist das Limit erreicht, entfallen weitere GitHub-Abfragen im selben Lauf.
 
 ## Ergebnis (`SoftwareInventory.UpdateStatus`)
 
