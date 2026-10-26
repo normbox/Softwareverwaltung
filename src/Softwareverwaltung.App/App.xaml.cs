@@ -14,6 +14,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnUnhandledException;
+        // Fehler außerhalb des UI-Threads: nur protokollieren, damit sie sich nachvollziehen lassen.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => ErrorLog.Write("AppDomain", args.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, args) => ErrorLog.Write("Task", args.Exception);
 
         _host = new PowerShellHost();
         var viewModel = new ShellViewModel(new MainViewModel(new InventoryService(_host)), new SettingsViewModel(new SettingsService(_host)));
@@ -31,7 +34,10 @@ public partial class App : Application
 
     private static void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(e.Exception.Message, "Softwareverwaltung: unerwarteter Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+        var path = ErrorLog.Write("UI", e.Exception);
+        var where = path is null ? "" : $"{Environment.NewLine}{Environment.NewLine}Details stehen in:{Environment.NewLine}{path}";
+        MessageBox.Show($"{e.Exception.GetType().Name}: {e.Exception.Message}{where}",
+            "Softwareverwaltung: unerwarteter Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 }
