@@ -4,6 +4,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Etappe 3d: Nachtrag Ampel
+
+#### Geändert
+
+- KEV-Treffer werden widerlegt, wenn die NVD für die installierte Version keinen Befall meldet oder der Katalog eine Angabe „behoben ab“ (`KevFixed`) hat und die Version gleich oder neuer ist. Widerlegte Treffer stehen in `Refuted` und als Grund in der Ampel; sie färben nie. Ohne NVD bleibt die Ampel dann Grau (nicht vollständig geprüft), mit NVD Grün. 7-Zip: CVE-2025-0411 behoben ab 24.09.
+- Ist die installierte Version älter als „behoben ab“, gilt sie ohne NVD als sicher betroffen (bei KEV Rot).
+- App: Spalte „Lücken“ zählt auch „möglicherweise betroffen“ (z. B. „1 möglich“, „2 + 1 möglich“), auch wenn nicht vollständig geprüft wurde. Neue Spalte „Grund“ zeigt den ersten Grund direkt in der Liste. Ein Klick auf eine Zeile zeigt alle Gründe, die Lücken mit CVE-Link, Bewertung, KEV, CVSS, EPSS und Beschreibung sowie widerlegte Treffer.
+
 ### Etappe 3d: Einstellungen
 
 #### Hinzugefügt

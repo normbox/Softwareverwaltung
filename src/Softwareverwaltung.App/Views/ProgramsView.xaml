@@ -100,6 +100,7 @@
                       AutoGenerateColumns="False" IsReadOnly="True"
                       SelectionMode="Single" HeadersVisibility="Column"
                       CanUserReorderColumns="False"
+                      RowDetailsVisibilityMode="VisibleWhenSelected"
                       EnableRowVirtualization="True"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
@@ -131,9 +132,62 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Lücken" Binding="{Binding VulnerabilityCount}" Width="70" />
+                    <DataGridTextColumn Header="Lücken" Binding="{Binding VulnerabilityText}" SortMemberPath="VulnerabilityCount" Width="110" />
+                    <DataGridTemplateColumn Header="Grund" SortMemberPath="ReasonSummary" Width="3*">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type models:SoftwareItem}">
+                                <TextBlock Text="{Binding ReasonSummary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                           ToolTip="{Binding ReasonText}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Quelle" Binding="{Binding Sources}" Width="140" />
                 </DataGrid.Columns>
+
+                <!-- Angeklickte Zeile: alle Gründe, Lücken und widerlegte Treffer -->
+                <DataGrid.RowDetailsTemplate>
+                    <DataTemplate DataType="{x:Type models:SoftwareItem}">
+                        <StackPanel Margin="32,6,16,12">
+                            <TextBlock Text="Gründe für die Ampel" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding Reasons}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Lücken" FontWeight="SemiBold" Margin="0,8,0,0"
+                                       Visibility="{Binding VulnerabilityText, Converter={StaticResource NullToVisibility}}" />
+                            <ItemsControl ItemsSource="{Binding Vulnerabilities}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:VulnerabilityItem}">
+                                        <StackPanel Margin="0,4,0,0">
+                                            <WrapPanel>
+                                                <ui:HyperlinkButton Content="{Binding CveId}" NavigateUri="{Binding Url}" Padding="0" />
+                                                <TextBlock Text="{Binding Summary}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                            </WrapPanel>
+                                            <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
+                                                       Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Visibility="{Binding Description, Converter={StaticResource NullToVisibility}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <ItemsControl ItemsSource="{Binding Refuted}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StringFormat='✓ {0}'}" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </DataGrid.RowDetailsTemplate>
             </DataGrid>
 
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460"

@@ -31,6 +31,7 @@ Der Katalog liegt unter `src/SoftwareInventory/Catalog/` und wird mit dem Modul 
 | `Cpe` | nein | CPE-Namen ohne Version, z. B. `cpe:2.3:a:videolan:vlc_media_player`; Sonderzeichen wie in der NVD mit `\` (`notepad\+\+`). Mehrere Einträge, wenn die NVD das Produkt unter verschiedenen Herstellern führt. Prüfen unter `https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=<cpe>` |
 | `CpeVersionPattern` | nein | regulärer Ausdruck mit Gruppe `(?<version>…)`, der eine produkteigene Versionsangabe vor der NVD-Abfrage umrechnet. Beispiel Python: Die Dateiversion `3.13.15150.0` bedeutet 3.13.15 (Release-Stufe und Serie sind angehängt). Passt das Muster nicht, wird die Version unverändert verwendet. |
 | `Kev` | nein | Zuordnung zum CISA-KEV-Katalog: `Vendor` (exakt wie `vendorProject` im Feed, Groß-/Kleinschreibung egal) und `ProductPattern` (regulärer Ausdruck auf `product`, da der Feed Sammelangaben wie „Firefox, Firefox ESR, and Thunderbird“ enthält). Gleicht KEV-Einträge aus, die in der NVD noch keine Versionsdaten haben. |
+| `KevFixed` | nein | „Behoben ab“ je KEV-Lücke: `{ "CVE-…": "erste nicht betroffene Version" }`, z. B. `{ "CVE-2025-0411": "24.09" }` für 7-Zip. Gilt nur, wenn die NVD nicht entscheiden kann (Dienst aus, nicht abrufbar, keine Versionsdaten): gleiche oder neuere Version → Treffer widerlegt (Grund in der Ampel), ältere → sicher betroffen. Quelle angeben (NVD-Versionsbereich oder Herstellerhinweis). Braucht `Kev`. |
 
 ## Zuordnung
 
