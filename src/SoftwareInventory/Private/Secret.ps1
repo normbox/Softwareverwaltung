@@ -3,8 +3,9 @@
 # Reihenfolge: Windows-Anmeldeinformationsverwaltung zuerst, dann Umgebungsvariable (für Skripte/Tests).
 
 $script:SecretVariable = @{
-    NVD    = 'NVD_API_KEY'
-    GitHub = 'GITHUB_TOKEN'
+    NVD     = 'NVD_API_KEY'
+    GitHub  = 'GITHUB_TOKEN'
+    Advisor = 'SOFTWAREINVENTORY_ADVISOR_KEY'   # optional, für lokale KI-Server mit Schlüssel (z. B. Unsloth Studio)
 }
 # Eintrag in der Anmeldeinformationsverwaltung: <Präfix>/<Dienst>, Typ „Generisch“, nur dieser Benutzer.
 $script:CredentialPrefix = 'SoftwareInventory'
@@ -141,7 +142,7 @@ function Read-EnvironmentSecret {
 
 function Get-ServiceSecret {
     # Liefert den Schlüssel oder $null. Der Rückgabewert darf nur in Request-Header wandern.
-    param([Parameter(Mandatory)] [ValidateSet('NVD', 'GitHub')] [string] $Service)
+    param([Parameter(Mandatory)] [ValidateSet('NVD', 'GitHub', 'Advisor')] [string] $Service)
     $stored = Read-StoredSecret -Service $Service
     if ($stored) { return $stored }
     Read-EnvironmentSecret -Service $Service

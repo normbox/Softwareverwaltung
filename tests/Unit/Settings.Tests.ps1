@@ -144,6 +144,52 @@ Describe 'Einstellungen' {
         }
     }
 
+    It 'hat den KI-Berater standardmäßig aus, ohne Adresse und ohne Modell' {
+        $s = Get-InventorySetting
+        $s.Advisor.Enabled | Should -BeFalse
+        $s.Advisor.Endpoint | Should -BeNullOrEmpty
+        $s.Advisor.Model | Should -BeNullOrEmpty
+    }
+
+    It 'belegt die Adresse mit der Vorgabe <Preset> vor und speichert Modell und Schalter' -TestCases @(
+        @{ Preset = 'Ollama'; Endpoint = 'http://localhost:11434/v1' }
+        @{ Preset = 'LMStudio'; Endpoint = 'http://localhost:1234/v1' }
+        @{ Preset = 'Unsloth'; Endpoint = 'http://localhost:8888/v1' }
+    ) {
+        Set-InventorySetting -AdvisorPreset $Preset -AdvisorModel 'qwen-test' -AdvisorEnabled $true | Out-Null
+        $s = Get-InventorySetting
+        $s.Advisor.Preset | Should -Be $Preset
+        $s.Advisor.Endpoint | Should -Be $Endpoint
+        $s.Advisor.Model | Should -Be 'qwen-test'
+        $s.Advisor.Enabled | Should -BeTrue
+    }
+
+    It 'lässt eine eigene Adresse gewinnen und lehnt ungültige Adressen ab' {
+        $s = Set-InventorySetting -AdvisorPreset Ollama -AdvisorEndpoint 'http://192.168.1.20:11434/v1/'
+        $s.Advisor.Endpoint | Should -Be 'http://192.168.1.20:11434/v1'
+        { Set-InventorySetting -AdvisorEndpoint 'ftp://server/v1' } | Should -Throw '*Ungültige Adresse*'
+        { Set-InventorySetting -AdvisorEndpoint 'http://user:pass@localhost:1234/v1' } | Should -Throw '*Ungültige Adresse*'
+        (Set-InventorySetting -AdvisorEndpoint '' -AdvisorModel '').Advisor.Endpoint | Should -BeNullOrEmpty
+    }
+
+    It 'ignoriert ungültige Berater-Werte in der Datei' {
+        '{"Advisor":{"Enabled":true,"Preset":"Fremd","Endpoint":"file:///c:/x","Model":"m"}}' | Set-Content $settingsFile
+        $s = Get-InventorySetting
+        $s.Advisor.Enabled | Should -BeTrue
+        $s.Advisor.Preset | Should -BeNullOrEmpty
+        $s.Advisor.Endpoint | Should -BeNullOrEmpty
+        $s.Advisor.Model | Should -Be 'm'
+    }
+
+    It 'schaltet den Berater über keine Vorlage ein und liefert die drei lokalen Vorgaben' {
+        (Set-InventorySetting -Preset Thorough).Advisor.Enabled | Should -BeFalse
+        $presets = Get-AdvisorEndpointPreset
+        $presets.Name | Should -Be @('Ollama', 'LMStudio', 'Unsloth', 'Custom')
+        ($presets | Where-Object Name -eq Unsloth).RequiresApiKey | Should -BeTrue
+        ($presets | Where-Object Name -eq Custom).Endpoint | Should -BeNullOrEmpty
+        $presets.Endpoint | Where-Object { $_ } | ForEach-Object { $_ | Should -Match '^http://localhost:\d+/v1$' }
+    }
+
     It 'schaltet mit Privat oder Firma nichts ein' {
         foreach ($usage in 'Private', 'Company') {
             $s = Set-InventorySetting -Usage $usage
@@ -151,6 +197,7 @@ Describe 'Einstellungen' {
             foreach ($group in 'Sources', 'Traces', 'Services', 'Actions') {
                 $s.$group.PSObject.Properties.Value | Should -Not -Contain $true
             }
+            $s.Advisor.Enabled | Should -BeFalse
             $s.FileScan.Paths | Should -BeNullOrEmpty
             $s.FileScan.Drives | Should -BeNullOrEmpty
         }

@@ -9,6 +9,14 @@ $script:TraceSources = @('UserAssist', 'Process', 'Autostart', 'ScheduledTask')
 $script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')
 # Optionen für Aktualisieren/Deinstallieren; ebenfalls standardmäßig aus.
 $script:ActionOptions = @('RestorePoint')
+# KI-Berater: nur lokale Server mit OpenAI-kompatibler Schnittstelle (Etappe 4). Vorgaben sind
+# Standardadressen bekannter Programme; die Adresse bleibt änderbar. Kein Standardmodell.
+$script:AdvisorPresets = [ordered]@{
+    Ollama   = @{ Label = 'Ollama'; Endpoint = 'http://localhost:11434/v1'; RequiresApiKey = $false; Note = $null }
+    LMStudio = @{ Label = 'LM Studio'; Endpoint = 'http://localhost:1234/v1'; RequiresApiKey = $false; Note = 'Lokalen Server in LM Studio starten (Developer → Start Server).' }
+    Unsloth  = @{ Label = 'Unsloth Studio'; Endpoint = 'http://localhost:8888/v1'; RequiresApiKey = $true; Note = 'Braucht einen API-Schlüssel (sk-unsloth-…) aus den Einstellungen von Unsloth Studio. Der Port ist nicht fest (oft 8888, manchmal 8000).' }
+    Custom   = @{ Label = 'Eigene Adresse'; Endpoint = $null; RequiresApiKey = $false; Note = 'Jeder Server mit OpenAI-kompatibler Schnittstelle und Tool-Unterstützung (/v1/chat/completions mit tools).' }
+}
 # Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
 $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
@@ -38,6 +46,12 @@ function New-DefaultSetting {
         Maintenance   = [pscustomobject] [ordered]@{
             LogRetentionDays = $script:DefaultLogRetentionDays
             LogMaxSizeMB     = $script:DefaultLogMaxSizeMB
+        }
+        Advisor       = [pscustomobject] [ordered]@{
+            Enabled  = $false   # KI-Berater; standardmäßig aus
+            Preset   = $null    # Ollama, LMStudio, Unsloth oder Custom
+            Endpoint = $null    # Basisadresse der OpenAI-kompatiblen Schnittstelle, z. B. http://localhost:11434/v1
+            Model    = $null    # vom Benutzer aus den installierten Modellen gewählt; kein Standard
         }
         FileScan      = [pscustomobject] [ordered]@{
             Paths           = [string[]] @()   # Umgebungsvariablen erlaubt, z. B. %USERPROFILE%
@@ -78,6 +92,13 @@ function Read-InventorySetting {
             if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
         }
     }
+    if ($data.PSObject.Properties['Advisor'] -and $data.Advisor) {
+        $a = $data.Advisor
+        if ($a.PSObject.Properties['Enabled']) { $setting.Advisor.Enabled = [bool] $a.Enabled }
+        if ($a.PSObject.Properties['Preset'] -and $a.Preset -in $script:AdvisorPresets.Keys) { $setting.Advisor.Preset = [string] $a.Preset }
+        if ($a.PSObject.Properties['Endpoint'] -and (Test-AdvisorEndpoint ([string] $a.Endpoint))) { $setting.Advisor.Endpoint = ([string] $a.Endpoint).TrimEnd('/') }
+        if ($a.PSObject.Properties['Model'] -and $a.Model) { $setting.Advisor.Model = [string] $a.Model }
+    }
     if ($data.PSObject.Properties['FileScan']) {
         $fs = $data.FileScan
         if ($fs.PSObject.Properties['Paths']) { $setting.FileScan.Paths = [string[]] @($fs.Paths | Where-Object { $_ }) }
@@ -94,8 +115,16 @@ function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, FileScan |
+    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, FileScan |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+}
+
+function Test-AdvisorEndpoint {
+    # Nur absolute http(s)-Adressen ohne Benutzerdaten in der URL.
+    param([AllowNull()] [AllowEmptyString()] [string] $Endpoint)
+    if (-not $Endpoint) { return $false }
+    $uri = $null
+    [uri]::TryCreate($Endpoint, [UriKind]::Absolute, [ref] $uri) -and $uri.Scheme -in 'http', 'https' -and -not $uri.UserInfo
 }
 
 function Get-EnabledName {

@@ -18,6 +18,7 @@
         'Set-InventorySetting'
         'Get-SettingPreset'
         'Get-ServiceTermsNotice'
+        'Get-AdvisorEndpointPreset'
         'Compare-SoftwareVersion'
         'Test-SoftwareUpdate'
         'Get-SoftwareVulnerability'

@@ -33,6 +33,15 @@ function Set-InventorySetting {
         Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
     .PARAMETER LogMaxSizeMB
         Obergrenze für Logs und Zwischenspeicher zusammen; darüber wird das Älteste zuerst gelöscht. Standard: 100.
+    .PARAMETER AdvisorEnabled
+        KI-Berater ein- oder ausschalten. Standard: aus. Keine Vorlage schaltet ihn ein.
+    .PARAMETER AdvisorPreset
+        Lokaler Server: Ollama, LMStudio, Unsloth oder Custom (siehe Get-AdvisorEndpointPreset).
+        Belegt die Adresse mit der Standardadresse vor, außer -AdvisorEndpoint ist angegeben.
+    .PARAMETER AdvisorEndpoint
+        Basisadresse der OpenAI-kompatiblen Schnittstelle, z. B. http://localhost:11434/v1. Leer löscht sie.
+    .PARAMETER AdvisorModel
+        Modellname, wie ihn der Server unter /v1/models nennt. Es gibt keinen Standard. Leer löscht ihn.
     .PARAMETER Reset
         Setzt alles auf den Ausgangszustand zurück: aus, keine eigenen Ausschlüsse,
         SmartExclusions an (Usage bleibt erhalten).
@@ -83,6 +92,17 @@ function Set-InventorySetting {
         [ValidateSet('Private', 'Company')]
         [string] $Usage,
 
+        [bool] $AdvisorEnabled,
+
+        [ValidateSet('Ollama', 'LMStudio', 'Unsloth', 'Custom')]
+        [string] $AdvisorPreset,
+
+        [AllowEmptyString()]
+        [string] $AdvisorEndpoint,
+
+        [AllowEmptyString()]
+        [string] $AdvisorModel,
+
         [switch] $Reset
     )
 
@@ -113,6 +133,18 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }
     if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
+    if ($PSBoundParameters.ContainsKey('AdvisorEnabled')) { $setting.Advisor.Enabled = $AdvisorEnabled }
+    if ($PSBoundParameters.ContainsKey('AdvisorPreset')) {
+        $setting.Advisor.Preset = $AdvisorPreset
+        # Vorgabe belegt die Adresse vor; eine ausdrücklich angegebene Adresse gewinnt.
+        $presetEndpoint = $script:AdvisorPresets[$AdvisorPreset].Endpoint
+        if ($presetEndpoint -and -not $PSBoundParameters.ContainsKey('AdvisorEndpoint')) { $setting.Advisor.Endpoint = $presetEndpoint }
+    }
+    if ($PSBoundParameters.ContainsKey('AdvisorEndpoint')) {
+        if ($AdvisorEndpoint -and -not (Test-AdvisorEndpoint $AdvisorEndpoint)) { throw "Ungültige Adresse '$AdvisorEndpoint': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1." }
+        $setting.Advisor.Endpoint = if ($AdvisorEndpoint) { $AdvisorEndpoint.TrimEnd('/') } else { $null }
+    }
+    if ($PSBoundParameters.ContainsKey('AdvisorModel')) { $setting.Advisor.Model = if ($AdvisorModel) { $AdvisorModel } else { $null } }
 
     if ($PSCmdlet.ShouldProcess((Get-SettingsPath), 'Einstellungen speichern')) {
         Write-InventorySetting -Setting $setting

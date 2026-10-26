@@ -151,7 +151,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.Equal("CredentialManager", stored.Source);
 
         var all = await _service.GetCredentialStatusAsync();
-        Assert.Equal(["GitHub", "NVD"], all.Select(s => s.Service).Order());
+        Assert.Equal(["Advisor", "GitHub", "NVD"], all.Select(s => s.Service).Order());
         Assert.DoesNotContain("nvd-app-test-key", string.Join(" ", all));
 
         var removed = await _service.RemoveCredentialAsync("NVD");
