@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Models;
 using Softwareverwaltung.App.Services;
 
@@ -141,7 +142,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task ScanAsync(CancellationToken cancellationToken)
     {
         IsBusy = true;
-        StatusText = "Scanne installierte Programme …";
+        StatusText = AppText.Get("ScanRunning");
         ClearScanNotices();
         var progress = new Progress<string>(message => StatusText = message);
         try

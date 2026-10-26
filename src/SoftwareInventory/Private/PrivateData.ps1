@@ -37,7 +37,10 @@ function Protect-PrivateText {
     # Profile anderer Benutzer: Laufwerk:\Users\<Name>
     $Text = [regex]::Replace($Text, "(?<prefix>\b[A-Za-z]:$sep(?:Users|Benutzer)$sep)(?<name>[^\\/""'\s:*?<>|]+)", {
             param($m)
-            if ($m.Groups['name'].Value -in 'Public', 'Default', 'Default User', 'All Users', '%OTHERUSER%') { return $m.Value }
+            $name = $m.Groups['name'].Value
+            if ($name -in 'Public', 'Default', 'Default User', 'All Users', '%OTHERUSER%', '%USERNAME%') { return $m.Value }
+            # Eigener Name auf einem anderen Laufwerk (z. B. Sicherung auf USB): wie der Benutzername behandeln.
+            if ($id.UserName -and $name -eq $id.UserName) { return $m.Groups['prefix'].Value + '%USERNAME%' }
             $m.Groups['prefix'].Value + '%OTHERUSER%'
         }, 'IgnoreCase')
 

@@ -4,6 +4,23 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Nachbesserung: Suche nach portablen Programmen
+
+#### Behoben
+
+- Die App suchte keine portablen Programme, obwohl Nutzungsspuren, Ordner und Laufwerke einstellbar waren. Neu: `Invoke-InventoryScan` liest die installierten Programme und sucht portable Programme nur, wenn Spuren, Ordner oder Laufwerke eingerichtet sind (ohne Warnung, wenn nicht; installierte Programme werden nicht doppelt gelesen). Die App scannt damit; portable Programme erscheinen mit Quelle „Portable“, die Details zeigen den Fundort.
+
+#### Geändert
+
+- Einstellungen: Abschnitt „Suche nach portablen Programmen“ neu aufgebaut. Hauptschalter „Nach portablen Programmen suchen“ (`Set-InventorySetting -PortableSearch`, standardmäßig aus, keine Vorlage schaltet ihn ein); erst wenn er an ist, ist der Rest aktiv, vorher ausgegraut. Direkt darunter als neutrale Info der Hinweis, dass installierte Programme unabhängig davon erfasst werden. Dann „Wo suchen“ als Entweder-oder (`FileScan.Mode`, `Set-InventorySetting -ScanMode Drives|Folders|None`), keine Option vorausgewählt: „Ganze Laufwerke“ (alle erkannten Laufwerke einzeln, auch Wechseldatenträger wie USB; mit Hinweis auf lange Dauer, sobald eines angehakt ist) oder „Nur bestimmte Ordner“ (Liste mit „Entfernen“ je Eintrag, „Ordner auswählen…“, Vorschläge `%USERPROFILE%` und Downloads; standardmäßig leer). Angezeigt und durchsucht wird nur die gewählte Option; die Auswahl der anderen bleibt gespeichert. Dann „Wie suchen“: Nutzungsspuren, Temp, Prüfsumme, Ausschlüsse. Wer vorher Spuren oder Ordner eingerichtet hatte, muss die Suche einmal einschalten; gespeicherte Ordner werden als „Nur bestimmte Ordner“ übernommen, sonst gespeicherte Laufwerke als „Ganze Laufwerke“.
+- Unter dem Hauptschalter zwei eigene Schalter, beide standardmäßig aus (`-TraceSearch`, `-FileSearch`): „Nutzungsspuren“ (liest nur, was Windows schon notiert hat, durchsucht keine Laufwerke, findet Programme überall; die vier Spuren klappen erst auf, wenn er an ist) und „Dateisuche“ (darunter „Wo suchen“, Temp, Prüfsumme, Ausschlüsse). Beide wirken unabhängig voneinander.
+- Laufwerke live: Die Liste folgt angesteckten und abgezogenen Laufwerken und USB-Sticks ohne Neustart (WM_DEVICECHANGE). Ein gespeichertes Laufwerk, das fehlt, steht als „nicht verbunden“ da, bleibt gespeichert und wird beim Scan mit Hinweis übersprungen (fehlende Ordner ebenso).
+- Nutzungsspuren auf nicht erreichbare Pfade (z. B. abgezogener USB-Stick) erscheinen als Treffer mit Flag `PathUnreachable` und dem Grund „Pfad nicht erreichbar“, statt verworfen zu werden. Spuren auf gelöschte Dateien eines vorhandenen Laufwerks werden weiter verworfen.
+- Datenschutz: Der eigene Name in Pfaden auf anderen Laufwerken (z. B. `F:\Users\<Name>` auf USB) wird zu `%USERNAME%`. Tests für Pfade auf Wechseldatenträgern, nicht erreichbaren Laufwerken und Netzpfaden. Die Berater-Tools geben keine Nutzungsspuren weiter (keine Zeitstempel, Startzähler, Spurenart); die geplanten Freigabestufen sind noch nicht umgesetzt.
+- Ohne gewählte Option oder mit leerer Liste der gewählten Option läuft kein Dateiscan; Nutzungsspuren wirken unabhängig davon. Die Einstellungsseite zeigt das als Hinweis, der Scan meldet es ebenfalls (Text in den Modultexten). Auch `Get-PortableSoftware` ohne Parameter nutzt nur die aktive Option.
+- Vorlagen setzen nur sichtbare Schalter, die Option „Wo suchen“ und nur deren Einträge, nie den Hauptschalter; die Statuszeile nennt jede Änderung (z. B. „Wo suchen: Nur bestimmte Ordner; Ordner: %USERPROFILE%“).
+- App-Texte: Grundlage für `.resx` (`Resources/Strings.resx`, `{loc:Text Schlüssel}` in XAML, `AppText.Get` in C#) mit Test, dass jeder verwendete Schlüssel existiert. Die neuen Texte stehen schon dort.
+
 ### Etappe 4a: KI-Berater im Modul
 
 #### Hinzugefügt

@@ -6,7 +6,12 @@ function Get-PortableSoftware {
         Wertet die aktivierten Nutzungsspuren aus (UserAssist, laufende Prozesse, Autostart,
         geplante Aufgaben) und durchsucht die aktivierten Ordner und Laufwerke nach .exe-Dateien.
         Ohne Parameter gelten die Einstellungen (Set-InventorySetting); standardmäßig ist nichts
-        aktiviert. Mit Parametern gilt nur, was angegeben ist.
+        aktiviert. Dann gelten die Unterschalter Nutzungsspuren (TraceSearch) und Dateisuche
+        (FileSearch), und von Ordnern und Laufwerken zählt nur die Liste der gewählten Option
+        (FileScan.Mode: Folders oder Drives). Mit Parametern gilt nur, was angegeben ist.
+        Nicht verbundene Laufwerke und fehlende Ordner werden mit Hinweis (Warnung) übersprungen.
+        Nutzungsspuren auf nicht erreichbare Pfade (z. B. abgezogener USB-Stick) erscheinen als
+        Datensatz mit Flag PathUnreachable, statt verworfen zu werden.
         Dateien in Windows-Ordnern und in den Ordnern installierter Programme werden ausgelassen.
         Die Dateien werden nicht ausgeführt; gelesen werden Versionsinfo, Signatur und optional SHA256.
         Aus Temp-Ordnern meldet der Dateiscan nur unsignierte oder ungültig signierte Dateien;
@@ -67,9 +72,11 @@ function Get-PortableSoftware {
 
     $explicit = 'Trace', 'Path', 'Drive', 'IncludeTemp', 'ComputeHash' | Where-Object { $PSBoundParameters.ContainsKey($_) }
     if (-not $explicit) {
-        $Trace = @(Get-EnabledName $setting.Traces)
-        $Path = @($setting.FileScan.Paths)
-        $Drive = @($setting.FileScan.Drives)
+        # Unterschalter Nutzungsspuren/Dateisuche und nur die Liste der gewählten Option „Wo suchen“
+        $plan = Get-PortableSearchPlan $setting
+        $Trace = @($plan.Trace)
+        $Path = @($plan.Path)
+        $Drive = @($plan.Drive)
         $IncludeTemp = [switch] $setting.FileScan.IncludeTemp
         $ComputeHash = [switch] $setting.FileScan.ComputeHash
     }
@@ -95,9 +102,19 @@ function Get-PortableSoftware {
     }
     $scanExclusions = if ($IncludeTemp) { $exclusions } else { @($exclusions) + @($tempDirs) }
 
+    # Nicht verbundene Laufwerke und fehlende Ordner: überspringen, mit Hinweis statt Fehler.
     $roots = [System.Collections.Generic.List[string]]::new()
-    foreach ($d in $Drive) { $roots.Add((ConvertTo-DriveRoot $d)) }
-    foreach ($p in $Path) { $roots.Add($p) }
+    foreach ($d in $Drive) {
+        $root = ConvertTo-DriveRoot $d
+        if (Test-ScanRoot $root) { $roots.Add($root) }
+        else { Write-Warning (Get-LocalizedString 'PortableDriveNotConnected' @($root.TrimEnd('\'))) }
+    }
+    foreach ($p in $Path) {
+        if (Test-ScanRoot $p) { $roots.Add($p) }
+        else { Write-Warning (Get-LocalizedString 'PortableFolderNotFound' @($p)) }
+    }
+    # Spuren auf Pfade, deren Laufwerk gerade fehlt (z. B. abgezogener USB-Stick): als Treffer behalten.
+    $unreachable = @{}
 
     # Kandidaten: Pfad -> gesammelte Hinweise
     $candidates = @{}
@@ -116,7 +133,20 @@ function Get-PortableSoftware {
     foreach ($source in $Trace | ForEach-Object { "Get-${_}Trace" }) {
         try {
             foreach ($hint in & $source) {
-                if (-not (Test-Path -LiteralPath $hint.Path -PathType Leaf)) { continue }
+                if (-not (Test-Path -LiteralPath $hint.Path -PathType Leaf)) {
+                    # Datei weg, Laufwerk da: Programm entfernt, Spur veraltet. Laufwerk weg: Treffer „nicht erreichbar“.
+                    if (-not (Test-PathRootReachable $hint.Path) -and -not (Test-PathExcluded -Path $hint.Path -Exclusion $userExclusions)) {
+                        $key = $hint.Path.ToLowerInvariant()
+                        if (-not $unreachable.ContainsKey($key)) {
+                            $unreachable[$key] = @{ Path = $hint.Path; Evidence = [System.Collections.Generic.HashSet[string]]::new(); LastRun = $null; RunCount = $null }
+                        }
+                        $u = $unreachable[$key]
+                        [void] $u.Evidence.Add($hint.Evidence)
+                        if ($hint.LastRun -and (-not $u.LastRun -or $hint.LastRun -gt $u.LastRun)) { $u.LastRun = $hint.LastRun }
+                        if ($hint.RunCount) { $u.RunCount = $hint.RunCount }
+                    }
+                    continue
+                }
                 if (Test-PathExcluded -Path $hint.Path -Exclusion $userExclusions) { continue }
                 # Läuft oder startet etwas aus einem für Benutzer beschreibbaren Windows-Unterordner,
                 # wird es immer gemeldet – der Windows-Ordner ist sonst ausgeschlossen.
@@ -174,7 +204,41 @@ function Get-PortableSoftware {
     $records = @(Merge-NestedComponent -Record $records -ScanRoot $roots)
     $records = @(Merge-PortableCopy -Record $records)
     Add-MultipleVersionFlag -Record $records
+    $records += @($unreachable.Values | ForEach-Object { New-UnreachableRecord $_ })
     $records | Sort-Object Name, FilePath
+}
+
+function Test-ScanRoot {
+    # Ist ein Laufwerk oder Ordner für die Dateisuche gerade vorhanden?
+    param([string] $Path)
+    Test-Path -LiteralPath $Path -PathType Container
+}
+
+function Test-PathRootReachable {
+    # Ist das Laufwerk (bzw. die Freigabe) eines Pfads gerade erreichbar? Relative Pfade gelten als erreichbar.
+    param([string] $Path)
+    $root = try { [System.IO.Path]::GetPathRoot($Path) } catch { $null }
+    if (-not $root) { return $true }
+    Test-Path -LiteralPath $root -PathType Container
+}
+
+function New-UnreachableRecord {
+    # Treffer aus Nutzungsspuren, dessen Laufwerk gerade fehlt: nichts lesbar außer Pfad und Spur.
+    param($Candidate)
+    $evidence = [string[]] @($Candidate.Evidence | Sort-Object)
+    $flags = [System.Collections.Generic.List[string]]::new()
+    $flags.Add('PathUnreachable')
+    if ($evidence -contains 'Autostart' -or $evidence -contains 'ScheduledTask') { $flags.Add('Autostart') }
+    New-SoftwareRecord -Name ([System.IO.Path]::GetFileNameWithoutExtension($Candidate.Path)) -Source Portable -Property @{
+        InstallType     = 'Portable'
+        Scope           = if (Test-PathExcluded -Path $Candidate.Path -Exclusion @($env:USERPROFILE)) { 'User' } else { 'Machine' }
+        InstallLocation = [System.IO.Path]::GetDirectoryName($Candidate.Path)
+        FilePath        = $Candidate.Path
+        Evidence        = $evidence
+        LastRun         = $Candidate.LastRun
+        RunCount        = if ($Candidate.RunCount) { [int] $Candidate.RunCount } else { $null }
+        Flags           = [string[]] $flags
+    }
 }
 
 function Get-TempDirectory {

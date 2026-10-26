@@ -4,11 +4,13 @@ function Get-SettingPreset {
         Liefert die Werte einer Vorlage (Quick oder Thorough), ohne etwas zu speichern.
     .DESCRIPTION
         Für Oberflächen, die eine Vorlage nur vorbelegen und erst auf Wunsch speichern.
-        Enable nennt die einzuschaltenden Quellen und Nutzungsspuren, FileScan die Werte für den
-        Dateiscan. Externe Dienste, Ausschlüsse und Aktionen sind nie Teil einer Vorlage.
+        Enable nennt die einzuschaltenden Quellen und Nutzungsspuren. FileScan nennt die Option
+        „Wo suchen“ (Mode) und nur die Liste dieser Option (Paths bei Folders, Drives bei Drives);
+        die Liste der anderen Option bleibt beim Anwenden unberührt. Externe Dienste, Ausschlüsse,
+        Aktionen und der Hauptschalter PortableSearch sind nie Teil einer Vorlage.
     .PARAMETER Preset
-        Quick: alle Quellen, alle Nutzungsspuren, Dateiscan im Benutzerprofil ohne Temp und Hash.
-        Thorough: wie Quick, aber Dateiscan aller festen Laufwerke einschließlich Temp, mit SHA256.
+        Quick: alle Quellen und Nutzungsspuren, nur bestimmte Ordner (Benutzerprofil), ohne Temp und Hash.
+        Thorough: wie Quick, aber ganze Laufwerke (alle festen), mit Temp und SHA256.
     .EXAMPLE
         Get-SettingPreset -Preset Quick
     #>
@@ -21,10 +23,10 @@ function Get-SettingPreset {
     )
 
     $fileScan = if ($Preset -eq 'Quick') {
-        [ordered]@{ Paths = [string[]] @('%USERPROFILE%'); Drives = [string[]] @(); IncludeTemp = $false; ComputeHash = $false }
+        [ordered]@{ Mode = 'Folders'; Paths = [string[]] @('%USERPROFILE%'); IncludeTemp = $false; ComputeHash = $false }
     }
     else {
-        [ordered]@{ Paths = [string[]] @(); Drives = [string[]] @(Get-ScanDrive | Where-Object IsDefault | ForEach-Object Drive); IncludeTemp = $true; ComputeHash = $true }
+        [ordered]@{ Mode = 'Drives'; Drives = [string[]] @(Get-ScanDrive | Where-Object IsDefault | ForEach-Object Drive); IncludeTemp = $true; ComputeHash = $true }
     }
     [pscustomobject] [ordered]@{
         PSTypeName = 'SoftwareInventory.SettingPreset'

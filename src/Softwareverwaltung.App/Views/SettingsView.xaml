@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:vm="clr-namespace:Softwareverwaltung.App.ViewModels"
+             xmlns:loc="clr-namespace:Softwareverwaltung.App.Localization"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
     <UserControl.Resources>
@@ -12,6 +13,11 @@
             <Setter Property="FontSize" Value="18" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,20,0,4" />
+        </Style>
+        <Style x:Key="SubsectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,12,0,4" />
         </Style>
         <Style x:Key="SectionText" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -68,15 +74,14 @@
 
                 <!-- Vorlagen -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="Vorlagen" />
-                <TextBlock Style="{StaticResource SectionText}"
-                           Text="Belegen Quellen, Nutzungsspuren und Dateiscan vor. Externe Dienste, Ausschlüsse und Aktionen bleiben unverändert. Gespeichert wird erst mit „Speichern“." />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text PresetsText}" />
                 <StackPanel Orientation="Horizontal">
-                    <ui:Button Content="Schnell" Icon="{ui:SymbolIcon Flash24}"
+                    <ui:Button Content="{loc:Text PresetQuick}" Icon="{ui:SymbolIcon Flash24}"
                                Command="{Binding ApplyPresetCommand}" CommandParameter="Quick"
-                               ToolTip="Alle Quellen und Nutzungsspuren, Dateiscan im Benutzerprofil ohne Temp und Hash" />
-                    <ui:Button Content="Gründlich" Icon="{ui:SymbolIcon Search24}" Margin="8,0,0,0"
+                               ToolTip="{loc:Text PresetQuickTooltip}" />
+                    <ui:Button Content="{loc:Text PresetThorough}" Icon="{ui:SymbolIcon Search24}" Margin="8,0,0,0"
                                Command="{Binding ApplyPresetCommand}" CommandParameter="Thorough"
-                               ToolTip="Alle Quellen und Nutzungsspuren, Dateiscan aller festen Laufwerke mit Temp und SHA256" />
+                               ToolTip="{loc:Text PresetThoroughTooltip}" />
                 </StackPanel>
 
                 <!-- Quellen -->
@@ -84,39 +89,167 @@
                 <TextBlock Style="{StaticResource SectionText}" Text="Woher die Liste der installierten Programme kommt. Alles bleibt auf diesem PC." />
                 <ItemsControl ItemsSource="{Binding Sources}" ItemTemplate="{StaticResource SwitchCard}" />
 
-                <!-- Nutzungsspuren -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Nutzungsspuren" />
-                <TextBlock Style="{StaticResource SectionText}" Text="Findet Programme, die nicht installiert wurden (portable Programme). Alles bleibt auf diesem PC." />
-                <ItemsControl ItemsSource="{Binding Traces}" ItemTemplate="{StaticResource SwitchCard}" />
+                <!-- Suche nach portablen Programmen: Hauptschalter, Info, dann Nutzungsspuren und Dateisuche mit eigenen Schaltern -->
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsPortableTitle}" />
 
-                <!-- Dateiscan -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Dateiscan" />
-                <TextBlock Style="{StaticResource SectionText}" Text="Sucht in Ordnern und Laufwerken nach Programmdateien. Ohne Ordner und Laufwerke findet kein Dateiscan statt." />
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Ordner (einer pro Zeile, z. B. %USERPROFILE%)" />
-                <ui:TextBox Text="{Binding ScanPathsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                            MinHeight="64" TextWrapping="NoWrap" AutomationProperties.Name="Ordner für den Dateiscan" />
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Laufwerke" />
-                <ItemsControl ItemsSource="{Binding Drives}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:DriveOption}">
-                            <CheckBox Content="{Binding Text}" IsChecked="{Binding IsSelected}" Margin="0,0,16,4" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <CheckBox Content="Temp-Ordner mit durchsuchen" IsChecked="{Binding IncludeTemp}" Margin="0,8,0,0" />
-                <CheckBox Content="Prüfsumme (SHA256) berechnen – langsamer" IsChecked="{Binding ComputeHash}" Margin="0,4,0,0" />
-                <TextBlock Style="{StaticResource FieldLabel}" Text="Ausschlüsse (einer pro Zeile; gilt für Dateiscan und Nutzungsspuren)" />
-                <ui:TextBox Text="{Binding ExcludePathsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                            MinHeight="64" TextWrapping="NoWrap" AutomationProperties.Name="Ausgeschlossene Ordner" />
-                <CheckBox IsChecked="{Binding SmartExclusions}" Margin="0,8,0,0">
-                    <TextBlock TextWrapping="Wrap"
-                               Text="Intelligente Ausschlüsse: Herstellerordner und bereits installierte Programme überspringen (aus = mehr Treffer)" />
-                </CheckBox>
+                <ui:CardControl Margin="0,4,0,4" Padding="14,10">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Text SettingsPortableSwitchLabel}" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Text SettingsPortableIntro}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch IsChecked="{Binding PortableSearchEnabled}" AutomationProperties.Name="{loc:Text SettingsPortableSwitchLabel}"
+                                     OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
+                </ui:CardControl>
+
+                <!-- Neutrale Info direkt unter dem Hauptschalter -->
+                <Border Margin="0,0,0,4" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                        Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Info24" Margin="0,0,10,0" VerticalAlignment="Top"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{loc:Text SettingsPortableInstalledHint}" TextWrapping="Wrap" MaxWidth="800"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Erst aktiv, wenn der Hauptschalter an ist; vorher ausgegraut -->
+                <StackPanel IsEnabled="{Binding PortableSearchEnabled}" Margin="0,8,0,0">
+
+                    <!-- 1. Nutzungsspuren: eigener Schalter, die vier Optionen klappen erst danach auf -->
+                    <ui:CardControl Margin="0,0,0,4" Padding="14,10">
+                        <ui:CardControl.Header>
+                            <StackPanel>
+                                <TextBlock Text="{loc:Text SettingsPortableTraceSwitch}" FontWeight="SemiBold" />
+                                <TextBlock Text="{loc:Text SettingsPortableTraceSwitchText}" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </ui:CardControl.Header>
+                        <ui:ToggleSwitch IsChecked="{Binding TraceSearchEnabled}" AutomationProperties.Name="{loc:Text SettingsPortableTraceSwitch}"
+                                         OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
+                    </ui:CardControl>
+                    <ItemsControl ItemsSource="{Binding Traces}" ItemTemplate="{StaticResource SwitchCard}" Margin="24,0,0,8"
+                                  Visibility="{Binding TraceSearchEnabled, Converter={StaticResource BoolToVisibility}}" />
+
+                    <!-- 2. Dateisuche: eigener Schalter, darunter „Wo suchen“ und Temp, Prüfsumme, Ausschlüsse -->
+                    <ui:CardControl Margin="0,4,0,4" Padding="14,10">
+                        <ui:CardControl.Header>
+                            <StackPanel>
+                                <TextBlock Text="{loc:Text SettingsPortableFileSwitch}" FontWeight="SemiBold" />
+                                <TextBlock Text="{loc:Text SettingsPortableFileSwitchText}" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </ui:CardControl.Header>
+                        <ui:ToggleSwitch IsChecked="{Binding FileSearchEnabled}" AutomationProperties.Name="{loc:Text SettingsPortableFileSwitch}"
+                                         OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
+                    </ui:CardControl>
+
+                    <StackPanel Margin="24,0,0,0" Visibility="{Binding FileSearchEnabled, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsPortableWhereTitle}" />
+                        <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableWhereText}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <RadioButton GroupName="ScanMode" Content="{loc:Text SettingsPortableModeDrives}" IsChecked="{Binding IsDrivesMode}" />
+                            <RadioButton GroupName="ScanMode" Content="{loc:Text SettingsPortableModeFolders}" IsChecked="{Binding IsFoldersMode}" Margin="24,0,0,0" />
+                        </StackPanel>
+
+                        <!-- Ganze Laufwerke -->
+                        <StackPanel Visibility="{Binding IsDrivesMode, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsPortableDrives}" />
+                            <ItemsControl ItemsSource="{Binding Drives}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:DriveOption}">
+                                        <CheckBox Content="{Binding Text}" IsChecked="{Binding IsSelected}" Margin="0,0,16,4" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                                    Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    Visibility="{Binding ShowDriveDurationHint, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="Clock24" Margin="0,0,10,0" VerticalAlignment="Top"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{loc:Text SettingsPortableDrivesDuration}" TextWrapping="Wrap" MaxWidth="780" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Nur bestimmte Ordner -->
+                        <StackPanel Visibility="{Binding IsFoldersMode, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsPortableFoldersText}" />
+                            <ItemsControl ItemsSource="{Binding ScanFolders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,4" Padding="12,6" CornerRadius="4" BorderThickness="1"
+                                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <ui:Button Grid.Column="1" Content="{loc:Text SettingsPortableFolderRemove}" Icon="{ui:SymbolIcon Delete24}"
+                                                           Appearance="Transparent" Margin="8,0,0,0"
+                                                           Command="{Binding DataContext.RemoveFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           CommandParameter="{Binding}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <WrapPanel Margin="0,4,0,0">
+                                <ui:Button Content="{loc:Text SettingsPortableFolderPick}" Icon="{ui:SymbolIcon FolderAdd24}"
+                                           Command="{Binding PickFolderCommand}" Margin="0,0,16,4" />
+                                <TextBlock Text="{loc:Text SettingsPortableFolderSuggestions}" VerticalAlignment="Center" Margin="0,0,8,4"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding FolderSuggestions.Count, Converter={StaticResource CountToVisibility}}" />
+                                <ItemsControl ItemsSource="{Binding FolderSuggestions}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <ui:Button Content="{Binding}" Icon="{ui:SymbolIcon Add16}" Margin="0,0,8,4"
+                                                       Command="{Binding DataContext.AddFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <!-- Nichts gewählt: keine Option oder die gewählte Option ohne Eintrag -->
+                        <Border Margin="0,8,0,0" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                                Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                Visibility="{Binding NoScanLocation, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Symbol="Warning24" Filled="True" Margin="0,0,10,0" VerticalAlignment="Top"
+                                               Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                <TextBlock Text="{loc:Text SettingsPortableNoLocation}" TextWrapping="Wrap" MaxWidth="780" />
+                            </StackPanel>
+                        </Border>
+
+                        <CheckBox Content="{loc:Text SettingsPortableIncludeTemp}" IsChecked="{Binding IncludeTemp}" Margin="0,12,0,0" />
+                        <CheckBox Content="{loc:Text SettingsPortableComputeHash}" IsChecked="{Binding ComputeHash}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsPortableExcludes}" />
+                        <ui:TextBox Text="{Binding ExcludePathsText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                                    MinHeight="64" TextWrapping="NoWrap" AutomationProperties.Name="{loc:Text SettingsPortableExcludes}" />
+                        <CheckBox IsChecked="{Binding SmartExclusions}" Margin="0,8,0,0">
+                            <TextBlock TextWrapping="Wrap" Text="{loc:Text SettingsPortableSmartExclusions}" />
+                        </CheckBox>
+                    </StackPanel>
+                </StackPanel>
 
                 <!-- Externe Dienste -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="Externe Dienste" />
