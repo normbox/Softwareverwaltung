@@ -4,6 +4,18 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Etappe 3c: Details und Aktions-Buttons
+
+#### Hinzugefügt
+
+- App: In der Detailansicht einer Zeile die Buttons „Aktualisieren“ (nur bei verfügbarem Update) und „Deinstallieren“. Vorher fragt die App das Modul mit `-WhatIf` und zeigt einen Bestätigungsdialog mit dem genauen Befehl, ob Administratorrechte nötig sind und ob ein Wiederherstellungspunkt angelegt wird. „Abbrechen“ ist Standard.
+- Ausgeführt wird nur der bestätigte Befehl: neuer Parameter `-ConfirmedCommandLine` für `Update-Software` und `Uninstall-Software`. Weicht der neu ermittelte Befehl ab, wird nichts ausgeführt (`Cancelled`, protokolliert).
+- Ergebnis-Karte nach jeder Aktion: Ergebnis im Klartext, Meldung, Wiederherstellungspunkt; bei Fehlschlag „Mit <Methode> versuchen“ (wieder mit eigener Bestätigung), bei `ManualUpdateRequired` der Herstellerlink.
+- Nach einer Aktion wird nur dieses Programm neu geprüft (`Find-InstalledSoftware`, findet es auch nach einem MSI-Update mit neuem Registry-Schlüssel über die winget-ID); deinstallierte Programme verschwinden aus der Liste.
+- Detailansicht: Installationsart und -bereich, winget-ID, Ort und die bisherigen Aktionen zu diesem Programm aus dem Aktionsprotokoll.
+- `Install-WingetPackageManager`: installiert winget (App Installer) über `Repair-WinGetPackageManager -Latest` nur für das eigene Konto, mit Bestätigung und Protokoll (`Get-ActionLog -Action InstallWinget`). In der App als Button „winget installieren“ in der Hinweis-Karte, wenn winget fehlt.
+- Während einer Aktion sind Scan und weitere Aktionen gesperrt; die Statuszeile sagt, wenn Windows nach Administratorrechten fragt.
+
 ### Etappe 3d: Nachtrag Ampel
 
 #### Geändert

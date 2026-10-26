@@ -49,8 +49,42 @@
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
         </Grid>
 
+        <StackPanel Grid.Row="1" Margin="16,0,16,0">
+        <!-- Ergebnis der letzten Aktion -->
+        <Border Margin="0,0,0,8" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Visibility="{Binding LastOutcome, Converter={StaticResource NullToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
+                        <Run Text="{Binding LastOutcome.ActionText, Mode=OneWay}" /><Run Text=" – " /><Run Text="{Binding LastOutcome.Name, Mode=OneWay}" /><Run Text=": " /><Run Text="{Binding LastOutcome.ResultText, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Text="{Binding LastOutcome.Message}" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Visibility="{Binding LastOutcome.Message, Converter={StaticResource NullToVisibility}}" />
+                    <TextBlock Text="{Binding LastOutcome.RestorePointText}" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <ui:Button Margin="0,0,12,0" Command="{Binding RetryWithNextMethodCommand}"
+                                   Visibility="{Binding CanRetryWithNextMethod, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock><Run Text="Mit " /><Run Text="{Binding LastOutcome.NextMethod, Mode=OneWay}" /><Run Text=" versuchen" /></TextBlock>
+                        </ui:Button>
+                        <ui:HyperlinkButton Content="Herstellerseite öffnen" NavigateUri="{Binding LastOutcome.VendorUrl}" Padding="0" VerticalAlignment="Center"
+                                            Visibility="{Binding LastOutcome.VendorUrl, Converter={StaticResource NullToVisibility}}" />
+                    </StackPanel>
+                </StackPanel>
+                <ui:Button Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Top" Appearance="Transparent"
+                           Icon="{ui:SymbolIcon Dismiss16}" ToolTip="Schließen" AutomationProperties.Name="Ergebnis schließen"
+                           Command="{Binding DismissOutcomeCommand}" />
+            </Grid>
+        </Border>
+
         <!-- Hinweise: winget fehlt, keine Quelle aktiviert, Fehler des Moduls -->
-        <ItemsControl Grid.Row="1" Margin="16,0,16,0" ItemsSource="{Binding Notices}">
+        <ItemsControl ItemsSource="{Binding Notices}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type models:Notice}">
                     <Border x:Name="Card" Margin="0,0,0,8" Padding="12,10" CornerRadius="4" BorderThickness="1"
@@ -68,8 +102,12 @@
                             <StackPanel Grid.Column="1">
                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                                <ui:HyperlinkButton Content="{Binding LinkText}" NavigateUri="{Binding Link}" Padding="0" Margin="0,4,0,0"
-                                                    Visibility="{Binding Link, Converter={StaticResource NullToVisibility}}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <ui:Button Content="{Binding ActionText}" Command="{Binding Action}" Margin="0,0,12,0"
+                                               Visibility="{Binding Action, Converter={StaticResource NullToVisibility}}" />
+                                    <ui:HyperlinkButton Content="{Binding LinkText}" NavigateUri="{Binding Link}" Padding="0" VerticalAlignment="Center"
+                                                        Visibility="{Binding Link, Converter={StaticResource NullToVisibility}}" />
+                                </StackPanel>
                             </StackPanel>
                             <ui:Button Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top" Appearance="Transparent"
                                        Icon="{ui:SymbolIcon Dismiss16}" ToolTip="Ausblenden"
@@ -93,10 +131,12 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+        </StackPanel>
 
         <!-- Hauptliste -->
         <Grid Grid.Row="2" Margin="16,0,16,8">
             <DataGrid ItemsSource="{Binding ItemsView}"
+                      SelectedItem="{Binding SelectedItem}"
                       AutoGenerateColumns="False" IsReadOnly="True"
                       SelectionMode="Single" HeadersVisibility="Column"
                       CanUserReorderColumns="False"
@@ -148,6 +188,31 @@
                 <DataGrid.RowDetailsTemplate>
                     <DataTemplate DataType="{x:Type models:SoftwareItem}">
                         <StackPanel Margin="32,6,16,12">
+                            <!-- Aktionen: erst Bestätigungsdialog mit genauem Befehl, dann Ausführung -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                                        Visibility="{Binding DataContext.ActionsAvailable, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisibility}}">
+                                <ui:Button Content="Aktualisieren" Appearance="Primary" Icon="{ui:SymbolIcon ArrowUpload24}" Margin="0,0,8,0"
+                                           Command="{Binding DataContext.UpdateCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                           CommandParameter="{Binding}"
+                                           Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}" />
+                                <ui:Button Content="Deinstallieren" Icon="{ui:SymbolIcon Delete24}"
+                                           Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                           CommandParameter="{Binding}" />
+                            </StackPanel>
+
+                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}">
+                                <Run Text="Installation: " /><Run Text="{Binding InstallInfo, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}">
+                                <Run Text="winget-ID: " /><Run Text="{Binding WingetId, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"
+                                       Visibility="{Binding InstallLocation, Converter={StaticResource NullToVisibility}}">
+                                <Run Text="Ort: " /><Run Text="{Binding InstallLocation, Mode=OneWay}" />
+                            </TextBlock>
+
                             <TextBlock Text="Gründe für die Ampel" FontWeight="SemiBold" />
                             <ItemsControl ItemsSource="{Binding Reasons}">
                                 <ItemsControl.ItemTemplate>
@@ -182,6 +247,17 @@
                                     <DataTemplate>
                                         <TextBlock Text="{Binding StringFormat='✓ {0}'}" TextWrapping="Wrap"
                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Versionsverlauf: bisherige Aktionen zu diesem Programm aus dem Aktionsprotokoll -->
+                            <TextBlock Text="Bisherige Aktionen" FontWeight="SemiBold" Margin="0,8,0,0"
+                                       Visibility="{Binding DataContext.History.Count, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource CountToVisibility}}" />
+                            <ItemsControl ItemsSource="{Binding DataContext.History, RelativeSource={RelativeSource AncestorType=DataGrid}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:ActionHistoryEntry}">
+                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" ToolTip="{Binding Message}" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

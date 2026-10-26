@@ -37,4 +37,4 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 
 ## Fahrplan
 
-Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Aktuell: Etappe 3 (Oberfläche), aufgeteilt in 3a Aktionen im Modul (fertig), 3b WPF-Grundgerüst (fertig), 3d Einstellungen (fertig), 3c Details und Aktions-Buttons.
+Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Etappe 3 (Oberfläche) ist fertig (3a Aktionen im Modul, 3b WPF-Grundgerüst, 3c Details und Aktions-Buttons, 3d Einstellungen). Als Nächstes: Etappe 4 (KI-Berater).

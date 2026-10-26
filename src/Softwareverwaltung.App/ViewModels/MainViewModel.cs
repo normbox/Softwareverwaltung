@@ -11,13 +11,18 @@ namespace Softwareverwaltung.App.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IInventoryService _inventory;
+    private readonly IActionService? _actions;
+    private readonly IConfirmationService? _confirmation;
     private readonly TimeProvider _time;
     private bool _initialized;
     private bool _ready;
+    private Notice? _wingetNotice;
 
-    public MainViewModel(IInventoryService inventory, TimeProvider? time = null)
+    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null)
     {
         _inventory = inventory;
+        _actions = actions;
+        _confirmation = confirmation;
         _time = time ?? TimeProvider.System;
         ItemsView = new ListCollectionView(Items) { Filter = Matches };
         ItemsView.SortDescriptions.Add(new SortDescription(nameof(SoftwareItem.Rating), ListSortDirection.Ascending));
@@ -32,8 +37,26 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Notice> Notices { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand))]
     private bool _isBusy;
+
+    /// <summary>Angeklicktes Programm; seine früheren Aktionen stehen in <see cref="History"/>.</summary>
+    [ObservableProperty]
+    private SoftwareItem? _selectedItem;
+
+    public ObservableCollection<ActionHistoryEntry> History { get; } = [];
+
+    /// <summary>Ergebnis der letzten Aktion, als Karte oben angezeigt, bis der Benutzer sie schließt.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRetryWithNextMethod))]
+    [NotifyCanExecuteChangedFor(nameof(RetryWithNextMethodCommand))]
+    private ActionOutcome? _lastOutcome;
+
+    private SoftwareItem? _lastOutcomeItem;
+
+    public bool CanRetryWithNextMethod => LastOutcome is { Action: "Uninstall", NextMethod: not null, IsSuccess: false } && _lastOutcomeItem is not null;
+
+    public bool ActionsAvailable => _actions is not null && _confirmation is not null;
 
     [ObservableProperty]
     private string _statusText = "Bereit.";
@@ -95,8 +118,10 @@ public sealed partial class MainViewModel : ObservableObject
             var winget = await _inventory.GetWingetStatusAsync();
             if (!winget.Available)
             {
-                AddNotice(new Notice(NoticeSeverity.Warning, "winget nicht verfügbar", winget.Message ?? "winget ist nicht verfügbar.",
-                    winget.InstallUrl is null ? null : "App Installer im Microsoft Store", winget.InstallUrl), permanent: true);
+                _wingetNotice = new Notice(NoticeSeverity.Warning, "winget nicht verfügbar", winget.Message ?? "winget ist nicht verfügbar.",
+                    winget.InstallUrl is null ? null : "App Installer im Microsoft Store", winget.InstallUrl,
+                    _actions is null ? null : "winget installieren", _actions is null ? null : InstallWingetCommand);
+                AddNotice(_wingetNotice, permanent: true);
             }
         }
         catch (Exception ex)
@@ -155,6 +180,156 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     private bool CanScan() => !IsBusy && _ready;
+
+    private bool CanRunAction(SoftwareItem? item) => !IsBusy && _ready && ActionsAvailable && item?.Source is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRunAction))]
+    private Task UpdateAsync(SoftwareItem? item) => RunActionAsync(SoftwareActionKind.Update, item, "Auto");
+
+    [RelayCommand(CanExecute = nameof(CanRunAction))]
+    private Task UninstallAsync(SoftwareItem? item) => RunActionAsync(SoftwareActionKind.Uninstall, item, "Auto");
+
+    /// <summary>Nach einem Fehlschlag: nächste Methode, wieder mit eigener Bestätigung (kein automatischer Ersatzweg).</summary>
+    [RelayCommand(CanExecute = nameof(CanRetry))]
+    private Task RetryWithNextMethodAsync() => RunActionAsync(SoftwareActionKind.Uninstall, _lastOutcomeItem, LastOutcome!.NextMethod!);
+
+    private bool CanRetry() => !IsBusy && CanRetryWithNextMethod;
+
+    [RelayCommand(CanExecute = nameof(CanInstallWinget))]
+    private Task InstallWingetAsync() => RunActionAsync(SoftwareActionKind.InstallWinget, null, "Auto");
+
+    private bool CanInstallWinget() => !IsBusy && ActionsAvailable;
+
+    [RelayCommand]
+    private void DismissOutcome() => LastOutcome = null;
+
+    partial void OnSelectedItemChanged(SoftwareItem? value) => _ = LoadHistoryAsync(value);
+
+    /// <summary>
+    /// Ablauf jeder Aktion: Plan mit -WhatIf holen, Bestätigung zeigen, genau diesen Befehl ausführen,
+    /// danach nur dieses Programm neu prüfen. Nicht ausführbare Pläne (z. B. Update von Hand) kommen
+    /// ohne Dialog direkt als Ergebnis.
+    /// </summary>
+    private async Task RunActionAsync(SoftwareActionKind kind, SoftwareItem? item, string method)
+    {
+        if (_actions is null || _confirmation is null)
+        {
+            return;
+        }
+        IsBusy = true;
+        StatusText = "Prüfe, was ausgeführt würde …";
+        try
+        {
+            var plan = await _actions.PlanAsync(kind, item?.Source, method);
+            if (!plan.IsPlanned)
+            {
+                ShowOutcome(plan, item);
+                StatusText = $"{plan.ActionText}: {plan.ResultText}";
+                return;
+            }
+            if (!_confirmation.Confirm(plan))
+            {
+                StatusText = "Abgebrochen; es wurde nichts ausgeführt.";
+                return;
+            }
+
+            StatusText = $"{plan.ActionText}: {plan.Name} läuft …" + (plan.Elevated ? " Bitte die Windows-Abfrage (UAC) bestätigen." : "");
+            var outcome = await _actions.ExecuteAsync(kind, item?.Source, plan, method);
+            StatusText = $"{outcome.ActionText}: {outcome.ResultText}";
+
+            if (kind == SoftwareActionKind.InstallWinget)
+            {
+                ShowOutcome(outcome, null);
+                if (outcome.IsSuccess && _wingetNotice is not null)
+                {
+                    _permanentNotices.Remove(_wingetNotice);
+                    Notices.Remove(_wingetNotice);
+                    _wingetNotice = null;
+                    StatusText += " Ein neuer Scan übernimmt die winget-Daten.";
+                }
+                return;
+            }
+            ShowOutcome(outcome, await RecheckAsync(item!));
+        }
+        catch (Exception ex)
+        {
+            ShowOutcome(new ActionOutcome { Action = kind.ToString(), Name = item?.Name ?? "winget", Result = "Failed", Message = ex.Message }, item);
+            StatusText = "Aktion fehlgeschlagen.";
+        }
+        finally
+        {
+            IsBusy = false;
+            RefreshView();
+        }
+        await LoadHistoryAsync(SelectedItem);
+    }
+
+    private void ShowOutcome(ActionOutcome outcome, SoftwareItem? item)
+    {
+        _lastOutcomeItem = item;
+        LastOutcome = outcome;
+        OnPropertyChanged(nameof(CanRetryWithNextMethod));
+        RetryWithNextMethodCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Liest nur dieses Programm neu ein: Zeile ersetzen oder entfernen, wenn es weg ist.</summary>
+    private async Task<SoftwareItem?> RecheckAsync(SoftwareItem item)
+    {
+        StatusText += " Prüfe das Programm neu …";
+        SoftwareItem? updated;
+        try
+        {
+            updated = await _actions!.RecheckAsync(item.Source!);
+        }
+        catch (Exception ex)
+        {
+            AddNotice(new Notice(NoticeSeverity.Warning, "Neu prüfen fehlgeschlagen", $"{item.Name}: {ex.Message}"), permanent: false);
+            return item;
+        }
+        var index = Items.IndexOf(item);
+        if (updated is null)
+        {
+            if (index >= 0)
+            {
+                Items.RemoveAt(index);
+            }
+            StatusText = StatusText.Replace(" Prüfe das Programm neu …", " Das Programm ist nicht mehr installiert.");
+            return null;
+        }
+        if (index >= 0)
+        {
+            Items[index] = updated;
+        }
+        if (SelectedItem == item)
+        {
+            SelectedItem = updated;
+        }
+        StatusText = StatusText.Replace(" Prüfe das Programm neu …", "");
+        return updated;
+    }
+
+    private async Task LoadHistoryAsync(SoftwareItem? item)
+    {
+        History.Clear();
+        if (item is null || _actions is null || IsBusy)
+        {
+            return;
+        }
+        try
+        {
+            foreach (var entry in await _actions.GetHistoryAsync(item.Name))
+            {
+                if (SelectedItem == item)
+                {
+                    History.Add(entry);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Der Verlauf ist eine Zusatzinfo; fehlt er, bleibt die Liste leer.
+        }
+    }
 
     [RelayCommand]
     private void DismissNotice(Notice notice) => Notices.Remove(notice);

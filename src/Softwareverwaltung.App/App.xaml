@@ -15,6 +15,7 @@
             <conv:RatingToBrushConverter x:Key="RatingToBrush" />
             <conv:RatingToTextConverter x:Key="RatingToText" />
             <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
+            <conv:CountToVisibilityConverter x:Key="CountToVisibility" />
 
             <!-- Hinweis zu den Nutzungsbedingungen eines Dienstes (Erststart-Karte und Einstellungen). -->
             <DataTemplate x:Key="ServiceTermsTemplate" DataType="{x:Type models:ServiceTermsNotice}">

@@ -19,7 +19,8 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (_, args) => ErrorLog.Write("Task", args.Exception);
 
         _host = new PowerShellHost();
-        var viewModel = new ShellViewModel(new MainViewModel(new InventoryService(_host)), new SettingsViewModel(new SettingsService(_host)));
+        var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService());
+        var viewModel = new ShellViewModel(programs, new SettingsViewModel(new SettingsService(_host)));
         var window = new MainWindow { DataContext = viewModel };
         window.Show();
         // Fehler beim Laden der Module zeigen die ViewModels selbst als Hinweis an.

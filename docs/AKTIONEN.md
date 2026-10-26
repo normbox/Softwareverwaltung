@@ -12,6 +12,7 @@ Beide Funktionen nehmen Datensätze aus `Get-SoftwareInventory` oder `Get-Invent
 ## Grundsätze
 
 - **Erst bestätigen, dann ausführen.** `-WhatIf` führt nichts aus und liefert ein Ergebnis mit `Result = Planned`. Darin stehen der genaue Befehl (`CommandLine`, `FilePath`, `Arguments`) und `Elevated`. Die App zeigt diese Angaben im Bestätigungsdialog. Die KI darf Aktionen nur vorschlagen.
+- **Nur das Bestätigte wird ausgeführt.** `-ConfirmedCommandLine` übergibt die `CommandLine` aus dem `-WhatIf`-Ergebnis. Ergibt die erneute Prüfung einen anderen Befehl (z. B. weil inzwischen ein winget-Paket bekannt ist), wird nichts ausgeführt: `Result = Cancelled`, `Message` nennt den neuen Befehl. Die App übergibt den Wert immer.
 - **Kein automatischer Ersatzweg.** Schlägt die gewählte Methode fehl, wird kein anderer Befehl ausgeführt, denn diesen hätte niemand bestätigt. `NextMethod` nennt die nächste mögliche Methode, ein neuer Aufruf mit `-Method` probiert sie aus.
 - **Zustand neu lesen.** Werte aus dem übergebenen Datensatz werden nie blind übernommen. Registry, Store-Apps und winget werden zum Zeitpunkt der Aktion neu gelesen. Ein veränderter Snapshot kann so keinen fremden Befehl einschleusen. Ist das Programm nicht mehr da, lautet das Ergebnis `NotInstalled`, und es wird nichts ausgeführt.
 - **Erfolg wird geprüft.** Ein Exit-Code 0 allein genügt nicht. Nach dem Ende prüft das Modul bis zu 60 Sekunden lang, ob der Eintrag verschwunden bzw. die Version gestiegen ist. Viele Deinstallationsprogramme starten einen Kindprozess und kehren sofort zurück.
@@ -32,6 +33,10 @@ Aktualisieren: `winget upgrade --id <Id> --exact --source <Quelle> --silent --ac
 Pakete werden nur über die exakte winget-ID aus dem Scan angesprochen, nie über den Namen. winget wird mit vollem Pfad aus dem App-Installer-Paket (`%ProgramFiles%\WindowsApps\Microsoft.DesktopAppInstaller_…\winget.exe`) gestartet. Der übliche Alias in `%LOCALAPPDATA%` fehlt im Profil eines anderen Administratorkontos, und den Paketordner können nur Administratoren beschreiben.
 
 Befehle aus der Registry werden ohne Shell gestartet, nie über `cmd /c` oder `Invoke-Expression`. Der Programmpfad wird herausgelöst, in Anführungszeichen oder als längster vorhandener `.exe`-Präfix. Der Rest bleibt unverändert als Argumentzeichenfolge. Programmnamen ohne Ordner (z. B. `MsiExec.exe`) werden nur in System32 gesucht. Interpreter (`cmd`, `powershell`, `pwsh`, `wscript`, `cscript`, `mshta`, `rundll32`, `regsvr32`, …) werden abgelehnt (`Unsupported`).
+
+## winget installieren
+
+`Install-WingetPackageManager` ruft `Repair-WinGetPackageManager -Latest` aus dem mitgelieferten Modul `Microsoft.WinGet.Client` auf. Das lädt die neueste Version von App Installer bei Microsoft herunter und installiert sie nur für das angemeldete Konto, ohne Administratorrechte (kein `-AllUsers`). Es ist die einzige Aktion, die etwas herunterlädt, und läuft nur nach Bestätigung (`ConfirmImpact High`, `-WhatIf` liefert `Planned`). Der Erfolg wird mit `Test-WingetAvailability` geprüft (`Succeeded` oder `NotVerified`). Protokolliert wird mit `Action = InstallWinget`.
 
 ## Administratorrechte
 

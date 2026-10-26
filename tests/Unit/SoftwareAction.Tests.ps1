@@ -79,6 +79,31 @@ Describe 'Update-Software und Uninstall-Software' {
             Test-Path "$Machine\$Guid" | Should -BeTrue
         }
 
+        It 'führt den bestätigten Befehl aus, wenn er sich nicht geändert hat' {
+            $planned = $msiRecord | Uninstall-Software -WhatIf
+            $r = $msiRecord | Uninstall-Software -Confirm:$false -ConfirmedCommandLine $planned.CommandLine
+            $r.Result | Should -Be 'Succeeded'
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -Exactly
+        }
+
+        It 'führt nichts aus, wenn sich der Befehl seit der Bestätigung geändert hat, und protokolliert das' {
+            $planned = $msiRecord | Uninstall-Software -WhatIf
+            # Inzwischen ist ein winget-Paket bekannt: Auto wählt winget statt msiexec.
+            $r = $wingetRecord | Uninstall-Software -Confirm:$false -ConfirmedCommandLine $planned.CommandLine
+            $r.Result | Should -Be 'Cancelled'
+            $r.Message | Should -Match 'seit der Bestätigung geändert'
+            $r.Message | Should -Match 'winget'
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0
+            Test-Path "$Machine\$Guid" | Should -BeTrue
+            (Get-ActionLog).Result | Should -Be 'Cancelled'
+        }
+
+        It 'prüft den bestätigten Befehl auch beim Aktualisieren' {
+            $r = $wingetRecord | Update-Software -Confirm:$false -ConfirmedCommandLine 'C:\anderes.exe /S'
+            $r.Result | Should -Be 'Cancelled'
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0
+        }
+
         It 'entfernt auch keine Store-App' {
             Mock -ModuleName SoftwareInventory Get-AppxPackageByFamily { [pscustomobject] @{ PackageFullName = 'C.App_1_x64__a'; Version = '1.0' } }
             $r = New-TestRecord @{ PackageFamilyName = 'C.App_a' } | Uninstall-Software -WhatIf

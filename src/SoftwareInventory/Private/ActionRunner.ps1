@@ -224,7 +224,9 @@ function Resolve-SoftwareAction {
         [Parameter(Mandatory)] [ValidateSet('Update', 'Uninstall')] [string] $Action,
         [Parameter(Mandatory)] $InputObject,
         [string] $Method = 'Auto',
-        [bool] $RestorePoint
+        [bool] $RestorePoint,
+        # Befehl, den der Benutzer bestätigt hat. Weicht der neu ermittelte ab, wird nichts ausgeführt.
+        [string] $ConfirmedCommandLine
     )
 
     $record = Get-ActionRecord $InputObject
@@ -234,6 +236,10 @@ function Resolve-SoftwareAction {
     }
 
     $plan = New-ActionPlan -Action $Action -Record $record -Method $Method -RestorePoint $RestorePoint
+    if (-not $plan.Result -and $ConfirmedCommandLine -and $plan.CommandLine -cne $ConfirmedCommandLine) {
+        $plan.Result = 'Cancelled'
+        $plan.Message = "Der Befehl hat sich seit der Bestätigung geändert; es wurde nichts ausgeführt. Bitte neu bestätigen. Jetzt: $($plan.CommandLine)"
+    }
     if ($plan.Result) {
         # Nicht ausführbar: nichts gestartet, aber protokolliert (außer bei -WhatIf).
         $result = New-ActionResult $plan
