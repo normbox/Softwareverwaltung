@@ -16,10 +16,10 @@ public partial class App : Application
         DispatcherUnhandledException += OnUnhandledException;
 
         _host = new PowerShellHost();
-        var viewModel = new MainViewModel(new InventoryService(_host));
+        var viewModel = new ShellViewModel(new MainViewModel(new InventoryService(_host)), new SettingsViewModel(new SettingsService(_host)));
         var window = new MainWindow { DataContext = viewModel };
         window.Show();
-        // Fehler beim Laden der Module zeigt das ViewModel selbst als Hinweis an.
+        // Fehler beim Laden der Module zeigen die ViewModels selbst als Hinweis an.
         _ = viewModel.InitializeAsync();
     }
 

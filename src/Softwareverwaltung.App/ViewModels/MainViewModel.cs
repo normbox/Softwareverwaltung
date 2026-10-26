@@ -70,9 +70,18 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Lädt Module, prüft winget und startet den ersten Scan.</summary>
     public async Task InitializeAsync()
     {
+        if (await LoadModulesAsync())
+        {
+            await ScanAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>Lädt Module und prüft winget, ohne zu scannen. Liefert false, wenn das Modul nicht bereit ist.</summary>
+    public async Task<bool> LoadModulesAsync()
+    {
         if (_initialized)
         {
-            return;
+            return _ready;
         }
         _initialized = true;
         IsBusy = true;
@@ -95,11 +104,12 @@ public sealed partial class MainViewModel : ObservableObject
             AddNotice(new Notice(NoticeSeverity.Error, "Start fehlgeschlagen", ex.Message), permanent: true);
             StatusText = "Die Module konnten nicht geladen werden.";
             IsBusy = false;
-            return;
+            return false;
         }
         _ready = true;
         IsBusy = false;
-        await ScanAsync(CancellationToken.None);
+        ScanCommand.NotifyCanExecuteChanged();
+        return true;
     }
 
     [RelayCommand(CanExecute = nameof(CanScan), IncludeCancelCommand = true)]
