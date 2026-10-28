@@ -13,7 +13,10 @@ public interface IActionService
     Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", CancellationToken cancellationToken = default);
 
     /// <summary>Liest das Programm nach einer Aktion neu ein; null, wenn es nicht mehr installiert ist.</summary>
-    Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default);
+    Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default, bool refresh = false);
+
+    /// <summary>Verwirft die zwischengespeicherten Online-Ergebnisse eines Programms (Clear-CheckCache).</summary>
+    Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ActionHistoryEntry>> GetHistoryAsync(string name, CancellationToken cancellationToken = default);
 }
@@ -42,9 +45,19 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default)
+    public async Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default)
+    {
+        var command = new PSCommand().AddCommand("Clear-CheckCache").AddParameter("InputObject", source).AddParameter("Confirm", false);
+        await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default, bool refresh = false)
     {
         var command = new PSCommand().AddCommand("Find-InstalledSoftware").AddParameter("Reference", source).AddCommand("Get-SecurityRating");
+        if (refresh)
+        {
+            command.AddParameter("Refresh");
+        }
         var result = await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (result.Errors.Count > 0)
         {

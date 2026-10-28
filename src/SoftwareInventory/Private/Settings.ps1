@@ -22,6 +22,8 @@ $script:AdvisorPresets = [ordered]@{
 # Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
 $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
+# Haltbarkeit des Zwischenspeichers je Quelle in Stunden (1–720); LatestVersion gilt für GitHub und winget-Suche.
+$script:DefaultCacheHours = [ordered]@{ LatestVersion = 6; NVD = 24; EPSS = 24; KEV = 24 }
 
 function Get-SettingsPath {
     Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
@@ -49,6 +51,7 @@ function New-DefaultSetting {
             LogRetentionDays = $script:DefaultLogRetentionDays
             LogMaxSizeMB     = $script:DefaultLogMaxSizeMB
         }
+        CacheHours    = [pscustomobject] ([ordered]@{} + $script:DefaultCacheHours)
         Advisor       = [pscustomobject] [ordered]@{
             Enabled  = $false   # KI-Berater; standardmäßig aus
             Preset   = $null    # Ollama, LMStudio, Unsloth oder Custom
@@ -97,6 +100,13 @@ function Read-InventorySetting {
         foreach ($name in 'LogRetentionDays', 'LogMaxSizeMB') {
             $value = $data.Maintenance.PSObject.Properties[$name]
             if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
+        }
+    }
+    if ($data.PSObject.Properties['CacheHours'] -and $data.CacheHours) {
+        foreach ($name in @($script:DefaultCacheHours.Keys)) {
+            $value = $data.CacheHours.PSObject.Properties[$name]
+            $hours = if ($value) { $value.Value -as [int] }
+            if ($hours -ge 1 -and $hours -le 720) { $setting.CacheHours.$name = $hours }
         }
     }
     if ($data.PSObject.Properties['PortableSearch'] -and $data.PortableSearch) {

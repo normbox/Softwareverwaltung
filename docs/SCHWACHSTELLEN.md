@@ -13,9 +13,18 @@ Die Funktion nimmt Datensätze aus `Get-SoftwareInventory` und `Get-PortableSoft
 
 | Quelle | Zweck | Dienst | Zwischenspeicher |
 | --- | --- | --- | --- |
-| NVD CVE-API 2.0 | CVEs je CPE und Version, CVSS | `NVD` | 24 h je CPE und Seite |
-| CISA KEV | aktiv ausgenutzte Lücken | `KEV` | 24 h (ganzer Katalog) |
-| FIRST EPSS | Wahrscheinlichkeit einer Ausnutzung | `EPSS` | 24 h je Sammelabfrage |
+| NVD CVE-API 2.0 | CVEs je CPE und Version, CVSS | `NVD` | Standard 24 h je CPE und Seite |
+| CISA KEV | aktiv ausgenutzte Lücken | `KEV` | Standard 24 h (ganzer Katalog) |
+| FIRST EPSS | Wahrscheinlichkeit einer Ausnutzung | `EPSS` | Standard 24 h je Sammelabfrage |
+
+### Zwischenspeicher
+
+- **Haltbarkeit:** Die Haltbarkeit je Quelle steht in der Einstellung `CacheHours` mit `LatestVersion` (GitHub und winget-Suche, Standard 6), `NVD`, `EPSS` und `KEV` (je Standard 24). Erlaubt sind 1 bis 720 Stunden. Die CPE-Suche bleibt fest bei 7 Tagen. Geprüft wird beim Lesen, eine Änderung wirkt also sofort.
+- **Neu prüfen ohne Cache:** `Get-SecurityRating -Refresh`, ebenso `Test-SoftwareUpdate` und `Get-SoftwareVulnerability`. Jede Antwort wird pro Lauf einmal frisch geholt, der KEV-Katalog also einmal.
+- **Offline oder am Anfragelimit:** Dann gilt ein abgelaufener Eintrag weiter. `CheckStale` ist dann wahr, die App kennzeichnet „Geprüft“ dezent als veraltet.
+- **Prüfzeitpunkt:** `CheckedAt` an `UpdateStatus`, `VulnerabilityStatus` und `SecurityRating` ist der älteste benutzte Abruf (UTC). In der Ampel ist es das Ältere beider Prüfungen, `UpdateCheckedAt` und `VulnerabilityCheckedAt` nennen beide einzeln. Wurde nichts online geprüft, bleibt `CheckedAt` leer.
+- **Gezielt verwerfen:** Ein Index je Programm und Version (`cache\index`) merkt sich die benutzten Einträge. `Clear-CheckCache` verwirft die Einträge eines Programms, der gemeinsame KEV-Katalog bleibt erhalten. Die App ruft das nach jeder Aktion auf.
+- **Dauer schätzen:** `Get-RefreshEstimate` schätzt die Dauer einer Prüfung ohne Cache: Zahl der NVD-Anfragen mal 6 Sekunden ohne Schlüssel bzw. 0,6 Sekunden mit Schlüssel. `NeedsConfirmation` ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist. Dann fragt die App vor „Ohne Cache scannen“ nach.
 
 Alle Dienste sind standardmäßig aus und werden einzeln aktiviert. Gesendet werden nur CPE-Namen mit Version (z. B. `cpe:2.3:a:7-zip:7-zip:24.8:*:*:*:*:*:*:*`) und CVE-IDs – keine Pfade, keine Benutzer- oder Rechnernamen.
 

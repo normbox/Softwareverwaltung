@@ -50,7 +50,11 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
             .AddParameter("TraceSearch", settings.TraceSearch)
             .AddParameter("FileSearch", settings.FileSearch)
             .AddParameter("LogRetentionDays", settings.LogRetentionDays)
-            .AddParameter("LogMaxSizeMB", settings.LogMaxSizeMB);
+            .AddParameter("LogMaxSizeMB", settings.LogMaxSizeMB)
+            .AddParameter("CacheHoursLatestVersion", settings.CacheHoursLatestVersion)
+            .AddParameter("CacheHoursNvd", settings.CacheHoursNvd)
+            .AddParameter("CacheHoursEpss", settings.CacheHoursEpss)
+            .AddParameter("CacheHoursKev", settings.CacheHoursKev);
         if (settings.Usage is not null)
         {
             command.AddParameter("Usage", settings.Usage);

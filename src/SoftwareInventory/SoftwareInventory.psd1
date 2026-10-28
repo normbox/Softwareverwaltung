@@ -10,6 +10,8 @@
     FunctionsToExport    = @(
         'Get-SoftwareInventory'
         'Resolve-InstallLocation'
+        'Clear-CheckCache'
+        'Get-RefreshEstimate'
         'Save-InventorySnapshot'
         'Get-InventorySnapshot'
         'Compare-InventorySnapshot'

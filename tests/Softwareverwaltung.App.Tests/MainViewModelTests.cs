@@ -170,6 +170,66 @@ public sealed class MainViewModelTests
         Assert.False(vm.CopyPathCommand.CanExecute(null));
     });
 
+    [Fact]
+    public void ScanWithoutCacheAsksOnlyWhenTheModuleSaysSo() => RunOnDispatcher(async () =>
+    {
+        var tool = new SoftwareItem { Name = "Contoso Tool", Source = new System.Management.Automation.PSObject() };
+        var inventory = new FakeInventory { Items = [tool], Estimate = new RefreshEstimate(12, 72, NeedsConfirmation: true) };
+        var confirmation = new FakeRefreshConfirmation { Answer = false };
+        var vm = new MainViewModel(inventory, confirmation: confirmation);
+        await vm.InitializeAsync();
+
+        // Ohne NVD-Schlüssel: Rückfrage mit Schätzung; abgelehnt = kein Scan.
+        await vm.ScanWithoutCacheCommand.ExecuteAsync(null);
+        Assert.Equal([72], confirmation.Asked);
+        Assert.Equal([false], inventory.Scans);
+
+        confirmation.Answer = true;
+        await vm.ScanWithoutCacheCommand.ExecuteAsync(null);
+        Assert.Equal([false, true], inventory.Scans);
+
+        // Mit Schlüssel: ohne Rückfrage; danach scannt „Scannen“ wieder mit Cache.
+        inventory.Estimate = new RefreshEstimate(12, 8, NeedsConfirmation: false);
+        await vm.ScanWithoutCacheCommand.ExecuteAsync(null);
+        await vm.ScanCommand.ExecuteAsync(null);
+        Assert.Equal(2, confirmation.Asked.Count);
+        Assert.Equal([false, true, true, false], inventory.Scans);
+    });
+
+    [Fact]
+    public void ShowsCheckAgeAndMarksStaleData()
+    {
+        var now = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+        Assert.Equal("", SoftwareItem.FormatAge(null, now));
+        Assert.Equal("gerade eben", SoftwareItem.FormatAge(now.AddSeconds(-20), now));
+        Assert.Equal("vor 5 min", SoftwareItem.FormatAge(now.AddMinutes(-5), now));
+        Assert.Equal("vor 2 h", SoftwareItem.FormatAge(now.AddHours(-2), now));
+        Assert.Equal("vor 3 Tagen", SoftwareItem.FormatAge(now.AddDays(-3), now));
+
+        var item = SoftwareItem.FromRating(Ps(("Name", "Tool"), ("Rating", "Green"),
+            ("CheckedAt", now.AddHours(-30)), ("UpdateCheckedAt", now.AddHours(-1)), ("VulnerabilityCheckedAt", now.AddHours(-30)), ("CheckStale", true)));
+        Assert.True(item.CheckStale);
+        Assert.Equal(now.AddHours(-30), item.CheckedAt);
+        Assert.Contains("Neueste Version geprüft", item.CheckedTooltip);
+        Assert.Contains("Sicherheitslücken geprüft", item.CheckedTooltip);
+        Assert.Contains("Älter als die eingestellte Haltbarkeit", item.CheckedTooltip);
+        Assert.Null(SoftwareItem.FromRating(Ps(("Name", "Tool"))).CheckedTooltip);
+    }
+
+    private sealed class FakeRefreshConfirmation : IConfirmationService
+    {
+        public bool Answer { get; set; }
+        public List<int> Asked { get; } = [];
+
+        public bool Confirm(ActionOutcome plan) => true;
+
+        public Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate)
+        {
+            Asked.Add(estimate.Seconds);
+            return Task.FromResult(Answer);
+        }
+    }
+
     private static List<string> Names(MainViewModel vm) => vm.ItemsView.Cast<SoftwareItem>().Select(i => i.Name).ToList();
 
     private sealed class FakeInventory : IInventoryService
@@ -186,8 +246,15 @@ public sealed class MainViewModelTests
 
         public Task<WingetStatus> GetWingetStatusAsync(CancellationToken cancellationToken = default) => Task.FromResult(Winget);
 
-        public async Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        public List<bool> Scans { get; } = [];
+        public RefreshEstimate? Estimate { get; set; }
+
+        public Task<RefreshEstimate?> GetRefreshEstimateAsync(IReadOnlyList<System.Management.Automation.PSObject> sources, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Estimate);
+
+        public async Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool refresh = false)
         {
+            Scans.Add(refresh);
             await Task.Yield();
             if (Cancel)
             {

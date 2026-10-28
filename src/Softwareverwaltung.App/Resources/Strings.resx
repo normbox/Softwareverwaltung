@@ -724,4 +724,84 @@
   <data name="StatusPathCopied" xml:space="preserve">
     <value>Pfad kopiert.</value>
   </data>
+  <data name="ColumnChecked" xml:space="preserve">
+    <value>Geprüft</value>
+  </data>
+  <data name="CheckedJustNow" xml:space="preserve">
+    <value>gerade eben</value>
+  </data>
+  <data name="CheckedMinutes" xml:space="preserve">
+    <value>vor {0} min</value>
+  </data>
+  <data name="CheckedHours" xml:space="preserve">
+    <value>vor {0} h</value>
+  </data>
+  <data name="CheckedDays" xml:space="preserve">
+    <value>vor {0} Tagen</value>
+  </data>
+  <data name="CheckedTooltipUpdate" xml:space="preserve">
+    <value>Neueste Version geprüft: {0:g}</value>
+  </data>
+  <data name="CheckedTooltipVulnerabilities" xml:space="preserve">
+    <value>Sicherheitslücken geprüft: {0:g}</value>
+  </data>
+  <data name="CheckedTooltipStale" xml:space="preserve">
+    <value>Älter als die eingestellte Haltbarkeit: Die Dienste waren nicht erreichbar, die Angaben stammen aus dem Zwischenspeicher.</value>
+  </data>
+  <data name="ProgramsScanWithoutCache" xml:space="preserve">
+    <value>Ohne Cache scannen</value>
+  </data>
+  <data name="ProgramsScanWithoutCacheTooltip" xml:space="preserve">
+    <value>Alle Online-Angaben neu abfragen, ohne Zwischenspeicher</value>
+  </data>
+  <data name="DetailsRecheckWithoutCache" xml:space="preserve">
+    <value>Neu prüfen (ohne Cache)</value>
+  </data>
+  <data name="DetailsRecheckWithoutCacheTooltip" xml:space="preserve">
+    <value>Dieses Programm ohne Zwischenspeicher neu prüfen</value>
+  </data>
+  <data name="StatusRecheckDone" xml:space="preserve">
+    <value>Neu geprüft.</value>
+  </data>
+  <data name="StatusRefreshNotStarted" xml:space="preserve">
+    <value>Kein Scan gestartet.</value>
+  </data>
+  <data name="RefreshConfirmTitle" xml:space="preserve">
+    <value>Ohne Cache scannen</value>
+  </data>
+  <data name="RefreshConfirmText" xml:space="preserve">
+    <value>Ohne NVD-API-Schlüssel erlaubt die NVD nur wenige Anfragen. Der Scan ohne Zwischenspeicher dauert deshalb {0} ({1} NVD-Anfragen, eher länger).
+
+Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantragen bei der NVD, eintragen unter Einstellungen &gt; API-Schlüssel.</value>
+  </data>
+  <data name="RefreshDurationSeconds" xml:space="preserve">
+    <value>etwa {0} Sekunden</value>
+  </data>
+  <data name="RefreshDurationMinutes" xml:space="preserve">
+    <value>etwa {0} Minuten</value>
+  </data>
+  <data name="RefreshConfirmStart" xml:space="preserve">
+    <value>Trotzdem scannen</value>
+  </data>
+  <data name="RefreshConfirmGetKey" xml:space="preserve">
+    <value>Schlüssel beantragen</value>
+  </data>
+  <data name="SettingsCacheTitle" xml:space="preserve">
+    <value>Zwischenspeicher für Online-Abfragen</value>
+  </data>
+  <data name="SettingsCacheText" xml:space="preserve">
+    <value>So lange werden Ergebnisse der Dienste wiederverwendet, danach wird neu gefragt (1–720 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter, sind aber in der Spalte „Geprüft“ als veraltet gekennzeichnet.</value>
+  </data>
+  <data name="SettingsCacheLatestVersion" xml:space="preserve">
+    <value>Neueste Version (Stunden)</value>
+  </data>
+  <data name="SettingsCacheNvd" xml:space="preserve">
+    <value>NVD (Stunden)</value>
+  </data>
+  <data name="SettingsCacheEpss" xml:space="preserve">
+    <value>EPSS (Stunden)</value>
+  </data>
+  <data name="SettingsCacheKev" xml:space="preserve">
+    <value>CISA KEV (Stunden)</value>
+  </data>
 </root>

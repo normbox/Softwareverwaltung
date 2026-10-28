@@ -40,10 +40,16 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <ui:Button Grid.Column="0" Content="{loc:Text ProgramsScan}" Appearance="Primary"
-                       Icon="{ui:SymbolIcon ArrowSync24}"
-                       Command="{Binding ScanCommand}"
-                       ToolTip="{loc:Text ProgramsScanTooltip}" />
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <ui:Button Content="{loc:Text ProgramsScan}" Appearance="Primary"
+                           Icon="{ui:SymbolIcon ArrowSync24}"
+                           Command="{Binding ScanCommand}"
+                           ToolTip="{loc:Text ProgramsScanTooltip}" />
+                <!-- Ohne Cache: ohne NVD-Schlüssel erst Rückfrage mit geschätzter Dauer -->
+                <ui:Button Margin="8,0,0,0" Content="{loc:Text ProgramsScanWithoutCache}"
+                           Command="{Binding ScanWithoutCacheCommand}"
+                           ToolTip="{loc:Text ProgramsScanWithoutCacheTooltip}" />
+            </StackPanel>
             <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="{loc:Text CommonCancel}"
                        Icon="{ui:SymbolIcon Dismiss24}"
                        Command="{Binding ScanCancelCommand}"
@@ -199,6 +205,25 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
+                    <!-- Geprüft: Alter der Online-Prüfung; veraltete Angaben (offline nur Zwischenspeicher) dezent kursiv -->
+                    <DataGridTemplateColumn Header="{loc:Text ColumnChecked}" SortMemberPath="CheckedAt" Width="110">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type models:SoftwareItem}">
+                                <TextBlock Text="{Binding CheckedText}" ToolTip="{Binding CheckedTooltip}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CheckStale}" Value="True">
+                                                    <Setter Property="FontStyle" Value="Italic" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="{loc:Text ColumnSource}" Binding="{Binding Sources}" Width="140" ElementStyle="{StaticResource TextCellWithTooltip}" />
                 </DataGrid.Columns>
 
@@ -218,8 +243,12 @@
                                            Command="{Binding DataContext.UpdateCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                            CommandParameter="{Binding}"
                                            Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}" />
-                                <ui:Button Content="{loc:Text ActionUninstall}" Icon="{ui:SymbolIcon Delete24}"
+                                <ui:Button Content="{loc:Text ActionUninstall}" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0"
                                            Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                           CommandParameter="{Binding}" />
+                                <ui:Button Content="{loc:Text DetailsRecheckWithoutCache}" Icon="{ui:SymbolIcon ArrowSync24}"
+                                           ToolTip="{loc:Text DetailsRecheckWithoutCacheTooltip}"
+                                           Command="{Binding DataContext.RecheckWithoutCacheCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                            CommandParameter="{Binding}" />
                             </StackPanel>
                             </DockPanel>

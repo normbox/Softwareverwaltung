@@ -8,6 +8,8 @@ function Test-SoftwareUpdate {
           2. GitHub   – Releases laut Katalog; nur wenn der Dienst GitHub aktiviert ist
           3. winget-Suche – für Programme ohne winget-ID; nur wenn WingetSearch aktiviert ist;
                         Ergebnis gilt als unbestätigt
+        CheckedAt nennt den ältesten benutzten Abruf (UTC), CheckStale, ob er älter als die eingestellte
+        Haltbarkeit ist (z. B. offline nur Zwischenspeicher). -Refresh fragt ohne Zwischenspeicher neu.
         Status ist UpToDate, Outdated oder Unknown. Bei Unknown nennt Reason den Grund
         (z. B. „Dienst GitHub nicht aktiviert“, „keine Versionsquelle bekannt“).
     .EXAMPLE
@@ -20,10 +22,14 @@ function Test-SoftwareUpdate {
     param(
         [Parameter(Mandatory, ValueFromPipeline)]
         [AllowEmptyCollection()]
-        [object[]] $InputObject
+        [object[]] $InputObject,
+
+        # Ohne Zwischenspeicher neu fragen (jede Antwort einmal je Lauf)
+        [switch] $Refresh
     )
 
     begin {
+        $ownsRefresh = $Refresh -and (Enter-CacheRefresh)
         $setting = Read-InventorySetting
         $catalog = Get-SoftwareCatalog
         $state = @{ GitHubBlocked = $false }
@@ -43,21 +49,30 @@ function Test-SoftwareUpdate {
                 { if ($match) { Get-GitHubLatestVersion -CatalogEntry $match.Entry -Setting $setting -State $state } }
                 { Get-WingetSearchLatestVersion -Record $record -Setting $setting }
             )
-            foreach ($provider in $providers) {
-                $candidate = & $provider
-                if (-not $candidate) { continue }
-                if ($candidate.LatestVersion) { $result = $candidate; break }
-                if ($candidate.Reason) { $reasons.Add($candidate.Reason) }
+            # Mitschrieb der benutzten Zwischenspeicher-Einträge für CheckedAt und den Index
+            $outerTrace = $script:CheckTrace
+            $script:CheckTrace = [System.Collections.Generic.List[object]]::new()
+            try {
+                foreach ($provider in $providers) {
+                    $candidate = & $provider
+                    if (-not $candidate) { continue }
+                    if ($candidate.LatestVersion) { $result = $candidate; break }
+                    if ($candidate.Reason) { $reasons.Add($candidate.Reason) }
+                }
+                $trace = @($script:CheckTrace)
             }
+            finally { $script:CheckTrace = $outerTrace }
 
-            New-UpdateStatus -Record $record -Result $result -Reasons $reasons -CatalogId $(if ($match) { $match.Entry.Id })
+            Save-CheckIndex -Record $record -Kind Update -Trace $trace
+            New-UpdateStatus -Record $record -Result $result -Reasons $reasons -CatalogId $(if ($match) { $match.Entry.Id }) -Trace $trace
         }
     }
     end { Write-CheckProgress -Id 3 -Activity ProgressCheckUpdates -Completed }
+    clean { Exit-CacheRefresh $ownsRefresh }
 }
 
 function New-UpdateStatus {
-    param($Record, $Result, [object[]] $Reasons, [string] $CatalogId)
+    param($Record, $Result, [object[]] $Reasons, [string] $CatalogId, [object[]] $Trace)
 
     $status = 'Unknown'
     $reason = $null
@@ -80,6 +95,8 @@ function New-UpdateStatus {
         }
     }
 
+    $summary = Get-CheckTraceSummary $Trace
+    $checkedAt = if ($status -eq 'Unknown') { $null } elseif ($summary.CheckedAt) { $summary.CheckedAt } elseif ($Result) { [datetime]::UtcNow }
     [pscustomobject] @{
         PSTypeName       = 'SoftwareInventory.UpdateStatus'
         Name             = $Record.Name
@@ -89,6 +106,9 @@ function New-UpdateStatus {
         Source           = if ($Result) { $Result.Source } else { $null }
         Confirmed        = if ($Result) { $Result.Confirmed } else { $false }
         Reason           = $reason
+        # Ältester benutzter Abruf; winget-Daten kommen frisch aus dem Scan. Ohne Ergebnis leer.
+        CheckedAt        = $checkedAt
+        CheckStale       = [bool] ($checkedAt -and $summary.Stale)
         CatalogId        = $CatalogId
         Record           = $Record
     }

@@ -4,6 +4,22 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Zwischenspeicher für Online-Abfragen
+
+#### Neu
+
+- **Haltbarkeit je Quelle einstellbar:** neue Einstellung `CacheHours` (neueste Version 6 h, NVD, EPSS und KEV je 24 h, erlaubt 1–720 h). In der App steht sie unter „Zwischenspeicher für Online-Abfragen“.
+- **Neu prüfen ohne Cache:** `-Refresh` für `Get-SecurityRating`, `Test-SoftwareUpdate` und `Get-SoftwareVulnerability`. Jede Antwort wird pro Lauf einmal frisch geholt, der KEV-Katalog also einmal.
+  - In der App gibt es dafür „Ohne Cache scannen“ und in den Details „Neu prüfen (ohne Cache)“.
+  - Ohne NVD-Schlüssel fragt die App vor dem Scan nach. Die Rückfrage nennt die geschätzte Dauer (`Get-RefreshEstimate`) und führt zum Beantragen eines Schlüssels. Mit Schlüssel startet der Scan ohne Rückfrage.
+- **Spalte „Geprüft“:** zeigt z. B. „vor 2 h“, das Ältere von Versions- und Sicherheitsprüfung. Der Tooltip nennt beide Zeitpunkte.
+- **Veraltete Daten:** Ist ein Dienst offline oder am Anfragelimit, gelten abgelaufene Einträge weiter (`CheckStale`). „Geprüft“ erscheint dann kursiv und abgeschwächt, mit Hinweis im Tooltip.
+- **Gezielt verwerfen:** Ein Index je Programm und Version merkt sich die benutzten Einträge. `Clear-CheckCache` verwirft sie, die App ruft das nach jeder Aktion vor dem Neuprüfen auf.
+
+#### Geändert
+
+- GitHub-Antworten werden standardmäßig 6 statt 12 Stunden zwischengespeichert, die winget-Suche 6 statt 24 Stunden.
+
 ### Detailansicht: Installationsordner
 
 #### Neu

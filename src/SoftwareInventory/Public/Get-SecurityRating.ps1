@@ -9,7 +9,9 @@ function Get-SecurityRating {
           Yellow – andere Lücken, „möglicherweise betroffen“ oder Update verfügbar
           Green  – Sicherheitsprüfung gelaufen, nichts gefunden
           Gray   – nicht auf Lücken geprüft (z. B. keine CPE, Dienst nicht aktiviert)
-        Reasons nennt immer die Gründe, bei Grau, warum nicht geprüft wurde.
+        Reasons nennt immer die Gründe, bei Grau, warum nicht geprüft wurde. CheckedAt ist der ältere
+        Prüfzeitpunkt von Version und Lücken (UTC), CheckStale zeigt an, dass Daten älter als die
+        eingestellte Haltbarkeit verwendet wurden. -Refresh prüft ohne Zwischenspeicher.
     .EXAMPLE
         Get-SoftwareInventory | Get-SecurityRating | Where-Object Rating -in 'Red', 'Yellow'
     .EXAMPLE
@@ -20,7 +22,10 @@ function Get-SecurityRating {
     param(
         [Parameter(Mandatory, ValueFromPipeline)]
         [AllowEmptyCollection()]
-        [object[]] $InputObject
+        [object[]] $InputObject,
+
+        # Ohne Zwischenspeicher neu prüfen (jede Antwort einmal je Lauf, der KEV-Katalog also einmal)
+        [switch] $Refresh
     )
 
     begin { $records = [System.Collections.Generic.List[object]]::new() }
@@ -28,8 +33,12 @@ function Get-SecurityRating {
     end {
         if (-not $records.Count) { return }
         # Ein Aufruf je Funktion mit der ganzen Liste: Ergebnisse kommen je Datensatz in derselben Reihenfolge.
-        $updates = @(Test-SoftwareUpdate -InputObject $records.ToArray())
-        $vulns = @(Get-SoftwareVulnerability -InputObject $records.ToArray())
+        $ownsRefresh = $Refresh -and (Enter-CacheRefresh)
+        try {
+            $updates = @(Test-SoftwareUpdate -InputObject $records.ToArray())
+            $vulns = @(Get-SoftwareVulnerability -InputObject $records.ToArray())
+        }
+        finally { Exit-CacheRefresh $ownsRefresh }
         if ($updates.Count -ne $records.Count -or $vulns.Count -ne $records.Count) {
             throw (Get-LocalizedString 'ErrorInternalResultCount' $records.Count, $updates.Count, $vulns.Count)
         }
@@ -50,6 +59,11 @@ function Get-SecurityRating {
                 Rating              = $r.Rating
                 Reasons             = $r.Reasons
                 LatestVersion       = $u.LatestVersion
+                # Geprüft: das Ältere von Versions- und Sicherheitsprüfung; veraltet, wenn eine davon es ist.
+                CheckedAt           = @((Get-RecordValue $u 'CheckedAt'), (Get-RecordValue $v 'CheckedAt')) | Where-Object { $_ } | Sort-Object | Select-Object -First 1
+                UpdateCheckedAt     = Get-RecordValue $u 'CheckedAt'
+                VulnerabilityCheckedAt = Get-RecordValue $v 'CheckedAt'
+                CheckStale          = [bool] ((Get-RecordValue $u 'CheckStale') -or (Get-RecordValue $v 'CheckStale'))
                 UpdateStatus        = $u
                 VulnerabilityStatus = $v
                 Record              = $records[$i]

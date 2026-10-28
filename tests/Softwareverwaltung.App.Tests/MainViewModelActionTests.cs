@@ -41,7 +41,8 @@ public sealed class MainViewModelActionTests
         await vm.UpdateCommand.ExecuteAsync(Tool);
 
         Assert.Equal("winget upgrade --id Contoso.Tool", Assert.Single(confirm.Shown).CommandLine);
-        Assert.Equal(["Plan:Update:Auto", "Execute:Update:Auto:winget upgrade --id Contoso.Tool", "Recheck"], actions.Calls);
+        // Nach der Aktion: erst die Online-Ergebnisse des Programms verwerfen, dann neu prüfen.
+        Assert.Equal(["Plan:Update:Auto", "Execute:Update:Auto:winget upgrade --id Contoso.Tool", "ClearCache", "Recheck"], actions.Calls);
         Assert.Equal("Erfolgreich", vm.LastOutcome!.ResultText);
         Assert.Same(updated, Assert.Single(vm.Items));
         Assert.False(vm.IsBusy);
@@ -179,6 +180,8 @@ public sealed class MainViewModelActionTests
         public bool Answer { get; set; } = true;
         public List<ActionOutcome> Shown { get; } = [];
 
+        public Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate) => Task.FromResult(true);
+
         public bool Confirm(ActionOutcome plan)
         {
             Shown.Add(plan);
@@ -209,11 +212,17 @@ public sealed class MainViewModelActionTests
             return Outcome;
         }
 
-        public async Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default)
+        public async Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default, bool refresh = false)
         {
             await Task.Yield();
-            Calls.Add("Recheck");
+            Calls.Add(refresh ? "Recheck:Refresh" : "Recheck");
             return Recheck;
+        }
+
+        public Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default)
+        {
+            Calls.Add("ClearCache");
+            return Task.CompletedTask;
         }
 
         public Task<IReadOnlyList<ActionHistoryEntry>> GetHistoryAsync(string name, CancellationToken cancellationToken = default) =>
@@ -229,8 +238,11 @@ public sealed class MainViewModelActionTests
 
         public Task<WingetStatus> GetWingetStatusAsync(CancellationToken cancellationToken = default) => Task.FromResult(Winget);
 
-        public Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
+        public Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool refresh = false) =>
             Task.FromResult(new ScanResult(Items, [], []));
+
+        public Task<RefreshEstimate?> GetRefreshEstimateAsync(IReadOnlyList<PSObject> sources, CancellationToken cancellationToken = default) =>
+            Task.FromResult<RefreshEstimate?>(null);
 
         public Task<InstallLocationInfo?> ResolveInstallLocationAsync(System.Management.Automation.PSObject source, CancellationToken cancellationToken = default) =>
             Task.FromResult<InstallLocationInfo?>(null);
