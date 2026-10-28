@@ -44,6 +44,53 @@ public sealed record SoftwareItem
     public string? InstallInfo { get; init; }
     /// <summary>Originalobjekt des Moduls, für spätere Aktionen (Update-Software, Uninstall-Software).</summary>
     public PSObject? Source { get; init; }
+    /// <summary>Ältere der beiden Online-Prüfungen (UTC); null, wenn nichts online geprüft wurde.</summary>
+    public DateTime? CheckedAt { get; init; }
+    public DateTime? UpdateCheckedAt { get; init; }
+    public DateTime? VulnerabilityCheckedAt { get; init; }
+    /// <summary>Daten älter als die eingestellte Haltbarkeit (z. B. offline nur Zwischenspeicher); dezent kennzeichnen.</summary>
+    public bool CheckStale { get; init; }
+
+    /// <summary>Spalte „Geprüft“, z. B. „vor 2 h“.</summary>
+    public string CheckedText => FormatAge(CheckedAt, DateTime.UtcNow);
+
+    /// <summary>Beide Zeitpunkte und, falls veraltet, der Hinweis darauf.</summary>
+    public string? CheckedTooltip
+    {
+        get
+        {
+            var lines = new List<string>();
+            if (UpdateCheckedAt is { } u)
+            {
+                lines.Add(AppText.Format("CheckedTooltipUpdate", u.ToLocalTime()));
+            }
+            if (VulnerabilityCheckedAt is { } v)
+            {
+                lines.Add(AppText.Format("CheckedTooltipVulnerabilities", v.ToLocalTime()));
+            }
+            if (CheckStale)
+            {
+                lines.Add(AppText.Get("CheckedTooltipStale"));
+            }
+            return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
+        }
+    }
+
+    public static string FormatAge(DateTime? at, DateTime now)
+    {
+        if (at is not { } time)
+        {
+            return "";
+        }
+        var age = now - time.ToUniversalTime();
+        return age.TotalMinutes switch
+        {
+            < 1 => AppText.Get("CheckedJustNow"),
+            < 60 => AppText.Format("CheckedMinutes", (int)age.TotalMinutes),
+            < 48 * 60 => AppText.Format("CheckedHours", (int)age.TotalHours),
+            _ => AppText.Format("CheckedDays", (int)age.TotalDays),
+        };
+    }
 
     public bool HasSecurityRisk => Rating == Rating.Red || VulnerabilityCount > 0;
 
@@ -96,8 +143,20 @@ public sealed record SoftwareItem
             InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
             InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,
+            CheckedAt = GetDate(rating, "CheckedAt"),
+            UpdateCheckedAt = GetDate(rating, "UpdateCheckedAt"),
+            VulnerabilityCheckedAt = GetDate(rating, "VulnerabilityCheckedAt"),
+            CheckStale = rating.Properties["CheckStale"]?.Value is true,
         };
     }
+
+    private static DateTime? GetDate(PSObject obj, string name) => obj.Properties[name]?.Value switch
+    {
+        PSObject { BaseObject: DateTime d } => d,
+        DateTime d => d,
+        DateTimeOffset o => o.UtcDateTime,
+        _ => null,
+    };
 
     private static string? InstallInfoText(PSObject record)
     {

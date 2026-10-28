@@ -14,7 +14,11 @@ public interface IInventoryService
 
     Task<WingetStatus> GetWingetStatusAsync(CancellationToken cancellationToken = default);
 
-    Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+    /// <param name="refresh">Ohne Zwischenspeicher neu prüfen (Get-SecurityRating -Refresh).</param>
+    Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool refresh = false);
+
+    /// <summary>Geschätzte Dauer eines Scans ohne Zwischenspeicher für diese Programme (Get-RefreshEstimate).</summary>
+    Task<RefreshEstimate?> GetRefreshEstimateAsync(IReadOnlyList<PSObject> sources, CancellationToken cancellationToken = default);
 
     /// <summary>Installationsordner eines Programms (Resolve-InstallLocation); null, wenn das Modul nichts liefert.</summary>
     Task<InstallLocationInfo?> ResolveInstallLocationAsync(PSObject source, CancellationToken cancellationToken = default);
@@ -44,13 +48,24 @@ public sealed class InventoryService(IPowerShellHost host) : IInventoryService
             Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null);
     }
 
-    public async Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default, bool refresh = false)
     {
         // Wie im Modul dokumentiert: installierte und (falls eingerichtet) portable Programme, dann Ampel mit den aktivierten Diensten.
         var command = new PSCommand().AddCommand("Invoke-InventoryScan").AddCommand("Get-SecurityRating");
+        if (refresh)
+        {
+            command.AddParameter("Refresh");
+        }
         var result = await host.InvokeAsync(command, progress, cancellationToken).ConfigureAwait(false);
         var items = result.Output.Select(SoftwareItem.FromRating).ToList();
         return new ScanResult(items, result.Warnings.Distinct().ToList(), result.Errors);
+    }
+
+    public async Task<RefreshEstimate?> GetRefreshEstimateAsync(IReadOnlyList<PSObject> sources, CancellationToken cancellationToken = default)
+    {
+        var command = new PSCommand().AddCommand("Get-RefreshEstimate").AddParameter("InputObject", sources.ToArray());
+        var result = await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return result.Output.FirstOrDefault() is { } estimate ? RefreshEstimate.FromPs(estimate) : null;
     }
 
     public async Task<InstallLocationInfo?> ResolveInstallLocationAsync(PSObject source, CancellationToken cancellationToken = default)

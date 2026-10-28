@@ -319,6 +319,31 @@
                                     AutomationProperties.Name="{loc:Text SettingsLogsMaxSizeName}" />
                     </StackPanel>
                 </StackPanel>
+
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsCacheTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsCacheText}" />
+                <WrapPanel>
+                    <StackPanel Margin="0,0,24,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCacheLatestVersion}" />
+                        <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding CacheHoursLatestVersion, UpdateSourceTrigger=PropertyChanged}"
+                                    AutomationProperties.Name="{loc:Text SettingsCacheLatestVersion}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,24,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCacheNvd}" />
+                        <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding CacheHoursNvd, UpdateSourceTrigger=PropertyChanged}"
+                                    AutomationProperties.Name="{loc:Text SettingsCacheNvd}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,24,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCacheEpss}" />
+                        <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding CacheHoursEpss, UpdateSourceTrigger=PropertyChanged}"
+                                    AutomationProperties.Name="{loc:Text SettingsCacheEpss}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,24,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCacheKev}" />
+                        <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding CacheHoursKev, UpdateSourceTrigger=PropertyChanged}"
+                                    AutomationProperties.Name="{loc:Text SettingsCacheKev}" />
+                    </StackPanel>
+                </WrapPanel>
             </StackPanel>
         </ScrollViewer>
 

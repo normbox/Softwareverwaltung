@@ -200,6 +200,19 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int _logMaxSizeMB = 100;
 
+    // Haltbarkeit des Zwischenspeichers in Stunden (1–720, geprüft im Modul)
+    [ObservableProperty]
+    private int _cacheHoursLatestVersion = 6;
+
+    [ObservableProperty]
+    private int _cacheHoursNvd = 24;
+
+    [ObservableProperty]
+    private int _cacheHoursEpss = 24;
+
+    [ObservableProperty]
+    private int _cacheHoursKev = 24;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DiscardCommand))]
     private bool _isDirty;
@@ -292,6 +305,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnFileSearchEnabledChanged(bool value) => UpdateDirty();
     partial void OnLogRetentionDaysChanged(int value) => UpdateDirty();
     partial void OnLogMaxSizeMBChanged(int value) => UpdateDirty();
+    partial void OnCacheHoursLatestVersionChanged(int value) => UpdateDirty();
+    partial void OnCacheHoursNvdChanged(int value) => UpdateDirty();
+    partial void OnCacheHoursEpssChanged(int value) => UpdateDirty();
+    partial void OnCacheHoursKevChanged(int value) => UpdateDirty();
 
     /// <summary>Lädt Einstellungen, Laufwerke und Schlüsselstatus. Das Modul muss geladen sein.</summary>
     public async Task LoadAsync()
@@ -342,6 +359,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         FileSearch = FileSearchEnabled,
         LogRetentionDays = LogRetentionDays,
         LogMaxSizeMB = LogMaxSizeMB,
+        CacheHoursLatestVersion = CacheHoursLatestVersion,
+        CacheHoursNvd = CacheHoursNvd,
+        CacheHoursEpss = CacheHoursEpss,
+        CacheHoursKev = CacheHoursKev,
     };
 
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -591,6 +612,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             FileSearchEnabled = settings.FileSearch;
             LogRetentionDays = settings.LogRetentionDays;
             LogMaxSizeMB = settings.LogMaxSizeMB;
+            CacheHoursLatestVersion = settings.CacheHoursLatestVersion;
+            CacheHoursNvd = settings.CacheHoursNvd;
+            CacheHoursEpss = settings.CacheHoursEpss;
+            CacheHoursKev = settings.CacheHoursKev;
         }
         finally
         {
@@ -690,7 +715,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.TraceSearch == b.TraceSearch
         && a.FileSearch == b.FileSearch
         && a.LogRetentionDays == b.LogRetentionDays
-        && a.LogMaxSizeMB == b.LogMaxSizeMB;
+        && a.LogMaxSizeMB == b.LogMaxSizeMB
+        && a.CacheHoursLatestVersion == b.CacheHoursLatestVersion
+        && a.CacheHoursNvd == b.CacheHoursNvd
+        && a.CacheHoursEpss == b.CacheHoursEpss
+        && a.CacheHoursKev == b.CacheHoursKev;
 
     private static List<string> Lines(string text) =>
         text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();

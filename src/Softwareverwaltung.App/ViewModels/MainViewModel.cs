@@ -18,6 +18,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly TimeProvider _time;
     // Installationsordner je Programm, für die Sitzung gemerkt (ermittelt erst beim Aufklappen).
     private readonly Dictionary<string, InstallLocationInfo> _locations = [];
+    private bool _refreshNextScan;
     private bool _initialized;
     private bool _ready;
     private Notice? _wingetNotice;
@@ -42,7 +43,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Notice> Notices { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(ScanWithoutCacheCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand))]
     private bool _isBusy;
 
     /// <summary>Angeklicktes Programm; seine früheren Aktionen stehen in <see cref="History"/>.</summary>
@@ -144,19 +145,52 @@ public sealed partial class MainViewModel : ObservableObject
         _ready = true;
         IsBusy = false;
         ScanCommand.NotifyCanExecuteChanged();
+        ScanWithoutCacheCommand.NotifyCanExecuteChanged();
         return true;
+    }
+
+    /// <summary>
+    /// Scan ohne Zwischenspeicher. Ohne NVD-Schlüssel (laut Modul) erst nachfragen, mit geschätzter Dauer;
+    /// mit Schlüssel ohne Rückfrage. Abbrechen geht wie beim normalen Scan.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanScan))]
+    private async Task ScanWithoutCacheAsync()
+    {
+        var sources = Items.Select(i => i.Source).OfType<System.Management.Automation.PSObject>().ToList();
+        if (_confirmation is not null && sources.Count > 0)
+        {
+            RefreshEstimate? estimate = null;
+            try
+            {
+                estimate = await _inventory.GetRefreshEstimateAsync(sources);
+            }
+            catch (Exception)
+            {
+                // Ohne Schätzung lieber nachfragen als still lange laufen.
+                estimate = new RefreshEstimate(0, 0, NeedsConfirmation: true);
+            }
+            if (estimate is { NeedsConfirmation: true } && !await _confirmation.ConfirmRefreshAsync(estimate))
+            {
+                StatusText = AppText.Get("StatusRefreshNotStarted");
+                return;
+            }
+        }
+        _refreshNextScan = true;
+        await ScanCommand.ExecuteAsync(null);
     }
 
     [RelayCommand(CanExecute = nameof(CanScan), IncludeCancelCommand = true)]
     private async Task ScanAsync(CancellationToken cancellationToken)
     {
+        var refresh = _refreshNextScan;
+        _refreshNextScan = false;
         IsBusy = true;
         StatusText = AppText.Get("ScanRunning");
         ClearScanNotices();
         var progress = new Progress<string>(message => StatusText = message);
         try
         {
-            var result = await _inventory.ScanAsync(progress, cancellationToken);
+            var result = await _inventory.ScanAsync(progress, cancellationToken, refresh);
             Items.Clear();
             foreach (var item in result.Items)
             {
@@ -190,6 +224,24 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     private bool CanScan() => !IsBusy && _ready;
+
+    /// <summary>Details: dieses Programm ohne Zwischenspeicher neu prüfen (auch den KEV-Katalog).</summary>
+    [RelayCommand(CanExecute = nameof(CanRunAction))]
+    private async Task RecheckWithoutCacheAsync(SoftwareItem? item)
+    {
+        IsBusy = true;
+        StatusText = AppText.Get("StatusRechecking");
+        try
+        {
+            await RecheckAsync(item!, refresh: true);
+            StatusText = AppText.Get("StatusRecheckDone");
+        }
+        finally
+        {
+            IsBusy = false;
+            RefreshView();
+        }
+    }
 
     private bool CanRunAction(SoftwareItem? item) => !IsBusy && _ready && ActionsAvailable && item?.Source is not null;
 
@@ -315,6 +367,15 @@ public sealed partial class MainViewModel : ObservableObject
                 }
                 return;
             }
+            // Online-Ergebnisse dieses Programms verwerfen, dann neu prüfen.
+            try
+            {
+                await _actions.ClearCheckCacheAsync(item!.Source!);
+            }
+            catch (Exception)
+            {
+                // Verwerfen ist eine Zusatzhilfe; schlägt es fehl, prüft die nächste Abfrage nach Haltbarkeit.
+            }
             ShowOutcome(outcome, await RecheckAsync(item!));
         }
         catch (Exception ex)
@@ -340,14 +401,14 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>Liest nur dieses Programm neu ein: Zeile ersetzen oder entfernen, wenn es weg ist.</summary>
-    private async Task<SoftwareItem?> RecheckAsync(SoftwareItem item)
+    private async Task<SoftwareItem?> RecheckAsync(SoftwareItem item, bool refresh = false)
     {
         var statusBefore = StatusText;
         StatusText += " " + AppText.Get("StatusRechecking");
         SoftwareItem? updated;
         try
         {
-            updated = await _actions!.RecheckAsync(item.Source!);
+            updated = await _actions!.RecheckAsync(item.Source!, refresh: refresh);
         }
         catch (Exception ex)
         {

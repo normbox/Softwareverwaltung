@@ -28,6 +28,11 @@ public sealed record AppSettings
     public bool FileSearch { get; init; }
     public int LogRetentionDays { get; init; } = 30;
     public int LogMaxSizeMB { get; init; } = 100;
+    /// <summary>Haltbarkeit des Zwischenspeichers in Stunden (CacheHours), 1–720; geprüft im Modul.</summary>
+    public int CacheHoursLatestVersion { get; init; } = 6;
+    public int CacheHoursNvd { get; init; } = 24;
+    public int CacheHoursEpss { get; init; } = 24;
+    public int CacheHoursKev { get; init; } = 24;
 
     public static AppSettings FromPs(PSObject obj)
     {
@@ -45,6 +50,7 @@ public sealed record AppSettings
         var fileScan = obj.Properties["FileScan"]?.Value as PSObject;
         var maintenance = obj.Properties["Maintenance"]?.Value as PSObject;
         var portable = obj.Properties["PortableSearch"]?.Value as PSObject;
+        var cache = obj.Properties["CacheHours"]?.Value as PSObject;
         return new AppSettings
         {
             Usage = obj.Properties["Usage"]?.Value?.ToString(),
@@ -61,6 +67,10 @@ public sealed record AppSettings
             FileSearch = portable?.Properties["FileSearch"]?.Value is true,
             LogRetentionDays = Convert.ToInt32(maintenance?.Properties["LogRetentionDays"]?.Value ?? 30),
             LogMaxSizeMB = Convert.ToInt32(maintenance?.Properties["LogMaxSizeMB"]?.Value ?? 100),
+            CacheHoursLatestVersion = Convert.ToInt32(cache?.Properties["LatestVersion"]?.Value ?? 6),
+            CacheHoursNvd = Convert.ToInt32(cache?.Properties["NVD"]?.Value ?? 24),
+            CacheHoursEpss = Convert.ToInt32(cache?.Properties["EPSS"]?.Value ?? 24),
+            CacheHoursKev = Convert.ToInt32(cache?.Properties["KEV"]?.Value ?? 24),
         };
     }
 
