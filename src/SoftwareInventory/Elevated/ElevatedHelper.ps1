@@ -234,9 +234,79 @@ function Send-HelperResult {
     }
 }
 
+function Write-HelperLine {
+    # Eine Zeile JSON an das Modul (Stapelbetrieb).
+    param($Writer, $Result)
+    $Writer.WriteLine((ConvertTo-Json -InputObject ([pscustomobject] $Result) -Depth 4 -Compress))
+}
+
+function Invoke-ElevatedHelperBatch {
+    <#
+    .SYNOPSIS
+        Stapelbetrieb: mehrere Programme nacheinander mit einer einzigen UAC-Abfrage.
+    .DESCRIPTION
+        Verbindet sich sofort mit der Pipe des Moduls und meldet zuerst den Wiederherstellungspunkt.
+        Vor jedem Schritt wartet der Helfer auf eine Zeile vom Modul: „next“ führt den nächsten Schritt
+        aus, alles andere beendet den Stapel (Abbrechen; „Anhalten“ heißt, das Modul antwortet später).
+        Nach jedem Schritt meldet er dessen Ergebnis als eigene Zeile. Jeder Schritt durchläuft dieselbe
+        Pfadprüfung wie ein Einzelaufruf.
+    #>
+    param($Plan)
+    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', $Plan.PipeName, [System.IO.Pipes.PipeDirection]::InOut)
+    $pipe.Connect(30000)
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $writer = New-Object System.IO.StreamWriter($pipe, $utf8)
+    $writer.AutoFlush = $true
+    $reader = New-Object System.IO.StreamReader($pipe, $utf8)
+    try {
+        $start = New-HelperResult $Plan
+        $start.Kind = 'Start'
+        try {
+            if ($Plan.RestorePoint) {
+                $rp = Invoke-RestorePoint -Description $Plan.RestorePointDescription -Type ([uint32] $Plan.RestorePointType)
+                $start.RestorePoint = $rp.Status
+                $start.RestorePointCode = $rp.Code
+                $start.RestorePointArgs = @($rp.Args)
+            }
+        }
+        catch { $start.ErrorCode = 'HelperException'; $start.ErrorArgs = @($_.Exception.Message) }
+        Write-HelperLine $writer $start
+
+        $index = 0
+        foreach ($step in @($Plan.Steps)) {
+            if ($reader.ReadLine() -ne 'next') { break }
+            $result = New-HelperResult $Plan
+            $result.Kind = 'Step'
+            $result.Index = $index
+            # Eigene Nonce je Schritt nur für den Namen des MSI-Logs
+            $stepPlan = [pscustomobject] @{
+                FilePath = $step.FilePath; Arguments = $step.Arguments; MsiLog = [bool] $step.MsiLog
+                TimeoutSeconds = $step.TimeoutSeconds; Nonce = ('{0}-{1}' -f $Plan.Nonce, $index)
+            }
+            try {
+                $problem = Test-HelperFilePath $step.FilePath -Elevated $true
+                if ($problem) { $result.ErrorCode = $problem.Code; $result.ErrorArgs = @($problem.Args) }
+                else { Invoke-HelperProcess -Plan $stepPlan -Result $result }
+            }
+            catch { $result.ErrorCode = 'HelperException'; $result.ErrorArgs = @($_.Exception.Message) }
+            Write-HelperLine $writer $result
+            $index++
+        }
+        Write-HelperLine $writer @{ Kind = 'End'; Nonce = $Plan.Nonce }
+        $pipe.WaitForPipeDrain()
+    }
+    finally {
+        $pipe.Dispose()
+    }
+}
+
 function Invoke-ElevatedHelperMain {
     param([string] $PlanBase64)
     $plan = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($PlanBase64)) | ConvertFrom-Json
+    if ($plan.PSObject.Properties['Steps'] -and $plan.Steps) {
+        Invoke-ElevatedHelperBatch -Plan $plan
+        return
+    }
     $result = New-HelperResult $plan
     try {
         if ($plan.RestorePoint) {

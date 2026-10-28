@@ -207,3 +207,49 @@ Describe 'Start-ElevatedHelper' {
         }
     }
 }
+
+Describe 'Start-ElevatedHelperBatch' {
+    It 'führt mehrere Schritte in einem Helfer aus und meldet jeden Schritt sofort' {
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+            $where = Join-Path $S 'where.exe'
+            $seen = [System.Collections.Generic.List[object]]::new()
+            $steps = @(
+                @{ FilePath = $where; Arguments = 'cmd.exe'; MsiLog = $false; TimeoutSeconds = 60 }
+                @{ FilePath = $where; Arguments = '/q gibt-es-nicht-123.exe'; MsiLog = $false; TimeoutSeconds = 60 }
+            )
+            $batch = Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $true } -AfterStep { param($i, $run) $seen.Add(@{ Index = $i; ExitCode = $run.ExitCode; Output = $run.Output; PowerShell = $run.PowerShellVersion }) }
+            @{ Batch = $batch; Seen = @($seen) }
+        }
+        $r.Batch.Status | Should -Be 'Completed'
+        $r.Batch.Done | Should -Be 2
+        $r.Seen.Index | Should -Be @(0, 1)
+        $r.Seen[0].ExitCode | Should -Be 0
+        $r.Seen[0].Output | Should -Match 'cmd\.exe'
+        $r.Seen[1].ExitCode | Should -Not -Be 0
+        $r.Seen[0].PowerShell | Should -BeLike '5.1*'
+    }
+
+    It 'beendet den Stapel, wenn vor einem Schritt abgebrochen wird' {
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+            $where = Join-Path $S 'where.exe'
+            $seen = [System.Collections.Generic.List[int]]::new()
+            $steps = @(1..3 | ForEach-Object { @{ FilePath = $where; Arguments = 'cmd.exe'; MsiLog = $false; TimeoutSeconds = 60 } })
+            $batch = Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $i -lt 1 } -AfterStep { param($i, $run) $seen.Add($i) }
+            @{ Batch = $batch; Seen = @($seen) }
+        }
+        $r.Batch.Status | Should -Be 'Completed'
+        $r.Batch.Done | Should -Be 1
+        $r.Seen | Should -Be @(0)
+    }
+
+    It 'prüft jeden Schritt wie einen Einzelaufruf' {
+        $r = InModuleScope SoftwareInventory {
+            $runs = [System.Collections.Generic.List[object]]::new()
+            $steps = @(@{ FilePath = 'relativ.exe'; Arguments = ''; MsiLog = $false; TimeoutSeconds = 60 })
+            $null = Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $true } -AfterStep { param($i, $run) $runs.Add($run) }
+            $runs[0]
+        }
+        $r.Error.Code | Should -Be 'HelperPathNotAbsolute'
+        $r.Started | Should -BeFalse
+    }
+}
