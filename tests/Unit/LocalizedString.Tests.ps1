@@ -62,6 +62,15 @@ Describe 'Texte des Moduls' {
         $missing | Should -BeNullOrEmpty
     }
 
+    It 'enthält alle Texte des HTML-Berichts' {
+        $used = Select-String -Path (Join-Path $ModuleRoot 'Private\ReportHtml.ps1') -Pattern '& \$t (?<key>\w+)' -AllMatches |
+            ForEach-Object { $_.Matches } | ForEach-Object { "Report$($_.Groups['key'].Value)" }
+        $used += 'Red', 'Yellow', 'Green', 'Gray' | ForEach-Object { "ReportRating$_" }
+        $used += 'Affected', 'PossiblyAffected', 'Informational' | ForEach-Object { "ReportAssessment$_" }
+        $strings = InModuleScope SoftwareInventory { $script:Strings }
+        foreach ($key in $used | Sort-Object -Unique) { $strings.ContainsKey($key) | Should -BeTrue -Because "Bericht nutzt '$key'" }
+    }
+
     It 'enthält die Fortschrittstexte mit und ohne Zähler' {
         $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern 'Write-CheckProgress\b.*?-Activity\s+(?<key>\w+)' -AllMatches |
             ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique

@@ -1,7 +1,5 @@
 # HTML-Bericht: eine eigenständige Datei ohne externe Ressourcen (offline lesbar, weitergebbar).
-
-$script:RatingLabel = @{ Red = 'Rot'; Yellow = 'Gelb'; Green = 'Grün'; Gray = 'Grau' }
-$script:AssessmentLabel = @{ Affected = 'betroffen'; PossiblyAffected = 'möglicherweise betroffen'; Informational = 'Hinweis' }
+# Texte aus SoftwareInventory.Strings.psd1 (Report…), Datum und Zahlen in der Sprache der Oberfläche.
 
 function Protect-ReportText {
     # Persönliche Angaben und Schlüssel ersetzen (gemeinsame Regel, siehe PrivateData.ps1).
@@ -18,10 +16,12 @@ function ConvertTo-SecurityReportHtml {
     param([object[]] $Rating, $Setting, [datetime] $GeneratedAt = (Get-Date))
 
     $e = { param($v) ConvertTo-HtmlText $v }
+    # Feste Texte des Berichts, maskiert (& < > " ') – auch spätere Übersetzungen enthalten so kein HTML.
+    $t = { param([string] $Key, [object[]] $Arguments = @()) [System.Security.SecurityElement]::Escape((Get-LocalizedString "Report$Key" $Arguments)) }
     $count = @{}
     foreach ($key in 'Red', 'Yellow', 'Green', 'Gray') { $count[$key] = @($Rating | Where-Object Rating -eq $key).Count }
     $services = @(Get-EnabledName $Setting.Services)
-    $servicesText = if ($services) { $services -join ', ' } else { 'keine' }
+    $servicesText = if ($services) { $services -join ', ' } else { Get-LocalizedString 'ReportNoServices' }
 
     $rows = foreach ($r in $Rating) {
         $u = $r.UpdateStatus
@@ -33,7 +33,7 @@ function ConvertTo-SecurityReportHtml {
 
         $latest = if ($u -and $u.LatestVersion) {
             (& $e $u.LatestVersion) + " <span class='muted'>(" + (& $e $u.Source) + ')</span>' +
-            $(if (-not $u.Confirmed) { " <span class='tag'>unbestätigt</span>" })
+            $(if (-not $u.Confirmed) { " <span class='tag'>$(& $t Unconfirmed)</span>" })
         } else { "<span class='muted'>–</span>" }
         $reasons = ($r.Reasons | ForEach-Object { '<li>' + (& $e (ConvertTo-MessageText $_)) + '</li>' }) -join ''
 
@@ -43,34 +43,35 @@ function ConvertTo-SecurityReportHtml {
             $kev = if ($x.Kev) { "<span class='tag kev'>KEV</span>" } else { '' }
             $published = if ($x.Published) { ([string] $x.Published).Substring(0, [Math]::Min(10, ([string] $x.Published).Length)) } else { '–' }
             "<tr class='$(if ($x.Assessment -eq 'Informational') { 'info' })'><td><a href='$(& $e $x.Url)'>$(& $e $x.CveId)</a> $kev</td>" +
-            "<td>$(& $e $script:AssessmentLabel[$x.Assessment])</td><td>$score</td><td>$epss</td><td>$published</td>" +
+            "<td>$(& $t "Assessment$($x.Assessment)")</td><td>$score</td><td>$epss</td><td>$published</td>" +
             "<td>$(& $e (ConvertTo-MessageText $x.Note)) <span class='muted'>$(& $e $x.Description)</span></td></tr>"
         }
         $location = $r.Record.FilePath
         if (-not $location) { $location = $r.Record.InstallLocation }
         $details = @(
-            "<p><b>Quelle:</b> $(& $e ($r.Record.Sources -join ', '))" + $(if ($location) { " · <b>Ort:</b> $(& $e $location)" }) + '</p>'
-            if ($v -and $v.Cpe) { "<p><b>CPE:</b> $(& $e ($v.Cpe -join ', '))" + $(if ($v.CpeSource -eq 'User') { ' (vom Benutzer bestätigt)' }) + '</p>' }
+            "<p><b>$(& $t SourceLabel)</b> $(& $e ($r.Record.Sources -join ', '))" + $(if ($location) { " · <b>$(& $t LocationLabel)</b> $(& $e $location)" }) + '</p>'
+            if ($v -and $v.Cpe) { "<p><b>CPE:</b> $(& $e ($v.Cpe -join ', '))" + $(if ($v.CpeSource -eq 'User') { " $(& $t CpeUserConfirmed)" }) + '</p>' }
             if ($v -and $v.Notes) { "<p class='muted'>$(& $e (ConvertTo-MessageText @($v.Notes)))</p>" }
             if ($vulnRows) {
-                "<table class='cves'><thead><tr><th>CVE</th><th>Bewertung</th><th>CVSS</th><th>EPSS</th><th>Veröffentlicht</th><th>Hinweis</th></tr></thead><tbody>$($vulnRows -join '')</tbody></table>"
+                "<table class='cves'><thead><tr><th>CVE</th><th>$(& $t ColumnAssessment)</th><th>CVSS</th><th>EPSS</th><th>$(& $t ColumnPublished)</th><th>$(& $t ColumnNote)</th></tr></thead><tbody>$($vulnRows -join '')</tbody></table>"
             }
         ) -join ''
 
         "<tr class='row' data-rating='$($r.Rating)' data-update='$($hasUpdate.ToString().ToLower())' data-risk='$(([bool] $relevant).ToString().ToLower())'>" +
-        "<td><span class='badge $($r.Rating.ToLower())'>$($script:RatingLabel[$r.Rating])</span></td>" +
+        "<td><span class='badge $($r.Rating.ToLower())'>$(& $t "Rating$($r.Rating)")</span></td>" +
         "<td><details><summary>$(& $e $r.Name)</summary>$details</details></td>" +
         "<td>$(& $e $r.Version)</td><td>$latest</td><td><ul>$reasons</ul></td></tr>"
     }
 
-    $generated = $GeneratedAt.ToString('dd.MM.yyyy HH:mm', [cultureinfo]::GetCultureInfo('de-DE'))
+    $generated = $GeneratedAt.ToString('g', [cultureinfo]::CurrentCulture)
+    $language = [cultureinfo]::CurrentUICulture.TwoLetterISOLanguageName
     @"
 <!DOCTYPE html>
-<html lang="de">
+<html lang="$language">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Softwareverwaltung – Sicherheitsbericht</title>
+<title>$(& $t Title)</title>
 <style>
 :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#ddd; --head:#f4f4f4; --red:#c62828; --yellow:#b58100; --green:#2e7d32; --gray:#757575; --link:#0b57d0; }
 @media (prefers-color-scheme: dark) { :root { --bg:#141414; --fg:#e8e8e8; --muted:#9a9a9a; --line:#333; --head:#1f1f1f; --red:#ef5350; --yellow:#fbc02d; --green:#66bb6a; --gray:#9e9e9e; --link:#8ab4f8; } }
@@ -89,23 +90,23 @@ table.cves { margin-top:6px; font-size:13px; } tr.info { opacity:.7; }
 </style>
 </head>
 <body>
-<h1>Sicherheitsbericht</h1>
-<div class="muted">Erstellt am $generated · $($Rating.Count) Programme · Aktivierte Dienste: $(& $e $servicesText)</div>
+<h1>$(& $t Heading)</h1>
+<div class="muted">$(& $t Meta $generated, $Rating.Count, (Protect-ReportText $servicesText))</div>
 <div class="summary">
-<span><span class="badge red">Rot</span> $($count.Red)</span><span><span class="badge yellow">Gelb</span> $($count.Yellow)</span>
-<span><span class="badge gray">Grau</span> $($count.Gray)</span><span><span class="badge green">Grün</span> $($count.Green)</span>
+<span><span class="badge red">$(& $t RatingRed)</span> $($count.Red)</span><span><span class="badge yellow">$(& $t RatingYellow)</span> $($count.Yellow)</span>
+<span><span class="badge gray">$(& $t RatingGray)</span> $($count.Gray)</span><span><span class="badge green">$(& $t RatingGreen)</span> $($count.Green)</span>
 </div>
 <div class="summary" id="filters">
-<button data-filter="all" class="active">Alle</button><button data-filter="update">Updates verfügbar</button><button data-filter="risk">Sicherheitsrisiko</button>
-<button data-filter="Red">Rot</button><button data-filter="Yellow">Gelb</button><button data-filter="Gray">Grau</button><button data-filter="Green">Grün</button>
+<button data-filter="all" class="active">$(& $t FilterAll)</button><button data-filter="update">$(& $t FilterUpdates)</button><button data-filter="risk">$(& $t FilterRisk)</button>
+<button data-filter="Red">$(& $t RatingRed)</button><button data-filter="Yellow">$(& $t RatingYellow)</button><button data-filter="Gray">$(& $t RatingGray)</button><button data-filter="Green">$(& $t RatingGreen)</button>
 </div>
 <div class="wrap"><table>
-<thead><tr><th>Ampel</th><th>Programm</th><th>Installiert</th><th>Neueste</th><th>Gründe</th></tr></thead>
+<thead><tr><th>$(& $t ColumnRating)</th><th>$(& $t ColumnProgram)</th><th>$(& $t ColumnInstalled)</th><th>$(& $t ColumnLatest)</th><th>$(& $t ColumnReasons)</th></tr></thead>
 <tbody>
 $($rows -join "`n")
 </tbody></table></div>
-<p class="muted">Rot: aktiv ausgenutzte (CISA KEV) oder kritische Lücke (CVSS ab 9). Gelb: andere Lücken, „möglicherweise betroffen“ oder Update verfügbar. Grün: geprüft ohne Befund. Grau: nicht auf Lücken geprüft (Grund in der Zeile).
-Quellen: NVD, CISA KEV, FIRST EPSS, winget, GitHub. Unbestätigte Angaben sind gekennzeichnet. Angaben ohne Gewähr.</p>
+<p class="muted">$(& $t Legend)
+$(& $t Sources)</p>
 <script>
 document.getElementById('filters').addEventListener('click', function (ev) {
   var f = ev.target.getAttribute('data-filter'); if (!f) return;
