@@ -4,11 +4,12 @@
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:loc="clr-namespace:Softwareverwaltung.App.Localization"
                  xmlns:vm="clr-namespace:Softwareverwaltung.App.ViewModels"
                  xmlns:views="clr-namespace:Softwareverwaltung.App.Views"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
-                 Title="Softwareverwaltung"
+                 Title="{loc:Text AppTitle}"
                  Width="1200" Height="760" MinWidth="760" MinHeight="480"
                  WindowStartupLocation="CenterScreen"
                  ExtendsContentIntoTitleBar="True"
@@ -21,7 +22,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="Softwareverwaltung" />
+        <ui:TitleBar Grid.Row="0" Title="{loc:Text AppTitle}" />
 
         <!--
             Erster Start: Privat oder Firma, danach die passenden Hinweise zu den Nutzungsbedingungen.
@@ -39,22 +40,22 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="Wie nutzen Sie diesen PC?" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:Text UsageQuestion}" FontWeight="SemiBold" />
                         <TextBlock TextWrapping="Wrap" Margin="0,2,0,0"
-                                   Text="Danach sehen Sie die passenden Hinweise zu den Nutzungsbedingungen der externen Dienste. Die Angabe schaltet nichts ein: Alles bleibt aus und wird von Ihnen unter „Einstellungen“ eingestellt." />
+                                   Text="{loc:Text UsageQuestionText}" />
                     </StackPanel>
-                    <ui:Button Grid.Column="1" Margin="12,0,0,0" Content="Privat"
+                    <ui:Button Grid.Column="1" Margin="12,0,0,0" Content="{loc:Text UsagePrivate}"
                                Command="{Binding Settings.ChooseUsageCommand}" CommandParameter="Private" />
-                    <ui:Button Grid.Column="2" Margin="8,0,0,0" Content="Firma"
+                    <ui:Button Grid.Column="2" Margin="8,0,0,0" Content="{loc:Text UsageCompany}"
                                Command="{Binding Settings.ChooseUsageCommand}" CommandParameter="Company" />
                 </Grid>
                 <StackPanel Visibility="{Binding Settings.ShowTermsNotice, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="Hinweise zu den Nutzungsbedingungen" FontWeight="SemiBold" />
+                    <TextBlock Text="{loc:Text UsageTermsTitle}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding Settings.TermsGeneral}" TextWrapping="Wrap" Margin="0,2,0,0" />
                     <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding Settings.ServiceTerms}" ItemTemplate="{StaticResource ServiceTermsTemplate}" />
                     </ScrollViewer>
-                    <ui:Button Margin="0,10,0,0" Content="Verstanden" Appearance="Primary"
+                    <ui:Button Margin="0,10,0,0" Content="{loc:Text UsageTermsConfirm}" Appearance="Primary"
                                Command="{Binding Settings.AcknowledgeTermsCommand}" />
                 </StackPanel>
             </StackPanel>
@@ -65,7 +66,7 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Apps24" Margin="0,0,6,0" />
-                        <TextBlock Text="Programme" />
+                        <TextBlock Text="{loc:Text NavPrograms}" />
                     </StackPanel>
                 </TabItem.Header>
                 <views:ProgramsView DataContext="{Binding Programs}" />
@@ -74,7 +75,7 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Symbol="Settings24" Margin="0,0,6,0" />
-                        <TextBlock Text="Einstellungen" />
+                        <TextBlock Text="{loc:Text NavSettings}" />
                     </StackPanel>
                 </TabItem.Header>
                 <views:SettingsView DataContext="{Binding Settings}" />

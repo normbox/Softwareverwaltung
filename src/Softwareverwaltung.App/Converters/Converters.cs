@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Models;
 
 namespace Softwareverwaltung.App.Converters;
@@ -35,10 +36,10 @@ public sealed class RatingToTextConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value switch
     {
-        Rating.Red => "Rot",
-        Rating.Yellow => "Gelb",
-        Rating.Green => "Grün",
-        _ => "Grau",
+        Rating.Red => AppText.Get("RatingRed"),
+        Rating.Yellow => AppText.Get("RatingYellow"),
+        Rating.Green => AppText.Get("RatingGreen"),
+        _ => AppText.Get("RatingGray"),
     };
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotSupportedException();

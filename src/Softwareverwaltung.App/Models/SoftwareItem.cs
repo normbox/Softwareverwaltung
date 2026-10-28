@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Management.Automation;
+using Softwareverwaltung.App.Localization;
 
 namespace Softwareverwaltung.App.Models;
 
@@ -61,8 +62,8 @@ public sealed record SoftwareItem
     {
         null => "",
         int total when PossibleCount == 0 => total.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        int total when total == PossibleCount => $"{PossibleCount} möglich",
-        int total => $"{total - PossibleCount} + {PossibleCount} möglich",
+        int total when total == PossibleCount => AppText.Format("VulnerabilitiesPossible", PossibleCount),
+        int total => AppText.Format("VulnerabilitiesAffectedAndPossible", total - PossibleCount, PossibleCount),
     };
 
     public static SoftwareItem FromRating(PSObject rating)
@@ -78,7 +79,7 @@ public sealed record SoftwareItem
 
         return new SoftwareItem
         {
-            Name = GetString(rating, "Name") ?? "(ohne Namen)",
+            Name = GetString(rating, "Name") ?? AppText.Get("ProgramNoName"),
             Publisher = record is null ? null : GetString(record, "Publisher"),
             InstalledVersion = GetString(rating, "Version"),
             LatestVersion = latest,
@@ -102,8 +103,8 @@ public sealed record SoftwareItem
     {
         var scope = GetString(record, "Scope") switch
         {
-            "Machine" => "für alle Benutzer",
-            "User" => "nur für diesen Benutzer",
+            "Machine" => AppText.Get("ScopeMachine"),
+            "User" => AppText.Get("ScopeUser"),
             _ => null,
         };
         var parts = new[] { GetString(record, "InstallType"), scope, GetString(record, "Architecture") }.Where(p => p is not null).ToList();
@@ -148,21 +149,15 @@ public sealed record SoftwareItem
 /// <summary>Eine Lücke aus VulnerabilityStatus.Vulnerabilities, für die Detailansicht.</summary>
 public sealed record VulnerabilityItem(string CveId, string? Assessment, string? Note, bool Kev, double? Score, double? Epss, Uri? Url, string? Description)
 {
-    public string AssessmentText => Assessment switch
-    {
-        "Affected" => "betroffen",
-        "PossiblyAffected" => "möglicherweise betroffen",
-        "Informational" => "Hinweis",
-        _ => Assessment ?? "",
-    };
+    public string AssessmentText => Assessment is null ? "" : AppText.Find("Assessment" + Assessment) ?? Assessment;
 
     /// <summary>Kurzinfo hinter der CVE-Nummer, z. B. „betroffen · aktiv ausgenutzt (KEV) · CVSS 7.0 · EPSS 67 %“.</summary>
     public string Summary => string.Join(" · ", new[]
     {
         AssessmentText,
-        Kev ? "aktiv ausgenutzt (KEV)" : null,
+        Kev ? AppText.Get("VulnerabilityKev") : null,
         Score is { } s ? $"CVSS {s.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}" : null,
-        Epss is { } e ? "EPSS " + e.ToString("P0", System.Globalization.CultureInfo.GetCultureInfo("de-DE")) : null,
+        Epss is { } e ? "EPSS " + e.ToString("P0", System.Globalization.CultureInfo.CurrentCulture) : null,
     }.Where(p => !string.IsNullOrEmpty(p)));
 
     public static VulnerabilityItem FromPs(PSObject obj)

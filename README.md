@@ -58,6 +58,7 @@ Einzelheiten in [docs/KONZEPT.md](docs/KONZEPT.md), Abschnitt „Fahrplan“.
   - [ ] Zwischenetappe: bestehende Texte auslagern (.resx, Import-LocalizedData, Codes), noch ohne Übersetzung
   - [ ] 4b. Anbieter-Schnittstelle und Einstellungen in der App
   - [ ] 4c. Chat-Seitenleiste mit Vorschlagskarten
+- [ ] Vor dem ersten Release: englische Übersetzung (per KI, Prüfung durch Muttersprachler erwünscht), README auf Deutsch und Englisch
 - [ ] 5. Ausbau: Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung
 - [ ] 6. Firmentauglich: zentrale Sammlung mehrerer PCs, Richtlinien, signierte Skripte
 
@@ -152,6 +153,10 @@ Das Modul läuft lokal und sendet keine Daten. Scans, Aktionsprotokoll und Einst
 ## Mitmachen
 
 Fehlermeldungen und Vorschläge bitte als [Issue](https://github.com/normbox/Softwareverwaltung/issues), Änderungen als Pull Request gegen `main`. Code, Bezeichner und Commit-Messages sind auf Englisch, Kommentare und Dokumentation für Nutzer auf Deutsch. Neue Abhängigkeiten bitte begründen; Langzeitversionen werden bevorzugt.
+
+### Übersetzungen beitragen
+
+Die Oberfläche und die Meldungen sind auf Deutsch geschrieben und für weitere Sprachen vorbereitet: App-Texte stehen in `src/Softwareverwaltung.App/Resources/Strings.resx`, Meldungen des Moduls in `src/SoftwareInventory/SoftwareInventory.Strings.psd1`. Übersetzungen entstehen per KI, zuerst Englisch. Eine Prüfung durch Muttersprachler ist ausdrücklich erwünscht: Verbesserungen bitte als Pull Request oder Issue, gern auch nur für einzelne Begriffe.
 
 ## Lizenz und Haftung
 

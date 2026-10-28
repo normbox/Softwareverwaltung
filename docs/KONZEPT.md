@@ -130,7 +130,8 @@ Entschieden 26.10.2026: Etappe 4 nur lokal. Die App spricht lokale Server über 
 1. **Inventar-Modul:** PowerShell-Modul liest Registry, winget, Store-Apps, schreibt JSON. Ohne Oberfläche testbar.
 2. **Versions- und Sicherheitsprüfung:** winget- und GitHub-Provider, NVD- und KEV-Abgleich, Ampel; zunächst HTML-Bericht.
 3. **Oberfläche:** WPF-App mit Liste, Details, Update- und Deinstallations-Buttons.
-4. **KI-Berater:** Tools, lokale Modelle über die OpenAI-kompatible Schnittstelle, Anbieter-Schnittstelle für spätere Plugins, Chat-Seitenleiste.
+4. **KI-Berater:** Tools, lokale Modelle über die OpenAI-kompatible Schnittstelle, Anbieter-Schnittstelle für spätere Plugins, Chat-Seitenleiste. Vor 4b eine Zwischenetappe „Texte auslagern“: App-Texte nach `.resx`, Modulmeldungen nach `Import-LocalizedData`, Gründe und Status als Codes (Modul liefert `Code`, `Args` und `Text` in der UI-Sprache der App); noch keine Übersetzung.
+   - **Übersetzungen:** entstehen später per KI, zuerst Englisch. Eine Prüfung durch Muttersprachler ist ausdrücklich erwünscht (README, Abschnitt „Übersetzungen beitragen“). Zum ersten Release gibt es die README auf Deutsch und Englisch.
 5. **Ausbau:** Herstellerkatalog, MCP-Server, geplante Scans mit Benachrichtigung.
 6. **Firmentauglich:** Zentrale Sammlung mehrerer PCs, Richtlinien, signierte Skripte.
 

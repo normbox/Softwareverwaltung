@@ -1,5 +1,6 @@
 using System.Management.Automation;
 using Softwareverwaltung.App.Models;
+using Softwareverwaltung.App.Localization;
 
 namespace Softwareverwaltung.App.Services;
 
@@ -78,7 +79,7 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
     }
 
     private static PSObject Required(PSObject? source) =>
-        source ?? throw new InvalidOperationException("Zu diesem Eintrag fehlen die Daten des Moduls.");
+        source ?? throw new InvalidOperationException(AppText.Get("ErrorItemWithoutModuleData"));
 
     private async Task<ActionOutcome> InvokeOutcomeAsync(PSCommand command, CancellationToken cancellationToken)
     {
@@ -88,7 +89,7 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
         {
             throw new InvalidOperationException(result.Errors.Count > 0
                 ? string.Join(Environment.NewLine, result.Errors)
-                : "Das Modul hat kein Ergebnis geliefert.");
+                : AppText.Get("ErrorModuleNoResult"));
         }
         return ActionOutcome.FromPs(outcome);
     }

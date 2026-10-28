@@ -1,4 +1,5 @@
 using System.Management.Automation;
+using Softwareverwaltung.App.Localization;
 
 namespace Softwareverwaltung.App.Models;
 
@@ -33,43 +34,22 @@ public sealed record ActionOutcome
     public bool RestorePointPlanned => RestorePoint == "Planned";
     public bool IsSuccess => Result is "Succeeded" or "SucceededRebootRequired";
 
-    public string ActionText => Action switch
-    {
-        "Update" => "Aktualisieren",
-        "Uninstall" => "Deinstallieren",
-        "InstallWinget" => "winget installieren",
-        _ => Action,
-    };
+    // Texte über Codes: Schlüssel = Präfix + Code aus dem Modul (z. B. ActionResultFailed).
+    public string ActionText => AppText.Find("Action" + Action) ?? Action;
 
-    public string ResultText => Result switch
-    {
-        "Planned" => "Geplant",
-        "Succeeded" => "Erfolgreich",
-        "SucceededRebootRequired" => "Erfolgreich, Neustart nötig",
-        "NotVerified" => "Nicht bestätigt: Der Zustand hat sich nicht geändert",
-        "Cancelled" => "Abgebrochen",
-        "ElevationDenied" => "Administratorrechte abgelehnt",
-        "NotInstalled" => "Nicht (mehr) installiert",
-        "NoUpdateAvailable" => "Kein Update verfügbar",
-        "ManualUpdateRequired" => "Update von Hand nötig",
-        "Unsupported" => "Nicht ausführbar",
-        "Timeout" => "Keine Rückmeldung (Zeitüberschreitung)",
-        "Failed" => "Fehlgeschlagen",
-        _ => Result,
-    };
+    public string ResultText => AppText.Find("ActionResult" + Result) ?? Result;
 
-    public string RightsText => Elevated
-        ? "Mit Administratorrechten – Windows fragt gleich nach (UAC)."
-        : "Ohne Administratorrechte.";
+    public string RightsText => AppText.Get(Elevated ? "ActionRightsElevated" : "ActionRightsNormal");
+
+    public string? RetryText => NextMethod is null ? null : AppText.Format("ActionRetryWith", NextMethod);
 
     public string RestorePointText => RestorePoint switch
     {
-        "Planned" => "Vorher wird ein Wiederherstellungspunkt angelegt (eigene Windows-Abfrage möglich).",
-        "Created" => "Wiederherstellungspunkt angelegt.",
-        "Skipped" => "Kein neuer Wiederherstellungspunkt (Windows legt höchstens einen pro Tag an).",
-        "NotAvailable" => "Wiederherstellungspunkt nicht verfügbar" + (RestorePointMessage is null ? "." : $": {RestorePointMessage}"),
-        "Failed" => "Wiederherstellungspunkt fehlgeschlagen" + (RestorePointMessage is null ? "." : $": {RestorePointMessage}"),
-        _ => "Kein Wiederherstellungspunkt (in den Einstellungen einschaltbar).",
+        "Planned" or "Created" or "Skipped" => AppText.Get("RestorePoint" + RestorePoint),
+        "NotAvailable" or "Failed" => RestorePointMessage is null
+            ? AppText.Get("RestorePoint" + RestorePoint)
+            : AppText.Format("RestorePoint" + RestorePoint + "WithMessage", RestorePointMessage),
+        _ => AppText.Get("RestorePointNone"),
     };
 
     public static ActionOutcome FromPs(PSObject obj)
@@ -109,8 +89,10 @@ public sealed record ActionHistoryEntry(DateTime? StartedAt, string Action, stri
         get
         {
             var outcome = new ActionOutcome { Action = Action, Name = "", Result = Result };
-            var when = StartedAt is { } t ? t.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "?";
-            return $"{when} · {outcome.ActionText}{(Method is null ? "" : $" über {Method}")} · {outcome.ResultText}";
+            var when = StartedAt is { } t ? t.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture) : "?";
+            return Method is null
+                ? AppText.Format("ActionHistoryEntry", when, outcome.ActionText, outcome.ResultText)
+                : AppText.Format("ActionHistoryEntryWithMethod", when, outcome.ActionText, Method, outcome.ResultText);
         }
     }
 

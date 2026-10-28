@@ -13,6 +13,12 @@ public static class AppText
     public static ResourceManager Resources { get; } = new("Softwareverwaltung.App.Resources.Strings", typeof(AppText).Assembly);
 
     public static string Get(string key) => Resources.GetString(key, CultureInfo.CurrentUICulture) ?? key;
+
+    /// <summary>Text zu einem Code (Schlüssel = Präfix + Code) oder null, wenn es keinen gibt.</summary>
+    public static string? Find(string key) => Resources.GetString(key, CultureInfo.CurrentUICulture);
+
+    /// <summary>Text mit Platzhaltern {0}, {1} …; Zahlen und Daten im Format der aktuellen Kultur.</summary>
+    public static string Format(string key, params object?[] args) => string.Format(CultureInfo.CurrentCulture, Get(key), args);
 }
 
 /// <summary>XAML: Text="{loc:Text SettingsPortableTitle}".</summary>

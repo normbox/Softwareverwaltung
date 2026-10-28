@@ -1,6 +1,7 @@
 using System.Management.Automation;
 using System.Security;
 using Softwareverwaltung.App.Models;
+using Softwareverwaltung.App.Localization;
 
 namespace Softwareverwaltung.App.Services;
 
@@ -92,5 +93,5 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
 
     private async Task<PSObject> InvokeSingleAsync(PSCommand command, CancellationToken cancellationToken) =>
         (await InvokeAsync(command, cancellationToken).ConfigureAwait(false)).FirstOrDefault()
-        ?? throw new InvalidOperationException("Das Modul hat kein Ergebnis geliefert.");
+        ?? throw new InvalidOperationException(AppText.Get("ErrorModuleNoResult"));
 }

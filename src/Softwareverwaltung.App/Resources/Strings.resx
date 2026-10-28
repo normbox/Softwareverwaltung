@@ -139,4 +139,574 @@
   <data name="SettingsPortableSmartExclusions" xml:space="preserve">
     <value>Intelligente Ausschlüsse: Herstellerordner und bereits installierte Programme überspringen (aus = mehr Treffer)</value>
   </data>
+  <data name="UsageTermsLink" xml:space="preserve">
+    <value>Nutzungsbedingungen</value>
+  </data>
+  <data name="ConfirmTitle" xml:space="preserve">
+    <value>Bestätigen</value>
+  </data>
+  <data name="ConfirmCommandLabel" xml:space="preserve">
+    <value>Dieser Befehl wird ausgeführt:</value>
+  </data>
+  <data name="ConfirmCommandName" xml:space="preserve">
+    <value>Befehl</value>
+  </data>
+  <data name="ConfirmHint" xml:space="preserve">
+    <value>Es wird genau dieser Befehl ausgeführt. Hat sich bis dahin etwas geändert, bricht die Aktion ohne Ausführung ab und fragt neu. Alles wird protokolliert.</value>
+  </data>
+  <data name="CommonCancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="AppTitle" xml:space="preserve">
+    <value>Softwareverwaltung</value>
+  </data>
+  <data name="UsageQuestion" xml:space="preserve">
+    <value>Wie nutzen Sie diesen PC?</value>
+  </data>
+  <data name="UsageQuestionText" xml:space="preserve">
+    <value>Danach sehen Sie die passenden Hinweise zu den Nutzungsbedingungen der externen Dienste. Die Angabe schaltet nichts ein: Alles bleibt aus und wird von Ihnen unter „Einstellungen“ eingestellt.</value>
+  </data>
+  <data name="UsagePrivate" xml:space="preserve">
+    <value>Privat</value>
+  </data>
+  <data name="UsageCompany" xml:space="preserve">
+    <value>Firma</value>
+  </data>
+  <data name="UsageTermsTitle" xml:space="preserve">
+    <value>Hinweise zu den Nutzungsbedingungen</value>
+  </data>
+  <data name="UsageTermsConfirm" xml:space="preserve">
+    <value>Verstanden</value>
+  </data>
+  <data name="NavPrograms" xml:space="preserve">
+    <value>Programme</value>
+  </data>
+  <data name="NavSettings" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="ProgramsScan" xml:space="preserve">
+    <value>Scannen</value>
+  </data>
+  <data name="ProgramsScanTooltip" xml:space="preserve">
+    <value>Installierte Programme mit den aktivierten Quellen und Diensten neu einlesen</value>
+  </data>
+  <data name="ProgramsSearchPlaceholder" xml:space="preserve">
+    <value>Suchen nach Name oder Hersteller</value>
+  </data>
+  <data name="ProgramsSearchName" xml:space="preserve">
+    <value>Suche</value>
+  </data>
+  <data name="ProgramsFilterUpdates" xml:space="preserve">
+    <value>Nur Updates verfügbar</value>
+  </data>
+  <data name="ProgramsFilterRisks" xml:space="preserve">
+    <value>Nur Sicherheitsrisiken</value>
+  </data>
+  <data name="ProgramsFilterRisksTooltip" xml:space="preserve">
+    <value>Ampel Rot oder bekannte Sicherheitslücken</value>
+  </data>
+  <data name="ActionVendorPage" xml:space="preserve">
+    <value>Herstellerseite öffnen</value>
+  </data>
+  <data name="CommonClose" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="ActionResultClose" xml:space="preserve">
+    <value>Ergebnis schließen</value>
+  </data>
+  <data name="NoticeDismiss" xml:space="preserve">
+    <value>Ausblenden</value>
+  </data>
+  <data name="NoticeDismissName" xml:space="preserve">
+    <value>Hinweis ausblenden</value>
+  </data>
+  <data name="ProgramsListName" xml:space="preserve">
+    <value>Installierte Programme</value>
+  </data>
+  <data name="ColumnRating" xml:space="preserve">
+    <value>Ampel</value>
+  </data>
+  <data name="ColumnName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="ColumnPublisher" xml:space="preserve">
+    <value>Hersteller</value>
+  </data>
+  <data name="ColumnInstalled" xml:space="preserve">
+    <value>Installiert</value>
+  </data>
+  <data name="ColumnLatest" xml:space="preserve">
+    <value>Neueste</value>
+  </data>
+  <data name="LatestUnconfirmed" xml:space="preserve">
+    <value>(unbestätigt)</value>
+  </data>
+  <data name="LatestUnconfirmedTooltip" xml:space="preserve">
+    <value>Gefunden über eine Suche nach dem Namen, nicht über eine feste Zuordnung</value>
+  </data>
+  <data name="ColumnVulnerabilities" xml:space="preserve">
+    <value>Lücken</value>
+  </data>
+  <data name="ColumnReason" xml:space="preserve">
+    <value>Grund</value>
+  </data>
+  <data name="ColumnSource" xml:space="preserve">
+    <value>Quelle</value>
+  </data>
+  <data name="ActionUpdate" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="ActionUninstall" xml:space="preserve">
+    <value>Deinstallieren</value>
+  </data>
+  <data name="DetailsInstallLabel" xml:space="preserve">
+    <value>Installation: </value>
+  </data>
+  <data name="DetailsWingetIdLabel" xml:space="preserve">
+    <value>winget-ID: </value>
+  </data>
+  <data name="DetailsLocationLabel" xml:space="preserve">
+    <value>Ort: </value>
+  </data>
+  <data name="DetailsReasonsTitle" xml:space="preserve">
+    <value>Gründe für die Ampel</value>
+  </data>
+  <data name="DetailsVulnerabilitiesTitle" xml:space="preserve">
+    <value>Lücken</value>
+  </data>
+  <data name="DetailsHistoryTitle" xml:space="preserve">
+    <value>Bisherige Aktionen</value>
+  </data>
+  <data name="ProgramsEmpty" xml:space="preserve">
+    <value>Keine Programme gefunden. Die Hinweise oben nennen den Grund, zum Beispiel wenn noch keine Quelle aktiviert ist.</value>
+  </data>
+  <data name="SettingsIntro" xml:space="preserve">
+    <value>Alles ist anfangs aus. Schalten Sie nur ein, was Sie brauchen. Änderungen gelten nach „Speichern“ und dem nächsten Scan.</value>
+  </data>
+  <data name="SettingsUsageTitle" xml:space="preserve">
+    <value>Nutzung</value>
+  </data>
+  <data name="SettingsUsageText" xml:space="preserve">
+    <value>Bestimmt nur, welche Hinweise zu den Nutzungsbedingungen angezeigt werden. Schaltet nichts ein oder aus.</value>
+  </data>
+  <data name="SettingsUsageTermsExpander" xml:space="preserve">
+    <value>Hinweise zu den Nutzungsbedingungen der Dienste</value>
+  </data>
+  <data name="SettingsPresetsTitle" xml:space="preserve">
+    <value>Vorlagen</value>
+  </data>
+  <data name="SettingsInstalledTitle" xml:space="preserve">
+    <value>Installierte Programme</value>
+  </data>
+  <data name="SettingsInstalledText" xml:space="preserve">
+    <value>Woher die Liste der installierten Programme kommt. Alles bleibt auf diesem PC.</value>
+  </data>
+  <data name="SettingsServicesTitle" xml:space="preserve">
+    <value>Externe Dienste</value>
+  </data>
+  <data name="SettingsServicesText" xml:space="preserve">
+    <value>Diese Dienste senden Daten ins Internet. Jeder Eintrag sagt, was übertragen wird. Ohne sie bleibt die Ampel grau („nicht geprüft“).</value>
+  </data>
+  <data name="SettingsKeysTitle" xml:space="preserve">
+    <value>API-Schlüssel</value>
+  </data>
+  <data name="SettingsKeysText" xml:space="preserve">
+    <value>Werden in der Windows-Anmeldeinformationsverwaltung gespeichert, nur für Ihr Benutzerkonto. Sie werden sofort gespeichert und nie angezeigt.</value>
+  </data>
+  <data name="CommonSave" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="CommonDelete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="SettingsActionsTitle" xml:space="preserve">
+    <value>Aktualisieren und Deinstallieren</value>
+  </data>
+  <data name="SettingsLogsTitle" xml:space="preserve">
+    <value>Protokolle und Zwischenspeicher</value>
+  </data>
+  <data name="SettingsLogsText" xml:space="preserve">
+    <value>Werden beim Start automatisch aufgeräumt: Älteres und alles über der Größengrenze wird gelöscht, das Älteste zuerst.</value>
+  </data>
+  <data name="SettingsLogsMaxDays" xml:space="preserve">
+    <value>Höchstens Tage aufheben (1–3650)</value>
+  </data>
+  <data name="SettingsLogsMaxDaysName" xml:space="preserve">
+    <value>Höchstens Tage aufheben</value>
+  </data>
+  <data name="SettingsLogsMaxSize" xml:space="preserve">
+    <value>Höchstens MB insgesamt (1–102400)</value>
+  </data>
+  <data name="SettingsLogsMaxSizeName" xml:space="preserve">
+    <value>Höchstens MB insgesamt</value>
+  </data>
+  <data name="CommonDiscard" xml:space="preserve">
+    <value>Verwerfen</value>
+  </data>
+  <data name="SettingsSourceRegistryMachine" xml:space="preserve">
+    <value>Programme für alle Benutzer</value>
+  </data>
+  <data name="SettingsSourceRegistryMachineText" xml:space="preserve">
+    <value>Installierte Programme aus der Registry (HKLM).</value>
+  </data>
+  <data name="SettingsSourceRegistryUser" xml:space="preserve">
+    <value>Programme nur für mich</value>
+  </data>
+  <data name="SettingsSourceRegistryUserText" xml:space="preserve">
+    <value>Installierte Programme des angemeldeten Benutzers (HKCU).</value>
+  </data>
+  <data name="SettingsSourceWinget" xml:space="preserve">
+    <value>winget-Paketliste</value>
+  </data>
+  <data name="SettingsSourceWingetText" xml:space="preserve">
+    <value>Programme, die winget kennt, mit Paket-ID für Updates.</value>
+  </data>
+  <data name="SettingsSourceAppx" xml:space="preserve">
+    <value>Store-Apps</value>
+  </data>
+  <data name="SettingsSourceAppxText" xml:space="preserve">
+    <value>Apps aus dem Microsoft Store und andere App-Pakete.</value>
+  </data>
+  <data name="SettingsTraceUserAssist" xml:space="preserve">
+    <value>Zuletzt gestartete Programme</value>
+  </data>
+  <data name="SettingsTraceUserAssistText" xml:space="preserve">
+    <value>Startzähler des Windows-Explorers (UserAssist).</value>
+  </data>
+  <data name="SettingsTraceProcess" xml:space="preserve">
+    <value>Laufende Prozesse</value>
+  </data>
+  <data name="SettingsTraceProcessText" xml:space="preserve">
+    <value>Programme, die gerade laufen.</value>
+  </data>
+  <data name="SettingsTraceAutostart" xml:space="preserve">
+    <value>Autostart-Einträge</value>
+  </data>
+  <data name="SettingsTraceAutostartText" xml:space="preserve">
+    <value>Programme, die beim Anmelden starten.</value>
+  </data>
+  <data name="SettingsTraceScheduledTask" xml:space="preserve">
+    <value>Geplante Aufgaben</value>
+  </data>
+  <data name="SettingsTraceScheduledTaskText" xml:space="preserve">
+    <value>Programme, die die Aufgabenplanung startet.</value>
+  </data>
+  <data name="SettingsServiceWingetSearch" xml:space="preserve">
+    <value>winget-Suche nach neuen Versionen</value>
+  </data>
+  <data name="SettingsServiceWingetSearchText" xml:space="preserve">
+    <value>Sendet Paket-IDs oder Programmnamen an die winget-Quellen (Microsoft).</value>
+  </data>
+  <data name="SettingsServiceGitHub" xml:space="preserve">
+    <value>Neueste Releases auf GitHub</value>
+  </data>
+  <data name="SettingsServiceGitHubText" xml:space="preserve">
+    <value>Sendet den Namen des GitHub-Projekts (nur für Programme aus dem Katalog).</value>
+  </data>
+  <data name="SettingsServiceNVD" xml:space="preserve">
+    <value>Sicherheitslücken (NIST NVD)</value>
+  </data>
+  <data name="SettingsServiceNVDText" xml:space="preserve">
+    <value>Sendet Hersteller, Produkt und Version (CPE) an die National Vulnerability Database der USA.</value>
+  </data>
+  <data name="SettingsServiceKEV" xml:space="preserve">
+    <value>Aktiv ausgenutzte Lücken (CISA KEV)</value>
+  </data>
+  <data name="SettingsServiceKEVText" xml:space="preserve">
+    <value>Lädt die öffentliche Liste herunter; sendet nichts über Ihre Programme.</value>
+  </data>
+  <data name="SettingsServiceEPSS" xml:space="preserve">
+    <value>Ausnutzungswahrscheinlichkeit (FIRST EPSS)</value>
+  </data>
+  <data name="SettingsServiceEPSSText" xml:space="preserve">
+    <value>Sendet die Nummern gefundener Sicherheitslücken (CVE-IDs).</value>
+  </data>
+  <data name="SettingsActionRestorePoint" xml:space="preserve">
+    <value>Wiederherstellungspunkt vor jeder Aktion</value>
+  </data>
+  <data name="SettingsActionRestorePointText" xml:space="preserve">
+    <value>Legt vor dem Aktualisieren oder Deinstallieren einen Windows-Wiederherstellungspunkt an (eigene Administratorabfrage).</value>
+  </data>
+  <data name="SettingsCredentialNVD" xml:space="preserve">
+    <value>NVD-API-Schlüssel</value>
+  </data>
+  <data name="SettingsCredentialNVDText" xml:space="preserve">
+    <value>Optional. Ohne Schlüssel funktioniert die NVD-Abfrage, ist aber deutlich langsamer.</value>
+  </data>
+  <data name="SettingsCredentialGitHub" xml:space="preserve">
+    <value>GitHub-Token</value>
+  </data>
+  <data name="SettingsCredentialGitHubText" xml:space="preserve">
+    <value>Optional. Erhöht die Zahl erlaubter Abfragen bei GitHub.</value>
+  </data>
+  <data name="CredentialStatusUnknown" xml:space="preserve">
+    <value>Status unbekannt.</value>
+  </data>
+  <data name="CredentialStoredOverridesEnvironment" xml:space="preserve">
+    <value>In der Windows-Anmeldeinformationsverwaltung gespeichert (hat Vorrang vor {0}).</value>
+  </data>
+  <data name="CredentialStored" xml:space="preserve">
+    <value>In der Windows-Anmeldeinformationsverwaltung gespeichert.</value>
+  </data>
+  <data name="CredentialFromEnvironment" xml:space="preserve">
+    <value>Kommt aus der Umgebungsvariablen {0}.</value>
+  </data>
+  <data name="CredentialNone" xml:space="preserve">
+    <value>Kein Schlüssel hinterlegt.</value>
+  </data>
+  <data name="SettingsLoadFailed" xml:space="preserve">
+    <value>Einstellungen konnten nicht geladen werden: {0}</value>
+  </data>
+  <data name="SettingsSaved" xml:space="preserve">
+    <value>Gespeichert. Ein neuer Scan unter „Programme“ übernimmt die Änderungen.</value>
+  </data>
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>Speichern fehlgeschlagen: {0}</value>
+  </data>
+  <data name="SettingsDiscarded" xml:space="preserve">
+    <value>Änderungen verworfen.</value>
+  </data>
+  <data name="PresetLoadFailed" xml:space="preserve">
+    <value>Vorlage konnte nicht geladen werden: {0}</value>
+  </data>
+  <data name="CredentialMissingInput" xml:space="preserve">
+    <value>{0}: bitte einen Schlüssel eingeben.</value>
+  </data>
+  <data name="CredentialSaved" xml:space="preserve">
+    <value>{0} gespeichert.</value>
+  </data>
+  <data name="CredentialSaveFailed" xml:space="preserve">
+    <value>{0} konnte nicht gespeichert werden: {1}</value>
+  </data>
+  <data name="CredentialDeleted" xml:space="preserve">
+    <value>{0} gelöscht.</value>
+  </data>
+  <data name="CredentialDeleteFailed" xml:space="preserve">
+    <value>{0} konnte nicht gelöscht werden: {1}</value>
+  </data>
+  <data name="RatingRed" xml:space="preserve">
+    <value>Rot</value>
+  </data>
+  <data name="RatingYellow" xml:space="preserve">
+    <value>Gelb</value>
+  </data>
+  <data name="RatingGreen" xml:space="preserve">
+    <value>Grün</value>
+  </data>
+  <data name="RatingGray" xml:space="preserve">
+    <value>Grau</value>
+  </data>
+  <data name="ActionInstallWinget" xml:space="preserve">
+    <value>winget installieren</value>
+  </data>
+  <data name="ActionResultPlanned" xml:space="preserve">
+    <value>Geplant</value>
+  </data>
+  <data name="ActionResultSucceeded" xml:space="preserve">
+    <value>Erfolgreich</value>
+  </data>
+  <data name="ActionResultSucceededRebootRequired" xml:space="preserve">
+    <value>Erfolgreich, Neustart nötig</value>
+  </data>
+  <data name="ActionResultNotVerified" xml:space="preserve">
+    <value>Nicht bestätigt: Der Zustand hat sich nicht geändert</value>
+  </data>
+  <data name="ActionResultCancelled" xml:space="preserve">
+    <value>Abgebrochen</value>
+  </data>
+  <data name="ActionResultElevationDenied" xml:space="preserve">
+    <value>Administratorrechte abgelehnt</value>
+  </data>
+  <data name="ActionResultNotInstalled" xml:space="preserve">
+    <value>Nicht (mehr) installiert</value>
+  </data>
+  <data name="ActionResultNoUpdateAvailable" xml:space="preserve">
+    <value>Kein Update verfügbar</value>
+  </data>
+  <data name="ActionResultManualUpdateRequired" xml:space="preserve">
+    <value>Update von Hand nötig</value>
+  </data>
+  <data name="ActionResultUnsupported" xml:space="preserve">
+    <value>Nicht ausführbar</value>
+  </data>
+  <data name="ActionResultTimeout" xml:space="preserve">
+    <value>Keine Rückmeldung (Zeitüberschreitung)</value>
+  </data>
+  <data name="ActionResultFailed" xml:space="preserve">
+    <value>Fehlgeschlagen</value>
+  </data>
+  <data name="ActionRightsElevated" xml:space="preserve">
+    <value>Mit Administratorrechten – Windows fragt gleich nach (UAC).</value>
+  </data>
+  <data name="ActionRightsNormal" xml:space="preserve">
+    <value>Ohne Administratorrechte.</value>
+  </data>
+  <data name="ActionRetryWith" xml:space="preserve">
+    <value>Mit {0} versuchen</value>
+  </data>
+  <data name="RestorePointPlanned" xml:space="preserve">
+    <value>Vorher wird ein Wiederherstellungspunkt angelegt (eigene Windows-Abfrage möglich).</value>
+  </data>
+  <data name="RestorePointCreated" xml:space="preserve">
+    <value>Wiederherstellungspunkt angelegt.</value>
+  </data>
+  <data name="RestorePointSkipped" xml:space="preserve">
+    <value>Kein neuer Wiederherstellungspunkt (Windows legt höchstens einen pro Tag an).</value>
+  </data>
+  <data name="RestorePointNotAvailable" xml:space="preserve">
+    <value>Wiederherstellungspunkt nicht verfügbar.</value>
+  </data>
+  <data name="RestorePointNotAvailableWithMessage" xml:space="preserve">
+    <value>Wiederherstellungspunkt nicht verfügbar: {0}</value>
+  </data>
+  <data name="RestorePointFailed" xml:space="preserve">
+    <value>Wiederherstellungspunkt fehlgeschlagen.</value>
+  </data>
+  <data name="RestorePointFailedWithMessage" xml:space="preserve">
+    <value>Wiederherstellungspunkt fehlgeschlagen: {0}</value>
+  </data>
+  <data name="RestorePointNone" xml:space="preserve">
+    <value>Kein Wiederherstellungspunkt (in den Einstellungen einschaltbar).</value>
+  </data>
+  <data name="ActionHistoryEntry" xml:space="preserve">
+    <value>{0} · {1} · {2}</value>
+  </data>
+  <data name="ActionHistoryEntryWithMethod" xml:space="preserve">
+    <value>{0} · {1} über {2} · {3}</value>
+  </data>
+  <data name="VulnerabilitiesPossible" xml:space="preserve">
+    <value>{0} möglich</value>
+  </data>
+  <data name="VulnerabilitiesAffectedAndPossible" xml:space="preserve">
+    <value>{0} + {1} möglich</value>
+  </data>
+  <data name="ProgramNoName" xml:space="preserve">
+    <value>(ohne Namen)</value>
+  </data>
+  <data name="ScopeMachine" xml:space="preserve">
+    <value>für alle Benutzer</value>
+  </data>
+  <data name="ScopeUser" xml:space="preserve">
+    <value>nur für diesen Benutzer</value>
+  </data>
+  <data name="AssessmentAffected" xml:space="preserve">
+    <value>betroffen</value>
+  </data>
+  <data name="AssessmentPossiblyAffected" xml:space="preserve">
+    <value>möglicherweise betroffen</value>
+  </data>
+  <data name="AssessmentInformational" xml:space="preserve">
+    <value>Hinweis</value>
+  </data>
+  <data name="VulnerabilityKev" xml:space="preserve">
+    <value>aktiv ausgenutzt (KEV)</value>
+  </data>
+  <data name="ErrorItemWithoutModuleData" xml:space="preserve">
+    <value>Zu diesem Eintrag fehlen die Daten des Moduls.</value>
+  </data>
+  <data name="ErrorModuleNoResult" xml:space="preserve">
+    <value>Das Modul hat kein Ergebnis geliefert.</value>
+  </data>
+  <data name="WingetStatusUnknown" xml:space="preserve">
+    <value>winget-Status nicht ermittelbar: {0}</value>
+  </data>
+  <data name="ErrorCoreModuleNotFound" xml:space="preserve">
+    <value>Kern-Modul nicht gefunden unter {0}.</value>
+  </data>
+  <data name="WarningWinGetModuleMissing" xml:space="preserve">
+    <value>Mitgeliefertes Modul {0} fehlt; winget-Daten sind nicht verfügbar.</value>
+  </data>
+  <data name="ErrorHostNotInitialized" xml:space="preserve">
+    <value>PowerShellHost ist nicht initialisiert.</value>
+  </data>
+  <data name="WarningModuleLoadFailed" xml:space="preserve">
+    <value>Modul {0} konnte nicht geladen werden: {1}</value>
+  </data>
+  <data name="ErrorCoreModuleLoadFailed" xml:space="preserve">
+    <value>Kern-Modul konnte nicht geladen werden: {0}</value>
+  </data>
+  <data name="WarningModuleError" xml:space="preserve">
+    <value>Modul {0}: {1}</value>
+  </data>
+  <data name="ErrorDetailsIn" xml:space="preserve">
+    <value>Details stehen in:{0}</value>
+  </data>
+  <data name="ErrorUnexpectedTitle" xml:space="preserve">
+    <value>Softwareverwaltung: unerwarteter Fehler</value>
+  </data>
+  <data name="StatusReady" xml:space="preserve">
+    <value>Bereit.</value>
+  </data>
+  <data name="CountAll" xml:space="preserve">
+    <value>{0} Programme</value>
+  </data>
+  <data name="CountFiltered" xml:space="preserve">
+    <value>{0} von {1} Programmen</value>
+  </data>
+  <data name="StatusLoadingModules" xml:space="preserve">
+    <value>Lade Module …</value>
+  </data>
+  <data name="NoticeStartup" xml:space="preserve">
+    <value>Beim Start</value>
+  </data>
+  <data name="NoticeWingetMissing" xml:space="preserve">
+    <value>winget nicht verfügbar</value>
+  </data>
+  <data name="NoticeWingetMissingText" xml:space="preserve">
+    <value>winget ist nicht verfügbar.</value>
+  </data>
+  <data name="NoticeWingetStoreLink" xml:space="preserve">
+    <value>App Installer im Microsoft Store</value>
+  </data>
+  <data name="NoticeStartFailed" xml:space="preserve">
+    <value>Start fehlgeschlagen</value>
+  </data>
+  <data name="StatusModulesFailed" xml:space="preserve">
+    <value>Die Module konnten nicht geladen werden.</value>
+  </data>
+  <data name="NoticeHint" xml:space="preserve">
+    <value>Hinweis</value>
+  </data>
+  <data name="NoticeScanError" xml:space="preserve">
+    <value>Fehler beim Scan</value>
+  </data>
+  <data name="StatusLastScan" xml:space="preserve">
+    <value>Zuletzt gescannt: {0:g}</value>
+  </data>
+  <data name="StatusScanCancelled" xml:space="preserve">
+    <value>Scan abgebrochen.</value>
+  </data>
+  <data name="StatusScanFailed" xml:space="preserve">
+    <value>Scan fehlgeschlagen.</value>
+  </data>
+  <data name="StatusPlanning" xml:space="preserve">
+    <value>Prüfe, was ausgeführt würde …</value>
+  </data>
+  <data name="StatusActionResult" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="StatusActionCancelled" xml:space="preserve">
+    <value>Abgebrochen; es wurde nichts ausgeführt.</value>
+  </data>
+  <data name="StatusActionRunning" xml:space="preserve">
+    <value>{0}: {1} läuft …</value>
+  </data>
+  <data name="StatusConfirmUac" xml:space="preserve">
+    <value>Bitte die Windows-Abfrage (UAC) bestätigen.</value>
+  </data>
+  <data name="StatusRescanForWinget" xml:space="preserve">
+    <value>Ein neuer Scan übernimmt die winget-Daten.</value>
+  </data>
+  <data name="StatusActionFailed" xml:space="preserve">
+    <value>Aktion fehlgeschlagen.</value>
+  </data>
+  <data name="StatusRechecking" xml:space="preserve">
+    <value>Prüfe das Programm neu …</value>
+  </data>
+  <data name="NoticeRecheckFailed" xml:space="preserve">
+    <value>Neu prüfen fehlgeschlagen</value>
+  </data>
+  <data name="StatusProgramGone" xml:space="preserve">
+    <value>Das Programm ist nicht mehr installiert.</value>
+  </data>
 </root>
