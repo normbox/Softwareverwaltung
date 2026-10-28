@@ -208,6 +208,12 @@ Describe 'Start-ElevatedHelper' {
     }
 }
 
+Describe 'Telemetrie im erhöhten Helfer' {
+    It 'schaltet die PowerShell-Telemetrie aus, bevor der Helfer läuft' {
+        $cmd = InModuleScope SoftwareInventory { Get-ElevatedHelperBootstrap -HelperPath 'C:\x\h.ps1' -Hash 'AB' -PlanBase64 'cGxhbg==' }
+        $cmd | Should -BeLike "`$env:POWERSHELL_TELEMETRY_OPTOUT='1';*"
+    }
+}
 Describe 'Start-ElevatedHelperBatch' {
     It 'führt mehrere Schritte in einem Helfer aus und meldet jeden Schritt sofort' {
         $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {

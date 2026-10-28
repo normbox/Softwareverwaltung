@@ -24,6 +24,9 @@ $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
 # Haltbarkeit des Zwischenspeichers je Quelle in Stunden (1–720); LatestVersion gilt für GitHub und winget-Suche.
 $script:DefaultCacheHours = [ordered]@{ LatestVersion = 6; NVD = 24; EPSS = 24; KEV = 24 }
+# Bereiche, die Write-InventorySetting speichert
+$script:SettingSections = @('SchemaVersion', 'Usage', 'Sources', 'Traces', 'Services', 'Actions', 'Agreements', 'Maintenance',
+    'CacheHours', 'Advisor', 'PortableSearch', 'FileScan')
 
 function Get-SettingsPath {
     Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
@@ -47,6 +50,9 @@ function New-DefaultSetting {
         Traces        = [pscustomobject] $traces
         Services      = [pscustomobject] $services
         Actions       = [pscustomobject] $actions   # RestorePoint: vor jeder Aktion Wiederherstellungspunkt (UAC)
+        # Zustimmungen zu Vereinbarungen von Quellen: Zeitpunkt (UTC, ISO 8601) oder $null = nicht zugestimmt.
+        # MsStore: Vereinbarung der winget-Quelle „msstore“; ohne sie wird über diese Quelle nichts ausgeführt.
+        Agreements    = [pscustomobject] [ordered]@{ MsStore = $null }
         Maintenance   = [pscustomobject] [ordered]@{
             LogRetentionDays = $script:DefaultLogRetentionDays
             LogMaxSizeMB     = $script:DefaultLogMaxSizeMB
@@ -109,6 +115,14 @@ function Read-InventorySetting {
             if ($hours -ge 1 -and $hours -le 720) { $setting.CacheHours.$name = $hours }
         }
     }
+    if ($data.PSObject.Properties['Agreements'] -and $data.Agreements -and $data.Agreements.PSObject.Properties['MsStore']) {
+        # ConvertFrom-Json macht aus dem ISO-Zeitpunkt je nach Aufruf schon ein Datum.
+        $value = $data.Agreements.MsStore
+        $accepted = [datetime]::MinValue
+        if ($value -is [datetime]) { $accepted = $value }
+        elseif (-not [datetime]::TryParse([string] $value, [cultureinfo]::InvariantCulture, 'RoundtripKind', [ref] $accepted)) { $accepted = $null }
+        if ($accepted) { $setting.Agreements.MsStore = $accepted.ToUniversalTime().ToString('o') }
+    }
     if ($data.PSObject.Properties['PortableSearch'] -and $data.PortableSearch) {
         foreach ($name in 'Enabled', 'TraceSearch', 'FileSearch') {
             if ($data.PortableSearch.PSObject.Properties[$name]) { $setting.PortableSearch.$name = [bool] $data.PortableSearch.$name }
@@ -143,7 +157,8 @@ function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-    $Setting | Select-Object SchemaVersion, Usage, Sources, Traces, Services, Actions, Maintenance, Advisor, PortableSearch, FileScan |
+    # Alle Bereiche der Einstellungen (ein Test prüft, dass jeder Bereich von New-DefaultSetting hier vorkommt).
+    $Setting | Select-Object $script:SettingSections |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM
 }
 

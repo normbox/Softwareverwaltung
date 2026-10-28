@@ -14,6 +14,7 @@
         'Get-RefreshEstimate'
         'Get-UpdateQueuePlan'
         'Invoke-UpdateQueue'
+        'Get-StoreAgreementNotice'
         'Save-InventorySnapshot'
         'Get-InventorySnapshot'
         'Compare-InventorySnapshot'

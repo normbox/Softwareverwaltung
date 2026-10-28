@@ -343,6 +343,45 @@ Describe 'Update-Software und Uninstall-Software' {
         }
     }
 
+    Context 'Store-Vereinbarung (msstore)' {
+        BeforeEach {
+            $storeRecord = New-TestRecord @{ RegistryKey = "$Machine\$Guid"; WingetId = '9NBLGGH4NNS1'; WingetSource = 'msstore' }
+        }
+
+        It 'führt Store-Pakete ohne Zustimmung nicht aus und nennt den Grund' {
+            $r = $storeRecord | Update-Software -WhatIf
+            $r.Result | Should -Be 'StoreAgreementRequired'
+            $r.Message.Code | Should -Be 'StoreAgreementRequired'
+            ($storeRecord | Uninstall-Software -WhatIf -Method Winget).Result | Should -Be 'StoreAgreementRequired'
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0
+        }
+
+        It 'gibt --accept-source-agreements für msstore erst nach gespeicherter Zustimmung weiter' {
+            Set-InventorySetting -StoreAgreementAccepted $true
+            (Get-StoreAgreementNotice).Accepted | Should -BeTrue
+            $r = $storeRecord | Update-Software -WhatIf
+            $r.Result | Should -Be 'Planned'
+            $r.CommandLine | Should -Match '--source msstore'
+            $r.CommandLine | Should -Match '--accept-source-agreements'
+
+            Set-InventorySetting -StoreAgreementAccepted $false
+            ($storeRecord | Update-Software -WhatIf).Result | Should -Be 'StoreAgreementRequired'
+        }
+
+        It 'stimmt der Quelle msstore in den Argumenten nie ohne Zustimmung zu, der Quelle winget wie bisher' {
+            InModuleScope SoftwareInventory {
+                Get-WingetArgument -Action Update -Id 'X' -Source msstore | Should -Not -Match 'accept-source-agreements'
+                Get-WingetArgument -Action Update -Id 'X' -Source msstore -StoreAgreementAccepted | Should -Match 'accept-source-agreements'
+                Get-WingetArgument -Action Update -Id 'X' -Source winget | Should -Match 'accept-source-agreements'
+            }
+        }
+
+        It 'zeigt die Vereinbarung mit Text und Link zu den Terms of Transaction' {
+            $n = Get-StoreAgreementNotice
+            $n.Text | Should -Match 'Region'
+            $n.Url | Should -Be 'https://aka.ms/microsoft-store-terms-of-transaction'
+        }
+    }
     Context 'Update-Warteschlange' {
         BeforeEach {
             # Zweites Programm im Benutzerbereich (läuft nie erhöht) und eines ohne winget (nicht ausführbar)

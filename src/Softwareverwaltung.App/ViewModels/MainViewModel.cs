@@ -359,6 +359,11 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var planProgress = new Progress<string>(message => StatusText = message);
             var plan = await _actions!.PlanUpdateQueueAsync(selected.Select(i => i.Source!).ToList(), planProgress);
+            // Store-Pakete in der Auswahl: einmal die Store-Vereinbarung bestätigen lassen, dann neu planen.
+            if (plan.Any(e => e.Result == "StoreAgreementRequired") && await EnsureStoreAgreementAsync())
+            {
+                plan = await _actions.PlanUpdateQueueAsync(selected.Select(i => i.Source!).ToList(), planProgress);
+            }
             var confirmation = new QueueConfirmation(plan);
             if (!confirmation.CanStart || !_confirmation!.ConfirmQueue(confirmation))
             {
@@ -422,6 +427,21 @@ public sealed partial class MainViewModel : ObservableObject
             RefreshView();
             QueueFinished?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    /// <summary>
+    /// Zeigt die Vereinbarung der Quelle „msstore“ (Standard „Abbrechen“) und speichert die Zustimmung.
+    /// Ohne Zustimmung bleibt der Eintrag nicht ausführbar, mit Grund.
+    /// </summary>
+    private async Task<bool> EnsureStoreAgreementAsync()
+    {
+        var agreement = await _actions!.GetStoreAgreementAsync();
+        if (!_confirmation!.ConfirmStoreAgreement(agreement))
+        {
+            return false;
+        }
+        await _actions.AcceptStoreAgreementAsync();
+        return true;
     }
 
     private void RefreshQueueStatus()
@@ -548,6 +568,11 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var plan = await _actions.PlanAsync(kind, item?.Source, method);
+            // Store-Paket: erst die Store-Vereinbarung bestätigen lassen, dann neu planen.
+            if (plan.IsStoreAgreementRequired && await EnsureStoreAgreementAsync())
+            {
+                plan = await _actions.PlanAsync(kind, item?.Source, method);
+            }
             if (!plan.IsPlanned)
             {
                 ShowOutcome(plan, item);

@@ -65,7 +65,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 | Einrichtung | Alle Dienste sind anfangs aus und werden einzeln eingerichtet. Die Hinweise zu den Nutzungsbedingungen beim Einschalten beachten. Einstellungen lassen sich optional per Richtlinie festlegen und sperren, siehe [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md#dienste-einrichten-alles-manuell-für-alle-gleich). |
 | VirusTotal (nicht umgesetzt) | Falls später ergänzt: Die kostenlose öffentliche API ist für geschäftliche Abläufe **nicht erlaubt**. |
 | GitHub, NVD | Je Organisation eigene Schlüssel bzw. Tokens; Abfragegrenzen hinter gemeinsamem Proxy beachten. NVD-Schlüssel nicht über viele Installationen teilen, sondern zentral abrufen und Ergebnisse cachen (Etappe 6). |
-| Microsoft Store (`msstore`) | Zustimmung zur Quellvereinbarung durch die Organisation; ggf. Quelle per Richtlinie sperren. Updates von Store-Paketen stimmen derzeit im Befehl zu (`--accept-source-agreements`); das soll sichtbar werden (offen). |
+| Microsoft Store (`msstore`) | Zustimmung zur Quellvereinbarung durch die Organisation; ggf. Quelle per Richtlinie sperren. Die App fragt vor der ersten Aktion an einem Store-Paket einmal nach der Zustimmung und speichert sie im Benutzerprofil (`Agreements.MsStore`). |
 | Lokale Sprachmodelle | Lizenz des gewählten Modells für kommerzielle Nutzung prüfen; Modelle unter Apache-2.0 oder MIT sind am einfachsten. |
 | Claude API (später) | Commercial Terms und Usage Policy von Anthropic gelten für die Organisation. |
 
@@ -74,7 +74,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 - **Firewall/Proxy:** Hostliste in [TECHNIK.md](TECHNIK.md#netzwerkverbindungen).
 - **Rechte:** Die App läuft ohne Administratorrechte; nur Aktionen und der Wiederherstellungspunkt fordern UAC an, bei einer Update-Warteschlange einmal für alle erhöhten Einträge. In verwalteten Umgebungen Aktionen besser über die vorhandene Softwareverteilung (Intune, SCCM, winget-Richtlinien) auslösen und die App nur zur Analyse nutzen.
 - **Ausführungsrichtlinien:** Für AppLocker/WDAC sind signierte Releases und signierte Skripte vorgesehen (Etappe 6). Bis dahin: Hash-Regel oder Ausnahme für das Installationsverzeichnis.
-- **Telemetrie Dritter:** winget-Telemetrie per Richtlinie bzw. `winget settings` abschalten; für die eingebettete PowerShell `POWERSHELL_TELEMETRY_OPTOUT=1` setzen (siehe [TECHNIK.md](TECHNIK.md#telemetrie)).
+- **Telemetrie Dritter:** winget-Telemetrie per Richtlinie bzw. `winget settings` abschalten; `POWERSHELL_TELEMETRY_OPTOUT=1` setzt die App selbst (siehe [TECHNIK.md](TECHNIK.md#telemetrie)); für Windows PowerShell 5.1 gelten die Windows-Diagnoseeinstellungen.
 - **Updates der App:** keine Selbstaktualisierung im Hintergrund; neue Versionen über die eigene Softwareverteilung.
 
 ## 7. Checkliste vor dem Start

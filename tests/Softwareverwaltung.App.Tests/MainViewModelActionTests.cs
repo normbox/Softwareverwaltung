@@ -260,9 +260,33 @@ public sealed class MainViewModelActionTests
         Assert.False(vm.QueueRunning);
     });
 
+    [Fact]
+    public void StorePackageAsksForTheStoreAgreementOnceAndRunsOnlyAfterConsent() => RunOnDispatcher(async () =>
+    {
+        var actions = new FakeActions { StorePackage = true, Plan = Planned("Update") };
+        var (vm, _, confirm) = await CreateAsync(actions);
+
+        // Abgelehnt: nichts ausgeführt, Ergebnis nennt den Grund
+        confirm.StoreAnswer = false;
+        await vm.UpdateCommand.ExecuteAsync(Tool);
+        Assert.Equal(["Plan:Update:Auto", "StoreAgreement"], actions.Calls);
+        Assert.True(vm.LastOutcome!.IsStoreAgreementRequired);
+        Assert.Equal("Store-Vereinbarung nicht bestätigt", vm.LastOutcome.ResultText);
+
+        // Zugestimmt: Zustimmung speichern, neu planen, normal bestätigen und ausführen
+        actions.Calls.Clear();
+        confirm.StoreAnswer = true;
+        await vm.UpdateCommand.ExecuteAsync(Tool);
+        Assert.Equal(["Plan:Update:Auto", "StoreAgreement", "AcceptStoreAgreement", "Plan:Update:Auto"], actions.Calls.Take(4));
+        Assert.Contains(actions.Calls, c => c.StartsWith("Execute:Update", StringComparison.Ordinal));
+    });
+
     private sealed class FakeConfirmation : IConfirmationService
     {
         public bool Answer { get; set; } = true;
+        public bool StoreAnswer { get; set; } = true;
+
+        public bool ConfirmStoreAgreement(StoreAgreement agreement) => StoreAnswer;
         public List<ActionOutcome> Shown { get; } = [];
         public List<QueueConfirmation> Queues { get; } = [];
 
@@ -294,8 +318,15 @@ public sealed class MainViewModelActionTests
         {
             await Task.Yield();
             Calls.Add($"Plan:{kind}:{method}");
+            // Store-Paket: ohne Zustimmung nicht ausführbar, danach wie geplant
+            if (StorePackage && !StoreAgreementAccepted)
+            {
+                return new ActionOutcome { Action = kind.ToString(), Name = "Store App", Result = "StoreAgreementRequired", Message = "Store-Vereinbarung noch nicht bestätigt." };
+            }
             return PlanFailure is null ? Plan : throw PlanFailure;
         }
+
+        public bool StorePackage { get; set; }
 
         public async Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", CancellationToken cancellationToken = default)
         {
@@ -314,6 +345,21 @@ public sealed class MainViewModelActionTests
         public Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default)
         {
             Calls.Add("ClearCache");
+            return Task.CompletedTask;
+        }
+
+        public bool StoreAgreementAccepted { get; private set; }
+
+        public Task<StoreAgreement> GetStoreAgreementAsync(CancellationToken cancellationToken = default)
+        {
+            Calls.Add("StoreAgreement");
+            return Task.FromResult(new StoreAgreement("Vereinbarung", null));
+        }
+
+        public Task AcceptStoreAgreementAsync(CancellationToken cancellationToken = default)
+        {
+            Calls.Add("AcceptStoreAgreement");
+            StoreAgreementAccepted = true;
             return Task.CompletedTask;
         }
 

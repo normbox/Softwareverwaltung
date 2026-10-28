@@ -232,6 +232,8 @@ public sealed class MainViewModelTests
 
         public bool ConfirmQueue(QueueConfirmation confirmation) => true;
 
+        public bool ConfirmStoreAgreement(StoreAgreement agreement) => false;
+
         public Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate)
         {
             Asked.Add(estimate.Seconds);

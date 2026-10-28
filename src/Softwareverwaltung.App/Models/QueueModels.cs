@@ -16,6 +16,9 @@ public sealed record QueueEntry(
     int Index, string Name, string? InstalledVersion, string? LatestVersion, bool Unconfirmed,
     bool Executable, bool Elevated, string? CommandLine, string? Reason, PSObject Source)
 {
+    /// <summary>Code, wenn der Eintrag nicht ausführbar ist (z. B. StoreAgreementRequired).</summary>
+    public string? Result { get; init; }
+
     public string VersionText => AppText.Format("QueueVersions", InstalledVersion ?? "?", LatestVersion ?? "?");
 
     public static QueueEntry FromPs(PSObject obj) => new(
@@ -28,7 +31,10 @@ public sealed record QueueEntry(
         obj.Properties["Elevated"]?.Value is true,
         ActionOutcome.Text(obj, "CommandLine"),
         SoftwareItem.MessageText(obj.Properties["Message"]?.Value),
-        obj);
+        obj)
+    {
+        Result = ActionOutcome.Text(obj, "Result"),
+    };
 }
 
 /// <summary>Gemeinsame Bestätigung: geplante Einträge in drei Gruppen.</summary>

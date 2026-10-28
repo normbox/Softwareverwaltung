@@ -893,4 +893,16 @@ Trotzdem schließen?</value>
   <data name="ScanWithoutCacheHint" xml:space="preserve">
     <value>„Ohne Cache“ ist an: „Scannen“ fragt alle Dienste neu ab und dauert deshalb länger. Zum normalen Scan den Schalter wieder ausschalten.</value>
   </data>
+  <data name="ActionResultStoreAgreementRequired" xml:space="preserve">
+    <value>Store-Vereinbarung nicht bestätigt</value>
+  </data>
+  <data name="StoreAgreementTitle" xml:space="preserve">
+    <value>Vereinbarung der Microsoft-Store-Quelle</value>
+  </data>
+  <data name="StoreAgreementAccept" xml:space="preserve">
+    <value>Zustimmen</value>
+  </data>
+  <data name="StoreAgreementOpenTerms" xml:space="preserve">
+    <value>Terms of Transaction des Microsoft Store öffnen</value>
+  </data>
 </root>

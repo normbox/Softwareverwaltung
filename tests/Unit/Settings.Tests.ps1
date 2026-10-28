@@ -8,6 +8,20 @@ Describe 'Einstellungen' {
         Mock -ModuleName SoftwareInventory Get-SettingsPath { $settingsFile }
     }
 
+    It 'speichert jeden Bereich der Einstellungen und liest ihn wieder' {
+        InModuleScope SoftwareInventory {
+            $sections = (New-DefaultSetting).PSObject.Properties.Name | Where-Object { $_ -ne 'PSTypeName' }
+            $sections | Where-Object { $_ -notin $script:SettingSections } | Should -BeNullOrEmpty -Because 'jeder Bereich muss gespeichert werden'
+        }
+        Set-InventorySetting -CacheHoursNvd 48 -CacheHoursLatestVersion 2 -StoreAgreementAccepted $true -Confirm:$false
+        $s = InModuleScope SoftwareInventory { Read-InventorySetting }
+        $s.CacheHours.NVD | Should -Be 48
+        $s.CacheHours.LatestVersion | Should -Be 2
+        $s.Agreements.MsStore | Should -Not -BeNullOrEmpty
+        Set-InventorySetting -StoreAgreementAccepted $false -Confirm:$false
+        (InModuleScope SoftwareInventory { Read-InventorySetting }).Agreements.MsStore | Should -BeNullOrEmpty
+    }
+
     It 'ist ohne Datei vollständig aus' {
         $s = Get-InventorySetting
         $s.Sources.PSObject.Properties.Value | Should -Not -Contain $true

@@ -34,6 +34,10 @@ function Set-InventorySetting {
         $false schaltet die Herstellerordner-Regel und den Abgleich über Name/Version ab
         (mehr Treffer). Feste Systemausschlüsse und Ordner installierter Programme bleiben.
         Standard: $true. Vorlagen ändern den Wert nicht.
+    .PARAMETER StoreAgreementAccepted
+        $true speichert die Zustimmung zur Vereinbarung der winget-Quelle „msstore“ (mit Zeitpunkt),
+        $false nimmt sie zurück. Ohne Zustimmung werden Store-Pakete nicht über winget aktualisiert
+        oder deinstalliert (Get-StoreAgreementNotice zeigt die Vereinbarung).
     .PARAMETER CacheHoursLatestVersion
         Haltbarkeit der zwischengespeicherten neuesten Versionen (GitHub, winget-Suche) in Stunden, 1–720 (Standard 6).
     .PARAMETER CacheHoursNvd
@@ -129,6 +133,8 @@ function Set-InventorySetting {
 
         [bool] $AdvisorEnabled,
 
+        [bool] $StoreAgreementAccepted,
+
         [bool] $PortableSearch,
 
         [bool] $TraceSearch,
@@ -183,6 +189,9 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }
     if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
+    if ($PSBoundParameters.ContainsKey('StoreAgreementAccepted')) {
+        $setting.Agreements.MsStore = if ($StoreAgreementAccepted) { [datetime]::UtcNow.ToString('o') } else { $null }
+    }
     if ($PSBoundParameters.ContainsKey('AdvisorEnabled')) { $setting.Advisor.Enabled = $AdvisorEnabled }
     if ($PSBoundParameters.ContainsKey('PortableSearch')) { $setting.PortableSearch.Enabled = $PortableSearch }
     if ($PSBoundParameters.ContainsKey('TraceSearch')) { $setting.PortableSearch.TraceSearch = $TraceSearch }

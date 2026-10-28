@@ -66,7 +66,7 @@ Hinweis: Nutzungsspuren zeigen, wer wann welches Programm gestartet hat. Das ist
 
 Nur nach Bestätigung im UI (mit dem genauen Befehl), protokolliert, Administratorrechte nur wenn nötig. Einzelheiten in [AKTIONEN.md](AKTIONEN.md).
 
-- `winget upgrade --id <Id> --exact --source <Quelle des Pakets> --silent --accept-source-agreements --disable-interactivity …` bzw. `winget uninstall …` mit denselben Angaben
+- `winget upgrade --id <Id> --exact --source <Quelle des Pakets> --silent --accept-source-agreements --disable-interactivity …` bzw. `winget uninstall …` mit denselben Angaben; bei der Quelle `msstore` steht `--accept-source-agreements` nur nach gespeicherter Zustimmung des Benutzers
 - Deinstallieren ohne winget je nach Programm: MSI über `msiexec /x {ProductCode}`, Deinstallationsbefehl aus der Registry (keine Skript-Interpreter), Store-Apps über `Remove-AppxPackage`. Nach einem Fehlschlag wird die nächste Methode nur vorgeschlagen, nie automatisch genutzt.
 - Optional vorher ein Windows-Wiederherstellungspunkt (bei der Warteschlange einer für alle)
 - `Repair-WinGetPackageManager`, wenn winget fehlt und der Benutzer zustimmt
@@ -122,7 +122,7 @@ Alle Abfragen nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt de
 Das Projekt selbst sendet keine Telemetrie und soll das auch künftig nicht tun. Zu beachten sind Bestandteile von Microsoft:
 
 - **winget** sendet Nutzungsdaten gemäß den Windows-Diagnoseeinstellungen. Abschaltbar in den winget-Einstellungen (`winget settings`, Abschnitt `"telemetry": { "disable": true }`).
-- **PowerShell** kennt Telemetrie (Umgebungsvariable `POWERSHELL_TELEMETRY_OPTOUT=1` schaltet sie ab). Ob die eingebettete Engine sendet, ist noch nicht geprüft; vorsorglich soll die App die Variable vor dem Start der Runspace setzen (offen).
+- **PowerShell** kennt Telemetrie; die Umgebungsvariable `POWERSHELL_TELEMETRY_OPTOUT=1` schaltet sie ab. Die App setzt sie vor dem Start der eingebetteten Engine für den ganzen Prozess, der erhöhte Helfer setzt sie als Erstes in seinem Startbefehl. Windows PowerShell 5.1 (Helfer) kennt die Variable nicht; seine Diagnosedaten folgen den Windows-Diagnoseeinstellungen.
 
 ## Build und Veröffentlichung
 

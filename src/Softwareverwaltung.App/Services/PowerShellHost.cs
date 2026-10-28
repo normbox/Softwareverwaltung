@@ -50,6 +50,9 @@ public sealed class PowerShellHost : IPowerShellHost
                 ?? throw new FileNotFoundException(AppText.Format("ErrorCoreModuleNotFound", _modulesDirectory));
             var winget = FindModuleManifest(WinGetModuleName);
 
+            // Keine PowerShell-Telemetrie: vor dem ersten Start der Engine setzen (gilt für den ganzen Prozess).
+            Environment.SetEnvironmentVariable("POWERSHELL_TELEMETRY_OPTOUT", "1");
+
             // CreateDefault enthält die eingebauten Cmdlets ohne Modulsuche; die App bringt kein $PSHOME mit.
             var state = InitialSessionState.CreateDefault();
             // Nur für diese Sitzung: Das Modul ist nicht signiert. Systemweit ändert sich nichts.

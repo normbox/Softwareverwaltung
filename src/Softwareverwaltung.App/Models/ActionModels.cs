@@ -33,6 +33,8 @@ public sealed record ActionOutcome
     public bool IsPlanned => Result == "Planned";
     public bool RestorePointPlanned => RestorePoint == "Planned";
     public bool IsSuccess => Result is "Succeeded" or "SucceededRebootRequired";
+    /// <summary>Store-Paket (Quelle „msstore“) ohne bestätigte Store-Vereinbarung: erst zustimmen lassen.</summary>
+    public bool IsStoreAgreementRequired => Result == "StoreAgreementRequired";
 
     // Texte über Codes: Schlüssel = Präfix + Code aus dem Modul (z. B. ActionResultFailed).
     public string ActionText => AppText.Find("Action" + Action) ?? Action;
