@@ -56,7 +56,7 @@ function New-SoftwareRecord {
 
     foreach ($key in $Property.Keys) {
         if (-not $record.Contains($key) -or $key -in 'PSTypeName', 'Name', 'Sources') {
-            throw "Unbekanntes oder geschütztes Feld '$key'."
+            throw (Get-LocalizedString 'ErrorUnknownRecordField' $key)
         }
         $record[$key] = $Property[$key]
     }

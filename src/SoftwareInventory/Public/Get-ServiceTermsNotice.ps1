@@ -23,11 +23,11 @@ function Get-ServiceTermsNotice {
         [pscustomobject] [ordered]@{
             PSTypeName = 'SoftwareInventory.ServiceTermsNotice'
             Service    = $entry.Service
-            Name       = $entry.Name
-            Terms      = $entry.Terms
-            UsageHint  = if ($Usage -eq 'Company') { $entry.Company } else { $null }
+            Name       = Get-LocalizedString "ServiceTerms$($entry.Service)Name"
+            Terms      = Get-LocalizedString "ServiceTerms$($entry.Service)Terms"
+            UsageHint  = if ($Usage -eq 'Company' -and $entry.CompanyHint) { Get-LocalizedString "ServiceTerms$($entry.Service)Company" } else { $null }
             Url        = $entry.Url
-            General    = if ($Usage) { $script:ServiceTermsGeneral[$Usage] } else { $null }
+            General    = if ($Usage) { Get-LocalizedString "ServiceTermsGeneral$Usage" } else { $null }
         }
     }
 }

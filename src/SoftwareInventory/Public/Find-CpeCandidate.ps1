@@ -26,7 +26,7 @@ function Find-CpeCandidate {
                 -Uri "$script:NvdBase/cpes/2.0?keywordSearch=$([uri]::EscapeDataString($query))&resultsPerPage=500"
         }
         catch {
-            Write-Warning "CPE-Suche für '$query' nicht möglich: $($_.Exception.Message)"
+            Write-Warning (Get-LocalizedString 'WarningCpeSearchFailed' $query, $_.Exception.Message)
             return
         }
 

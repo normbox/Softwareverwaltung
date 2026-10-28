@@ -183,7 +183,7 @@ function Set-InventorySetting {
     }
     if ($PSBoundParameters.ContainsKey('AdvisorModel')) { $setting.Advisor.Model = if ($AdvisorModel) { $AdvisorModel } else { $null } }
 
-    if ($PSCmdlet.ShouldProcess((Get-SettingsPath), 'Einstellungen speichern')) {
+    if ($PSCmdlet.ShouldProcess((Get-SettingsPath), (Get-LocalizedString 'ConfirmSaveSettings'))) {
         Write-InventorySetting -Setting $setting
     }
     $setting

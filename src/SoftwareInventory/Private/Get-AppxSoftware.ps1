@@ -18,7 +18,7 @@ function Get-AppxSoftware {
         $packages = @(Get-AppxPackage -PackageTypeFilter Main -ErrorAction Stop)
     }
     catch {
-        Write-Warning "Store-Apps nicht verfügbar: $_"
+        Write-Warning (Get-LocalizedString 'WarningAppxUnavailable' $_.Exception.Message)
         return
     }
 

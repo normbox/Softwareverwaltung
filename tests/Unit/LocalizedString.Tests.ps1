@@ -50,6 +50,18 @@ Describe 'Texte des Moduls' {
         $data.args[0].args | Should -Be @('NVD')
     }
 
+    It 'enthält die Texte der Nutzungsbedingungen zu jedem Dienst' {
+        $missing = InModuleScope SoftwareInventory {
+            $keys = @('ServiceTermsGeneralPrivate', 'ServiceTermsGeneralCompany')
+            foreach ($e in $script:ServiceTerms) {
+                $keys += "ServiceTerms$($e.Service)Name", "ServiceTerms$($e.Service)Terms"
+                if ($e.CompanyHint) { $keys += "ServiceTerms$($e.Service)Company" }
+            }
+            $keys | Where-Object { -not $script:Strings.ContainsKey($_) }
+        }
+        $missing | Should -BeNullOrEmpty
+    }
+
     It 'enthält die Fortschrittstexte mit und ohne Zähler' {
         $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern 'Write-CheckProgress\b.*?-Activity\s+(?<key>\w+)' -AllMatches |
             ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique

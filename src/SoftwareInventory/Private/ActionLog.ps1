@@ -61,7 +61,7 @@ function Write-ActionLogEntry {
     $locked = $false
     try {
         try { $locked = $mutex.WaitOne([timespan]::FromSeconds(10)) } catch [System.Threading.AbandonedMutexException] { $locked = $true }
-        if (-not $locked) { Write-Warning 'Protokoll ist gesperrt; Eintrag wird trotzdem geschrieben.' }
+        if (-not $locked) { Write-Warning (Get-LocalizedString 'WarningActionLogLocked') }
         $stream = [System.IO.FileStream]::new($path, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
         try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
     }
@@ -94,7 +94,7 @@ function Read-ActionLogEntry {
             $reader.Dispose()
         }
         catch {
-            Write-Warning "Protokolldatei nicht lesbar: $($file.Name)"
+            Write-Warning (Get-LocalizedString 'WarningActionLogUnreadable' $file.Name)
             continue
         }
         foreach ($line in $content -split "`r?`n") {
@@ -110,7 +110,7 @@ function Read-ActionLogEntry {
             }
         }
     }
-    if ($bad) { Write-Warning "$bad beschädigte Protokollzeile(n) übersprungen." }
+    if ($bad) { Write-Warning (Get-LocalizedString 'WarningActionLogBadLines' $bad) }
 }
 
 function Complete-InstallerLog {
@@ -141,7 +141,7 @@ function Complete-InstallerLog {
         $zip
     }
     catch {
-        Write-Warning "Installer-Log konnte nicht komprimiert werden: $_"
+        Write-Warning (Get-LocalizedString 'WarningInstallerLogCompress' $_.Exception.Message)
         $null
     }
     finally {

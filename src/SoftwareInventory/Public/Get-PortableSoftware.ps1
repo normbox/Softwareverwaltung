@@ -82,14 +82,14 @@ function Get-PortableSoftware {
     }
     $Path = @($Path | Where-Object { $_ } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_) })
     if (-not $Trace -and -not $Path -and -not $Drive) {
-        Write-Warning 'Keine Nutzungsspuren und keine Scan-Ordner aktiviert. Aktivieren mit Set-InventorySetting, z. B. -Preset Quick.'
+        Write-Warning (Get-LocalizedString 'WarningPortableNothingEnabled')
         return
     }
 
     if (-not $PSBoundParameters.ContainsKey('Inventory')) {
         $Inventory = @(Get-SoftwareInventory -WarningAction SilentlyContinue)
         if (-not $Inventory) {
-            Write-Warning 'Keine Inventar-Quelle aktiviert: Installierte Programme können nicht ausgelassen werden und erscheinen mit.'
+            Write-Warning (Get-LocalizedString 'WarningPortableNoInventorySource')
         }
     }
     $exclusions = @(Get-ScanExclusion -Inventory $Inventory) + $userExclusions
@@ -157,7 +157,7 @@ function Get-PortableSoftware {
             }
         }
         catch {
-            Write-Warning "Spurenquelle $source nicht lesbar: $_"
+            Write-Warning (Get-LocalizedString 'WarningTraceSourceUnreadable' $source, $_.Exception.Message)
         }
     }
 
@@ -379,7 +379,7 @@ function Merge-PortableCopy {
 
 function ConvertTo-DriveRoot {
     param([string] $Drive)
-    if ($Drive -notmatch '^(?<letter>[A-Za-z]):?\\?$') { throw "Ungültige Laufwerksangabe '$Drive' (erwartet z. B. C oder D:)." }
+    if ($Drive -notmatch '^(?<letter>[A-Za-z]):?\\?$') { throw (Get-LocalizedString 'ErrorInvalidDrive' $Drive) }
     "$($Matches.letter.ToUpperInvariant()):\"
 }
 

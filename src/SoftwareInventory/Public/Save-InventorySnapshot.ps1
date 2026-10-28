@@ -27,7 +27,7 @@ function Save-InventorySnapshot {
     end {
         $now = [datetime]::UtcNow
         $path = Join-Path $Directory ($now.ToString('yyyyMMdd-HHmmss-fff') + '.json')
-        if (-not $PSCmdlet.ShouldProcess($path, 'Inventar speichern')) { return }
+        if (-not $PSCmdlet.ShouldProcess($path, (Get-LocalizedString 'ConfirmSaveSnapshot'))) { return }
 
         New-Item -ItemType Directory -Path $Directory -Force | Out-Null
         $snapshot = [ordered]@{

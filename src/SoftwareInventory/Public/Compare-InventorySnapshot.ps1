@@ -21,7 +21,7 @@ function Compare-InventorySnapshot {
     if (-not $PSBoundParameters.ContainsKey('Reference') -and -not $PSBoundParameters.ContainsKey('Difference')) {
         $latest = @(Get-InventorySnapshot -Latest 2)
         if ($latest.Count -lt 2) {
-            Write-Warning 'Für einen Vergleich werden mindestens zwei gespeicherte Snapshots benötigt.'
+            Write-Warning (Get-LocalizedString 'WarningSnapshotsNeeded')
             return
         }
         $Difference = $latest[0]

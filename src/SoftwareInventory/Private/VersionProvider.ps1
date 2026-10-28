@@ -44,7 +44,7 @@ function Get-GitHubLatestVersion {
         $reason = Get-ServiceErrorReason $_
         if ($reason -eq 'RateLimit') {
             $State.GitHubBlocked = $true
-            Write-Warning 'GitHub-Anfragelimit erreicht; weitere GitHub-Abfragen in diesem Lauf entfallen. Mit GITHUB_TOKEN gilt ein höheres Limit.'
+            Write-Warning (Get-LocalizedString 'WarningGitHubRateLimit')
             return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage RateLimit 'GitHub')
         }
         if ($reason -eq 'NotFound') { return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage GitHubNoRelease $repo) }

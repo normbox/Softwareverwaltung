@@ -23,7 +23,7 @@ function Read-CpeMapping {
             if ($entry -and $entry.Key -and $entry.Cpe) { $map[$entry.Key] = $entry }
         }
     }
-    catch { Write-Warning "CPE-Zuordnungen nicht lesbar ($path): $_" }
+    catch { Write-Warning (Get-LocalizedString 'WarningCpeMappingUnreadable' $path, $_.Exception.Message) }
     $map
 }
 
