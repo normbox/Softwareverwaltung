@@ -12,51 +12,51 @@ function Get-RatingFromResult {
     .SYNOPSIS
         Bewertet ein Programm aus Update-Status und Schwachstellen-Status.
     .OUTPUTS
-        @{ Rating = 'Red'|'Yellow'|'Green'|'Gray'; Reasons = [string[]] }
+        @{ Rating = 'Red'|'Yellow'|'Green'|'Gray'; Reasons = SoftwareInventory.Message[] } (Code, Args, Text)
     #>
     param($UpdateStatus, $VulnerabilityStatus)
 
     $vulns = @(if ($VulnerabilityStatus) { $VulnerabilityStatus.Vulnerabilities }) | Where-Object { $_ }
     $affected = @($vulns | Where-Object Assessment -eq 'Affected')
     $possible = @($vulns | Where-Object Assessment -eq 'PossiblyAffected')
-    $red = [System.Collections.Generic.List[string]]::new()
-    $yellow = [System.Collections.Generic.List[string]]::new()
+    $red = [System.Collections.Generic.List[object]]::new()
+    $yellow = [System.Collections.Generic.List[object]]::new()
 
     foreach ($v in $affected) {
-        if ($v.Kev) { $red.Add("Aktiv ausgenutzte Lücke $($v.CveId) (CISA KEV)") }
-        elseif ($null -ne $v.Score -and $v.Score -ge $script:CriticalCvss) { $red.Add("Kritische Lücke $($v.CveId) (CVSS $($v.Score))") }
+        if ($v.Kev) { $red.Add((New-InventoryMessage KevAffected $v.CveId)) }
+        elseif ($null -ne $v.Score -and $v.Score -ge $script:CriticalCvss) { $red.Add((New-InventoryMessage CriticalCvss $v.CveId, $v.Score)) }
     }
     $other = @($affected | Where-Object { -not $_.Kev -and -not ($null -ne $_.Score -and $_.Score -ge $script:CriticalCvss) })
     if ($other) {
         $max = ($other | ForEach-Object { [double] $_.Score } | Measure-Object -Maximum).Maximum
-        $yellow.Add("$($other.Count) bekannte Lücke(n)" + $(if ($max) { ", höchster CVSS $max" }))
+        $yellow.Add($(if ($max) { New-InventoryMessage KnownVulnerabilitiesMaxCvss $other.Count, $max } else { New-InventoryMessage KnownVulnerabilities $other.Count }))
     }
     foreach ($v in $possible) {
-        $kev = if ($v.Kev) { 'aktiv ausgenutzt, ' } else { '' }
-        $yellow.Add("Möglicherweise betroffen: $($v.CveId) ($kev$($v.Note -replace '^Aktiv ausgenutzt; ', ''))")
+        $code = if ($v.Kev) { 'PossiblyAffectedKev' } else { 'PossiblyAffected' }
+        $yellow.Add((New-InventoryMessage $code $v.CveId, $v.Note))
     }
     if ($UpdateStatus -and $UpdateStatus.Status -eq 'Outdated') {
-        $unconfirmed = if ($UpdateStatus.Confirmed) { '' } else { ', unbestätigt' }
-        $yellow.Add("Update verfügbar: $($UpdateStatus.InstalledVersion) → $($UpdateStatus.LatestVersion) (Quelle $($UpdateStatus.Source)$unconfirmed)")
+        $code = if ($UpdateStatus.Confirmed) { 'UpdateAvailable' } else { 'UpdateAvailableUnconfirmed' }
+        $yellow.Add((New-InventoryMessage $code $UpdateStatus.InstalledVersion, $UpdateStatus.LatestVersion, $UpdateStatus.Source))
     }
 
     # Widerlegte KEV-Treffer färben nie, werden aber als Grund genannt (nachvollziehbar statt still).
     $refuted = @(@(if ($VulnerabilityStatus -and $VulnerabilityStatus.PSObject.Properties['Refuted']) { $VulnerabilityStatus.Refuted }) | Where-Object { $_ } | ForEach-Object Note)
 
-    if ($red.Count) { return @{ Rating = 'Red'; Reasons = [string[]] (@($red) + @($yellow) + $refuted) } }
-    if ($yellow.Count) { return @{ Rating = 'Yellow'; Reasons = [string[]] (@($yellow) + $refuted) } }
+    if ($red.Count) { return @{ Rating = 'Red'; Reasons = @(@($red) + @($yellow) + $refuted) } }
+    if ($yellow.Count) { return @{ Rating = 'Yellow'; Reasons = @(@($yellow) + $refuted) } }
 
     if ($VulnerabilityStatus -and $VulnerabilityStatus.Status -eq 'Checked') {
-        $reasons = @('Sicherheitsprüfung ohne Befund') + $refuted
-        if ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $reasons += 'Version aktuell' }
-        return @{ Rating = 'Green'; Reasons = [string[]] $reasons }
+        $reasons = @(New-InventoryMessage NoFindings) + $refuted
+        if ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $reasons += New-InventoryMessage VersionCurrent }
+        return @{ Rating = 'Green'; Reasons = @($reasons) }
     }
 
     # Grau: immer mit Grund
     $gray = @()
-    $gray += if ($VulnerabilityStatus -and $VulnerabilityStatus.Reason) { "Nicht auf Lücken geprüft: $($VulnerabilityStatus.Reason)" } else { 'Nicht auf Lücken geprüft' }
+    $gray += if ($VulnerabilityStatus -and $VulnerabilityStatus.Reason) { New-InventoryMessage NotCheckedBecause (, $VulnerabilityStatus.Reason) } else { New-InventoryMessage NotChecked }
     $gray += $refuted
-    if ($UpdateStatus -and $UpdateStatus.Status -eq 'Unknown' -and $UpdateStatus.Reason) { $gray += "Versionsstand unbekannt: $($UpdateStatus.Reason)" }
-    elseif ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $gray += 'Version aktuell' }
-    @{ Rating = 'Gray'; Reasons = [string[]] $gray }
+    if ($UpdateStatus -and $UpdateStatus.Status -eq 'Unknown' -and $UpdateStatus.Reason) { $gray += New-InventoryMessage VersionUnknownBecause (, $UpdateStatus.Reason) }
+    elseif ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $gray += New-InventoryMessage VersionCurrent }
+    @{ Rating = 'Gray'; Reasons = @($gray) }
 }

@@ -25,6 +25,16 @@ BeforeAll {
         Mock -ModuleName SoftwareInventory Get-SoftwareCatalog { $script:TestCatalog }
     }
 
+    function Get-ReasonCode {
+        # Codes einer Meldung samt verschachtelter Meldungen in den Args (z. B. NoLatestVersion).
+        param($Message)
+        foreach ($m in @($Message)) {
+            if ($null -eq $m -or -not $m.PSObject.Properties['Code']) { continue }
+            $m.Code
+            foreach ($a in @($m.Args)) { Get-ReasonCode $a }
+        }
+    }
+
     $contosoCatalog = '{"Id":"contoso","Name":"Contoso","Match":{"NamePattern":"^Contoso Tool","Publisher":["Contoso"]},"GitHub":{"Repository":"contoso/tool"}}'
 }
 
@@ -42,6 +52,18 @@ Describe 'Test-SoftwareUpdate' {
         $r.Confirmed | Should -BeTrue
     }
 
+    It 'meldet eigenen Fortschritt mit Zähler und Programmname' {
+        Use-Setting; Use-Catalog @()
+        Mock -ModuleName SoftwareInventory Write-Progress { }
+        $records = @(
+            New-TestRecord 'Alpha' '1.0' -WingetId 'A.A'
+            New-TestRecord 'Beta' '2.0' -WingetId 'B.B'
+        )
+        Test-SoftwareUpdate -InputObject $records | Out-Null
+        Should -Invoke -ModuleName SoftwareInventory Write-Progress -ParameterFilter { $Activity -eq 'Prüfe neueste Versionen (2 von 2)' -and $Status -eq 'Beta' } -Times 1 -Exactly
+        Should -Invoke -ModuleName SoftwareInventory Write-Progress -ParameterFilter { $Completed } -Times 1 -Exactly
+    }
+
     It 'nutzt winget: kein Update gemeldet heißt aktuell' {
         Use-Setting; Use-Catalog @()
         $r = New-TestRecord '7-Zip' '26.05' -WingetId '7zip.7zip' | Test-SoftwareUpdate
@@ -54,7 +76,8 @@ Describe 'Test-SoftwareUpdate' {
         Mock -ModuleName SoftwareInventory Invoke-ServiceRequest { throw 'darf nicht aufgerufen werden' }
         $r = New-TestRecord 'Contoso Tool' '1.0' | Test-SoftwareUpdate
         $r.Status | Should -Be 'Unknown'
-        $r.Reason | Should -Match 'Dienst GitHub nicht aktiviert'
+        Get-ReasonCode $r.Reason | Should -Contain 'ServiceDisabled'
+        $r.Reason.Text | Should -Match 'Dienst GitHub nicht aktiviert'
         $r.CatalogId | Should -Be 'contoso'
         Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 0 -Exactly
     }
@@ -97,14 +120,14 @@ Describe 'Test-SoftwareUpdate' {
         }
         $records = @(New-TestRecord 'Contoso Tool' '1.0'; New-TestRecord 'Contoso Tool Pro' '1.0')
         $r = @($records | Test-SoftwareUpdate -WarningAction SilentlyContinue)
-        $r | ForEach-Object { $_.Status | Should -Be 'Unknown'; $_.Reason | Should -Match 'Anfragelimit' }
+        $r | ForEach-Object { $_.Status | Should -Be 'Unknown'; Get-ReasonCode $_.Reason | Should -Contain 'RateLimit' }
         Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 1 -Exactly
     }
 
     It 'meldet ein unpassendes Release-Tag als Grund' {
         Use-Setting GitHub; Use-Catalog $contosoCatalog
         Mock -ModuleName SoftwareInventory Invoke-ServiceRequest { [pscustomobject] @{ tag_name = 'nightly-build' } }
-        (New-TestRecord 'Contoso Tool' '1.0' | Test-SoftwareUpdate).Reason | Should -Match "Release-Tag 'nightly-build'"
+        Get-ReasonCode (New-TestRecord 'Contoso Tool' '1.0' | Test-SoftwareUpdate).Reason | Should -Contain 'GitHubTagMismatch'
     }
 
     Context 'winget-Suche' {
@@ -124,7 +147,7 @@ Describe 'Test-SoftwareUpdate' {
                 New-SoftwareRecord -Name 'Gaming Services' -Source Appx -Property @{ Version = '38.118.9001.0'; Publisher = 'Microsoft Corporation'; InstallType = 'MSIX' }
             } | Test-SoftwareUpdate
             $r.Status | Should -Be 'Unknown'
-            $r.Reason | Should -Match 'Store-App'
+            Get-ReasonCode $r.Reason | Should -Contain 'StoreApp'
         }
 
         It 'verwirft unplausible Treffer: <Case>' -TestCases @(
@@ -136,7 +159,7 @@ Describe 'Test-SoftwareUpdate' {
             Mock -ModuleName SoftwareInventory Find-WingetCandidate { [pscustomobject] @{ Name = 'Tool'; Id = 'Google.Tool'; Version = $script:Found } }
             $r = New-TestRecord 'Tool' $Installed -Publisher 'Google LLC' | Test-SoftwareUpdate
             $r.Status | Should -Be 'Unknown'
-            $r.Reason | Should -Match 'unplausibel'
+            Get-ReasonCode $r.Reason | Should -Contain 'WingetSearchImplausible'
         }
 
         It 'akzeptiert eine Hauptversion Abstand nach oben' {
@@ -175,7 +198,7 @@ Describe 'Test-SoftwareUpdate' {
             }
             $r = New-TestRecord 'Tool' '1.0' | Test-SoftwareUpdate
             $r.Status | Should -Be 'Unknown'
-            $r.Reason | Should -Match 'mehrdeutig'
+            Get-ReasonCode $r.Reason | Should -Contain 'WingetSearchAmbiguous'
         }
 
         It 'fragt bei zu vielen Namenstreffern keine Hersteller ab' {
@@ -183,13 +206,14 @@ Describe 'Test-SoftwareUpdate' {
                 1..6 | ForEach-Object { [pscustomobject] @{ Name = "Python 3.$_"; Id = "Python.Python.3.$_"; Version = "3.$_.0" } }
             }
             $r = New-TestRecord 'Python' '3.11' -Publisher 'Python Software Foundation' | Test-SoftwareUpdate
-            $r.Reason | Should -Match 'mehrdeutig \(6 Pakete'
+            Get-ReasonCode $r.Reason | Should -Contain 'WingetSearchAmbiguousCount'
+            $r.Reason.Text | Should -Match 'mehrdeutig \(6 Pakete'
             Should -Invoke -ModuleName SoftwareInventory Get-WingetPackagePublisher -Times 0 -Exactly
         }
 
         It 'ordnet ähnliche, aber andere Namen nicht zu' {
             Mock -ModuleName SoftwareInventory Find-WingetCandidate { [pscustomobject] @{ Name = 'PSPadX'; Id = 'JanFiala.PSPad.x64'; Version = '1.0' } }
-            (New-TestRecord 'PSPad' '5.0' -Publisher 'Jan Fiala' | Test-SoftwareUpdate).Reason | Should -Match 'Kein passendes winget-Paket'
+            (New-TestRecord 'PSPad' '5.0' -Publisher 'Jan Fiala' | Test-SoftwareUpdate).Reason | ForEach-Object { Get-ReasonCode $_ } | Should -Contain 'WingetSearchNoMatch'
         }
     }
 
@@ -197,14 +221,16 @@ Describe 'Test-SoftwareUpdate' {
         Use-Setting; Use-Catalog @()
         $r = New-TestRecord 'Unbekannt' '1.0' | Test-SoftwareUpdate
         $r.Status | Should -Be 'Unknown'
-        $r.Reason | Should -Match 'WingetSearch nicht aktiviert'
+        Get-ReasonCode $r.Reason | Should -Contain 'ServiceDisabled'
+        $r.Reason.Text | Should -Match 'WingetSearch nicht aktiviert'
     }
 
     It 'meldet unlesbare installierte Versionen als unbekannt statt aktuell' {
         Use-Setting; Use-Catalog @()
         $r = New-TestRecord 'Battle.net' 'Unknown' -WingetId 'Blizzard.BattleNet' | Test-SoftwareUpdate
         $r.Status | Should -Be 'Unknown'
-        $r.Reason | Should -Match "Installierte Version 'Unknown' nicht lesbar"
+        $r.Reason.Code | Should -Be 'InstalledVersionUnreadable'
+        $r.Reason.Args | Should -Be @('Unknown')
     }
 
     It 'verarbeitet eine Liste von Datensätzen über die Pipeline' {

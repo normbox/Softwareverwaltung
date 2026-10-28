@@ -35,7 +35,7 @@ function Get-InventorySnapshot {
     foreach ($file in $files) {
         $data = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json -DateKind String
         if ($data.SchemaVersion -gt $script:SnapshotSchemaVersion) {
-            Write-Warning "Snapshot '$file' hat neueres Schema $($data.SchemaVersion) und wird übersprungen."
+            Write-Warning (Get-LocalizedString 'WarningSnapshotNewerSchema' $file, $data.SchemaVersion)
             continue
         }
         foreach ($record in $data.Records) {

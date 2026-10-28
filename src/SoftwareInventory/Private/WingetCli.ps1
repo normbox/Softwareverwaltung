@@ -34,8 +34,8 @@ function Get-WingetClientProblem {
         Cmdlets sprechen winget über COM an und dürfen dann gar nicht erst aufgerufen werden.
     #>
     param([string] $Command = 'Get-WinGetPackage')
-    if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) { return 'Modul Microsoft.WinGet.Client ist nicht installiert' }
-    if (-not (Get-WingetExecutable)) { return 'winget (App Installer) ist nicht installiert' }
+    if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) { return New-InventoryMessage WingetClientModuleMissing }
+    if (-not (Get-WingetExecutable)) { return New-InventoryMessage WingetClientNotInstalled }
     $null
 }
 

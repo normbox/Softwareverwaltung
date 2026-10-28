@@ -40,6 +40,18 @@ Describe 'Invoke-ServiceRequest' {
         Should -Invoke -ModuleName SoftwareInventory Invoke-WebRequest -Times 0 -Exactly
     }
 
+    It 'unterdrückt die englischen Fortschrittsmeldungen von Invoke-WebRequest' {
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest {
+            # Der Mock läuft im Bereich des Tests; die Einstellung steht im Aufrufer.
+            $caller = Get-PSCallStack | Where-Object Command -EQ 'Invoke-ServiceRequest' | Select-Object -First 1
+            $script:SeenProgressPreference = $caller.GetFrameVariables()['ProgressPreference'].Value
+            [pscustomobject] @{ StatusCode = 200; Content = '{"a":1}' }
+        }
+        $script:SeenProgressPreference = $null
+        InModuleScope SoftwareInventory -Parameters @{ S = (New-EnabledSetting GitHub) } { Invoke-ServiceRequest -Service GitHub -Uri 'https://api.github.com/p' -Setting $S } | Out-Null
+        $script:SeenProgressPreference | Should -Be 'SilentlyContinue'
+    }
+
     It 'liefert JSON und nutzt den Zwischenspeicher' {
         Mock -ModuleName SoftwareInventory Invoke-WebRequest { [pscustomobject] @{ StatusCode = 200; Content = '{"tag_name":"v1.2.3","published_at":"2026-10-01T10:00:00Z"}' } }
         $s = New-EnabledSetting GitHub

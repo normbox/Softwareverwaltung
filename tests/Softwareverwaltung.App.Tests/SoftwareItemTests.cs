@@ -104,6 +104,24 @@ public sealed class SoftwareItemTests
     }
 
     [Fact]
+    public void ShowsTextOfModuleMessages()
+    {
+        // Das Modul liefert Gründe und Hinweise als Meldung mit Code, Args und Text; angezeigt wird Text.
+        static System.Management.Automation.PSObject Message(string code, string text, params object[] args) => Ps(("Code", code), ("Args", args), ("Text", text));
+        var item = SoftwareItem.FromRating(Ps(
+            ("Name", "7-Zip 26.05 (x64)"), ("Rating", "Yellow"),
+            ("Reasons", new object[] { Message("PossiblyAffectedKev", "Möglicherweise betroffen: CVE-2025-0411 (aktiv ausgenutzt, Version nicht prüfbar (Dienst NVD nicht aktiviert))", "CVE-2025-0411") }),
+            ("VulnerabilityStatus", Ps(("Status", "Unknown"),
+                ("Vulnerabilities", new object[] { Ps(("CveId", "CVE-2025-0411"), ("Assessment", "PossiblyAffected"), ("Kev", true),
+                    ("Note", Message("KevNvdDisabled", "Version nicht prüfbar (Dienst NVD nicht aktiviert)"))) }),
+                ("Refuted", new object[] { Ps(("CveId", "CVE-2025-0001"), ("Source", "NVD"), ("Note", Message("KevRefutedNvd", "KEV-Treffer CVE-2025-0001 widerlegt: Version 26.05 laut NVD nicht betroffen", "CVE-2025-0001", "26.05"))) })))));
+
+        Assert.Equal(["Möglicherweise betroffen: CVE-2025-0411 (aktiv ausgenutzt, Version nicht prüfbar (Dienst NVD nicht aktiviert))"], item.Reasons);
+        Assert.Equal("Version nicht prüfbar (Dienst NVD nicht aktiviert)", Assert.Single(item.Vulnerabilities).Note);
+        Assert.Equal("KEV-Treffer CVE-2025-0001 widerlegt: Version 26.05 laut NVD nicht betroffen", Assert.Single(item.Refuted));
+    }
+
+    [Fact]
     public void MarksUnconfirmedLatestVersion()
     {
         var item = SoftwareItem.FromRating(Ps(

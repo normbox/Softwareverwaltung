@@ -81,7 +81,7 @@ function Read-InventorySetting {
         $data = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
     }
     catch {
-        Write-Warning "Einstellungen nicht lesbar ($path), es gilt: alles aus. $_"
+        Write-Warning (Get-LocalizedString 'WarningSettingsUnreadable' $path, $_.Exception.Message)
         return $setting
     }
 

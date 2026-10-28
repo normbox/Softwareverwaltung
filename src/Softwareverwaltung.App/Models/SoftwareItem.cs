@@ -86,11 +86,11 @@ public sealed record SoftwareItem
             LatestVersionUnconfirmed = latest is not null && update is not null && GetString(update, "Confirmed") == bool.FalseString,
             UpdateAvailable = update is not null && GetString(update, "Status") == "Outdated",
             Rating = Enum.TryParse<Rating>(GetString(rating, "Rating"), out var r) ? r : Rating.Gray,
-            Reasons = GetStrings(rating, "Reasons"),
+            Reasons = GetMessages(rating, "Reasons"),
             VulnerabilityCount = checkedForVulnerabilities || counted.Count > 0 ? counted.Count : null,
             PossibleCount = counted.Count(v => v.Assessment == "PossiblyAffected"),
             Vulnerabilities = vulnerabilities,
-            Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => GetString(r, "Note")).OfType<string>().ToList(),
+            Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => MessageText(r.Properties["Note"]?.Value)).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
             WingetId = record is null ? null : GetString(record, "WingetId"),
             InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
@@ -137,6 +137,26 @@ public sealed record SoftwareItem
         var single => [PSObject.AsPSObject(single)],
     };
 
+    /// <summary>Texte einer Liste von Meldungen (Code, Args, Text); ältere Daten enthalten reinen Text.</summary>
+    private static IReadOnlyList<string> GetMessages(PSObject obj, string name) => obj.Properties[name]?.Value switch
+    {
+        null => [],
+        string s => [s],
+        IEnumerable list => list.Cast<object?>().Select(MessageText).OfType<string>().Where(s => s.Length > 0).ToList(),
+        var single => MessageText(single) is { Length: > 0 } text ? [text] : [],
+    };
+
+    /// <summary>Text einer Meldung des Moduls; der Code bleibt im Modul, angezeigt wird nur Text.</summary>
+    internal static string? MessageText(object? value) => value switch
+    {
+        null => null,
+        string s => s,
+        PSObject { BaseObject: string s } => s,
+        PSObject ps when ps.Properties["Text"] is { } text => text.Value?.ToString(),
+        PSObject ps => ps.BaseObject?.ToString(),
+        var other => other.ToString(),
+    };
+
     private static IReadOnlyList<string> GetStrings(PSObject obj, string name) => obj.Properties[name]?.Value switch
     {
         null => [],
@@ -166,7 +186,7 @@ public sealed record VulnerabilityItem(string CveId, string? Assessment, string?
         return new VulnerabilityItem(
             obj.Properties["CveId"]?.Value?.ToString() ?? "",
             obj.Properties["Assessment"]?.Value?.ToString(),
-            obj.Properties["Note"]?.Value?.ToString(),
+            SoftwareItem.MessageText(obj.Properties["Note"]?.Value),
             obj.Properties["Kev"]?.Value is true,
             Number(obj.Properties["Score"]?.Value),
             Number(obj.Properties["Epss"]?.Value),

@@ -77,17 +77,17 @@ function Invoke-AdvisorTool {
                 $u = Test-SoftwareUpdate -InputObject $rating.Record
                 New-AdvisorToolResult -Name $Name -Ok $true -Data ([ordered]@{
                         status = $u.Status; installed_version = $u.InstalledVersion; latest_version = $u.LatestVersion
-                        source = $u.Source; confirmed = $u.Confirmed; reason = $u.Reason
+                        source = $u.Source; confirmed = $u.Confirmed; reason = ConvertTo-MessageData $u.Reason
                     })
             }
             'search_vulnerabilities' {
                 $v = Get-SoftwareVulnerability -InputObject $rating.Record
                 New-AdvisorToolResult -Name $Name -Ok $true -Data ([ordered]@{
-                        status = $v.Status; reason = $v.Reason; notes = @($v.Notes)
+                        status = $v.Status; reason = ConvertTo-MessageData $v.Reason; notes = @(ConvertTo-MessageData @($v.Notes))
                         vulnerabilities = @($v.Vulnerabilities | Select-Object -First 25 | ForEach-Object {
-                                [ordered]@{ cve = $_.CveId; assessment = $_.Assessment; kev = [bool] $_.Kev; cvss = $_.Score; epss = $_.Epss; note = $_.Note }
+                                [ordered]@{ cve = $_.CveId; assessment = $_.Assessment; kev = [bool] $_.Kev; cvss = $_.Score; epss = $_.Epss; note = ConvertTo-MessageData $_.Note }
                             })
-                        refuted = @($v.Refuted | ForEach-Object Note)
+                        refuted = @(ConvertTo-MessageData @($v.Refuted | ForEach-Object Note))
                     })
             }
             { $_ -in 'propose_update', 'propose_uninstall' } {

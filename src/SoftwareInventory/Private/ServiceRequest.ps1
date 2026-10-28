@@ -34,7 +34,7 @@ function Invoke-ServiceRequest {
     )
 
     if (-not (Test-ServiceEnabled -Name $Service -Setting $Setting)) {
-        throw (New-ServiceRequestException -Service $Service -Reason Disabled -Message "Dienst $Service ist nicht aktiviert.")
+        throw (New-ServiceRequestException -Service $Service -Reason Disabled -Message (Get-LocalizedString 'ServiceErrorDisabled' $Service))
     }
 
     $cacheFile = $null
@@ -59,6 +59,9 @@ function Invoke-ServiceRequest {
     }
 
     Wait-ServiceInterval -Service $Service -HasKey ([bool] $secret)
+    # Die englischen Fortschrittsmeldungen von Invoke-WebRequest nicht anzeigen; den Fortschritt
+    # melden die Prüfungen selbst (Write-CheckProgress).
+    $ProgressPreference = 'SilentlyContinue'
     Write-Verbose "$Service-Anfrage: $($Uri.GetLeftPart([UriPartial]::Path))"
     try {
         $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec 60 -ErrorAction Stop
@@ -121,19 +124,19 @@ function ConvertTo-ServiceRequestException {
     param([string] $Service, [System.Management.Automation.ErrorRecord] $ErrorRecord)
     $response = $ErrorRecord.Exception.PSObject.Properties['Response']?.Value
     if (-not $response) {
-        return New-ServiceRequestException -Service $Service -Reason Network -Message "$Service nicht erreichbar: $($ErrorRecord.Exception.Message)"
+        return New-ServiceRequestException -Service $Service -Reason Network -Message (Get-LocalizedString 'ServiceErrorNetwork' $Service, $ErrorRecord.Exception.Message)
     }
     $status = [int] $response.StatusCode
     $remaining = $null
     $values = $null
     if ($response.Headers.TryGetValues('X-RateLimit-Remaining', [ref] $values)) { $remaining = @($values)[0] }
     if ($status -eq 429 -or ($status -eq 403 -and $remaining -eq '0')) {
-        return New-ServiceRequestException -Service $Service -Reason RateLimit -Message "$Service-Anfragelimit erreicht (HTTP $status)."
+        return New-ServiceRequestException -Service $Service -Reason RateLimit -Message (Get-LocalizedString 'ServiceErrorRateLimit' $Service, $status)
     }
     if ($status -eq 404) {
-        return New-ServiceRequestException -Service $Service -Reason NotFound -Message "${Service}: nicht gefunden (HTTP 404)."
+        return New-ServiceRequestException -Service $Service -Reason NotFound -Message (Get-LocalizedString 'ServiceErrorNotFound' $Service)
     }
-    New-ServiceRequestException -Service $Service -Reason Http -Message "$Service antwortet mit HTTP $status."
+    New-ServiceRequestException -Service $Service -Reason Http -Message (Get-LocalizedString 'ServiceErrorHttp' $Service, $status)
 }
 
 function Get-ServiceErrorReason {

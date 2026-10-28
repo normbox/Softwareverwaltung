@@ -21,7 +21,7 @@ function Set-CpeMapping {
         $record = if ($InputObject.PSObject.Properties['Record'] -and $InputObject.Record) { $InputObject.Record } else { $InputObject }
         $map = Read-CpeMapping
         $key = Get-CpeMappingKey $record
-        if (-not $PSCmdlet.ShouldProcess($record.Name, "CPE-Zuordnung $($Cpe -join ', ') speichern")) { return }
+        if (-not $PSCmdlet.ShouldProcess($record.Name, (Get-LocalizedString 'ConfirmSetCpeMapping' ($Cpe -join ', ')))) { return }
         $map[$key] = [pscustomobject] @{ Key = $key; Name = $record.Name; Cpe = [string[]] $Cpe; ConfirmedAt = [datetime]::UtcNow.ToString('o') }
         Write-CpeMapping -Map $map
         $map[$key]

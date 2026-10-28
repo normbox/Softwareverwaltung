@@ -115,8 +115,8 @@ function Start-ElevatedHelper {
             $process = Start-ElevatedProcess -FilePath $script:WindowsPowerShell -ArgumentList $argumentList -NoElevation:$NoElevation
         }
         catch {
-            if (Test-ElevationCancelled $_) { return @{ Status = 'ElevationDenied'; Error = 'Die Administratorabfrage (UAC) wurde abgelehnt.' } }
-            return @{ Status = 'Failed'; Error = "Erhöhter Prozess konnte nicht gestartet werden: $($_.Exception.Message)" }
+            if (Test-ElevationCancelled $_) { return @{ Status = 'ElevationDenied'; Error = (New-InventoryMessage ElevationDenied) } }
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperStartFailed $_.Exception.Message) }
         }
 
         # Restore-Point und Aktion brauchen Zeit; zusätzlich 10 Minuten Puffer.
@@ -129,26 +129,29 @@ function Start-ElevatedHelper {
             [void] $connect.Wait(2000)
         }
         if (-not $connect.IsCompleted -or $connect.IsFaulted) {
-            $reason = if ($process.HasExited) { "Helfer ohne Ergebnis beendet (Exit-Code $($process.ExitCode))" } else { 'Zeitüberschreitung: Der Helfer hat sich nicht gemeldet' }
+            $reason = if ($process.HasExited) { New-InventoryMessage HelperExitedWithoutResult $process.ExitCode } else { New-InventoryMessage HelperNoResponse }
             return @{ Status = 'Failed'; Error = $reason }
         }
 
         [uint32] $clientPid = 0
         if (-not [SoftwareInventory.PipeInterop]::GetNamedPipeClientProcessId($server.SafePipeHandle, [ref] $clientPid) -or $clientPid -ne $process.Id) {
-            return @{ Status = 'Failed'; Error = 'Unerwarteter Prozess an der Ergebnis-Pipe; Ergebnis verworfen.' }
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperUnexpectedProcess) }
         }
 
         $reader = [System.IO.StreamReader]::new($server, [System.Text.Encoding]::UTF8)
         $read = $reader.ReadToEndAsync()
-        if (-not $read.Wait([timespan]::FromSeconds(60))) { return @{ Status = 'Failed'; Error = 'Ergebnis des Helfers unvollständig (Zeitüberschreitung beim Lesen).' } }
+        if (-not $read.Wait([timespan]::FromSeconds(60))) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultIncomplete) } }
         try {
             $result = $read.Result | ConvertFrom-Json -AsHashtable
         }
         catch {
-            return @{ Status = 'Failed'; Error = 'Ergebnis des Helfers nicht lesbar.' }
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) }
         }
-        if ($result.Nonce -ne $nonce) { return @{ Status = 'Failed'; Error = 'Ergebnis gehört nicht zu dieser Aktion; verworfen.' } }
+        if ($result.Nonce -ne $nonce) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperNonceMismatch) } }
         $result.Status = 'Completed'
+        # Der Helfer liefert nur Codes; den Text bildet das Modul in der Sprache der Oberfläche.
+        $result.RestorePointMessage = if ($result.RestorePointCode) { New-InventoryMessage $result.RestorePointCode @($result.RestorePointArgs) }
+        $result.Error = if ($result.ErrorCode) { New-InventoryMessage $result.ErrorCode @($result.ErrorArgs) }
         $result
     }
     finally {

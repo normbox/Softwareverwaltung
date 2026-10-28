@@ -23,8 +23,8 @@ function Set-ServiceCredential {
         [securestring] $Secret
     )
 
-    if ($Secret.Length -eq 0) { throw 'Der Schlüssel ist leer.' }
-    if ($PSCmdlet.ShouldProcess((Get-CredentialTarget $Service), 'Schlüssel speichern')) {
+    if ($Secret.Length -eq 0) { throw (Get-LocalizedString 'ErrorEmptySecret') }
+    if ($PSCmdlet.ShouldProcess((Get-CredentialTarget $Service), (Get-LocalizedString 'ConfirmSaveSecret'))) {
         Initialize-CredentialInterop
         [SoftwareInventory.CredentialStore]::Write((Get-CredentialTarget $Service), $Service, $Secret)
     }

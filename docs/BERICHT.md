@@ -20,7 +20,8 @@ $ratings | Export-SecurityReport -Path "$env:USERPROFILE\Desktop\Sicherheitsberi
 
 - Grün setzt eine gelaufene Sicherheitsprüfung voraus. „Aktuell laut winget“ allein ergibt Grau mit dem Hinweis „Version aktuell“ – ein nicht geprüftes Programm erscheint nie als Grün.
 - Hinweise (`Informational`, z. B. NVD-Altdaten ohne Versionsangabe älter als 5 Jahre) färben nie.
-- `Reasons` nennt immer die Gründe der Stufe; bei Rot zusätzlich die gelben Gründe.
+- `Reasons` nennt immer die Gründe der Stufe, bei Rot zusätzlich die gelben Gründe. Jeder Grund ist eine Meldung mit `Code`, `Args` und `Text`, z. B. `KevAffected` oder `NotCheckedBecause` mit dem eigentlichen Grund als Arg.
+- Der Bericht übernimmt Texte, Datumsformat und Sprachangabe aus der Sprache der Oberfläche.
 
 ## Bericht
 

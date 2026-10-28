@@ -21,6 +21,23 @@ pwsh -c "Invoke-ScriptAnalyzer ./src/SoftwareInventory -Recurse -Settings ./PSSc
 
 Die Unit-Tests führen nie echte Installationen, Updates oder Deinstallationen aus; winget, msiexec, Registry, Appx, UAC und CIM werden ersetzt. Echt gestartet wird nur der Helfer unter `powershell.exe` 5.1, ohne Adminrechte und mit harmlosen Programmen (`where.exe`, `timeout.exe`).
 
+## Texte und Meldungen
+
+Neue Texte stehen nie fest im Code (siehe `CLAUDE.md`).
+
+- **App:** Texte stehen in `src/Softwareverwaltung.App/Resources/Strings.resx`. In XAML heißt das `{loc:Text Schlüssel}`, in C# `AppText.Get("Schlüssel")` bzw. `AppText.Format("Schlüssel", …)`. Codes aus dem Modul übersetzt die App über Präfix und Code, z. B. `ActionResultFailed`.
+- **Modul:** Texte stehen in `src/SoftwareInventory/SoftwareInventory.Strings.psd1`, abgerufen mit `Get-LocalizedString`. Weitere Sprachen kommen später als Unterordner (`en-US\SoftwareInventory.Strings.psd1`) mit denselben Schlüsseln.
+- **Meldungen des Moduls:** Gründe, Status, Hinweise und Fehler sind Objekte vom Typ `SoftwareInventory.Message` mit drei Feldern:
+  - `Code`, z. B. `ServiceDisabled`;
+  - `Args`, z. B. `@('NVD')`; Args dürfen selbst Meldungen sein;
+  - `Text`, in der Sprache der Oberfläche; der Schlüssel in der psd1 ist `Reason<Code>`.
+
+  Logik und Tests prüfen nur `Code` und `Args`, angezeigt wird `Text`. Erzeugt werden Meldungen mit `New-InventoryMessage`.
+- **Gespeicherte Meldungen:** Das Aktionsprotokoll speichert Code und Args. `Get-ActionLog` baut den Text neu auf. Ältere Einträge mit reinem Text erscheinen als `LegacyText` mit dem Zusatz „(älterer Eintrag)“.
+- **Erhöhter Helfer:** Er liefert nur Codes und Args, den Text bildet das Modul.
+- **Sprache:** Die eingebettete Engine läuft in der UI-Sprache der App. Ohne Übersetzung gelten die deutschen Basistexte.
+- **Tests:** Sie prüfen, dass jeder benutzte Schlüssel und Code einen Text hat und dass in XAML keine festen Texte stehen.
+
 ## Machbarkeitsprüfung (24.10.2026)
 
 Getestet mit PowerShell 7.6.8, einmal in `pwsh` und einmal eingebettet in eine .NET-10-Konsolen-App mit `Microsoft.PowerShell.SDK` 7.6.8:

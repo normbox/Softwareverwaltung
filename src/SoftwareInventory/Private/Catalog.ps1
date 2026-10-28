@@ -22,7 +22,7 @@ function Get-SoftwareCatalog {
             $entry
         }
         catch {
-            Write-Warning "Katalogeintrag $($file.Name) übersprungen: $_"
+            Write-Warning (Get-LocalizedString 'WarningCatalogEntrySkipped' $file.Name, $_.Exception.Message)
         }
     }
     $entries = @($entries)
@@ -43,46 +43,46 @@ function Test-CatalogEntry {
 
     $m = $Entry.Match
     $strong = (& $has $m 'WingetId') -or (& $has $m 'PackageFamilyName')
-    if (-not $strong -and -not (& $has $m 'NamePattern')) { 'Match braucht WingetId, PackageFamilyName oder NamePattern' }
-    if ((& $has $m 'NamePattern') -and -not (& $has $m 'Publisher')) { 'NamePattern braucht Publisher (ein Name allein reicht nicht)' }
+    if (-not $strong -and -not (& $has $m 'NamePattern')) { (Get-LocalizedString 'CatalogMatchNeedsKey') }
+    if ((& $has $m 'NamePattern') -and -not (& $has $m 'Publisher')) { (Get-LocalizedString 'CatalogNamePatternNeedsPublisher') }
     $patterns = @(Get-CatalogValue $m 'NamePattern')
     if (& $has $Entry 'GitHub') { $patterns += @(Get-CatalogValue $Entry.GitHub 'TagPattern') }
     foreach ($pattern in $patterns) {
         if (-not $pattern) { continue }
-        try { [void] [regex]::new($pattern) } catch { "Ungültiges Muster '$pattern'" }
+        try { [void] [regex]::new($pattern) } catch { (Get-LocalizedString 'CatalogInvalidPattern' $pattern) }
     }
     if (& $has $m 'Publisher') {
-        foreach ($p in $m.Publisher) { if (-not (Get-PublisherKey $p)) { "Hersteller '$p' ergibt keinen Vergleichsschlüssel (mindestens 3 Zeichen im ersten Wort)" } }
+        foreach ($p in $m.Publisher) { if (-not (Get-PublisherKey $p)) { (Get-LocalizedString 'CatalogPublisherNoKey' $p) } }
     }
     if (& $has $Entry 'GitHub') {
-        if ($Entry.GitHub.Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { "GitHub.Repository '$($Entry.GitHub.Repository)' muss die Form owner/repo haben" }
+        if ($Entry.GitHub.Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { (Get-LocalizedString 'CatalogRepositoryForm' $Entry.GitHub.Repository) }
         $tag = Get-CatalogValue $Entry.GitHub 'TagPattern'
-        if ($tag -and $tag -notmatch '\(\?<version>') { 'GitHub.TagPattern braucht eine Gruppe (?<version>...)' }
+        if ($tag -and $tag -notmatch '\(\?<version>') { (Get-LocalizedString 'CatalogTagPatternGroup') }
     }
     # CPE ohne Version: cpe:2.3:a:<hersteller>:<produkt> (Sonderzeichen mit \ maskiert, z. B. notepad\+\+)
     foreach ($cpe in @(Get-CatalogValue $Entry 'Cpe')) {
         if (-not $cpe) { continue }
-        if ($cpe -notmatch '^cpe:2\.3:[aho]:(\\.|[^:\\])+:(\\.|[^:\\])+$') { "Cpe '$cpe' muss die Form cpe:2.3:a:hersteller:produkt haben (ohne Version)" }
+        if ($cpe -notmatch '^cpe:2\.3:[aho]:(\\.|[^:\\])+:(\\.|[^:\\])+$') { (Get-LocalizedString 'CatalogCpeForm' $cpe) }
     }
     $versionPattern = Get-CatalogValue $Entry 'CpeVersionPattern'
     if ($versionPattern) {
-        try { [void] [regex]::new($versionPattern) } catch { "Ungültiges Muster '$versionPattern'" }
-        if ($versionPattern -notmatch '\(\?<version>') { 'CpeVersionPattern braucht eine Gruppe (?<version>...)' }
+        try { [void] [regex]::new($versionPattern) } catch { (Get-LocalizedString 'CatalogInvalidPattern' $versionPattern) }
+        if ($versionPattern -notmatch '\(\?<version>') { (Get-LocalizedString 'CatalogCpeVersionPatternGroup') }
     }
     foreach ($kev in @(Get-CatalogValue $Entry 'Kev')) {
         if (-not $kev) { continue }
-        if (-not (& $has $kev 'Vendor')) { 'Kev.Vendor fehlt' }
+        if (-not (& $has $kev 'Vendor')) { (Get-LocalizedString 'CatalogKevVendorMissing') }
         $productPattern = Get-CatalogValue $kev 'ProductPattern'
-        if (-not $productPattern) { 'Kev.ProductPattern fehlt'; continue }
-        try { [void] [regex]::new($productPattern) } catch { "Ungültiges Muster '$productPattern'" }
+        if (-not $productPattern) { (Get-LocalizedString 'CatalogKevProductPatternMissing'); continue }
+        try { [void] [regex]::new($productPattern) } catch { (Get-LocalizedString 'CatalogInvalidPattern' $productPattern) }
     }
     # KevFixed: CVE-ID → erste nicht mehr betroffene Version (aus NVD oder Herstellerangabe)
     $kevFixed = Get-CatalogValue $Entry 'KevFixed'
     if ($kevFixed) {
-        if (-not (& $has $Entry 'Kev')) { 'KevFixed braucht eine Kev-Zuordnung' }
+        if (-not (& $has $Entry 'Kev')) { (Get-LocalizedString 'CatalogKevFixedNeedsKev') }
         foreach ($p in $kevFixed.PSObject.Properties) {
-            if ($p.Name -notmatch '^CVE-\d{4}-\d{4,}$') { "KevFixed: '$($p.Name)' ist keine CVE-ID" }
-            if (-not (ConvertTo-NormalizedVersion ([string] $p.Value))) { "KevFixed: Version '$($p.Value)' für $($p.Name) nicht lesbar" }
+            if ($p.Name -notmatch '^CVE-\d{4}-\d{4,}$') { (Get-LocalizedString 'CatalogKevFixedNotCve' $p.Name) }
+            if (-not (ConvertTo-NormalizedVersion ([string] $p.Value))) { (Get-LocalizedString 'CatalogKevFixedVersion' $p.Value, $p.Name) }
         }
     }
 }

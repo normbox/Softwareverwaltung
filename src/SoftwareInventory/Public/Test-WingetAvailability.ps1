@@ -20,13 +20,13 @@ function Test-WingetAvailability {
 
     $message = if ($cli -and $command) { $null }
     elseif (-not $cli -and -not $command) {
-        'winget ist nicht verfügbar. Das Inventar kommt nur aus Registry und Store-Apps; Aktualisieren über winget ist nicht möglich.'
+        New-InventoryMessage WingetStatusMissing
     }
     elseif (-not $cli) {
-        'winget.exe (App Installer) fehlt. Aktualisieren und Deinstallieren über winget ist nicht möglich; andere Methoden bleiben nutzbar.'
+        New-InventoryMessage WingetStatusCliMissing
     }
     else {
-        'Das PowerShell-Modul Microsoft.WinGet.Client fehlt. Das Inventar enthält keine winget-Daten und keine verfügbaren Updates.'
+        New-InventoryMessage WingetStatusModuleMissing
     }
 
     [pscustomobject] [ordered]@{

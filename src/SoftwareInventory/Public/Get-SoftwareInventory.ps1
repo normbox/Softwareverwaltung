@@ -27,12 +27,12 @@ function Get-SoftwareInventory {
         $Source = @(Get-EnabledName (Read-InventorySetting).Sources)
     }
     if (-not $Source) {
-        Write-Warning 'Keine Quelle aktiviert. Aktivieren mit Set-InventorySetting -Enable RegistryMachine, RegistryUser, Winget, Appx (oder -Preset).'
+        Write-Warning (Get-LocalizedString 'WarningNoSourceEnabled')
         return
     }
 
     if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
-        Write-Warning '32-Bit-Prozess auf 64-Bit-Windows: 64-Bit-Programme in der Registry fehlen.'
+        Write-Warning (Get-LocalizedString 'WarningWow64')
     }
 
     $base = @()

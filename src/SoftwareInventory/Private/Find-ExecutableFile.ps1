@@ -26,7 +26,7 @@ function Find-ExecutableFile {
         $dir = $pending.Pop()
         $visited++
         if ($visited % 2000 -eq 0) {
-            Write-Progress -Activity 'Suche nach Programmdateien' -Status $dir -Id 1
+            Write-Progress -Activity (Get-LocalizedString 'ProgressFindFiles') -Status $dir -Id 1
         }
 
         try {
@@ -41,7 +41,7 @@ function Find-ExecutableFile {
             Write-Verbose "Übersprungen: $dir ($($_.Exception.GetType().Name))"
         }
     }
-    Write-Progress -Activity 'Suche nach Programmdateien' -Id 1 -Completed
+    Write-Progress -Activity (Get-LocalizedString 'ProgressFindFiles') -Id 1 -Completed
 }
 
 function Get-ScanExclusion {

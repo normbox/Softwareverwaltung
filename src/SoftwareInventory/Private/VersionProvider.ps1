@@ -6,7 +6,7 @@
 $script:WingetSearchMaxCandidates = 5
 
 function New-ProviderResult {
-    param([string] $Source, [string] $LatestVersion, [bool] $Confirmed, [string] $Reason)
+    param([string] $Source, [string] $LatestVersion, [bool] $Confirmed, $Reason)   # Reason: SoftwareInventory.Message
     [pscustomobject] @{ Source = $Source; LatestVersion = $LatestVersion; Confirmed = $Confirmed; Reason = $Reason }
 }
 
@@ -31,9 +31,9 @@ function Get-GitHubLatestVersion {
     $github = Get-CatalogValue $CatalogEntry 'GitHub'
     if (-not $github) { return $null }
     if (-not (Test-ServiceEnabled -Name GitHub -Setting $Setting)) {
-        return New-ProviderResult -Source GitHub -Reason 'Dienst GitHub nicht aktiviert'
+        return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage ServiceDisabled 'GitHub')
     }
-    if ($State.GitHubBlocked) { return New-ProviderResult -Source GitHub -Reason 'GitHub-Anfragelimit erreicht' }
+    if ($State.GitHubBlocked) { return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage RateLimit 'GitHub') }
 
     $repo = $github.Repository
     try {
@@ -44,17 +44,17 @@ function Get-GitHubLatestVersion {
         $reason = Get-ServiceErrorReason $_
         if ($reason -eq 'RateLimit') {
             $State.GitHubBlocked = $true
-            Write-Warning 'GitHub-Anfragelimit erreicht; weitere GitHub-Abfragen in diesem Lauf entfallen. Mit GITHUB_TOKEN gilt ein höheres Limit.'
-            return New-ProviderResult -Source GitHub -Reason 'GitHub-Anfragelimit erreicht'
+            Write-Warning (Get-LocalizedString 'WarningGitHubRateLimit')
+            return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage RateLimit 'GitHub')
         }
-        if ($reason -eq 'NotFound') { return New-ProviderResult -Source GitHub -Reason "Kein Release in $repo gefunden" }
-        return New-ProviderResult -Source GitHub -Reason "GitHub nicht abrufbar: $($_.Exception.Message)"
+        if ($reason -eq 'NotFound') { return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage GitHubNoRelease $repo) }
+        return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage ServiceUnavailable 'GitHub', $_.Exception.Message)
     }
 
     $pattern = Get-CatalogValue $github 'TagPattern'
     if (-not $pattern) { $pattern = '^v?(?<version>\d.*)$' }
     if ([string] $release.tag_name -notmatch $pattern) {
-        return New-ProviderResult -Source GitHub -Reason "Release-Tag '$($release.tag_name)' passt nicht zum Katalogmuster"
+        return New-ProviderResult -Source GitHub -Reason (New-InventoryMessage GitHubTagMismatch $release.tag_name)
     }
     New-ProviderResult -Source GitHub -LatestVersion $Matches.version -Confirmed $true
 }
@@ -63,6 +63,7 @@ function Find-WingetCandidate {
     # Kapselt Find-WinGetPackage (nur Quelle winget, die Store-Quelle fragt langsam online).
     # Liefert Name, Id, Version – ohne Hersteller, der kostet pro Paket eine eigene Abfrage.
     param([string] $Name)
+    $ProgressPreference = 'SilentlyContinue'
     foreach ($pkg in Find-WinGetPackage -Query $Name -Source winget -ErrorAction Stop) {
         [pscustomobject] @{ Name = $pkg.Name; Id = $pkg.Id; Version = @($pkg.AvailableVersions)[0] }
     }
@@ -71,6 +72,7 @@ function Find-WingetCandidate {
 function Get-WingetPackagePublisher {
     # Hersteller eines winget-Pakets aus dem Manifest der angegebenen Version.
     param([string] $Id, [string] $Version)
+    $ProgressPreference = 'SilentlyContinue'
     $pkg = Find-WinGetPackage -Id $Id -MatchOption Equals -Source winget -ErrorAction Stop | Select-Object -First 1
     if ($pkg) { $pkg.GetPackageVersionInfo($Version).Publisher }
 }
@@ -94,29 +96,29 @@ function Get-WingetSearchLatestVersion {
 
     if ($Record.WingetId) { return $null }
     if ($Record.InstallType -eq 'MSIX') {
-        return New-ProviderResult -Source WingetSearch -Reason 'Store-App: Updates über den Microsoft Store'
+        return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage StoreApp)
     }
     if (-not (Test-ServiceEnabled -Name WingetSearch -Setting $Setting)) {
-        return New-ProviderResult -Source WingetSearch -Reason 'Dienst WingetSearch nicht aktiviert'
+        return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage ServiceDisabled 'WingetSearch')
     }
     $problem = Get-WingetClientProblem -Command Find-WinGetPackage
     if ($problem) {
-        return New-ProviderResult -Source WingetSearch -Reason "winget-Suche nicht verfügbar ($problem)"
+        return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchUnavailable $problem)
     }
     $publisher = Get-PublisherKey $Record.Publisher
-    if (-not $publisher) { return New-ProviderResult -Source WingetSearch -Reason 'winget-Suche braucht einen Hersteller' }
+    if (-not $publisher) { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchNoPublisher) }
 
     try { $search = Get-WingetSearchResult -Name $Record.Name -PublisherKey $publisher }
-    catch { return New-ProviderResult -Source WingetSearch -Reason "winget-Suche fehlgeschlagen: $(Protect-SecretText $_.Exception.Message)" }
-    if ($search.Reason) { return New-ProviderResult -Source WingetSearch -Reason $search.Reason }
+    catch { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchFailed (Protect-SecretText $_.Exception.Message)) }
+    if ($search.AmbiguousCount) { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchAmbiguousCount $search.AmbiguousCount) }
 
     # Mehrere Pakete (z. B. x64 und x86) sind eindeutig, wenn sie dieselbe Version haben.
     $versions = @($search.Versions | Select-Object -Unique)
-    if ($versions.Count -gt 1) { return New-ProviderResult -Source WingetSearch -Reason 'winget-Suche mehrdeutig' }
-    if ($versions.Count -eq 0) { return New-ProviderResult -Source WingetSearch -Reason 'Kein passendes winget-Paket gefunden' }
+    if ($versions.Count -gt 1) { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchAmbiguous) }
+    if ($versions.Count -eq 0) { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchNoMatch) }
 
     if (-not (Test-PlausibleLatestVersion -Installed $Record.Version -Latest $versions[0])) {
-        return New-ProviderResult -Source WingetSearch -Reason "winget-Treffer unplausibel (installiert $($Record.Version), gefunden $($versions[0]))"
+        return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchImplausible $Record.Version, $versions[0])
     }
     New-ProviderResult -Source WingetSearch -LatestVersion $versions[0] -Confirmed $false
 }
@@ -126,23 +128,25 @@ function Get-WingetSearchResult {
     .SYNOPSIS
         Versionen der winget-Pakete mit passendem Namen und Hersteller, 24 Stunden zwischengespeichert.
     .DESCRIPTION
-        Liefert @{ Versions = ...; Reason = ... }. Fehler der Suche werden nicht gespeichert.
+        Liefert @{ Versions = ...; AmbiguousCount = ... }. Gespeichert werden nur Daten, keine Texte
+        (der Grund entsteht beim Lesen in der Sprache der Oberfläche). Fehler der Suche werden nicht gespeichert.
     #>
     param([string] $Name, [string] $PublisherKey)
 
-    $key = "wingetsearch/$Name/$PublisherKey".ToLowerInvariant()
+    # v2: frühere Einträge enthielten einen fertigen Text statt AmbiguousCount.
+    $key = "wingetsearch/v2/$Name/$PublisherKey".ToLowerInvariant()
     $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($key)))
     $cacheFile = Join-Path (Join-Path (Get-CacheDirectory) 'WingetSearch') "$hash.json"
     $cached = Read-ServiceCache -Path $cacheFile -MaxAge ([timespan]::FromHours(24))
-    if ($null -ne $cached) { return @{ Versions = @($cached.Versions); Reason = $cached.Reason } }
+    if ($null -ne $cached) { return @{ Versions = @($cached.Versions); AmbiguousCount = $cached.AmbiguousCount } }
 
     $named = @(Find-WingetCandidate -Name $Name | Where-Object { Test-WingetNameMatch -PackageName $_.Name -Name $Name })
     $result = if ($named.Count -gt $script:WingetSearchMaxCandidates) {
-        @{ Versions = @(); Reason = "winget-Suche mehrdeutig ($($named.Count) Pakete mit passendem Namen)" }
+        @{ Versions = @(); AmbiguousCount = $named.Count }
     }
     else {
         $hits = @($named | Where-Object { (Get-PublisherKey (Get-WingetPackagePublisher -Id $_.Id -Version $_.Version)) -eq $PublisherKey })
-        @{ Versions = @($hits | ForEach-Object Version); Reason = $null }
+        @{ Versions = @($hits | ForEach-Object Version); AmbiguousCount = $null }
     }
     Write-ServiceCache -Path $cacheFile -Content ([pscustomobject] $result | ConvertTo-Json -Compress)
     $result

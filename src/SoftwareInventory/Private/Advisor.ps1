@@ -78,7 +78,7 @@ function ConvertTo-AdvisorSummary {
         rating            = $Rating.Rating
         vulnerabilities   = if ($v -and ($v.Status -eq 'Checked' -or $counted)) { $counted.Count } else { $null }
         possibly_affected = @($counted | Where-Object Assessment -eq 'PossiblyAffected').Count
-        reasons           = @($Rating.Reasons | Select-Object -First 3)
+        reasons           = @(ConvertTo-MessageData @($Rating.Reasons | Select-Object -First 3))
     }
 }
 
@@ -88,14 +88,14 @@ function ConvertTo-AdvisorDetail {
     $record = $Rating.Record
     $v = $Rating.VulnerabilityStatus
     $u = $Rating.UpdateStatus
-    $detail.reasons = @($Rating.Reasons)
+    $detail.reasons = @(ConvertTo-MessageData @($Rating.Reasons))
     $detail.sources = @(Get-RecordValue $record 'Sources')
     $detail.install_type = Get-RecordValue $record 'InstallType'
     $detail.scope = Get-RecordValue $record 'Scope'
     $detail.winget_id = Get-RecordValue $record 'WingetId'
     $detail.latest_version_source = if ($u) { $u.Source } else { $null }
     $detail.latest_version_confirmed = if ($u -and $u.PSObject.Properties['Confirmed']) { [bool] $u.Confirmed } else { $null }
-    $detail.vulnerability_check = if ($v) { [ordered]@{ status = $v.Status; reason = $v.Reason; notes = @($v.Notes) } } else { $null }
+    $detail.vulnerability_check = if ($v) { [ordered]@{ status = $v.Status; reason = ConvertTo-MessageData $v.Reason; notes = @(ConvertTo-MessageData @($v.Notes)) } } else { $null }
     $detail.vulnerability_list = @(if ($v) {
             $v.Vulnerabilities | Select-Object -First 25 | ForEach-Object {
                 [ordered]@{
@@ -104,12 +104,12 @@ function ConvertTo-AdvisorDetail {
                     kev         = [bool] $_.Kev
                     cvss        = $_.Score
                     epss        = $_.Epss
-                    note        = $_.Note
+                    note        = ConvertTo-MessageData $_.Note
                     description = if ($_.Description -and $_.Description.Length -gt 400) { $_.Description.Substring(0, 400) + '…' } else { $_.Description }
                 }
             }
         })
-    $detail.refuted = @(if ($v -and $v.PSObject.Properties['Refuted']) { $v.Refuted | ForEach-Object Note })
+    $detail.refuted = @(if ($v -and $v.PSObject.Properties['Refuted']) { ConvertTo-MessageData @($v.Refuted | ForEach-Object Note) })
     $detail
 }
 

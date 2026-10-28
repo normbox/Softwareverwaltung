@@ -86,8 +86,8 @@ function ConvertTo-ActionLogData {
 
 function Get-RestorePointDescription {
     param($Plan)
-    $verb = if ($Plan.Action -eq 'Update') { 'Aktualisieren' } else { 'Deinstallieren' }
-    $text = "Softwareverwaltung: $verb $($Plan.Name)"
+    $verb = New-InventoryMessage "ActionVerb$($Plan.Action)"
+    $text = (New-InventoryMessage RestorePointName $verb, $Plan.Name).Text
     if ($text.Length -gt 64) { $text.Substring(0, 64) } else { $text }
 }
 
@@ -123,17 +123,17 @@ function Invoke-ActionPlan {
             }
             else {
                 $result.RestorePoint = 'Failed'
-                $result.RestorePointMessage = "$($rp.Error) Die Aktion wird ohne Wiederherstellungspunkt fortgesetzt."
+                $result.RestorePointMessage = New-InventoryMessage RestorePointContinueWithout (, $rp.Error)
             }
         }
 
         if ($Plan.Method -eq 'Appx') {
             try {
                 Invoke-AppxRemoval -PackageFullName $Plan.PackageFullName
-                $outcome = @{ Outcome = 'Success'; Message = 'Store-App entfernt' }
+                $outcome = @{ Outcome = 'Success'; Message = (New-InventoryMessage AppxRemoved) }
             }
             catch {
-                $outcome = @{ Outcome = 'Failed'; Message = "Store-App konnte nicht entfernt werden: $($_.Exception.Message)" }
+                $outcome = @{ Outcome = 'Failed'; Message = (New-InventoryMessage AppxRemoveFailed $_.Exception.Message) }
             }
         }
         else {
@@ -153,7 +153,7 @@ function Invoke-ActionPlan {
             if ($run.Status -eq 'ElevationDenied') { $failure = @('ElevationDenied', $run.Error) }
             elseif ($run.Status -ne 'Completed') { $failure = @('Failed', $run.Error) }
             elseif ($run.Error) { $failure = @('Failed', $run.Error) }
-            elseif ($run.TimedOut) { $failure = @('Timeout', "Keine Rückmeldung nach $TimeoutMinutes Minuten; das Programm läuft eventuell noch. Zustand später prüfen.") }
+            elseif ($run.TimedOut) { $failure = @('Timeout', (New-InventoryMessage ActionTimeout $TimeoutMinutes)) }
             else {
                 $result.ExitCode = [long] $run.ExitCode
                 $outcome = ConvertFrom-ActionExitCode $run.ExitCode
@@ -162,7 +162,7 @@ function Invoke-ActionPlan {
         }
     }
     catch {
-        $failure = @('Failed', "Unerwarteter Fehler: $($_.Exception.Message)")
+        $failure = @('Failed', (New-InventoryMessage UnexpectedError $_.Exception.Message))
     }
 
     $poll = $outcome -and $outcome.Outcome -in 'Success', 'SuccessReboot'
@@ -180,8 +180,8 @@ function Invoke-ActionPlan {
                 if ($reached) { $result.Result = 'Succeeded'; $result.Message = $outcome.Message }
                 else {
                     $result.Result = 'NotVerified'
-                    $result.Message = if ($Plan.Action -eq 'Uninstall') { 'Das Programm meldet Erfolg, ist aber noch installiert.' }
-                    else { 'Das Programm meldet Erfolg, die Version hat sich aber nicht erhöht.' }
+                    $result.Message = if ($Plan.Action -eq 'Uninstall') { New-InventoryMessage NotVerifiedUninstall }
+                    else { New-InventoryMessage NotVerifiedUpdate }
                 }
             }
             'SuccessReboot' { $result.Result = 'SucceededRebootRequired'; $result.Message = $outcome.Message }
@@ -192,7 +192,7 @@ function Invoke-ActionPlan {
         }
     }
     if ($result.Result -in 'Failed', 'NotVerified', 'Timeout' -and $result.NextMethod) {
-        $result.Message += " Nächste mögliche Methode: $($result.NextMethod) (Aufruf mit -Method $($result.NextMethod))."
+        $result.Message = New-InventoryMessage WithNextMethod $result.Message, $result.NextMethod
     }
 
     # Installer-Log nur bei Problemen aufheben (komprimiert), sonst gar nicht erst speichern.
@@ -231,14 +231,14 @@ function Resolve-SoftwareAction {
 
     $record = Get-ActionRecord $InputObject
     if (-not $record -or -not $record.PSObject.Properties['Name']) {
-        Write-Error 'Eingabe ist kein Inventar-Datensatz (SoftwareRecord, SecurityRating oder UpdateStatus).'
+        Write-Error (Get-LocalizedString 'ErrorNotInventoryRecord')
         return $null
     }
 
     $plan = New-ActionPlan -Action $Action -Record $record -Method $Method -RestorePoint $RestorePoint
     if (-not $plan.Result -and $ConfirmedCommandLine -and $plan.CommandLine -cne $ConfirmedCommandLine) {
         $plan.Result = 'Cancelled'
-        $plan.Message = "Der Befehl hat sich seit der Bestätigung geändert; es wurde nichts ausgeführt. Bitte neu bestätigen. Jetzt: $($plan.CommandLine)"
+        $plan.Message = New-InventoryMessage CommandChanged $plan.CommandLine
     }
     if ($plan.Result) {
         # Nicht ausführbar: nichts gestartet, aber protokolliert (außer bei -WhatIf).
@@ -248,10 +248,11 @@ function Resolve-SoftwareAction {
         return @{ Record = $record; Plan = $plan; Result = $result; Description = $null }
     }
 
-    $rights = if ($plan.Elevated) { 'mit Administratorrechten (UAC)' } else { 'ohne Administratorrechte' }
-    $rp = if ($RestorePoint) { ', vorher Wiederherstellungspunkt' } else { '' }
-    $verb = if ($Action -eq 'Update') { 'Aktualisieren' } else { 'Deinstallieren' }
-    @{ Record = $record; Plan = $plan; Result = $null; Description = "$verb über $($plan.Method) $rights${rp}: $($plan.CommandLine)" }
+    # Description ist eine Meldung; ShouldProcess bekommt ihren Text.
+    $rights = New-InventoryMessage $(if ($plan.Elevated) { 'PlanRightsElevated' } else { 'PlanRightsNormal' })
+    $rp = if ($RestorePoint) { New-InventoryMessage PlanRestorePointFirst } else { '' }
+    $verb = New-InventoryMessage "ActionVerb$Action"
+    @{ Record = $record; Plan = $plan; Result = $null; Description = (New-InventoryMessage PlanDescription $verb, $plan.Method, $rights, $rp, $plan.CommandLine) }
 }
 
 function New-DeclinedActionResult {
@@ -259,7 +260,7 @@ function New-DeclinedActionResult {
     param($Prepared)
     $result = New-ActionResult $Prepared.Plan
     $result.Result = if ($WhatIfPreference) { 'Planned' } else { 'Cancelled' }
-    $result.Message = if ($WhatIfPreference) { $Prepared.Description } else { 'Nicht bestätigt; es wurde nichts ausgeführt.' }
+    $result.Message = if ($WhatIfPreference) { $Prepared.Description } else { New-InventoryMessage NotConfirmed }
     $result.RestorePoint = if ($Prepared.Plan.RestorePoint) { 'Planned' } else { 'NotRequested' }
     $result
 }

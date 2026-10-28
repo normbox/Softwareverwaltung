@@ -31,7 +31,7 @@ function Get-SecurityRating {
         $updates = @(Test-SoftwareUpdate -InputObject $records.ToArray())
         $vulns = @(Get-SoftwareVulnerability -InputObject $records.ToArray())
         if ($updates.Count -ne $records.Count -or $vulns.Count -ne $records.Count) {
-            throw "Interner Fehler: $($records.Count) Programme, aber $($updates.Count) Update- und $($vulns.Count) Schwachstellen-Ergebnisse."
+            throw (Get-LocalizedString 'ErrorInternalResultCount' $records.Count, $updates.Count, $vulns.Count)
         }
         $order = @{ Red = 0; Yellow = 1; Gray = 2; Green = 3 }
 
@@ -41,7 +41,7 @@ function Get-SecurityRating {
             $r = Get-RatingFromResult -UpdateStatus $u -VulnerabilityStatus $v
             # Treffer aus Nutzungsspuren, deren Laufwerk fehlt: Grund zuerst nennen (statt still zu verwerfen).
             if (@(Get-RecordValue $records[$i] 'Flags') -contains 'PathUnreachable') {
-                $r.Reasons = [string[]] (@(Get-LocalizedString 'RatingReasonPathUnreachable') + @($r.Reasons))
+                $r.Reasons = @(@(New-InventoryMessage PathUnreachable) + @($r.Reasons))
             }
             [pscustomobject] @{
                 PSTypeName          = 'SoftwareInventory.SecurityRating'

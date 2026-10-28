@@ -36,7 +36,7 @@ function Export-SecurityReport {
 
         $html = ConvertTo-SecurityReportHtml -Rating $ratings -Setting (Read-InventorySetting)
         $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
-        if (-not $PSCmdlet.ShouldProcess($full, 'Sicherheitsbericht schreiben')) { return }
+        if (-not $PSCmdlet.ShouldProcess($full, (Get-LocalizedString 'ConfirmWriteReport'))) { return }
         $dir = Split-Path -Parent $full
         if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         Set-Content -LiteralPath $full -Value $html -Encoding utf8NoBOM

@@ -82,14 +82,14 @@ function Get-PortableSoftware {
     }
     $Path = @($Path | Where-Object { $_ } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_) })
     if (-not $Trace -and -not $Path -and -not $Drive) {
-        Write-Warning 'Keine Nutzungsspuren und keine Scan-Ordner aktiviert. Aktivieren mit Set-InventorySetting, z. B. -Preset Quick.'
+        Write-Warning (Get-LocalizedString 'WarningPortableNothingEnabled')
         return
     }
 
     if (-not $PSBoundParameters.ContainsKey('Inventory')) {
         $Inventory = @(Get-SoftwareInventory -WarningAction SilentlyContinue)
         if (-not $Inventory) {
-            Write-Warning 'Keine Inventar-Quelle aktiviert: Installierte Programme können nicht ausgelassen werden und erscheinen mit.'
+            Write-Warning (Get-LocalizedString 'WarningPortableNoInventorySource')
         }
     }
     $exclusions = @(Get-ScanExclusion -Inventory $Inventory) + $userExclusions
@@ -157,7 +157,7 @@ function Get-PortableSoftware {
             }
         }
         catch {
-            Write-Warning "Spurenquelle $source nicht lesbar: $_"
+            Write-Warning (Get-LocalizedString 'WarningTraceSourceUnreadable' $source, $_.Exception.Message)
         }
     }
 
@@ -172,7 +172,7 @@ function Get-PortableSoftware {
     # Sortiert, damit Gleichstände (gleiche Größe, gleiche Pfadlänge) immer gleich aufgelöst werden.
     foreach ($c in $candidates.Keys | Sort-Object | ForEach-Object { $candidates[$_] }) {
         $i++
-        Write-Progress -Activity 'Prüfe Programmdateien' -Status $c.Path -PercentComplete ($i * 100 / $candidates.Count) -Id 2
+        Write-Progress -Activity (Get-LocalizedString 'ProgressCheckFiles') -Status $c.Path -PercentComplete ($i * 100 / $candidates.Count) -Id 2
         try {
             $info = Get-ExecutableInfo -Path $c.Path -SkipHash:(-not $ComputeHash)
         }
@@ -191,7 +191,7 @@ function Get-PortableSoftware {
         $info | Add-Member -Force -NotePropertyMembers @{ Evidence = [string[]] @($c.Evidence); LastRun = $c.LastRun; RunCount = $c.RunCount }
         $infos.Add($info)
     }
-    Write-Progress -Activity 'Prüfe Programmdateien' -Id 2 -Completed
+    Write-Progress -Activity (Get-LocalizedString 'ProgressCheckFiles') -Id 2 -Completed
 
     # Herstellerordner mit nachweislich installierten Dateien gehören ganz zur Installation
     # (z. B. unsignierte Hilfsprogramme ohne Versionsinfo).
@@ -379,7 +379,7 @@ function Merge-PortableCopy {
 
 function ConvertTo-DriveRoot {
     param([string] $Drive)
-    if ($Drive -notmatch '^(?<letter>[A-Za-z]):?\\?$') { throw "Ungültige Laufwerksangabe '$Drive' (erwartet z. B. C oder D:)." }
+    if ($Drive -notmatch '^(?<letter>[A-Za-z]):?\\?$') { throw (Get-LocalizedString 'ErrorInvalidDrive' $Drive) }
     "$($Matches.letter.ToUpperInvariant()):\"
 }
 

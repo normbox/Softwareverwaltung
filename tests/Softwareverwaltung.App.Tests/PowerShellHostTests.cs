@@ -29,6 +29,31 @@ public sealed class PowerShellHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RunspaceUsesUiCultureOfTheApp()
+    {
+        var result = await _host.InvokeAsync(new PSCommand().AddScript("$PSUICulture; [cultureinfo]::CurrentCulture.Name"));
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(System.Globalization.CultureInfo.CurrentUICulture.Name, result.Output[0].BaseObject);
+        Assert.Equal(System.Globalization.CultureInfo.CurrentCulture.Name, result.Output[1].BaseObject);
+    }
+
+    [Fact]
+    public async Task RunspaceFollowsGivenCultureAndFallsBackToBaseTexts()
+    {
+        // Andere Sprache als die Basis: Ohne Übersetzung kommen die Basistexte (Deutsch), nie ein Schlüssel.
+        var english = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+        using var host = new PowerShellHost(uiCulture: english, culture: english);
+        await host.InitializeAsync();
+
+        var result = await host.InvokeAsync(new PSCommand().AddScript(
+            "$PSUICulture; [cultureinfo]::CurrentCulture.Name; & (Get-Module SoftwareInventory) { (New-InventoryMessage NoFindings).Text }"));
+
+        Assert.Empty(result.Errors);
+        Assert.Equal(["en-US", "en-US", "Sicherheitsprüfung ohne Befund"], result.Output.Select(o => o.BaseObject.ToString()));
+    }
+
+    [Fact]
     public async Task ModulePathContainsOnlyBundledAndWindowsModules()
     {
         var result = await _host.InvokeAsync(new PSCommand().AddScript("$env:PSModulePath -split [IO.Path]::PathSeparator"));

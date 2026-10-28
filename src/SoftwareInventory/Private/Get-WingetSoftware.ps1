@@ -11,6 +11,9 @@ function Get-WingetPackageData {
     param()
 
     $flags = [System.Reflection.BindingFlags] 'Public, NonPublic, Instance'
+    # Eigene Meldung statt der englischen des WinGet-Moduls.
+    Write-CheckProgress -Id 5 -Activity ProgressReadWinget
+    $ProgressPreference = 'SilentlyContinue'
 
     foreach ($pkg in Get-WinGetPackage -ErrorAction Stop) {
         $codes = @()
@@ -51,7 +54,7 @@ function Get-WingetSoftware {
 
     $problem = Get-WingetClientProblem
     if ($problem) {
-        Write-Warning "winget-Daten nicht verfügbar: $problem."
+        Write-Warning (New-InventoryMessage WingetDataUnavailable (, $problem)).Text
         return
     }
 
@@ -59,7 +62,7 @@ function Get-WingetSoftware {
         $packages = @(Get-WingetPackageData)
     }
     catch {
-        Write-Warning "winget-Daten nicht verfügbar: $_"
+        Write-Warning (New-InventoryMessage WingetDataUnavailable $_.Exception.Message).Text
         return
     }
 

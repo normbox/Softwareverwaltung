@@ -15,8 +15,8 @@ function Remove-CpeMapping {
             # Einträge aus Get-CpeMapping tragen ihren Schlüssel selbst
             if ($record.PSObject.Properties['Key'] -and $record.PSObject.Properties['Cpe']) { $record.Key } else { Get-CpeMappingKey $record }
         }
-        if (-not $map.ContainsKey($target)) { Write-Warning "Keine CPE-Zuordnung für '$target'."; return }
-        if ($PSCmdlet.ShouldProcess($target, 'CPE-Zuordnung entfernen')) {
+        if (-not $map.ContainsKey($target)) { Write-Warning (Get-LocalizedString 'WarningNoCpeMapping' $target); return }
+        if ($PSCmdlet.ShouldProcess($target, (Get-LocalizedString 'ConfirmRemoveCpeMapping'))) {
             $map.Remove($target)
             Write-CpeMapping -Map $map
         }

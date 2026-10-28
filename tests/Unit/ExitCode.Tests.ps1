@@ -25,7 +25,8 @@ Describe 'ConvertFrom-ActionExitCode' {
         $r = InModuleScope SoftwareInventory { ConvertFrom-ActionExitCode -1978335000 }
         $r.Outcome | Should -Be 'Failed'
         $r.Code | Should -Be '0x8A1500E8'
-        $r.Message | Should -Match '0x8A1500E8'
+        $r.Message.Code | Should -Be 'ExitCodeUnknown'
+        $r.Message.Args | Should -Be @('0x8A1500E8')
     }
 
     It 'schreibt kleine Codes dezimal' {
