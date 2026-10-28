@@ -46,11 +46,11 @@ public sealed partial class CredentialItem(string service, string title, string 
 
     public string StatusText => Status switch
     {
-        null => "Status unbekannt.",
-        { Stored: true, EnvironmentSet: true } => $"In der Windows-Anmeldeinformationsverwaltung gespeichert (hat Vorrang vor {Status.EnvironmentVariable}).",
-        { Stored: true } => "In der Windows-Anmeldeinformationsverwaltung gespeichert.",
-        { EnvironmentSet: true } => $"Kommt aus der Umgebungsvariablen {Status.EnvironmentVariable}.",
-        _ => "Kein Schlüssel hinterlegt.",
+        null => AppText.Get("CredentialStatusUnknown"),
+        { Stored: true, EnvironmentSet: true } => AppText.Format("CredentialStoredOverridesEnvironment", Status.EnvironmentVariable),
+        { Stored: true } => AppText.Get("CredentialStored"),
+        { EnvironmentSet: true } => AppText.Format("CredentialFromEnvironment", Status.EnvironmentVariable),
+        _ => AppText.Get("CredentialNone"),
     };
 
     partial void OnStatusChanged(CredentialStatus? value) => OnPropertyChanged(nameof(Stored));
@@ -81,34 +81,34 @@ public sealed partial class SettingsViewModel : ObservableObject
         };
         Sources =
         [
-            new("RegistryMachine", "Programme für alle Benutzer", "Installierte Programme aus der Registry (HKLM)."),
-            new("RegistryUser", "Programme nur für mich", "Installierte Programme des angemeldeten Benutzers (HKCU)."),
-            new("Winget", "winget-Paketliste", "Programme, die winget kennt, mit Paket-ID für Updates."),
-            new("Appx", "Store-Apps", "Apps aus dem Microsoft Store und andere App-Pakete."),
+            new("RegistryMachine", AppText.Get("SettingsSourceRegistryMachine"), AppText.Get("SettingsSourceRegistryMachineText")),
+            new("RegistryUser", AppText.Get("SettingsSourceRegistryUser"), AppText.Get("SettingsSourceRegistryUserText")),
+            new("Winget", AppText.Get("SettingsSourceWinget"), AppText.Get("SettingsSourceWingetText")),
+            new("Appx", AppText.Get("SettingsSourceAppx"), AppText.Get("SettingsSourceAppxText")),
         ];
         Traces =
         [
-            new("UserAssist", "Zuletzt gestartete Programme", "Startzähler des Windows-Explorers (UserAssist)."),
-            new("Process", "Laufende Prozesse", "Programme, die gerade laufen."),
-            new("Autostart", "Autostart-Einträge", "Programme, die beim Anmelden starten."),
-            new("ScheduledTask", "Geplante Aufgaben", "Programme, die die Aufgabenplanung startet."),
+            new("UserAssist", AppText.Get("SettingsTraceUserAssist"), AppText.Get("SettingsTraceUserAssistText")),
+            new("Process", AppText.Get("SettingsTraceProcess"), AppText.Get("SettingsTraceProcessText")),
+            new("Autostart", AppText.Get("SettingsTraceAutostart"), AppText.Get("SettingsTraceAutostartText")),
+            new("ScheduledTask", AppText.Get("SettingsTraceScheduledTask"), AppText.Get("SettingsTraceScheduledTaskText")),
         ];
         Services =
         [
-            new("WingetSearch", "winget-Suche nach neuen Versionen", "Sendet Paket-IDs oder Programmnamen an die winget-Quellen (Microsoft)."),
-            new("GitHub", "Neueste Releases auf GitHub", "Sendet den Namen des GitHub-Projekts (nur für Programme aus dem Katalog)."),
-            new("NVD", "Sicherheitslücken (NIST NVD)", "Sendet Hersteller, Produkt und Version (CPE) an die National Vulnerability Database der USA."),
-            new("KEV", "Aktiv ausgenutzte Lücken (CISA KEV)", "Lädt die öffentliche Liste herunter; sendet nichts über Ihre Programme."),
-            new("EPSS", "Ausnutzungswahrscheinlichkeit (FIRST EPSS)", "Sendet die Nummern gefundener Sicherheitslücken (CVE-IDs)."),
+            new("WingetSearch", AppText.Get("SettingsServiceWingetSearch"), AppText.Get("SettingsServiceWingetSearchText")),
+            new("GitHub", AppText.Get("SettingsServiceGitHub"), AppText.Get("SettingsServiceGitHubText")),
+            new("NVD", AppText.Get("SettingsServiceNVD"), AppText.Get("SettingsServiceNVDText")),
+            new("KEV", AppText.Get("SettingsServiceKEV"), AppText.Get("SettingsServiceKEVText")),
+            new("EPSS", AppText.Get("SettingsServiceEPSS"), AppText.Get("SettingsServiceEPSSText")),
         ];
         Actions =
         [
-            new("RestorePoint", "Wiederherstellungspunkt vor jeder Aktion", "Legt vor dem Aktualisieren oder Deinstallieren einen Windows-Wiederherstellungspunkt an (eigene Administratorabfrage)."),
+            new("RestorePoint", AppText.Get("SettingsActionRestorePoint"), AppText.Get("SettingsActionRestorePointText")),
         ];
         Credentials =
         [
-            new("NVD", "NVD-API-Schlüssel", "Optional. Ohne Schlüssel funktioniert die NVD-Abfrage, ist aber deutlich langsamer."),
-            new("GitHub", "GitHub-Token", "Optional. Erhöht die Zahl erlaubter Abfragen bei GitHub."),
+            new("NVD", AppText.Get("SettingsCredentialNVD"), AppText.Get("SettingsCredentialNVDText")),
+            new("GitHub", AppText.Get("SettingsCredentialGitHub"), AppText.Get("SettingsCredentialGitHubText")),
         ];
         foreach (var item in AllSwitches)
         {
@@ -317,7 +317,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorText = "Einstellungen konnten nicht geladen werden: " + ex.Message;
+            ErrorText = AppText.Format("SettingsLoadFailed", ex.Message);
         }
         finally
         {
@@ -352,11 +352,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             Apply(await _settings.SaveAsync(Current));
-            StatusText = "Gespeichert. Ein neuer Scan unter „Programme“ übernimmt die Änderungen.";
+            StatusText = AppText.Get("SettingsSaved");
         }
         catch (Exception ex)
         {
-            ErrorText = "Speichern fehlgeschlagen: " + ex.Message;
+            ErrorText = AppText.Format("SettingsSaveFailed", ex.Message);
         }
         finally
         {
@@ -371,7 +371,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         Apply(_saved);
         ErrorText = null;
-        StatusText = "Änderungen verworfen.";
+        StatusText = AppText.Get("SettingsDiscarded");
     }
 
     /// <summary>Belegt Quellen, Nutzungsspuren und Dateiscan mit einer Vorlage vor; gespeichert wird erst mit „Speichern“.</summary>
@@ -414,7 +414,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorText = "Vorlage konnte nicht geladen werden: " + ex.Message;
+            ErrorText = AppText.Format("PresetLoadFailed", ex.Message);
         }
         finally
         {
@@ -512,7 +512,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorText = "Speichern fehlgeschlagen: " + ex.Message;
+            ErrorText = AppText.Format("SettingsSaveFailed", ex.Message);
         }
         finally
         {
@@ -528,7 +528,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (secret.Length == 0)
         {
-            ErrorText = $"{item.Title}: bitte einen Schlüssel eingeben.";
+            ErrorText = AppText.Format("CredentialMissingInput", item.Title);
             return;
         }
         IsBusy = true;
@@ -536,11 +536,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             item.Status = await _settings.SetCredentialAsync(item.Service, secret);
-            StatusText = $"{item.Title} gespeichert.";
+            StatusText = AppText.Format("CredentialSaved", item.Title);
         }
         catch (Exception ex)
         {
-            ErrorText = $"{item.Title} konnte nicht gespeichert werden: {ex.Message}";
+            ErrorText = AppText.Format("CredentialSaveFailed", item.Title, ex.Message);
         }
         finally
         {
@@ -556,11 +556,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             item.Status = await _settings.RemoveCredentialAsync(item.Service);
-            StatusText = $"{item.Title} gelöscht.";
+            StatusText = AppText.Format("CredentialDeleted", item.Title);
         }
         catch (Exception ex)
         {
-            ErrorText = $"{item.Title} konnte nicht gelöscht werden: {ex.Message}";
+            ErrorText = AppText.Format("CredentialDeleteFailed", item.Title, ex.Message);
         }
         finally
         {

@@ -1,6 +1,7 @@
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Threading;
+using Softwareverwaltung.App.Localization;
 
 namespace Softwareverwaltung.App.Services;
 
@@ -39,7 +40,7 @@ public sealed class PowerShellHost : IPowerShellHost
             }
 
             var core = FindModuleManifest(CoreModuleName)
-                ?? throw new FileNotFoundException($"Kern-Modul nicht gefunden unter {_modulesDirectory}.");
+                ?? throw new FileNotFoundException(AppText.Format("ErrorCoreModuleNotFound", _modulesDirectory));
             var winget = FindModuleManifest(WinGetModuleName);
 
             // CreateDefault enthält die eingebauten Cmdlets ohne Modulsuche; die App bringt kein $PSHOME mit.
@@ -67,7 +68,7 @@ public sealed class PowerShellHost : IPowerShellHost
             }
             else
             {
-                messages.Add($"Mitgeliefertes Modul {WinGetModuleName} fehlt; winget-Daten sind nicht verfügbar.");
+                messages.Add(AppText.Format("WarningWinGetModuleMissing", WinGetModuleName));
             }
             messages.AddRange(await ImportAsync(runspace, core, required: true).ConfigureAwait(false));
 
@@ -83,7 +84,7 @@ public sealed class PowerShellHost : IPowerShellHost
     public async Task<PowerShellResult> InvokeAsync(PSCommand command, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var runspace = _runspace ?? throw new InvalidOperationException("PowerShellHost ist nicht initialisiert.");
+        var runspace = _runspace ?? throw new InvalidOperationException(AppText.Get("ErrorHostNotInitialized"));
 
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -190,13 +191,13 @@ public sealed class PowerShellHost : IPowerShellHost
         }
         catch (RuntimeException ex) when (!required)
         {
-            messages.Add($"Modul {Path.GetFileNameWithoutExtension(manifest)} konnte nicht geladen werden: {ex.Message}");
+            messages.Add(AppText.Format("WarningModuleLoadFailed", Path.GetFileNameWithoutExtension(manifest), ex.Message));
         }
         if (required && ps.HadErrors && ps.Streams.Error.Count > 0)
         {
-            throw new InvalidOperationException($"Kern-Modul konnte nicht geladen werden: {ps.Streams.Error[0]}");
+            throw new InvalidOperationException(AppText.Format("ErrorCoreModuleLoadFailed", ps.Streams.Error[0]));
         }
-        messages.AddRange(ps.Streams.Error.Select(e => $"Modul {Path.GetFileNameWithoutExtension(manifest)}: {e}"));
+        messages.AddRange(ps.Streams.Error.Select(e => AppText.Format("WarningModuleError", Path.GetFileNameWithoutExtension(manifest), e)));
         messages.AddRange(ps.Streams.Warning.Select(w => w.Message));
         return messages;
     });

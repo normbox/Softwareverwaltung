@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Threading;
+using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Services;
 using Softwareverwaltung.App.ViewModels;
 using Softwareverwaltung.App.Views;
@@ -41,9 +42,9 @@ public partial class App : Application
     private static void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         var path = ErrorLog.Write("UI", e.Exception);
-        var where = path is null ? "" : $"{Environment.NewLine}{Environment.NewLine}Details stehen in:{Environment.NewLine}{path}";
+        var where = path is null ? "" : Environment.NewLine + Environment.NewLine + AppText.Format("ErrorDetailsIn", Environment.NewLine + path);
         MessageBox.Show($"{e.Exception.GetType().Name}: {e.Exception.Message}{where}",
-            "Softwareverwaltung: unerwarteter Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            AppText.Get("ErrorUnexpectedTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 }

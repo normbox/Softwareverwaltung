@@ -40,7 +40,7 @@
                     </StackPanel>
                 </ui:CardControl.Header>
                 <ui:ToggleSwitch IsChecked="{Binding IsOn}" AutomationProperties.Name="{Binding Label}"
-                                 OnContent="An" OffContent="Aus" />
+                                 OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
             </ui:CardControl>
         </DataTemplate>
     </UserControl.Resources>
@@ -54,17 +54,17 @@
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" IsEnabled="{Binding IsLoaded}">
             <StackPanel Margin="16,0,16,16" MaxWidth="880" HorizontalAlignment="Left">
                 <TextBlock Style="{StaticResource SectionText}" Margin="0,12,0,0"
-                           Text="Alles ist anfangs aus. Schalten Sie nur ein, was Sie brauchen. Änderungen gelten nach „Speichern“ und dem nächsten Scan." />
+                           Text="{loc:Text SettingsIntro}" />
 
                 <!-- Nutzung -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Nutzung" />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsUsageTitle}" />
                 <TextBlock Style="{StaticResource SectionText}"
-                           Text="Bestimmt nur, welche Hinweise zu den Nutzungsbedingungen angezeigt werden. Schaltet nichts ein oder aus." />
+                           Text="{loc:Text SettingsUsageText}" />
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Content="Privat" GroupName="Usage" IsChecked="{Binding IsPrivate}" />
-                    <RadioButton Content="Firma" GroupName="Usage" Margin="16,0,0,0" IsChecked="{Binding IsCompany}" />
+                    <RadioButton Content="{loc:Text UsagePrivate}" GroupName="Usage" IsChecked="{Binding IsPrivate}" />
+                    <RadioButton Content="{loc:Text UsageCompany}" GroupName="Usage" Margin="16,0,0,0" IsChecked="{Binding IsCompany}" />
                 </StackPanel>
-                <Expander Header="Hinweise zu den Nutzungsbedingungen der Dienste" Margin="0,8,0,0"
+                <Expander Header="{loc:Text SettingsUsageTermsExpander}" Margin="0,8,0,0"
                           Visibility="{Binding Usage, Converter={StaticResource NullToVisibility}}">
                     <StackPanel Margin="0,4,0,0">
                         <TextBlock Text="{Binding TermsGeneral}" TextWrapping="Wrap" />
@@ -73,7 +73,7 @@
                 </Expander>
 
                 <!-- Vorlagen -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Vorlagen" />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsPresetsTitle}" />
                 <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text PresetsText}" />
                 <StackPanel Orientation="Horizontal">
                     <ui:Button Content="{loc:Text PresetQuick}" Icon="{ui:SymbolIcon Flash24}"
@@ -85,8 +85,8 @@
                 </StackPanel>
 
                 <!-- Quellen -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Installierte Programme" />
-                <TextBlock Style="{StaticResource SectionText}" Text="Woher die Liste der installierten Programme kommt. Alles bleibt auf diesem PC." />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsInstalledTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsInstalledText}" />
                 <ItemsControl ItemsSource="{Binding Sources}" ItemTemplate="{StaticResource SwitchCard}" />
 
                 <!-- Suche nach portablen Programmen: Hauptschalter, Info, dann Nutzungsspuren und Dateisuche mit eigenen Schaltern -->
@@ -252,15 +252,15 @@
                 </StackPanel>
 
                 <!-- Externe Dienste -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Externe Dienste" />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsServicesTitle}" />
                 <TextBlock Style="{StaticResource SectionText}"
-                           Text="Diese Dienste senden Daten ins Internet. Jeder Eintrag sagt, was übertragen wird. Ohne sie bleibt die Ampel grau („nicht geprüft“)." />
+                           Text="{loc:Text SettingsServicesText}" />
                 <ItemsControl ItemsSource="{Binding Services}" ItemTemplate="{StaticResource SwitchCard}" />
 
                 <!-- API-Schlüssel -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="API-Schlüssel" />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsKeysTitle}" />
                 <TextBlock Style="{StaticResource SectionText}"
-                           Text="Werden in der Windows-Anmeldeinformationsverwaltung gespeichert, nur für Ihr Benutzerkonto. Sie werden sofort gespeichert und nie angezeigt." />
+                           Text="{loc:Text SettingsKeysText}" />
                 <ItemsControl ItemsSource="{Binding Credentials}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:CredentialItem}">
@@ -284,9 +284,9 @@
                                     <PasswordBox x:Name="Secret" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"
                                                  AutomationProperties.Name="{Binding Title}" />
                                     <ui:Button Grid.Row="0" Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center"
-                                               Content="Speichern" Click="OnSaveCredential" Tag="{Binding ElementName=Secret}" />
+                                               Content="{loc:Text CommonSave}" Click="OnSaveCredential" Tag="{Binding ElementName=Secret}" />
                                     <ui:Button Grid.Row="0" Grid.Column="3" Margin="8,0,0,0" VerticalAlignment="Center"
-                                               Content="Löschen" IsEnabled="{Binding Stored}"
+                                               Content="{loc:Text CommonDelete}" IsEnabled="{Binding Stored}"
                                                Command="{Binding DataContext.RemoveCredentialCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                CommandParameter="{Binding}" />
                                     <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,6,0,0"
@@ -298,25 +298,25 @@
                 </ItemsControl>
 
                 <!-- Aktionen -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Aktualisieren und Deinstallieren" />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsActionsTitle}" />
                 <ItemsControl ItemsSource="{Binding Actions}" ItemTemplate="{StaticResource SwitchCard}" />
 
                 <!-- Wartung -->
-                <TextBlock Style="{StaticResource SectionTitle}" Text="Protokolle und Zwischenspeicher" />
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsLogsTitle}" />
                 <TextBlock Style="{StaticResource SectionText}"
-                           Text="Werden beim Start automatisch aufgeräumt: Älteres und alles über der Größengrenze wird gelöscht, das Älteste zuerst." />
+                           Text="{loc:Text SettingsLogsText}" />
                 <StackPanel Orientation="Horizontal">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Höchstens Tage aufheben (1–3650)" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsLogsMaxDays}" />
                         <ui:TextBox Width="160" HorizontalAlignment="Left"
                                     Text="{Binding LogRetentionDays, UpdateSourceTrigger=PropertyChanged}"
-                                    AutomationProperties.Name="Höchstens Tage aufheben" />
+                                    AutomationProperties.Name="{loc:Text SettingsLogsMaxDaysName}" />
                     </StackPanel>
                     <StackPanel Margin="24,0,0,0">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="Höchstens MB insgesamt (1–102400)" />
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsLogsMaxSize}" />
                         <ui:TextBox Width="160" HorizontalAlignment="Left"
                                     Text="{Binding LogMaxSizeMB, UpdateSourceTrigger=PropertyChanged}"
-                                    AutomationProperties.Name="Höchstens MB insgesamt" />
+                                    AutomationProperties.Name="{loc:Text SettingsLogsMaxSizeName}" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
@@ -331,9 +331,9 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <ui:Button Grid.Column="0" Content="Speichern" Appearance="Primary" Icon="{ui:SymbolIcon Save24}"
+                <ui:Button Grid.Column="0" Content="{loc:Text CommonSave}" Appearance="Primary" Icon="{ui:SymbolIcon Save24}"
                            Command="{Binding SaveCommand}" />
-                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="Verwerfen" Icon="{ui:SymbolIcon ArrowUndo24}"
+                <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="{loc:Text CommonDiscard}" Icon="{ui:SymbolIcon ArrowUndo24}"
                            Command="{Binding DiscardCommand}" />
                 <StackPanel Grid.Column="2" Margin="16,0,0,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap"

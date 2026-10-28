@@ -60,7 +60,7 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ActionsAvailable => _actions is not null && _confirmation is not null;
 
     [ObservableProperty]
-    private string _statusText = "Bereit.";
+    private string _statusText = AppText.Get("StatusReady");
 
     [ObservableProperty]
     private string _searchText = "";
@@ -81,7 +81,7 @@ public sealed partial class MainViewModel : ObservableObject
     public bool ShowEmptyState => IsEmpty && !IsBusy;
 
     public string CountText => Items.Count == 0 ? "" :
-        VisibleCount == Items.Count ? $"{Items.Count} Programme" : $"{VisibleCount} von {Items.Count} Programmen";
+        VisibleCount == Items.Count ? AppText.Format("CountAll", Items.Count) : AppText.Format("CountFiltered", VisibleCount, Items.Count);
 
     partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(ShowEmptyState));
 
@@ -109,26 +109,26 @@ public sealed partial class MainViewModel : ObservableObject
         }
         _initialized = true;
         IsBusy = true;
-        StatusText = "Lade Module …";
+        StatusText = AppText.Get("StatusLoadingModules");
         try
         {
             foreach (var message in await _inventory.InitializeAsync())
             {
-                AddNotice(new Notice(NoticeSeverity.Warning, "Beim Start", message), permanent: true);
+                AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeStartup"), message), permanent: true);
             }
             var winget = await _inventory.GetWingetStatusAsync();
             if (!winget.Available)
             {
-                _wingetNotice = new Notice(NoticeSeverity.Warning, "winget nicht verfügbar", winget.Message ?? "winget ist nicht verfügbar.",
-                    winget.InstallUrl is null ? null : "App Installer im Microsoft Store", winget.InstallUrl,
-                    _actions is null ? null : "winget installieren", _actions is null ? null : InstallWingetCommand);
+                _wingetNotice = new Notice(NoticeSeverity.Warning, AppText.Get("NoticeWingetMissing"), winget.Message ?? AppText.Get("NoticeWingetMissingText"),
+                    winget.InstallUrl is null ? null : AppText.Get("NoticeWingetStoreLink"), winget.InstallUrl,
+                    _actions is null ? null : AppText.Get("ActionInstallWinget"), _actions is null ? null : InstallWingetCommand);
                 AddNotice(_wingetNotice, permanent: true);
             }
         }
         catch (Exception ex)
         {
-            AddNotice(new Notice(NoticeSeverity.Error, "Start fehlgeschlagen", ex.Message), permanent: true);
-            StatusText = "Die Module konnten nicht geladen werden.";
+            AddNotice(new Notice(NoticeSeverity.Error, AppText.Get("NoticeStartFailed"), ex.Message), permanent: true);
+            StatusText = AppText.Get("StatusModulesFailed");
             IsBusy = false;
             return false;
         }
@@ -155,23 +155,23 @@ public sealed partial class MainViewModel : ObservableObject
             }
             foreach (var warning in result.Warnings)
             {
-                AddNotice(new Notice(NoticeSeverity.Warning, "Hinweis", warning), permanent: false);
+                AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeHint"), warning), permanent: false);
             }
             foreach (var error in result.Errors)
             {
-                AddNotice(new Notice(NoticeSeverity.Error, "Fehler beim Scan", error), permanent: false);
+                AddNotice(new Notice(NoticeSeverity.Error, AppText.Get("NoticeScanError"), error), permanent: false);
             }
             LastScan = _time.GetLocalNow();
-            StatusText = $"Zuletzt gescannt: {LastScan:dd.MM.yyyy HH:mm}";
+            StatusText = AppText.Format("StatusLastScan", LastScan);
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Scan abgebrochen.";
+            StatusText = AppText.Get("StatusScanCancelled");
         }
         catch (Exception ex)
         {
-            AddNotice(new Notice(NoticeSeverity.Error, "Fehler beim Scan", ex.Message), permanent: false);
-            StatusText = "Scan fehlgeschlagen.";
+            AddNotice(new Notice(NoticeSeverity.Error, AppText.Get("NoticeScanError"), ex.Message), permanent: false);
+            StatusText = AppText.Get("StatusScanFailed");
         }
         finally
         {
@@ -218,25 +218,25 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
         IsBusy = true;
-        StatusText = "Prüfe, was ausgeführt würde …";
+        StatusText = AppText.Get("StatusPlanning");
         try
         {
             var plan = await _actions.PlanAsync(kind, item?.Source, method);
             if (!plan.IsPlanned)
             {
                 ShowOutcome(plan, item);
-                StatusText = $"{plan.ActionText}: {plan.ResultText}";
+                StatusText = AppText.Format("StatusActionResult", plan.ActionText, plan.ResultText);
                 return;
             }
             if (!_confirmation.Confirm(plan))
             {
-                StatusText = "Abgebrochen; es wurde nichts ausgeführt.";
+                StatusText = AppText.Get("StatusActionCancelled");
                 return;
             }
 
-            StatusText = $"{plan.ActionText}: {plan.Name} läuft …" + (plan.Elevated ? " Bitte die Windows-Abfrage (UAC) bestätigen." : "");
+            StatusText = AppText.Format("StatusActionRunning", plan.ActionText, plan.Name) + (plan.Elevated ? " " + AppText.Get("StatusConfirmUac") : "");
             var outcome = await _actions.ExecuteAsync(kind, item?.Source, plan, method);
-            StatusText = $"{outcome.ActionText}: {outcome.ResultText}";
+            StatusText = AppText.Format("StatusActionResult", outcome.ActionText, outcome.ResultText);
 
             if (kind == SoftwareActionKind.InstallWinget)
             {
@@ -246,7 +246,7 @@ public sealed partial class MainViewModel : ObservableObject
                     _permanentNotices.Remove(_wingetNotice);
                     Notices.Remove(_wingetNotice);
                     _wingetNotice = null;
-                    StatusText += " Ein neuer Scan übernimmt die winget-Daten.";
+                    StatusText += " " + AppText.Get("StatusRescanForWinget");
                 }
                 return;
             }
@@ -255,7 +255,7 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             ShowOutcome(new ActionOutcome { Action = kind.ToString(), Name = item?.Name ?? "winget", Result = "Failed", Message = ex.Message }, item);
-            StatusText = "Aktion fehlgeschlagen.";
+            StatusText = AppText.Get("StatusActionFailed");
         }
         finally
         {
@@ -276,7 +276,8 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Liest nur dieses Programm neu ein: Zeile ersetzen oder entfernen, wenn es weg ist.</summary>
     private async Task<SoftwareItem?> RecheckAsync(SoftwareItem item)
     {
-        StatusText += " Prüfe das Programm neu …";
+        var statusBefore = StatusText;
+        StatusText += " " + AppText.Get("StatusRechecking");
         SoftwareItem? updated;
         try
         {
@@ -284,7 +285,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            AddNotice(new Notice(NoticeSeverity.Warning, "Neu prüfen fehlgeschlagen", $"{item.Name}: {ex.Message}"), permanent: false);
+            AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeRecheckFailed"), $"{item.Name}: {ex.Message}"), permanent: false);
             return item;
         }
         var index = Items.IndexOf(item);
@@ -294,7 +295,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 Items.RemoveAt(index);
             }
-            StatusText = StatusText.Replace(" Prüfe das Programm neu …", " Das Programm ist nicht mehr installiert.");
+            StatusText = statusBefore + " " + AppText.Get("StatusProgramGone");
             return null;
         }
         if (index >= 0)
@@ -305,7 +306,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             SelectedItem = updated;
         }
-        StatusText = StatusText.Replace(" Prüfe das Programm neu …", "");
+        StatusText = statusBefore;
         return updated;
     }
 

@@ -4,6 +4,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Zwischenetappe: Texte auslagern (App)
+
+#### Geändert
+
+- Alle Texte der App stehen in `Resources/Strings.resx` (XAML über `{loc:Text …}`, C# über `AppText.Get`/`AppText.Format`). Status des Moduls (Aktionsergebnis, Wiederherstellungspunkt, Bewertung einer Lücke) werden über Schlüssel aus Präfix und Code übersetzt. Datum und Zahlen folgen der Kultur der Oberfläche. Übersetzt ist noch nichts.
+- Tests prüfen, dass jeder benutzte Schlüssel und jeder bekannte Code einen Text hat und dass in XAML keine festen Texte mehr stehen.
+- `CLAUDE.md`, Konzept und README: Regeln für Codes mit Text in der UI-Sprache, Übersetzungen später per KI (zuerst Englisch), neuer Abschnitt „Übersetzungen beitragen“.
+
 ### Wartung
 
 #### Behoben

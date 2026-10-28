@@ -1,4 +1,5 @@
 using System.Management.Automation;
+using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Models;
 
 namespace Softwareverwaltung.App.Services;
@@ -31,7 +32,7 @@ public sealed class InventoryService(IPowerShellHost host) : IInventoryService
         var status = result.Output.FirstOrDefault();
         if (status is null)
         {
-            return new WingetStatus(false, "winget-Status nicht ermittelbar: " + string.Join(" ", result.Errors), null);
+            return new WingetStatus(false, AppText.Format("WingetStatusUnknown", string.Join(" ", result.Errors)), null);
         }
         var url = status.Properties["InstallUrl"]?.Value?.ToString();
         return new WingetStatus(
