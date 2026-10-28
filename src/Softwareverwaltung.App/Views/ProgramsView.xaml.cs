@@ -21,6 +21,13 @@ public partial class ProgramsView : UserControl
         {
             return;
         }
+        // Häkchen der Warteschlange: nur umschalten, die Zeile nicht auf- oder zuklappen.
+        if (FindAncestor<CheckBox>(source) is { IsEnabled: true } box)
+        {
+            box.IsChecked = box.IsChecked != true;
+            e.Handled = true;
+            return;
+        }
         var row = FindAncestor<DataGridRow>(source);
         if (row is null || !row.IsSelected || FindAncestor<DataGridDetailsPresenter>(source) is not null)
         {

@@ -29,8 +29,10 @@ function New-ResultPipe {
         Erzeugt den Server einer Named Pipe, mit der sich nur erhöhte Prozesse verbinden dürfen.
     .PARAMETER AllowCurrentUser
         Nur für Tests: erlaubt auch dem aktuellen Benutzer ohne Adminrechte die Verbindung.
+    .PARAMETER Duplex
+        In beide Richtungen (Stapelbetrieb: das Modul sendet „next“/„stop“).
     #>
-    param([Parameter(Mandatory)] [string] $Name, [switch] $AllowCurrentUser)
+    param([Parameter(Mandatory)] [string] $Name, [switch] $AllowCurrentUser, [switch] $Duplex)
 
     $security = [System.IO.Pipes.PipeSecurity]::new()
     $rights = [System.IO.Pipes.PipeAccessRights]::ReadWrite
@@ -43,7 +45,8 @@ function New-ResultPipe {
     if ($AllowCurrentUser) {
         $security.AddAccessRule([System.IO.Pipes.PipeAccessRule]::new([System.Security.Principal.WindowsIdentity]::GetCurrent().User, $rights, 'Allow'))
     }
-    [System.IO.Pipes.NamedPipeServerStreamAcl]::Create($Name, [System.IO.Pipes.PipeDirection]::In, 1,
+    $direction = if ($Duplex) { [System.IO.Pipes.PipeDirection]::InOut } else { [System.IO.Pipes.PipeDirection]::In }
+    [System.IO.Pipes.NamedPipeServerStreamAcl]::Create($Name, $direction, 1,
         [System.IO.Pipes.PipeTransmissionMode]::Byte, [System.IO.Pipes.PipeOptions]::Asynchronous, 0, 0, $security)
 }
 

@@ -45,10 +45,9 @@
                            Icon="{ui:SymbolIcon ArrowSync24}"
                            Command="{Binding ScanCommand}"
                            ToolTip="{loc:Text ProgramsScanTooltip}" />
-                <!-- Ohne Cache: ohne NVD-Schlüssel erst Rückfrage mit geschätzter Dauer -->
-                <ui:Button Margin="8,0,0,0" Content="{loc:Text ProgramsScanWithoutCache}"
-                           Command="{Binding ScanWithoutCacheCommand}"
-                           ToolTip="{loc:Text ProgramsScanWithoutCacheTooltip}" />
+                <!-- Schalter „Ohne Cache“: beim Einschalten Hinweis bzw. ohne NVD-Schlüssel Rückfrage mit Dauer -->
+                <ui:ToggleSwitch Margin="12,0,0,0" VerticalAlignment="Center" Content="{loc:Text ProgramsScanWithoutCache}"
+                                 IsChecked="{Binding ScanWithoutCache}" ToolTip="{loc:Text ProgramsScanWithoutCacheTooltip}" />
             </StackPanel>
             <ui:Button Grid.Column="1" Margin="8,0,0,0" Content="{loc:Text CommonCancel}"
                        Icon="{ui:SymbolIcon Dismiss24}"
@@ -69,6 +68,59 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Margin="16,0,16,0">
+        <!-- Hinweis, solange „Ohne Cache“ an ist -->
+        <TextBlock Margin="0,0,0,8" TextWrapping="Wrap" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                   Text="{loc:Text ScanWithoutCacheHint}"
+                   Visibility="{Binding ScanWithoutCache, Converter={StaticResource BoolToVisibility}}" />
+
+        <!-- Auswahl für die Update-Warteschlange (nur Updates; Deinstallieren bleibt einzeln) -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                    Visibility="{Binding ActionsAvailable, Converter={StaticResource BoolToVisibility}}">
+            <ui:Button Content="{loc:Text QueueSelectAllWithUpdate}" Icon="{ui:SymbolIcon CheckboxChecked24}" Command="{Binding SelectAllWithUpdateCommand}" />
+            <ui:Button Margin="8,0,0,0" Content="{loc:Text QueueClearSelection}" Command="{Binding ClearQueueSelectionCommand}" />
+            <ui:Button Margin="8,0,0,0" Content="{loc:Text QueueUpdateSelected}" Appearance="Primary" Icon="{ui:SymbolIcon ArrowUpload24}"
+                       Command="{Binding UpdateSelectedCommand}" />
+            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding QueueSelectionText}"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- Warteschlange: Status je Eintrag, Anhalten/Fortsetzen, Abbrechen -->
+        <Border Margin="0,0,0,8" Padding="12,10" CornerRadius="4" BorderThickness="1"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                Visibility="{Binding QueueEntries.Count, Converter={StaticResource CountToVisibility}}">
+            <StackPanel>
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <ui:Button Content="{loc:Text QueuePause}" Icon="{ui:SymbolIcon Pause24}" Command="{Binding PauseQueueCommand}"
+                                   Visibility="{Binding QueueRunning, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:Button Margin="8,0,0,0" Content="{loc:Text QueueResume}" Icon="{ui:SymbolIcon Play24}" Command="{Binding ResumeQueueCommand}"
+                                   Visibility="{Binding QueuePaused, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:Button Margin="8,0,0,0" Content="{loc:Text CommonCancel}" Icon="{ui:SymbolIcon Dismiss24}" Command="{Binding CancelQueueCommand}"
+                                   Visibility="{Binding QueueRunning, Converter={StaticResource BoolToVisibility}}" />
+                        <ui:Button Margin="8,0,0,0" Icon="{ui:SymbolIcon Dismiss16}" ToolTip="{loc:Text NoticeDismiss}"
+                                   AutomationProperties.Name="{loc:Text QueueDismissName}" Command="{Binding DismissQueueCommand}" />
+                    </StackPanel>
+                    <TextBlock FontWeight="SemiBold" VerticalAlignment="Center">
+                        <Run Text="{loc:Text QueueTitle}" /><Run Text="{Binding QueueProgressText, Mode=OneWay}" />
+                    </TextBlock>
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding QueueEntries}" Margin="0,6,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:QueueEntryState}">
+                            <StackPanel>
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="{Binding Name, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding StatusText, Mode=OneWay}" />
+                                </TextBlock>
+                                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="16,0,0,2"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding Message, Converter={StaticResource NullToVisibility}}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
         <!-- Ergebnis der letzten Aktion -->
         <Border Margin="0,0,0,8" Padding="12,10" CornerRadius="4" BorderThickness="1"
                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
@@ -170,6 +222,16 @@
                     <KeyBinding Key="Escape" Command="{Binding CloseDetailsCommand}" />
                 </DataGrid.InputBindings>
                 <DataGrid.Columns>
+                    <!-- Häkchen für die Update-Warteschlange, nur bei verfügbarem Update -->
+                    <DataGridTemplateColumn Width="56" MinWidth="56" CanUserSort="False" CanUserResize="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type models:SoftwareItem}">
+                                <CheckBox IsChecked="{Binding Queue.IsChecked, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding UpdateAvailable}"
+                                          HorizontalAlignment="Left" VerticalAlignment="Center" MinWidth="0" Padding="0" Margin="12,0,0,0"
+                                          AutomationProperties.Name="{loc:Text QueueCheckboxName}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="{loc:Text ColumnRating}" SortMemberPath="Rating" Width="90">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate DataType="{x:Type models:SoftwareItem}">

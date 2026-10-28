@@ -147,23 +147,46 @@ function Invoke-ActionPlan {
                 $result.RestorePoint = $run.RestorePoint
                 $result.RestorePointMessage = $run.RestorePointMessage
             }
-            if ($run.ContainsKey('Output')) { $result.Output = Protect-SecretText $run.Output }
-            if ($run.ContainsKey('InstallerLog')) { $result.InstallerLog = $run.InstallerLog }
-
-            if ($run.Status -eq 'ElevationDenied') { $failure = @('ElevationDenied', $run.Error) }
-            elseif ($run.Status -ne 'Completed') { $failure = @('Failed', $run.Error) }
-            elseif ($run.Error) { $failure = @('Failed', $run.Error) }
-            elseif ($run.TimedOut) { $failure = @('Timeout', (New-InventoryMessage ActionTimeout $TimeoutMinutes)) }
-            else {
-                $result.ExitCode = [long] $run.ExitCode
-                $outcome = ConvertFrom-ActionExitCode $run.ExitCode
-                $result.ExitCodeHex = $outcome.Code
-            }
+            $read = Read-HelperRun -Result $result -Run $run -TimeoutMinutes $TimeoutMinutes
+            $outcome, $failure = $read.Outcome, $read.Failure
         }
     }
     catch {
         $failure = @('Failed', (New-InventoryMessage UnexpectedError $_.Exception.Message))
     }
+
+    Complete-ActionResult -Plan $Plan -Record $Record -Result $result -Outcome $outcome -Failure $failure
+}
+
+function Read-HelperRun {
+    <#
+    .SYNOPSIS
+        Wertet das Ergebnis des Helfers für eine Aktion aus (Einzelaufruf oder ein Schritt im Stapel).
+    .OUTPUTS
+        @{ Outcome; Failure } – Outcome aus dem Exit-Code, Failure als @(Result, Meldung).
+    #>
+    param($Result, [hashtable] $Run, [int] $TimeoutMinutes)
+    if ($Run.ContainsKey('Output')) { $Result.Output = Protect-SecretText $Run.Output }
+    if ($Run.ContainsKey('InstallerLog')) { $Result.InstallerLog = $Run.InstallerLog }
+
+    if ($Run.Status -eq 'ElevationDenied') { return @{ Outcome = $null; Failure = @('ElevationDenied', $Run.Error) } }
+    if ($Run.Status -ne 'Completed' -or $Run.Error) { return @{ Outcome = $null; Failure = @('Failed', $Run.Error) } }
+    if ($Run.TimedOut) { return @{ Outcome = $null; Failure = @('Timeout', (New-InventoryMessage ActionTimeout $TimeoutMinutes)) } }
+    $Result.ExitCode = [long] $Run.ExitCode
+    $outcome = ConvertFrom-ActionExitCode $Run.ExitCode
+    $Result.ExitCodeHex = $outcome.Code
+    @{ Outcome = $outcome; Failure = $null }
+}
+
+function Complete-ActionResult {
+    <#
+    .SYNOPSIS
+        Prüft den Zustand nach einer Aktion, setzt Ergebnis und Meldung und protokolliert den Abschluss.
+    #>
+    param($Plan, $Record, $Result, $Outcome, $Failure)
+    $result = $Result
+    $outcome = $Outcome
+    $failure = $Failure
 
     $poll = $outcome -and $outcome.Outcome -in 'Success', 'SuccessReboot'
     $after = Wait-ActionState -Action $Plan.Action -Record $Record -Before $Plan.State -Poll $poll

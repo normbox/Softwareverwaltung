@@ -175,10 +175,102 @@ public sealed class MainViewModelActionTests
         Assert.False(vm.UpdateCommand.CanExecute(Tool));
     });
 
+    private static QueueEntry Entry(int index, string name, bool executable, bool elevated = false, bool unconfirmed = false) =>
+        new(index, name, "1.0", "2.0", unconfirmed, executable, elevated, executable ? $"winget upgrade --id {name}" : null,
+            executable ? null : "Update von Hand nötig", Ps(("Index", index), ("Name", name)));
+
+    [Fact]
+    public void QueueSelectsAllWithUpdateConfirmsRunsAndRechecksOnlyAffectedPrograms() => RunOnDispatcher(async () =>
+    {
+        var a = new SoftwareItem { Name = "Alpha", UpdateAvailable = true, Source = Ps(("Name", "Alpha")) };
+        var b = new SoftwareItem { Name = "Beta", UpdateAvailable = true, Source = Ps(("Name", "Beta")) };
+        var c = new SoftwareItem { Name = "Gamma", UpdateAvailable = false, Source = Ps(("Name", "Gamma")) };
+        var actions = new FakeActions
+        {
+            QueuePlan = [Entry(0, "Alpha", executable: true, elevated: true, unconfirmed: true), Entry(1, "Beta", executable: false)],
+            QueueResults = [new ActionOutcome { Action = "Update", Name = "Alpha", Result = "Succeeded" }],
+        };
+        var confirmation = new FakeConfirmation();
+        var vm = new MainViewModel(new FakeInventory { Items = [a, b, c] }, actions, confirmation);
+        await vm.InitializeAsync();
+
+        vm.SelectAllWithUpdateCommand.Execute(null);
+        Assert.Equal(2, vm.QueueSelectedCount);
+        Assert.False(c.Queue.IsChecked);
+
+        await vm.UpdateSelectedCommand.ExecuteAsync(null);
+
+        // Gemeinsame Bestätigung: Gruppen und Kennzeichnung „unbestätigt“
+        var shown = Assert.Single(confirmation.Queues);
+        Assert.Equal(["Alpha"], shown.Elevated.Select(e => e.Name));
+        Assert.Empty(shown.Normal);
+        Assert.Equal(["Beta"], shown.NotExecutable.Select(e => e.Name));
+        Assert.True(shown.Elevated[0].Unconfirmed);
+        // Nur ausführbare Einträge laufen; danach nur das betroffene Programm verwerfen und neu prüfen
+        Assert.Equal(["Alpha"], actions.QueueRun);
+        Assert.Equal(["QueuePlan", "QueueRun", "ClearCache", "Recheck"], actions.Calls);
+        Assert.Equal("Succeeded", Assert.Single(vm.QueueEntries).Status);
+        Assert.Equal(0, vm.QueueSelectedCount);
+        Assert.False(vm.QueueRunning);
+    });
+
+    [Fact]
+    public void QueueRunsNothingWhenTheConfirmationIsDeclined() => RunOnDispatcher(async () =>
+    {
+        var a = new SoftwareItem { Name = "Alpha", UpdateAvailable = true, Source = Ps(("Name", "Alpha")) };
+        var actions = new FakeActions { QueuePlan = [Entry(0, "Alpha", executable: true)] };
+        var vm = new MainViewModel(new FakeInventory { Items = [a] }, actions, new FakeConfirmation { Answer = false });
+        await vm.InitializeAsync();
+        a.Queue.IsChecked = true;
+
+        await vm.UpdateSelectedCommand.ExecuteAsync(null);
+
+        Assert.Equal(["QueuePlan"], actions.Calls);
+        Assert.Empty(vm.QueueEntries);
+    });
+
+    [Fact]
+    public void QueuePauseResumeAndCancelSetTheSharedControl() => RunOnDispatcher(async () =>
+    {
+        var a = new SoftwareItem { Name = "Alpha", UpdateAvailable = true, Source = Ps(("Name", "Alpha")) };
+        var actions = new FakeActions { QueuePlan = [Entry(0, "Alpha", executable: true)], HoldQueue = new TaskCompletionSource() };
+        var vm = new MainViewModel(new FakeInventory { Items = [a] }, actions, new FakeConfirmation());
+        await vm.InitializeAsync();
+        a.Queue.IsChecked = true;
+
+        var running = vm.UpdateSelectedCommand.ExecuteAsync(null);
+        while (actions.Control is null)
+        {
+            await Task.Delay(10);
+        }
+        Assert.True(vm.QueueRunning);
+        vm.PauseQueueCommand.Execute(null);
+        Assert.Equal("Paused", actions.Control["State"]);
+        Assert.True(vm.ResumeQueueCommand.CanExecute(null));
+        vm.ResumeQueueCommand.Execute(null);
+        Assert.Equal("Running", actions.Control["State"]);
+        vm.CancelQueueCommand.Execute(null);
+        Assert.Equal("Cancelled", actions.Control["State"]);
+
+        var finished = false;
+        vm.QueueFinished += (_, _) => finished = true;
+        actions.HoldQueue.SetResult();
+        await running;
+        Assert.True(finished);
+        Assert.False(vm.QueueRunning);
+    });
+
     private sealed class FakeConfirmation : IConfirmationService
     {
         public bool Answer { get; set; } = true;
         public List<ActionOutcome> Shown { get; } = [];
+        public List<QueueConfirmation> Queues { get; } = [];
+
+        public bool ConfirmQueue(QueueConfirmation confirmation)
+        {
+            Queues.Add(confirmation);
+            return Answer;
+        }
 
         public Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate) => Task.FromResult(true);
 
@@ -223,6 +315,33 @@ public sealed class MainViewModelActionTests
         {
             Calls.Add("ClearCache");
             return Task.CompletedTask;
+        }
+
+        public IReadOnlyList<QueueEntry> QueuePlan { get; set; } = [];
+        public IReadOnlyList<ActionOutcome> QueueResults { get; set; } = [];
+        public List<string> QueueRun { get; } = [];
+        public System.Collections.Hashtable? Control { get; private set; }
+        public TaskCompletionSource? HoldQueue { get; set; }
+
+        public Task<IReadOnlyList<QueueEntry>> PlanUpdateQueueAsync(IReadOnlyList<PSObject> sources, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+        {
+            Calls.Add("QueuePlan");
+            return Task.FromResult(QueuePlan);
+        }
+
+        public async Task<IReadOnlyList<ActionOutcome>> RunUpdateQueueAsync(IReadOnlyList<QueueEntry> entries, System.Collections.Hashtable control, IProgress<string>? progress = null)
+        {
+            Calls.Add("QueueRun");
+            QueueRun.AddRange(entries.Select(e => e.Name));
+            Control = control;
+            if (HoldQueue is not null)
+            {
+                await HoldQueue.Task;
+            }
+            // Wie das Modul: Status je Index in der gemeinsamen Steuerung
+            control["Status"] = System.Collections.Hashtable.Synchronized(new System.Collections.Hashtable(
+                QueueResults.Select((r, i) => (entries[i].Index, r.Result)).ToDictionary(x => (object)x.Index, x => (object)x.Result)));
+            return QueueResults;
         }
 
         public Task<IReadOnlyList<ActionHistoryEntry>> GetHistoryAsync(string name, CancellationToken cancellationToken = default) =>

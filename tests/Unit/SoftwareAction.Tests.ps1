@@ -342,4 +342,122 @@ Describe 'Update-Software und Uninstall-Software' {
             ($msiRecord | Uninstall-Software -CreateRestorePoint:$false -Confirm:$false).RestorePoint | Should -Be 'NotRequested'
         }
     }
+
+    Context 'Update-Warteschlange' {
+        BeforeEach {
+            # Zweites Programm im Benutzerbereich (läuft nie erhöht) und eines ohne winget (nicht ausführbar)
+            New-UninstallKey $User 'UserTool' @{ DisplayName = 'User Tool'; DisplayVersion = '1.0' }
+            $userWinget = InModuleScope SoftwareInventory -Parameters @{ K = "$User\UserTool" } {
+                New-SoftwareRecord -Name 'User Tool' -Source Registry -Property @{ RegistryKey = $K; WingetId = 'User.Tool'; WingetSource = 'winget' }
+            }
+            $manualKey = '{99999999-2222-3333-4444-555555555555}'
+            New-UninstallKey $Machine $manualKey @{ DisplayName = 'Manual Tool'; DisplayVersion = '3.0'; WindowsInstaller = 1 }
+            $manual = InModuleScope SoftwareInventory -Parameters @{ K = "$Machine\$manualKey" } {
+                New-SoftwareRecord -Name 'Manual Tool' -Source Registry -Property @{ RegistryKey = $K }
+            }
+            # Bewertung mit unbestätigter neuester Version (z. B. winget-Suche nach Name)
+            $rating = [pscustomobject] @{
+                PSTypeName = 'SoftwareInventory.SecurityRating'; Name = 'Contoso Tool'; Record = $wingetRecord; LatestVersion = '2.2.0'
+                UpdateStatus = [pscustomobject] @{ Status = 'Outdated'; LatestVersion = '2.2.0'; Confirmed = $false }
+            }
+            $script:order = [System.Collections.Generic.List[string]]::new()
+            # Einzelaufrufe (ohne Adminrechte): Version erhöhen
+            Set-HelperResult @{ ExitCode = 0 } { Set-ItemProperty "$User\UserTool" -Name DisplayVersion -Value '1.1' }
+            Mock -ModuleName SoftwareInventory Start-ElevatedHelper {
+                $script:order.Add("single:$($HelperPlan.Arguments)")
+                & $script:helperEffect
+                @{ Status = 'Completed'; RestorePoint = $(if ($HelperPlan.RestorePoint) { 'Created' } else { 'NotRequested' }); ExitCode = 0; TimedOut = $false; Output = 'ok'; InstallerLog = $null; Error = $null }
+            }
+            # Stapel (erhöht): Schritte ausführen, solange BeforeStep zustimmt
+            $script:batchStatus = 'Completed'
+            Mock -ModuleName SoftwareInventory Start-ElevatedHelperBatch {
+                $script:order.Add("batch:$($Steps.Count):rp=$RestorePoint")
+                if ($script:batchStatus -ne 'Completed') { return @{ Status = $script:batchStatus; Error = [pscustomobject] @{ Code = 'ElevationDenied'; Args = @(); Text = 'abgelehnt' }; Done = 0 } }
+                $done = 0
+                for ($i = 0; $i -lt $Steps.Count; $i++) {
+                    if (-not (& $BeforeStep $i)) { break }
+                    Set-ItemProperty "TestRegistry:\Uninstall\Machine\{11111111-2222-3333-4444-555555555555}" -Name DisplayVersion -Value '2.2.0'
+                    & $AfterStep $i @{ Status = 'Completed'; ExitCode = 0; TimedOut = $false; Output = 'ok'; InstallerLog = $null; Error = $null }
+                    $done++
+                }
+                @{ Status = 'Completed'; Error = $null; RestorePoint = $(if ($RestorePoint) { 'Created' } else { 'NotRequested' }); RestorePointMessage = $null; Done = $done }
+            }
+        }
+
+        It 'plant ohne Ausführung und Protokoll, mit Rechten, Befehl und Kennzeichnung unbestätigter Updates' {
+            $plan = @($rating, $userWinget, $manual) | Get-UpdateQueuePlan
+            $plan.Name | Should -Be @('Contoso Tool', 'User Tool', 'Manual Tool')
+            $plan.Executable | Should -Be @($true, $true, $false)
+            $plan.Elevated[0] | Should -BeTrue
+            $plan.Elevated[1] | Should -BeFalse
+            $plan[0].Unconfirmed | Should -BeTrue
+            $plan[1].Unconfirmed | Should -BeFalse
+            $plan[0].CommandLine | Should -Match 'upgrade --id Contoso\.Tool'
+            $plan[2].Result | Should -Be 'ManualUpdateRequired'
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0
+            Get-ActionLog | Should -BeNullOrEmpty
+        }
+
+        It 'führt erhöhte Einträge zuerst in einem Stapel aus, dann die übrigen, und meldet den Status je Eintrag' {
+            $plan = @($userWinget, $rating) | Get-UpdateQueuePlan
+            $control = [hashtable]::Synchronized(@{ State = 'Running' })
+            $r = Invoke-UpdateQueue -Entry $plan -Control $control
+            $script:order[0] | Should -Be 'batch:1:rp=False'
+            $script:order[1] | Should -BeLike 'single:upgrade --id User.Tool*'
+            $r.Name | Should -Be @('User Tool', 'Contoso Tool')
+            $r.Result | Should -Be @('Succeeded', 'Succeeded')
+            $control.Status[0] | Should -Be 'Succeeded'
+            $control.Status[1] | Should -Be 'Succeeded'
+            @(Get-ActionLog).Count | Should -Be 2
+        }
+
+        It 'legt einen einzigen Wiederherstellungspunkt vor der Warteschlange an' {
+            $plan = @($rating, $userWinget) | Get-UpdateQueuePlan
+            $r = Invoke-UpdateQueue -Entry $plan -CreateRestorePoint
+            $script:order | Should -Contain 'batch:1:rp=True'
+            @($script:order | Where-Object { $_ -like 'single:*' }).Count | Should -BeGreaterThan 0
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -ParameterFilter { $HelperPlan.RestorePoint } -Times 0
+            @($r | Where-Object RestorePoint -EQ 'Created').Count | Should -Be 1
+        }
+
+        It 'nimmt den Wiederherstellungspunkt ohne erhöhte Einträge in einem eigenen kurzen Aufruf vorweg' {
+            $r = Invoke-UpdateQueue -Entry (@($userWinget) | Get-UpdateQueuePlan) -CreateRestorePoint
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -ParameterFilter { $HelperPlan.RestorePoint -and -not $HelperPlan.FilePath } -Times 1
+            $r.RestorePoint | Should -Be 'Created'
+        }
+
+        It 'bricht ab: führt nichts mehr aus und protokolliert den Rest als abgebrochen' {
+            $plan = @($rating, $userWinget) | Get-UpdateQueuePlan
+            $control = [hashtable]::Synchronized(@{ State = 'Cancelled' })
+            $r = Invoke-UpdateQueue -Entry $plan -Control $control
+            $r.Result | Should -Be @('Cancelled', 'Cancelled')
+            $r[0].Message.Code | Should -Be 'QueueCancelled'
+            @($script:order | Where-Object { $_ -like 'single:*' }).Count | Should -Be 0
+            @(Get-ActionLog | Where-Object Result -EQ 'Cancelled').Count | Should -Be 2
+        }
+
+        It 'wartet, solange angehalten ist, und läuft danach weiter' {
+            $script:control = [hashtable]::Synchronized(@{ State = 'Paused' })
+            Mock -ModuleName SoftwareInventory Start-Sleep { $script:control['State'] = 'Running' }
+            $r = Invoke-UpdateQueue -Entry (@($userWinget) | Get-UpdateQueuePlan) -Control $script:control
+            $r.Result | Should -Be 'Succeeded'
+            Should -Invoke -ModuleName SoftwareInventory Start-Sleep -Times 1
+        }
+
+        It 'überspringt nur den Eintrag, dessen Befehl sich seit der Bestätigung geändert hat' {
+            $plan = @($rating, $userWinget) | Get-UpdateQueuePlan
+            $plan[0].CommandLine = 'C:\anderes.exe /S'
+            $r = Invoke-UpdateQueue -Entry $plan
+            $r[0].Result | Should -Be 'Cancelled'
+            $r[0].Message.Code | Should -Be 'CommandChanged'
+            $r[1].Result | Should -Be 'Succeeded'
+        }
+
+        It 'lässt bei abgelehnter UAC-Abfrage die Einträge ohne Adminrechte trotzdem laufen' {
+            $script:batchStatus = 'ElevationDenied'
+            $r = Invoke-UpdateQueue -Entry (@($rating, $userWinget) | Get-UpdateQueuePlan)
+            $r[0].Result | Should -Be 'ElevationDenied'
+            $r[1].Result | Should -Be 'Succeeded'
+        }
+    }
 }

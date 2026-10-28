@@ -18,7 +18,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly TimeProvider _time;
     // Installationsordner je Programm, für die Sitzung gemerkt (ermittelt erst beim Aufklappen).
     private readonly Dictionary<string, InstallLocationInfo> _locations = [];
-    private bool _refreshNextScan;
+    // Warteschlange: Steuerung (State/Status) wird zwischen App und Modul geteilt.
+    private System.Collections.Hashtable? _queueControl;
     private bool _initialized;
     private bool _ready;
     private Notice? _wingetNotice;
@@ -31,6 +32,14 @@ public sealed partial class MainViewModel : ObservableObject
         _shell = shell;
         _time = time ?? TimeProvider.System;
         ItemsView = new ListCollectionView(Items) { Filter = Matches };
+        Items.CollectionChanged += (_, e) =>
+        {
+            foreach (var item in e.NewItems?.OfType<SoftwareItem>() ?? [])
+            {
+                item.Queue.PropertyChanged += (_, _) => OnQueueSelectionChanged();
+            }
+            OnQueueSelectionChanged();
+        };
         ItemsView.SortDescriptions.Add(new SortDescription(nameof(SoftwareItem.Rating), ListSortDirection.Ascending));
         ItemsView.SortDescriptions.Add(new SortDescription(nameof(SoftwareItem.Name), ListSortDirection.Ascending));
     }
@@ -43,7 +52,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Notice> Notices { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(ScanWithoutCacheCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand))]
     private bool _isBusy;
 
     /// <summary>Angeklicktes Programm; seine früheren Aktionen stehen in <see cref="History"/>.</summary>
@@ -51,6 +60,26 @@ public sealed partial class MainViewModel : ObservableObject
     private SoftwareItem? _selectedItem;
 
     public ObservableCollection<ActionHistoryEntry> History { get; } = [];
+
+    /// <summary>Einträge der laufenden oder zuletzt gelaufenen Warteschlange mit Status.</summary>
+    public ObservableCollection<QueueEntryState> QueueEntries { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PauseQueueCommand), nameof(ResumeQueueCommand), nameof(CancelQueueCommand))]
+    private bool _queueRunning;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PauseQueueCommand), nameof(ResumeQueueCommand))]
+    private bool _queuePaused;
+
+    public int QueueSelectedCount => Items.Count(i => i.Queue.IsChecked);
+
+    public string QueueSelectionText => AppText.Format("QueueSelectionCount", QueueSelectedCount);
+
+    public string QueueProgressText => AppText.Format("QueueProgress", QueueEntries.Count(e => e.IsDone), QueueEntries.Count);
+
+    /// <summary>Wird ausgelöst, wenn die Warteschlange fertig ist (z. B. um die App danach zu schließen).</summary>
+    public event EventHandler? QueueFinished;
 
     /// <summary>Installationsordner des angeklickten Programms; null, solange er ermittelt wird.</summary>
     [ObservableProperty]
@@ -145,45 +174,62 @@ public sealed partial class MainViewModel : ObservableObject
         _ready = true;
         IsBusy = false;
         ScanCommand.NotifyCanExecuteChanged();
-        ScanWithoutCacheCommand.NotifyCanExecuteChanged();
         return true;
     }
 
+    /// <summary>Schalter „Ohne Cache“: Solange er an ist, fragt „Scannen“ alle Dienste neu ab.</summary>
+    [ObservableProperty]
+    private bool _scanWithoutCache;
+
+    private bool _confirmingRefresh;
+
     /// <summary>
-    /// Scan ohne Zwischenspeicher. Ohne NVD-Schlüssel (laut Modul) erst nachfragen, mit geschätzter Dauer;
-    /// mit Schlüssel ohne Rückfrage. Abbrechen geht wie beim normalen Scan.
+    /// Beim Einschalten ein Hinweis: ohne NVD-Schlüssel (laut Modul) die Rückfrage mit geschätzter Dauer –
+    /// abgelehnt, geht der Schalter wieder aus; mit Schlüssel nur die Hinweiszeile.
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanScan))]
-    private async Task ScanWithoutCacheAsync()
+    partial void OnScanWithoutCacheChanged(bool value)
+    {
+        if (value && !_confirmingRefresh)
+        {
+            _ = ConfirmScanWithoutCacheAsync();
+        }
+    }
+
+    private async Task ConfirmScanWithoutCacheAsync()
     {
         var sources = Items.Select(i => i.Source).OfType<System.Management.Automation.PSObject>().ToList();
-        if (_confirmation is not null && sources.Count > 0)
+        if (_confirmation is null || sources.Count == 0)
         {
-            RefreshEstimate? estimate = null;
+            return;
+        }
+        _confirmingRefresh = true;
+        try
+        {
+            RefreshEstimate estimate;
             try
             {
-                estimate = await _inventory.GetRefreshEstimateAsync(sources);
+                estimate = await _inventory.GetRefreshEstimateAsync(sources) ?? new RefreshEstimate(0, 0, NeedsConfirmation: false);
             }
             catch (Exception)
             {
                 // Ohne Schätzung lieber nachfragen als still lange laufen.
                 estimate = new RefreshEstimate(0, 0, NeedsConfirmation: true);
             }
-            if (estimate is { NeedsConfirmation: true } && !await _confirmation.ConfirmRefreshAsync(estimate))
+            if (estimate.NeedsConfirmation && !await _confirmation.ConfirmRefreshAsync(estimate))
             {
-                StatusText = AppText.Get("StatusRefreshNotStarted");
-                return;
+                ScanWithoutCache = false;
             }
         }
-        _refreshNextScan = true;
-        await ScanCommand.ExecuteAsync(null);
+        finally
+        {
+            _confirmingRefresh = false;
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanScan), IncludeCancelCommand = true)]
     private async Task ScanAsync(CancellationToken cancellationToken)
     {
-        var refresh = _refreshNextScan;
-        _refreshNextScan = false;
+        var refresh = ScanWithoutCache;
         IsBusy = true;
         StatusText = AppText.Get("ScanRunning");
         ClearScanNotices();
@@ -269,6 +315,169 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _ = LoadHistoryAsync(value);
         _ = LoadLocationAsync(value);
+    }
+
+    private void OnQueueSelectionChanged()
+    {
+        OnPropertyChanged(nameof(QueueSelectedCount));
+        OnPropertyChanged(nameof(QueueSelectionText));
+        UpdateSelectedCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Alle Programme mit verfügbarem Update für die Warteschlange auswählen (auch unbestätigte).</summary>
+    [RelayCommand]
+    private void SelectAllWithUpdate()
+    {
+        foreach (var item in Items.Where(i => i.UpdateAvailable))
+        {
+            item.Queue.IsChecked = true;
+        }
+    }
+
+    [RelayCommand]
+    private void ClearQueueSelection()
+    {
+        foreach (var item in Items)
+        {
+            item.Queue.IsChecked = false;
+        }
+    }
+
+    private bool CanUpdateSelected() => !IsBusy && _ready && ActionsAvailable && QueueSelectedCount > 0;
+
+    /// <summary>
+    /// Update-Warteschlange (nur Updates; Deinstallieren bleibt einzeln): planen, gemeinsam bestätigen,
+    /// ausführen mit Fortschritt je Eintrag, danach nur die betroffenen Programme neu prüfen.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanUpdateSelected))]
+    private async Task UpdateSelectedAsync()
+    {
+        var selected = Items.Where(i => i.Queue.IsChecked && i.Source is not null).ToList();
+        IsBusy = true;
+        StatusText = AppText.Get("StatusQueuePlanning");
+        try
+        {
+            var planProgress = new Progress<string>(message => StatusText = message);
+            var plan = await _actions!.PlanUpdateQueueAsync(selected.Select(i => i.Source!).ToList(), planProgress);
+            var confirmation = new QueueConfirmation(plan);
+            if (!confirmation.CanStart || !_confirmation!.ConfirmQueue(confirmation))
+            {
+                StatusText = AppText.Get("StatusActionCancelled");
+                return;
+            }
+            var entries = plan.Where(e => e.Executable).ToList();
+            QueueEntries.Clear();
+            foreach (var entry in entries)
+            {
+                QueueEntries.Add(new QueueEntryState(entry.Index, entry.Name));
+            }
+            _queueControl = System.Collections.Hashtable.Synchronized(new System.Collections.Hashtable { ["State"] = "Running" });
+            QueuePaused = false;
+            QueueRunning = true;
+            var progress = new Progress<string>(message => StatusText = message);
+            var run = _actions.RunUpdateQueueAsync(entries, _queueControl, progress);
+            // Status je Eintrag aus der gemeinsamen Steuerung lesen, solange die Warteschlange läuft.
+            while (!run.IsCompleted)
+            {
+                await Task.WhenAny(run, Task.Delay(400));
+                RefreshQueueStatus();
+            }
+            var results = await run;
+            RefreshQueueStatus();
+            // Bei Fehlschlag den Grund am Eintrag zeigen (z. B. Netzwerkfehler), nicht nur im Protokoll.
+            foreach (var entry in QueueEntries)
+            {
+                var result = results.FirstOrDefault(r => r.Name == entry.Name);
+                entry.Message = result is { IsSuccess: false } ? result.Message : null;
+            }
+            StatusText = AppText.Format("StatusQueueDone", results.Count(r => r.IsSuccess), results.Count);
+
+            // Nur betroffene Programme neu prüfen: was wirklich gelaufen ist (nicht abgebrochen, nicht übersprungen).
+            var ran = results.Where(r => r.Result != "Cancelled").Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in selected.Where(i => ran.Contains(i.Name)))
+            {
+                try
+                {
+                    await _actions.ClearCheckCacheAsync(item.Source!);
+                }
+                catch (Exception)
+                {
+                    // Verwerfen ist eine Zusatzhilfe; die nächste Prüfung richtet sich dann nach der Haltbarkeit.
+                }
+                await RecheckAsync(item);
+            }
+            ClearQueueSelection();
+        }
+        catch (Exception ex)
+        {
+            AddNotice(new Notice(NoticeSeverity.Error, AppText.Get("NoticeQueueFailed"), ex.Message), permanent: false);
+            StatusText = AppText.Get("StatusActionFailed");
+        }
+        finally
+        {
+            QueueRunning = false;
+            QueuePaused = false;
+            _queueControl = null;
+            IsBusy = false;
+            RefreshView();
+            QueueFinished?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void RefreshQueueStatus()
+    {
+        if (_queueControl?["Status"] is not System.Collections.IDictionary status)
+        {
+            return;
+        }
+        foreach (var entry in QueueEntries)
+        {
+            if (status[entry.Index] is { } code)
+            {
+                entry.Status = code.ToString()!;
+            }
+        }
+        OnPropertyChanged(nameof(QueueProgressText));
+    }
+
+    [RelayCommand(CanExecute = nameof(CanPauseQueue))]
+    private void PauseQueue()
+    {
+        _queueControl!["State"] = "Paused";
+        QueuePaused = true;
+        StatusText = AppText.Get("StatusQueuePaused");
+    }
+
+    private bool CanPauseQueue() => QueueRunning && !QueuePaused;
+
+    [RelayCommand(CanExecute = nameof(CanResumeQueue))]
+    private void ResumeQueue()
+    {
+        _queueControl!["State"] = "Running";
+        QueuePaused = false;
+    }
+
+    private bool CanResumeQueue() => QueueRunning && QueuePaused;
+
+    /// <summary>Abbrechen: die laufende Aktion wird fertig, der Rest wird nicht ausgeführt (und protokolliert).</summary>
+    [RelayCommand(CanExecute = nameof(QueueRunning))]
+    public void CancelQueue()
+    {
+        if (_queueControl is not null)
+        {
+            _queueControl["State"] = "Cancelled";
+        }
+        QueuePaused = false;
+        StatusText = AppText.Get("StatusQueueCancelling");
+    }
+
+    [RelayCommand]
+    private void DismissQueue()
+    {
+        if (!QueueRunning)
+        {
+            QueueEntries.Clear();
+        }
     }
 
     /// <summary>Klappt die Details zu (Button „Schließen“, Esc, zweiter Klick auf die Zeile).</summary>

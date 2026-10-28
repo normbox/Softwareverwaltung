@@ -62,6 +62,12 @@ $script:ExitCodeMap = @{
     '0x8A150113' = @{ Outcome = 'Failed' }
     '0x8A150114' = @{ Outcome = 'Failed' }
     '0x8A150115' = @{ Outcome = 'Failed' }
+    # Netzwerk (WinINet/WinHTTP), z. B. beim Download durch winget
+    '0x80072EE7' = @{ Outcome = 'Failed' }
+    '0x80072EFD' = @{ Outcome = 'Failed' }
+    '0x80072EE2' = @{ Outcome = 'Failed' }
+    '0x80072F8F' = @{ Outcome = 'Failed' }
+    '0x80072EFE' = @{ Outcome = 'Failed' }
 }
 
 function Format-ExitCode {

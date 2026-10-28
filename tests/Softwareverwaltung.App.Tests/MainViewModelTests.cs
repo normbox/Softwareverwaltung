@@ -171,7 +171,7 @@ public sealed class MainViewModelTests
     });
 
     [Fact]
-    public void ScanWithoutCacheAsksOnlyWhenTheModuleSaysSo() => RunOnDispatcher(async () =>
+    public void ScanWithoutCacheSwitchAsksOnlyWhenTheModuleSaysSo() => RunOnDispatcher(async () =>
     {
         var tool = new SoftwareItem { Name = "Contoso Tool", Source = new System.Management.Automation.PSObject() };
         var inventory = new FakeInventory { Items = [tool], Estimate = new RefreshEstimate(12, 72, NeedsConfirmation: true) };
@@ -179,20 +179,27 @@ public sealed class MainViewModelTests
         var vm = new MainViewModel(inventory, confirmation: confirmation);
         await vm.InitializeAsync();
 
-        // Ohne NVD-Schlüssel: Rückfrage mit Schätzung; abgelehnt = kein Scan.
-        await vm.ScanWithoutCacheCommand.ExecuteAsync(null);
+        // Ohne NVD-Schlüssel: Rückfrage mit Schätzung beim Einschalten; abgelehnt = Schalter wieder aus.
+        vm.ScanWithoutCache = true;
+        await Task.Delay(50);
         Assert.Equal([72], confirmation.Asked);
-        Assert.Equal([false], inventory.Scans);
+        Assert.False(vm.ScanWithoutCache);
 
         confirmation.Answer = true;
-        await vm.ScanWithoutCacheCommand.ExecuteAsync(null);
-        Assert.Equal([false, true], inventory.Scans);
-
-        // Mit Schlüssel: ohne Rückfrage; danach scannt „Scannen“ wieder mit Cache.
-        inventory.Estimate = new RefreshEstimate(12, 8, NeedsConfirmation: false);
-        await vm.ScanWithoutCacheCommand.ExecuteAsync(null);
+        vm.ScanWithoutCache = true;
+        await Task.Delay(50);
+        Assert.True(vm.ScanWithoutCache);
         await vm.ScanCommand.ExecuteAsync(null);
+
+        // Mit Schlüssel: ohne Rückfrage; ausgeschaltet scannt „Scannen“ wieder mit Cache.
+        vm.ScanWithoutCache = false;
+        inventory.Estimate = new RefreshEstimate(12, 8, NeedsConfirmation: false);
+        vm.ScanWithoutCache = true;
+        await Task.Delay(50);
         Assert.Equal(2, confirmation.Asked.Count);
+        await vm.ScanCommand.ExecuteAsync(null);
+        vm.ScanWithoutCache = false;
+        await vm.ScanCommand.ExecuteAsync(null);
         Assert.Equal([false, true, true, false], inventory.Scans);
     });
 
@@ -222,6 +229,8 @@ public sealed class MainViewModelTests
         public List<int> Asked { get; } = [];
 
         public bool Confirm(ActionOutcome plan) => true;
+
+        public bool ConfirmQueue(QueueConfirmation confirmation) => true;
 
         public Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate)
         {

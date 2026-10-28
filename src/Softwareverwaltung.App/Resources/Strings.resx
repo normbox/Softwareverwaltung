@@ -749,10 +749,10 @@
     <value>Älter als die eingestellte Haltbarkeit: Die Dienste waren nicht erreichbar, die Angaben stammen aus dem Zwischenspeicher.</value>
   </data>
   <data name="ProgramsScanWithoutCache" xml:space="preserve">
-    <value>Ohne Cache scannen</value>
+    <value>Ohne Cache</value>
   </data>
   <data name="ProgramsScanWithoutCacheTooltip" xml:space="preserve">
-    <value>Alle Online-Angaben neu abfragen, ohne Zwischenspeicher</value>
+    <value>Eingeschaltet fragt „Scannen“ alle Dienste neu ab, ohne Zwischenspeicher</value>
   </data>
   <data name="DetailsRecheckWithoutCache" xml:space="preserve">
     <value>Neu prüfen (ohne Cache)</value>
@@ -770,7 +770,7 @@
     <value>Ohne Cache scannen</value>
   </data>
   <data name="RefreshConfirmText" xml:space="preserve">
-    <value>Ohne NVD-API-Schlüssel erlaubt die NVD nur wenige Anfragen. Der Scan ohne Zwischenspeicher dauert deshalb {0} ({1} NVD-Anfragen, eher länger).
+    <value>Ohne NVD-API-Schlüssel erlaubt die NVD nur wenige Anfragen. Ein Scan ohne Zwischenspeicher dauert deshalb {0} ({1} NVD-Anfragen, eher länger).
 
 Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantragen bei der NVD, eintragen unter Einstellungen &gt; API-Schlüssel.</value>
   </data>
@@ -781,7 +781,7 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
     <value>etwa {0} Minuten</value>
   </data>
   <data name="RefreshConfirmStart" xml:space="preserve">
-    <value>Trotzdem scannen</value>
+    <value>Trotzdem einschalten</value>
   </data>
   <data name="RefreshConfirmGetKey" xml:space="preserve">
     <value>Schlüssel beantragen</value>
@@ -803,5 +803,94 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
   </data>
   <data name="SettingsCacheKev" xml:space="preserve">
     <value>CISA KEV (Stunden)</value>
+  </data>
+  <data name="QueueSelectAllWithUpdate" xml:space="preserve">
+    <value>Alle mit Update auswählen</value>
+  </data>
+  <data name="QueueClearSelection" xml:space="preserve">
+    <value>Auswahl aufheben</value>
+  </data>
+  <data name="QueueUpdateSelected" xml:space="preserve">
+    <value>Ausgewählte aktualisieren</value>
+  </data>
+  <data name="QueueSelectionCount" xml:space="preserve">
+    <value>{0} ausgewählt</value>
+  </data>
+  <data name="QueueCheckboxName" xml:space="preserve">
+    <value>Für die Update-Warteschlange auswählen</value>
+  </data>
+  <data name="QueueTitle" xml:space="preserve">
+    <value>Warteschlange: </value>
+  </data>
+  <data name="QueueProgress" xml:space="preserve">
+    <value>{0} von {1} erledigt</value>
+  </data>
+  <data name="QueuePause" xml:space="preserve">
+    <value>Anhalten</value>
+  </data>
+  <data name="QueueResume" xml:space="preserve">
+    <value>Fortsetzen</value>
+  </data>
+  <data name="QueueDismissName" xml:space="preserve">
+    <value>Warteschlange ausblenden</value>
+  </data>
+  <data name="QueueStatusWaiting" xml:space="preserve">
+    <value>wartet</value>
+  </data>
+  <data name="QueueStatusRunning" xml:space="preserve">
+    <value>läuft …</value>
+  </data>
+  <data name="QueueVersions" xml:space="preserve">
+    <value>{0} → {1}</value>
+  </data>
+  <data name="QueueUnconfirmed" xml:space="preserve">
+    <value>Neueste Version unbestätigt (nur über den Namen gefunden)</value>
+  </data>
+  <data name="QueueConfirmTitle" xml:space="preserve">
+    <value>Ausgewählte aktualisieren</value>
+  </data>
+  <data name="QueueConfirmSummary" xml:space="preserve">
+    <value>{0} Programme werden aktualisiert, {1} nicht ausführbar</value>
+  </data>
+  <data name="QueueGroupElevated" xml:space="preserve">
+    <value>Mit Administratorrechten (eine Windows-Abfrage für alle)</value>
+  </data>
+  <data name="QueueGroupNormal" xml:space="preserve">
+    <value>Ohne Administratorrechte</value>
+  </data>
+  <data name="QueueGroupNotExecutable" xml:space="preserve">
+    <value>Nicht ausführbar</value>
+  </data>
+  <data name="QueueConfirmHint" xml:space="preserve">
+    <value>Es werden genau diese Befehle ausgeführt, nacheinander. Hat sich ein Befehl bis dahin geändert, wird nur dieser übersprungen. Fehler halten die Warteschlange nicht an. Alles wird protokolliert.</value>
+  </data>
+  <data name="QueueConfirmStart" xml:space="preserve">
+    <value>Warteschlange starten</value>
+  </data>
+  <data name="StatusQueuePlanning" xml:space="preserve">
+    <value>Plane die Warteschlange …</value>
+  </data>
+  <data name="StatusQueuePaused" xml:space="preserve">
+    <value>Warteschlange angehalten; die laufende Aktion wird noch fertig.</value>
+  </data>
+  <data name="StatusQueueCancelling" xml:space="preserve">
+    <value>Warteschlange wird abgebrochen; die laufende Aktion wird noch fertig.</value>
+  </data>
+  <data name="StatusQueueDone" xml:space="preserve">
+    <value>Warteschlange fertig: {0} von {1} erfolgreich.</value>
+  </data>
+  <data name="NoticeQueueFailed" xml:space="preserve">
+    <value>Warteschlange fehlgeschlagen</value>
+  </data>
+  <data name="QueueCloseTitle" xml:space="preserve">
+    <value>Warteschlange läuft</value>
+  </data>
+  <data name="QueueCloseWarning" xml:space="preserve">
+    <value>Die Warteschlange läuft noch. Beim Schließen wird die laufende Aktion fertig, der Rest wird abgebrochen und protokolliert. Danach schließt die App.
+
+Trotzdem schließen?</value>
+  </data>
+  <data name="ScanWithoutCacheHint" xml:space="preserve">
+    <value>„Ohne Cache“ ist an: „Scannen“ fragt alle Dienste neu ab und dauert deshalb länger. Zum normalen Scan den Schalter wieder ausschalten.</value>
   </data>
 </root>
