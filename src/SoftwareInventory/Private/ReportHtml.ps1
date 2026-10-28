@@ -35,7 +35,7 @@ function ConvertTo-SecurityReportHtml {
             (& $e $u.LatestVersion) + " <span class='muted'>(" + (& $e $u.Source) + ')</span>' +
             $(if (-not $u.Confirmed) { " <span class='tag'>unbestätigt</span>" })
         } else { "<span class='muted'>–</span>" }
-        $reasons = ($r.Reasons | ForEach-Object { '<li>' + (& $e $_) + '</li>' }) -join ''
+        $reasons = ($r.Reasons | ForEach-Object { '<li>' + (& $e (ConvertTo-MessageText $_)) + '</li>' }) -join ''
 
         $vulnRows = foreach ($x in $relevant + $info) {
             $epss = if ($null -ne $x.Epss) { '{0:N1} %' -f ($x.Epss * 100) } else { '–' }
@@ -44,14 +44,14 @@ function ConvertTo-SecurityReportHtml {
             $published = if ($x.Published) { ([string] $x.Published).Substring(0, [Math]::Min(10, ([string] $x.Published).Length)) } else { '–' }
             "<tr class='$(if ($x.Assessment -eq 'Informational') { 'info' })'><td><a href='$(& $e $x.Url)'>$(& $e $x.CveId)</a> $kev</td>" +
             "<td>$(& $e $script:AssessmentLabel[$x.Assessment])</td><td>$score</td><td>$epss</td><td>$published</td>" +
-            "<td>$(& $e $x.Note) <span class='muted'>$(& $e $x.Description)</span></td></tr>"
+            "<td>$(& $e (ConvertTo-MessageText $x.Note)) <span class='muted'>$(& $e $x.Description)</span></td></tr>"
         }
         $location = $r.Record.FilePath
         if (-not $location) { $location = $r.Record.InstallLocation }
         $details = @(
             "<p><b>Quelle:</b> $(& $e ($r.Record.Sources -join ', '))" + $(if ($location) { " · <b>Ort:</b> $(& $e $location)" }) + '</p>'
             if ($v -and $v.Cpe) { "<p><b>CPE:</b> $(& $e ($v.Cpe -join ', '))" + $(if ($v.CpeSource -eq 'User') { ' (vom Benutzer bestätigt)' }) + '</p>' }
-            if ($v -and $v.Notes) { "<p class='muted'>$(& $e ($v.Notes -join '; '))</p>" }
+            if ($v -and $v.Notes) { "<p class='muted'>$(& $e (ConvertTo-MessageText @($v.Notes)))</p>" }
             if ($vulnRows) {
                 "<table class='cves'><thead><tr><th>CVE</th><th>Bewertung</th><th>CVSS</th><th>EPSS</th><th>Veröffentlicht</th><th>Hinweis</th></tr></thead><tbody>$($vulnRows -join '')</tbody></table>"
             }

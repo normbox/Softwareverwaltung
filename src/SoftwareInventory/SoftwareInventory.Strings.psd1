@@ -72,8 +72,57 @@ Regeln:
     PortableDriveNotConnected               = 'Laufwerk {0} ist nicht verbunden und wurde übersprungen.'
     PortableFolderNotFound                  = 'Ordner {0} wurde nicht gefunden und übersprungen.'
 
-    # Ampel: zusätzliche Gründe
-    RatingReasonPathUnreachable             = 'Pfad nicht erreichbar: Das Laufwerk ist gerade nicht verbunden (z. B. abgezogener USB-Stick). Gefunden über Nutzungsspuren.'
+    # Gründe, Status und Hinweise (New-InventoryMessage; Schlüssel = Reason + Code). Args stehen in {0}, {1} ….
+    # Ampel
+    ReasonKevAffected                       = 'Aktiv ausgenutzte Lücke {0} (CISA KEV)'
+    ReasonCriticalCvss                      = 'Kritische Lücke {0} (CVSS {1})'
+    ReasonKnownVulnerabilities              = '{0} bekannte Lücke(n)'
+    ReasonKnownVulnerabilitiesMaxCvss       = '{0} bekannte Lücke(n), höchster CVSS {1}'
+    ReasonPossiblyAffected                  = 'Möglicherweise betroffen: {0} ({1})'
+    ReasonPossiblyAffectedKev               = 'Möglicherweise betroffen: {0} (aktiv ausgenutzt, {1})'
+    ReasonUpdateAvailable                   = 'Update verfügbar: {0} → {1} (Quelle {2})'
+    ReasonUpdateAvailableUnconfirmed        = 'Update verfügbar: {0} → {1} (Quelle {2}, unbestätigt)'
+    ReasonNoFindings                        = 'Sicherheitsprüfung ohne Befund'
+    ReasonVersionCurrent                    = 'Version aktuell'
+    ReasonNotChecked                        = 'Nicht auf Lücken geprüft'
+    ReasonNotCheckedBecause                 = 'Nicht auf Lücken geprüft: {0}'
+    ReasonVersionUnknownBecause             = 'Versionsstand unbekannt: {0}'
+    ReasonPathUnreachable                   = 'Pfad nicht erreichbar: Das Laufwerk ist gerade nicht verbunden (z. B. abgezogener USB-Stick). Gefunden über Nutzungsspuren.'
+
+    # Dienste (Args: Name des Dienstes, ggf. Fehlermeldung)
+    ReasonServiceDisabled                   = 'Dienst {0} nicht aktiviert'
+    ReasonServiceUnavailable                = '{0} nicht abrufbar: {1}'
+    ReasonRateLimit                         = '{0}-Anfragelimit erreicht'
+
+    # Sicherheitslücken
+    ReasonNoCpe                             = 'Keine CPE zugeordnet (kein Katalogeintrag, keine bestätigte Zuordnung; Vorschläge: Find-CpeCandidate)'
+    ReasonNoCpeKevOnly                      = 'Keine CPE zugeordnet (nur KEV-Zuordnung im Katalog)'
+    ReasonVersionUnreadable                 = 'Version ''{0}'' nicht lesbar'
+    ReasonNvdNoVersionRange                 = 'Versionsbereich in der NVD nicht angegeben'
+    ReasonNvdLegacyData                     = 'Altdaten ohne Versionsangabe in der NVD (älter als {0} Jahre); ohne Ampelwirkung'
+    ReasonKevNvdNoVersionData               = 'Version nicht prüfbar (NVD ohne Versionsdaten)'
+    ReasonKevNvdUnavailable                 = 'Version nicht prüfbar (NVD nicht abrufbar)'
+    ReasonKevNvdDisabled                    = 'Version nicht prüfbar (Dienst NVD nicht aktiviert)'
+    ReasonKevFixedInCatalog                 = 'behoben ab {0} (Katalog)'
+    ReasonKevRefutedNvd                     = 'KEV-Treffer {0} widerlegt: Version {1} laut NVD nicht betroffen'
+    ReasonKevRefutedCatalog                 = 'KEV-Treffer {0} widerlegt: behoben ab {1} (Katalog), installiert {2}'
+
+    # Neueste Version
+    ReasonNoVersionSource                   = 'Keine Versionsquelle bekannt (kein winget-Paket, kein Katalogeintrag)'
+    ReasonNoLatestVersion                   = '{0}'
+    ReasonInstalledNewer                    = 'Installierte Version ist neuer als die gefundene'
+    ReasonInstalledVersionUnreadable        = 'Installierte Version ''{0}'' nicht lesbar'
+    ReasonFoundVersionUnreadable            = 'Gefundene Version ''{0}'' nicht lesbar'
+    ReasonGitHubNoRelease                   = 'Kein Release in {0} gefunden'
+    ReasonGitHubTagMismatch                 = 'Release-Tag ''{0}'' passt nicht zum Katalogmuster'
+    ReasonStoreApp                          = 'Store-App: Updates über den Microsoft Store'
+    ReasonWingetSearchUnavailable           = 'winget-Suche nicht verfügbar ({0})'
+    ReasonWingetSearchNoPublisher           = 'winget-Suche braucht einen Hersteller'
+    ReasonWingetSearchFailed                = 'winget-Suche fehlgeschlagen: {0}'
+    ReasonWingetSearchAmbiguous             = 'winget-Suche mehrdeutig'
+    ReasonWingetSearchAmbiguousCount        = 'winget-Suche mehrdeutig ({0} Pakete mit passendem Namen)'
+    ReasonWingetSearchNoMatch               = 'Kein passendes winget-Paket gefunden'
+    ReasonWingetSearchImplausible           = 'winget-Treffer unplausibel (installiert {0}, gefunden {1})'
 
     # Einstellungen (Schlüssel = SettingsError + Code)
     SettingsErrorInvalidAdvisorEndpoint     = 'Ungültige Adresse ''{0}'': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1.'

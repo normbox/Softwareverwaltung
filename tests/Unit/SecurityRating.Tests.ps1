@@ -2,26 +2,32 @@ BeforeAll {
     Import-Module "$PSScriptRoot/../../src/SoftwareInventory" -Force
 
     function New-Vuln {
-        param([string] $Id = 'CVE-2026-0001', [string] $Assessment = 'Affected', [double] $Score = 7.0, [switch] $Kev, [string] $Note)
+        param([string] $Id = 'CVE-2026-0001', [string] $Assessment = 'Affected', [double] $Score = 7.0, [switch] $Kev, $Note)
         [pscustomobject] @{ CveId = $Id; Assessment = $Assessment; Score = $Score; Kev = [bool] $Kev; Note = $Note; Epss = 0.12; Published = '2026-01-01T00:00:00.000'
             Url = "https://nvd.nist.gov/vuln/detail/$Id"; Description = 'Beschreibung'; KevDateAdded = $null; KevRansomware = $false }
     }
     function New-VulnStatus {
-        param([string] $Status = 'Checked', [object[]] $Vulns = @(), [string] $Reason)
+        param([string] $Status = 'Checked', [object[]] $Vulns = @(), $Reason)
         [pscustomobject] @{ Status = $Status; Reason = $Reason; Vulnerabilities = @($Vulns); Cpe = @('cpe:2.3:a:x:y:1.0:*:*:*:*:*:*:*'); CpeSource = 'Catalog'; Notes = @() }
     }
     function New-UpdateStatus {
-        param([string] $Status = 'UpToDate', [string] $Latest = '1.0', [bool] $Confirmed = $true, [string] $Reason, [string] $Source = 'Winget')
+        param([string] $Status = 'UpToDate', [string] $Latest = '1.0', [bool] $Confirmed = $true, $Reason, [string] $Source = 'Winget')
         [pscustomobject] @{ Status = $Status; InstalledVersion = '1.0'; LatestVersion = $Latest; Source = $Source; Confirmed = $Confirmed; Reason = $Reason }
     }
     function Get-Rating { param($U, $V) InModuleScope SoftwareInventory -Parameters @{ U = $U; V = $V } { Get-RatingFromResult -UpdateStatus $U -VulnerabilityStatus $V } }
+    function New-Msg {
+        param([string] $Code, [object[]] $Arguments = @())
+        InModuleScope SoftwareInventory -Parameters @{ C = $Code; A = $Arguments } { New-InventoryMessage $C $A }
+    }
 }
 
 Describe 'Ampelregeln' {
     It 'Rot bei aktiv ausgenutzter Lücke' {
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @(New-Vuln -Kev -Score 6))
         $r.Rating | Should -Be 'Red'
-        $r.Reasons[0] | Should -Match 'Aktiv ausgenutzte Lücke CVE-2026-0001'
+        $r.Reasons[0].Code | Should -Be 'KevAffected'
+        $r.Reasons[0].Args | Should -Be @('CVE-2026-0001')
+        $r.Reasons[0].Text | Should -Match 'Aktiv ausgenutzte Lücke CVE-2026-0001'
     }
 
     It 'Rot bei kritischer Lücke (CVSS ab 9)' {
@@ -31,66 +37,77 @@ Describe 'Ampelregeln' {
     It 'Gelb bei anderen Lücken mit Anzahl und höchstem CVSS' {
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @((New-Vuln -Score 7.5), (New-Vuln -Id 'CVE-2026-0002' -Score 4.0)))
         $r.Rating | Should -Be 'Yellow'
-        $r.Reasons | Should -Contain '2 bekannte Lücke(n), höchster CVSS 7.5'
+        $r.Reasons.Code | Should -Contain 'KnownVulnerabilitiesMaxCvss'
+        ($r.Reasons | Where-Object Code -EQ 'KnownVulnerabilitiesMaxCvss').Args | Should -Be @(2, 7.5)
     }
 
     It 'Gelb (nicht Rot) bei KEV-Eintrag, dessen Version nicht prüfbar ist' {
-        $possible = New-Vuln -Assessment PossiblyAffected -Kev -Score 9.8 -Note 'Aktiv ausgenutzt; Version nicht prüfbar (NVD ohne Versionsdaten)'
+        $possible = New-Vuln -Assessment PossiblyAffected -Kev -Score 9.8 -Note (New-Msg KevNvdNoVersionData)
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($possible))
         $r.Rating | Should -Be 'Yellow'
-        $r.Reasons[0] | Should -Be 'Möglicherweise betroffen: CVE-2026-0001 (aktiv ausgenutzt, Version nicht prüfbar (NVD ohne Versionsdaten))'
+        $r.Reasons[0].Code | Should -Be 'PossiblyAffectedKev'
+        $r.Reasons[0].Args[1].Code | Should -Be 'KevNvdNoVersionData'
+        # Verschachtelte Meldung geht mit ihrem Text in den Text ein.
+        $r.Reasons[0].Text | Should -Be 'Möglicherweise betroffen: CVE-2026-0001 (aktiv ausgenutzt, Version nicht prüfbar (NVD ohne Versionsdaten))'
     }
 
     It 'Gelb bei verfügbarem Update, unbestätigte Quelle gekennzeichnet' {
-        $r = Get-Rating (New-UpdateStatus -Status Outdated -Latest '2.0' -Confirmed $false -Source WingetSearch) (New-VulnStatus -Status Unknown -Reason 'Keine CPE zugeordnet')
+        $r = Get-Rating (New-UpdateStatus -Status Outdated -Latest '2.0' -Confirmed $false -Source WingetSearch) (New-VulnStatus -Status Unknown -Reason (New-Msg NoCpe))
         $r.Rating | Should -Be 'Yellow'
-        $r.Reasons | Should -Contain 'Update verfügbar: 1.0 → 2.0 (Quelle WingetSearch, unbestätigt)'
+        $update = $r.Reasons | Where-Object Code -EQ 'UpdateAvailableUnconfirmed'
+        $update.Args | Should -Be @('1.0', '2.0', 'WingetSearch')
+        $update.Text | Should -Be 'Update verfügbar: 1.0 → 2.0 (Quelle WingetSearch, unbestätigt)'
     }
 
     It 'Grün nur nach gelaufener Sicherheitsprüfung, Hinweise färben nicht' {
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @(New-Vuln -Assessment Informational -Score 10))
         $r.Rating | Should -Be 'Green'
-        $r.Reasons | Should -Be @('Sicherheitsprüfung ohne Befund', 'Version aktuell')
+        $r.Reasons.Code | Should -Be @('NoFindings', 'VersionCurrent')
     }
 
     It 'Grau statt Gelb, wenn der einzige KEV-Treffer ohne NVD widerlegt ist, und nennt die Widerlegung' {
-        $v = New-VulnStatus -Status Unknown -Reason 'Dienst NVD nicht aktiviert'
-        $v | Add-Member Refuted @([pscustomobject] @{ CveId = 'CVE-2025-0411'; Source = 'Catalog'; Note = 'KEV-Treffer CVE-2025-0411 widerlegt: behoben ab 24.09 (Katalog), installiert 26.05' })
+        $v = New-VulnStatus -Status Unknown -Reason (New-Msg ServiceDisabled 'NVD')
+        $v | Add-Member Refuted @([pscustomobject] @{ CveId = 'CVE-2025-0411'; Source = 'Catalog'; Note = (New-Msg KevRefutedCatalog 'CVE-2025-0411', '24.09', '26.05') })
         $r = Get-Rating (New-UpdateStatus) $v
         $r.Rating | Should -Be 'Gray'
-        $r.Reasons | Should -Be @('Nicht auf Lücken geprüft: Dienst NVD nicht aktiviert', 'KEV-Treffer CVE-2025-0411 widerlegt: behoben ab 24.09 (Katalog), installiert 26.05', 'Version aktuell')
+        $r.Reasons.Code | Should -Be @('NotCheckedBecause', 'KevRefutedCatalog', 'VersionCurrent')
+        $r.Reasons[0].Args[0].Code | Should -Be 'ServiceDisabled'
+        $r.Reasons[0].Text | Should -Be 'Nicht auf Lücken geprüft: Dienst NVD nicht aktiviert'
     }
 
     It 'Grün mit Widerlegung als Grund, wenn NVD geprüft hat' {
         $v = New-VulnStatus
-        $v | Add-Member Refuted @([pscustomobject] @{ CveId = 'CVE-2025-0411'; Source = 'NVD'; Note = 'KEV-Treffer CVE-2025-0411 widerlegt: Version 26.05 laut NVD nicht betroffen' })
+        $v | Add-Member Refuted @([pscustomobject] @{ CveId = 'CVE-2025-0411'; Source = 'NVD'; Note = (New-Msg KevRefutedNvd 'CVE-2025-0411', '26.05') })
         $r = Get-Rating (New-UpdateStatus) $v
         $r.Rating | Should -Be 'Green'
-        $r.Reasons | Should -Contain 'KEV-Treffer CVE-2025-0411 widerlegt: Version 26.05 laut NVD nicht betroffen'
+        $r.Reasons.Code | Should -Contain 'KevRefutedNvd'
     }
 
     It 'jedes Gelb hat einen Grund' {
         foreach ($case in @(
-                @{ U = (New-UpdateStatus); V = (New-VulnStatus -Vulns @(New-Vuln -Assessment PossiblyAffected -Kev -Note 'Aktiv ausgenutzt; Version nicht prüfbar (Dienst NVD nicht aktiviert)')) }
+                @{ U = (New-UpdateStatus); V = (New-VulnStatus -Vulns @(New-Vuln -Assessment PossiblyAffected -Kev -Note (New-Msg KevNvdDisabled))) }
                 @{ U = (New-UpdateStatus); V = (New-VulnStatus -Vulns @(New-Vuln -Score 5)) }
-                @{ U = (New-UpdateStatus -Status Outdated -Latest '2.0'); V = (New-VulnStatus -Status Unknown -Reason 'x') }
+                @{ U = (New-UpdateStatus -Status Outdated -Latest '2.0'); V = (New-VulnStatus -Status Unknown -Reason (New-Msg NoCpe)) }
             )) {
             $r = Get-Rating $case.U $case.V
             $r.Rating | Should -Be 'Yellow'
-            @($r.Reasons | Where-Object { $_ }).Count | Should -BeGreaterThan 0
+            @($r.Reasons | Where-Object { $_.Code -and $_.Text }).Count | Should -BeGreaterThan 0
         }
     }
 
     It 'Grau mit Grund, auch wenn die Version aktuell ist' {
-        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Status Unknown -Reason 'Dienst NVD nicht aktiviert')
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Status Unknown -Reason (New-Msg ServiceDisabled 'NVD'))
         $r.Rating | Should -Be 'Gray'
-        $r.Reasons | Should -Be @('Nicht auf Lücken geprüft: Dienst NVD nicht aktiviert', 'Version aktuell')
+        $r.Reasons.Code | Should -Be @('NotCheckedBecause', 'VersionCurrent')
     }
 
     It 'Grau nennt den Grund der fehlenden Prüfung und den unbekannten Versionsstand' {
-        $r = Get-Rating (New-UpdateStatus -Status Unknown -Latest $null -Reason 'Dienst GitHub nicht aktiviert') (New-VulnStatus -Status Unknown -Reason 'Keine CPE zugeordnet')
+        $r = Get-Rating (New-UpdateStatus -Status Unknown -Latest $null -Reason (New-Msg ServiceDisabled 'GitHub')) (New-VulnStatus -Status Unknown -Reason (New-Msg NoCpe))
         $r.Rating | Should -Be 'Gray'
-        $r.Reasons | Should -Be @('Nicht auf Lücken geprüft: Keine CPE zugeordnet', 'Versionsstand unbekannt: Dienst GitHub nicht aktiviert')
+        $r.Reasons.Code | Should -Be @('NotCheckedBecause', 'VersionUnknownBecause')
+        $r.Reasons[0].Args[0].Code | Should -Be 'NoCpe'
+        $r.Reasons[1].Args[0].Code | Should -Be 'ServiceDisabled'
+        $r.Reasons[1].Args[0].Args | Should -Be @('GitHub')
     }
 }
 

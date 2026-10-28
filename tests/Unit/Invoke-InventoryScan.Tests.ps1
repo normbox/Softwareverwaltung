@@ -163,7 +163,8 @@ Describe 'Kein Dateiscan ohne Laufwerk oder Ordner' {
             New-SoftwareRecord -Name 'tool' -Source Portable -Property @{ FilePath = 'Q:\PortableApps\Tool\tool.exe'; Flags = [string[]] @('PathUnreachable') }
         }
         $rating = $record | Get-SecurityRating
-        $rating.Reasons[0] | Should -Match '^Pfad nicht erreichbar'
+        $rating.Reasons[0].Code | Should -Be 'PathUnreachable'
+        $rating.Reasons[0].Text | Should -Match '^Pfad nicht erreichbar'
     }
 }
 

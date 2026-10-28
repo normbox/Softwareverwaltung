@@ -35,7 +35,7 @@ function Test-SoftwareUpdate {
             $done++
             Write-CheckProgress -Id 3 -Activity ProgressCheckUpdates -Index $done -Total $InputObject.Count -Name $record.Name
             $match = Find-CatalogEntry -Record $record -Catalog $catalog
-            $reasons = [System.Collections.Generic.List[string]]::new()
+            $reasons = [System.Collections.Generic.List[object]]::new()
             $result = $null
 
             $providers = @(
@@ -57,22 +57,25 @@ function Test-SoftwareUpdate {
 }
 
 function New-UpdateStatus {
-    param($Record, $Result, [string[]] $Reasons, [string] $CatalogId)
+    param($Record, $Result, [object[]] $Reasons, [string] $CatalogId)
 
     $status = 'Unknown'
     $reason = $null
     if (-not $Result) {
-        $reason = if ($Reasons) { $Reasons -join '; ' } else { 'Keine Versionsquelle bekannt (kein winget-Paket, kein Katalogeintrag)' }
+        # Mehrere Provider ohne Ergebnis: ein Grund NoLatestVersion mit allen Einzelgründen als Args.
+        $reason = if ($Reasons.Count -gt 1) { New-InventoryMessage NoLatestVersion (, $Reasons) }
+        elseif ($Reasons) { $Reasons[0] }
+        else { New-InventoryMessage NoVersionSource }
     }
     else {
         $cmp = Compare-SoftwareVersion $Record.Version $Result.LatestVersion
         switch ($cmp) {
             -1 { $status = 'Outdated' }
             0 { $status = 'UpToDate' }
-            1 { $status = 'UpToDate'; $reason = 'Installierte Version ist neuer als die gefundene' }
+            1 { $status = 'UpToDate'; $reason = New-InventoryMessage InstalledNewer }
             default {
-                $reason = if (-not (ConvertTo-NormalizedVersion $Record.Version)) { "Installierte Version '$($Record.Version)' nicht lesbar" }
-                else { "Gefundene Version '$($Result.LatestVersion)' nicht lesbar" }
+                $reason = if (-not (ConvertTo-NormalizedVersion $Record.Version)) { New-InventoryMessage InstalledVersionUnreadable $Record.Version }
+                else { New-InventoryMessage FoundVersionUnreadable $Result.LatestVersion }
             }
         }
     }

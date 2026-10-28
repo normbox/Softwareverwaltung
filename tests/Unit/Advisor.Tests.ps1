@@ -2,7 +2,7 @@ BeforeAll {
     Import-Module "$PSScriptRoot/../../src/SoftwareInventory" -Force
 
     function New-TestRating {
-        param([string] $Name, [string] $Rating, [hashtable] $Property, [string] $UpdateStatus = 'UpToDate', [object[]] $Vulns = @(), [string] $VulnStatus = 'Checked', [string[]] $Reasons = @('Grund'))
+        param([string] $Name, [string] $Rating, [hashtable] $Property, [string] $UpdateStatus = 'UpToDate', [object[]] $Vulns = @(), [string] $VulnStatus = 'Checked', [object[]] $Reasons = @((New-Msg NoFindings)))
         $record = InModuleScope SoftwareInventory -Parameters @{ N = $Name; P = $Property } { New-SoftwareRecord -Name $N -Source Registry -Property $P }
         [pscustomobject] @{
             Name                = $Name
@@ -14,6 +14,11 @@ BeforeAll {
             VulnerabilityStatus = [pscustomobject] @{ Status = $VulnStatus; Reason = $null; Notes = @(); Vulnerabilities = @($Vulns); Refuted = @() }
             Record              = $record
         }
+    }
+
+    function New-Msg {
+        param([string] $Code, [object[]] $Arguments = @())
+        InModuleScope SoftwareInventory -Parameters @{ C = $Code; A = $Arguments } { New-InventoryMessage $C $A }
     }
 
     function Invoke-Tool { param($Name, $Arguments = '{}') Invoke-AdvisorTool -Name $Name -ArgumentsJson $Arguments }
@@ -28,7 +33,7 @@ Describe 'KI-Berater: Tools' {
         $script:ratings = @(
             New-TestRating 'Old Tool' Red @{ Version = '1.0'; Publisher = 'Contoso'; RegistryKey = 'HKLM:\X\Old'; InstallLocation = 'C:\Users\normb\Tools\Old' } -UpdateStatus Outdated `
                 -Vulns @([pscustomobject] @{ CveId = 'CVE-2026-0001'; Assessment = 'Affected'; Kev = $true; Score = 9.8; Epss = 0.5; Note = $null; Description = 'Lücke in C:\Users\normb\x' }) `
-                -Reasons @('Aktiv ausgenutzte Lücke CVE-2026-0001 (CISA KEV)', 'Update verfügbar')
+                -Reasons @((New-Msg KevAffected 'CVE-2026-0001'), (New-Msg UpdateAvailable '1.0', '9.0', 'Winget'))
             New-TestRating '7-Zip 26.05 (x64)' Gray @{ Version = '26.05'; Publisher = 'Igor Pavlov'; RegistryKey = 'HKLM:\X\7zip'; WingetId = '7zip.7zip' } -VulnStatus Unknown
             New-TestRating 'Firefox' Green @{ Version = '140.0'; Publisher = 'Mozilla'; RegistryKey = 'HKLM:\X\Firefox' }
         )
@@ -79,6 +84,10 @@ Describe 'KI-Berater: Tools' {
         $data.vulnerability_list[0].cve | Should -Be 'CVE-2026-0001'
         $data.vulnerability_list[0].kev | Should -BeTrue
         $data.reasons.Count | Should -Be 2
+        # Gründe gehen mit Code, Args und Text an das Modell.
+        $data.reasons[0].code | Should -Be 'KevAffected'
+        $data.reasons[0].args | Should -Be @('CVE-2026-0001')
+        $data.reasons[0].text | Should -Match 'CVE-2026-0001'
     }
 
     It 'meldet Fehler mit festem Code und Meldung statt zu werfen: <Code>' -TestCases @(
@@ -138,7 +147,7 @@ Describe 'KI-Berater: Tools' {
             FilePath = 'F:\Users\normb\PortableApps\tool.exe'; InstallLocation = 'F:\Users\normb\PortableApps'
             Evidence = [string[]] @('UserAssist', 'Process'); LastRun = '2026-10-01T10:00:00.0000000Z'; RunCount = 4711
             Flags = [string[]] @('PathUnreachable')
-        } -VulnStatus Unknown -Reasons @('Pfad nicht erreichbar: Das Laufwerk ist gerade nicht verbunden (z. B. abgezogener USB-Stick). Gefunden über Nutzungsspuren.')
+        } -VulnStatus Unknown -Reasons @((New-Msg PathUnreachable))
         Set-AdvisorContext -Rating @($usb)
         $id = InModuleScope SoftwareInventory -Parameters @{ R = $usb.Record } { Get-AdvisorProgramId $R }
 

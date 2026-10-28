@@ -17,6 +17,35 @@ Describe 'Texte des Moduls' {
         foreach ($key in $used) { $strings.ContainsKey($key) | Should -BeTrue -Because "Schlüssel '$key' wird im Code verwendet" }
     }
 
+    It 'enthält zu jedem Code einer Meldung einen Text' {
+        $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern 'New-InventoryMessage\s+(?<key>\w+)' -AllMatches |
+            ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique
+        # Codes, die über eine Variable gewählt werden ($code)
+        $used = @($used) + 'PossiblyAffected', 'PossiblyAffectedKev', 'UpdateAvailable', 'UpdateAvailableUnconfirmed'
+        $strings = InModuleScope SoftwareInventory { $script:Strings }
+        foreach ($code in $used) { $strings.ContainsKey("Reason$code") | Should -BeTrue -Because "Code '$code' wird im Code verwendet" }
+    }
+
+    It 'liefert Meldungen mit Code, Args und Text, auch verschachtelt' {
+        $m = InModuleScope SoftwareInventory {
+            $inner = New-InventoryMessage ServiceDisabled 'NVD'
+            New-InventoryMessage NotCheckedBecause (, $inner)
+        }
+        $m.Code | Should -Be 'NotCheckedBecause'
+        $m.Args[0].Code | Should -Be 'ServiceDisabled'
+        $m.Text | Should -Be 'Nicht auf Lücken geprüft: Dienst NVD nicht aktiviert'
+
+        $list = InModuleScope SoftwareInventory {
+            New-InventoryMessage NoLatestVersion (, @((New-InventoryMessage ServiceDisabled 'GitHub'), (New-InventoryMessage WingetSearchNoPublisher)))
+        }
+        $list.Text | Should -Be 'Dienst GitHub nicht aktiviert; winget-Suche braucht einen Hersteller'
+
+        $data = InModuleScope SoftwareInventory -Parameters @{ M = $m } { ConvertTo-MessageData $M }
+        $data.code | Should -Be 'NotCheckedBecause'
+        $data.args[0].code | Should -Be 'ServiceDisabled'
+        $data.args[0].args | Should -Be @('NVD')
+    }
+
     It 'enthält die Fortschrittstexte mit und ohne Zähler' {
         $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern 'Write-CheckProgress\b.*?-Activity\s+(?<key>\w+)' -AllMatches |
             ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique
