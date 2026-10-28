@@ -28,6 +28,8 @@ function Get-UpdateQueuePlan {
     process {
         foreach ($item in $InputObject) {
             if ($null -eq $item) { continue }
+            # Je Programm fragt die Planung winget nach der installierten Version (ca. 0,5 s): Fortschritt zeigen.
+            Write-CheckProgress -Id 7 -Activity ProgressPlanQueue -Index ($index + 1) -Total $InputObject.Count -Name (Get-RecordValue $item 'Name')
             $prepared = Resolve-SoftwareAction -Action Update -InputObject $item -RestorePoint $false
             if (-not $prepared) { continue }
             $plan = $prepared.Plan
@@ -52,4 +54,5 @@ function Get-UpdateQueuePlan {
             }
         }
     }
+    end { Write-CheckProgress -Id 7 -Activity ProgressPlanQueue -Completed }
 }

@@ -104,6 +104,36 @@ Mit Adminrechten läuft nur ein kleines Helferskript (`src/SoftwareInventory/Ele
 
 Die Abbildung der Exit-Codes steht in `src/SoftwareInventory/Private/ExitCode.ps1`. Grundlage für winget ist die offizielle Liste [returnCodes.md](https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md). Unbekannte Codes werden zu `Failed` mit dem Code in Hex.
 
+## Update-Warteschlange
+
+Mehrere Updates auf einmal. Das gilt nur für Updates: Deinstallieren bleibt immer einzeln, mit eigener Rückfrage je Programm. Standard-Button ist dort „Abbrechen“, Enter allein bestätigt nichts.
+
+- **Planen:** `Get-UpdateQueuePlan` liefert je Programm den genauen Befehl, die Rechte und ob es ausführbar ist. Es führt nichts aus und protokolliert nichts.
+  - `Unconfirmed` kennzeichnet neueste Versionen aus unbestätigter Quelle.
+  - Nicht ausführbare Einträge nennen `Result` und `Message`, z. B. `ManualUpdateRequired`.
+- **Bestätigen:** Die App zeigt alle Befehle in einer gemeinsamen Bestätigung, in drei Gruppen: mit Administratorrechten (eine Windows-Abfrage für alle), ohne Administratorrechte und nicht ausführbar. Standard-Button ist „Abbrechen“.
+- **Ausführen:** `Invoke-UpdateQueue` plant jeden Eintrag mit seinem bestätigten Befehl neu. Hat sich ein Befehl geändert, wird nur dieser Eintrag übersprungen (`CommandChanged`). Die Reihenfolge:
+  1. Erhöhte Einträge laufen zuerst in **einem** erhöhten Helfer, also mit einer UAC-Abfrage. Davor wird, falls eingestellt, ein **einziger** Wiederherstellungspunkt für die ganze Warteschlange angelegt.
+  2. Danach laufen die Einträge ohne Administratorrechte nacheinander. Programme im Benutzerbereich laufen nie erhöht.
+- **Fehler:** Fehler halten die Warteschlange nicht an. Für den fehlerhaften Eintrag schlägt das Modul nur `NextMethod` vor und weicht nicht automatisch aus.
+- **Steuerung:** Die App übergibt eine synchronisierte Hashtabelle `-Control`:
+  - `State` ist `Running`, `Paused` oder `Cancelled`. Das Modul prüft den Wert zwischen zwei Einträgen. Die laufende Aktion wird immer fertig.
+  - `Status` enthält je Eintrag `Waiting`, `Running` oder das Ergebnis.
+- **Abbrechen:** Nicht gestartete Einträge werden als `Cancelled` (`QueueCancelled`) protokolliert.
+- **App schließen:** Schließt man die App, während die Warteschlange läuft, warnt sie zuerst (Standard „Abbrechen“). Bestätigt man, wird die laufende Aktion fertig und der Rest abgebrochen. Danach schließt die App. Ein Fortsetzen nach einem Neustart gibt es nicht.
+- **Danach:** Die App verwirft für die gelaufenen Einträge die Online-Ergebnisse (`Clear-CheckCache`) und prüft nur diese Programme neu.
+- **Downloads:** Es gibt keine parallelen Downloads. winget kann ein vorher geladenes Installationsprogramm nicht über `winget upgrade` installieren. Es selbst mit den Schaltern aus dem Manifest zu starten, hieße, eine eigene Paketverwaltung nachzubauen.
+
+### Stapelbetrieb des Helfers
+
+Für den erhöhten Block startet `Start-ElevatedHelperBatch` den Helfer einmal mit einer Liste von Schritten. Der Schutz ist derselbe wie beim Einzelaufruf: Hash, Pipe nur für erhöhte Prozesse, Prozess-ID und Nonce. Der Ablauf:
+
+1. Der Helfer verbindet sich sofort und meldet zuerst den Wiederherstellungspunkt.
+2. Vor jedem Schritt wartet er auf eine Zeile vom Modul: `next` oder `stop`. Anhalten heißt, das Modul antwortet später.
+3. Nach jedem Schritt meldet er das Ergebnis als JSON-Zeile.
+
+Jeder Schritt durchläuft dieselbe Pfadprüfung wie ein Einzelaufruf.
+
 ## Wiederherstellungspunkt
 
 Standardmäßig aus. Einschalten mit `Set-InventorySetting -Enable RestorePoint` oder pro Aufruf mit `-CreateRestorePoint`. `-CreateRestorePoint:$false` schaltet ihn für einen Aufruf ab.

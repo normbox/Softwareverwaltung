@@ -50,6 +50,8 @@ public sealed record SoftwareItem
     public DateTime? VulnerabilityCheckedAt { get; init; }
     /// <summary>Daten älter als die eingestellte Haltbarkeit (z. B. offline nur Zwischenspeicher); dezent kennzeichnen.</summary>
     public bool CheckStale { get; init; }
+    /// <summary>Häkchen für die Update-Warteschlange; nur bei verfügbarem Update wählbar.</summary>
+    public QueueSelection Queue { get; } = new();
 
     /// <summary>Spalte „Geprüft“, z. B. „vor 2 h“.</summary>
     public string CheckedText => FormatAge(CheckedAt, DateTime.UtcNow);

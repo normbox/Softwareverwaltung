@@ -4,6 +4,27 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Mehrfachauswahl und Update-Warteschlange
+
+#### Neu
+
+- **Auswahl:** Häkchen in der Liste (nur bei verfügbarem Update) sowie „Alle mit Update auswählen“, „Auswahl aufheben“ und „Ausgewählte aktualisieren“.
+- **Gemeinsame Bestätigung:** zeigt alle genauen Befehle aus der Planung (`Get-UpdateQueuePlan`), gruppiert nach mit und ohne Administratorrechte und nicht ausführbar. Unbestätigte Updates sind gekennzeichnet. Standard-Button ist „Abbrechen“.
+- **`Invoke-UpdateQueue`:**
+  - Erhöhte Einträge laufen zuerst in einem Helfer mit einer UAC-Abfrage, davor ein einziger Wiederherstellungspunkt. Danach folgen die übrigen.
+  - Jeder Eintrag wird mit seinem bestätigten Befehl neu geprüft.
+  - Fehler halten die Warteschlange nicht an. Jede Aktion wird protokolliert.
+- **Warteschlangen-Leiste:** zeigt den Status je Eintrag und bei Fehlern den Grund. Sie bietet „Anhalten“, „Fortsetzen“ und „Abbrechen“; die laufende Aktion wird jeweils fertig. Danach werden nur die betroffenen Programme neu geprüft.
+- **Stapelbetrieb des erhöhten Helfers:** Ergebnisse je Schritt und die Befehle `next`/`stop` laufen über die vorhandene Pipe.
+- **App schließen während der Warteschlange:** erst eine Warnung (Standard „Abbrechen“). Die laufende Aktion wird fertig, der Rest wird abgebrochen und protokolliert.
+- **Netzwerk-Exit-Codes** (z. B. `0x80072EE7`, Server nicht gefunden) haben verständliche Texte.
+- **Planen** zeigt Fortschritt („Plane die Warteschlange (12 von 43)“).
+
+#### Geändert
+
+- „Ohne Cache scannen“ ist jetzt ein Schalter „Ohne Cache“ neben „Scannen“. Beim Einschalten kommt ohne NVD-Schlüssel die Rückfrage mit geschätzter Dauer, „Abbrechen“ stellt den Schalter zurück. Solange er an ist, steht ein Hinweis darunter.
+- Die Einzelausführung ist in `Read-HelperRun` und `Complete-ActionResult` aufgeteilt, die Warteschlange nutzt dieselbe Auswertung.
+
 ### Zwischenspeicher für Online-Abfragen
 
 #### Neu

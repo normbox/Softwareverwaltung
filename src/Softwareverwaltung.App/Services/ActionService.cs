@@ -18,6 +18,15 @@ public interface IActionService
     /// <summary>Verwirft die zwischengespeicherten Online-Ergebnisse eines Programms (Clear-CheckCache).</summary>
     Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default);
 
+    /// <summary>Plant die Update-Warteschlange ohne Ausführung (Get-UpdateQueuePlan).</summary>
+    Task<IReadOnlyList<QueueEntry>> PlanUpdateQueueAsync(IReadOnlyList<PSObject> sources, IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Führt die bestätigten Einträge aus (Invoke-UpdateQueue). <paramref name="control"/> ist eine
+    /// synchronisierte Hashtabelle: State (Running/Paused/Cancelled) setzt die App, Status liest sie.
+    /// </summary>
+    Task<IReadOnlyList<ActionOutcome>> RunUpdateQueueAsync(IReadOnlyList<QueueEntry> entries, System.Collections.Hashtable control, IProgress<string>? progress = null);
+
     Task<IReadOnlyList<ActionHistoryEntry>> GetHistoryAsync(string name, CancellationToken cancellationToken = default);
 }
 
@@ -43,6 +52,26 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
             }
         }
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<QueueEntry>> PlanUpdateQueueAsync(IReadOnlyList<PSObject> sources, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
+    {
+        var command = new PSCommand().AddCommand("Get-UpdateQueuePlan").AddParameter("InputObject", sources.ToArray());
+        var result = await host.InvokeAsync(command, progress, cancellationToken).ConfigureAwait(false);
+        if (result.Errors.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, result.Errors));
+        }
+        return result.Output.Select(QueueEntry.FromPs).ToList();
+    }
+
+    public async Task<IReadOnlyList<ActionOutcome>> RunUpdateQueueAsync(IReadOnlyList<QueueEntry> entries, System.Collections.Hashtable control, IProgress<string>? progress = null)
+    {
+        var command = new PSCommand().AddCommand("Invoke-UpdateQueue")
+            .AddParameter("Entry", entries.Select(e => e.Source).ToArray())
+            .AddParameter("Control", control);
+        var result = await host.InvokeAsync(command, progress).ConfigureAwait(false);
+        return result.Output.Select(ActionOutcome.FromPs).ToList();
     }
 
     public async Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default)

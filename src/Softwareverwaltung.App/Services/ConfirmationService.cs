@@ -13,6 +13,9 @@ public interface IConfirmationService
 
     /// <summary>Fragt vor einem Scan ohne Zwischenspeicher nach (nur ohne NVD-Schlüssel), mit geschätzter Dauer.</summary>
     Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate);
+
+    /// <summary>Gemeinsame Bestätigung der Update-Warteschlange mit allen genauen Befehlen.</summary>
+    bool ConfirmQueue(QueueConfirmation confirmation);
 }
 
 public sealed class ConfirmationService : IConfirmationService
@@ -20,6 +23,12 @@ public sealed class ConfirmationService : IConfirmationService
     public bool Confirm(ActionOutcome plan)
     {
         var dialog = new ConfirmActionWindow { DataContext = plan, Owner = Application.Current?.MainWindow };
+        return dialog.ShowDialog() == true;
+    }
+
+    public bool ConfirmQueue(QueueConfirmation confirmation)
+    {
+        var dialog = new QueueConfirmWindow { DataContext = confirmation, Owner = Application.Current?.MainWindow };
         return dialog.ShowDialog() == true;
     }
 

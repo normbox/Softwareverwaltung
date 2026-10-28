@@ -65,6 +65,8 @@ Regeln:
     ProgressFindFiles                       = 'Suche nach Programmdateien'
     ProgressCheckFiles                      = 'Prüfe Programmdateien'
     ProgressUpdateQueue                     = 'Aktualisiere'
+    ProgressPlanQueue                       = 'Plane die Warteschlange'
+    ProgressPlanQueueCounted                = 'Plane die Warteschlange ({0} von {1})'
     ProgressUpdateQueueCounted              = 'Aktualisiere {0} von {1}'
 
     # Suche nach portablen Programmen (Invoke-InventoryScan)
@@ -270,6 +272,11 @@ Regeln:
     ReasonExitCode0x8A150113                = 'Paket wird von diesem System nicht unterstützt'
     ReasonExitCode0x8A150114                = 'Das Installationsprogramm kann die vorhandene Version nicht aktualisieren'
     ReasonExitCode0x8A150115                = 'Installationsprogramm meldet einen eigenen Fehler'
+    ReasonExitCode0x80072EE7                = 'Netzwerkfehler: Server nicht gefunden (DNS). Internetverbindung prüfen und erneut versuchen.'
+    ReasonExitCode0x80072EFD                = 'Netzwerkfehler: keine Verbindung zum Server. Internetverbindung oder Proxy prüfen.'
+    ReasonExitCode0x80072EE2                = 'Netzwerkfehler: Zeitüberschreitung beim Download. Später erneut versuchen.'
+    ReasonExitCode0x80072F8F                = 'Netzwerkfehler: sichere Verbindung fehlgeschlagen. Datum und Uhrzeit oder Proxy prüfen.'
+    ReasonExitCode0x80072EFE                = 'Netzwerkfehler: Verbindung abgebrochen. Erneut versuchen.'
     ReasonExitCodeUnknown                   = 'Unbekannter Exit-Code {0}'
 
     # Fehler (Get-LocalizedString)

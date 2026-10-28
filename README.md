@@ -135,6 +135,8 @@ Die App liest dieselben Einstellungen wie das Modul. Auf der Seite „Einstellun
 
 Ein Klick auf ein Programm klappt die Details auf. Sie zeigen Gründe, Lücken und bisherige Aktionen sowie den Installationsordner mit Herkunft („laut Installer-Eintrag“ oder „vermutlich, …“). Dazu gibt es „Ordner öffnen“ und „Pfad kopieren“. Zugeklappt wird mit „Schließen“, mit Esc oder mit einem zweiten Klick auf die Zeile. Abgeschnittene Spalten zeigen den vollen Text als Tooltip.
 
+Mehrere Updates laufen über die Warteschlange. Mit Häkchen oder „Alle mit Update auswählen“ wählt man die Programme aus, „Ausgewählte aktualisieren“ zeigt alle genauen Befehle in einer gemeinsamen Bestätigung. Erhöhte Updates brauchen nur eine Windows-Abfrage. Die Warteschlange zeigt den Status je Eintrag und lässt sich anhalten und abbrechen. Deinstallieren bleibt einzeln. Der Schalter „Ohne Cache“ neben „Scannen“ fragt alle Dienste neu ab. In den Details prüft „Neu prüfen (ohne Cache)“ ein einzelnes Programm neu.
+
 Tests:
 
 ```powershell
