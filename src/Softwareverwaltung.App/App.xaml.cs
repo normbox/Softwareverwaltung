@@ -20,7 +20,7 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (_, args) => ErrorLog.Write("Task", args.Exception);
 
         _host = new PowerShellHost();
-        var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService(), shell: new ShellService());
+        var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService(), shell: new ShellService(), cpe: new CpeService(_host));
         var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker());
         var viewModel = new ShellViewModel(programs, settings);
         var window = new MainWindow { DataContext = viewModel };

@@ -19,6 +19,12 @@ public interface IConfirmationService
 
     /// <summary>Einmalige Zustimmung zur Vereinbarung der winget-Quelle „msstore“ (Standard „Abbrechen“).</summary>
     bool ConfirmStoreAgreement(StoreAgreement agreement);
+
+    /// <summary>Fenster „CPE zuordnen“; null = abgebrochen.</summary>
+    CpeMappingChoice? ChooseCpe(ViewModels.CpeMappingViewModel viewModel);
+
+    /// <summary>Zeigt, was im vorbereiteten GitHub-Issue steht, bevor es im Browser geöffnet wird.</summary>
+    Task<bool> ConfirmCpeReportAsync(CpeReport report);
 }
 
 public sealed class ConfirmationService : IConfirmationService
@@ -33,6 +39,28 @@ public sealed class ConfirmationService : IConfirmationService
     {
         var dialog = new StoreAgreementWindow { DataContext = agreement, Owner = Application.Current?.MainWindow };
         return dialog.ShowDialog() == true;
+    }
+
+    public CpeMappingChoice? ChooseCpe(ViewModels.CpeMappingViewModel viewModel)
+    {
+        var dialog = new CpeMappingWindow { DataContext = viewModel, Owner = Application.Current?.MainWindow };
+        return dialog.ShowDialog() == true ? viewModel.Choice : null;
+    }
+
+    public async Task<bool> ConfirmCpeReportAsync(CpeReport report)
+    {
+        var box = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = AppText.Get("CpeReportConfirmTitle"),
+            Content = AppText.Format("CpeReportConfirmText", report.Summary),
+            PrimaryButtonText = AppText.Get("CpeReportConfirmOpen"),
+            CloseButtonText = AppText.Get("CommonCancel"),
+            Owner = Application.Current?.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Width = 560,
+            MaxWidth = 560,
+        };
+        return await box.ShowDialogAsync() == Wpf.Ui.Controls.MessageBoxResult.Primary;
     }
 
     public bool ConfirmQueue(QueueConfirmation confirmation)

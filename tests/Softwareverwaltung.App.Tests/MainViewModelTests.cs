@@ -234,6 +234,10 @@ public sealed class MainViewModelTests
 
         public bool ConfirmStoreAgreement(StoreAgreement agreement) => false;
 
+        public CpeMappingChoice? ChooseCpe(ViewModels.CpeMappingViewModel viewModel) => null;
+
+        public Task<bool> ConfirmCpeReportAsync(CpeReport report) => Task.FromResult(false);
+
         public Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate)
         {
             Asked.Add(estimate.Seconds);
@@ -292,5 +296,7 @@ public sealed class MainViewModelTests
         public void OpenFolder(string path) => Opened.Add(path);
 
         public void CopyText(string text) => Copied.Add(text);
+
+        public void OpenUrl(Uri url) => Opened.Add(url.AbsoluteUri);
     }
 }

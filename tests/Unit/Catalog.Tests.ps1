@@ -38,6 +38,10 @@ Describe 'Test-CatalogEntry' {
         @{ Case = 'TagPattern ohne Gruppe'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"GitHub":{"Repository":"a/b","TagPattern":"^v(.+)$"}}'; Expected = '*(?<version>*' }
         @{ Case = 'zu kurzer Hersteller'; Json = '{"Id":"x","Name":"X","Match":{"NamePattern":"^X","Publisher":["ai"]}}'; Expected = '*Vergleichsschlüssel*' }
         @{ Case = 'CPE mit Version'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["cpe:2.3:a:x:x:1.0"]}'; Expected = '*ohne Version*' }
+        @{ Case = 'CPE ohne Prüfvermerk'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["cpe:2.3:a:x:x"]}'; Expected = '*CpeCheck fehlt*' }
+        @{ Case = 'Prüfvermerk mit falschem Datum'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["cpe:2.3:a:x:x"],"CpeCheck":{"CheckedAt":"28.10.2026","Evidence":["https://nvd.nist.gov/x"],"Note":"n"}}'; Expected = '*JJJJ-MM-TT*' }
+        @{ Case = 'Prüfvermerk ohne Link'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["cpe:2.3:a:x:x"],"CpeCheck":{"CheckedAt":"2026-10-28","Evidence":["nvd"],"Note":"n"}}'; Expected = '*https-Link*' }
+        @{ Case = 'Prüfvermerk ohne Notiz'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["cpe:2.3:a:x:x"],"CpeCheck":{"CheckedAt":"2026-10-28","Evidence":["https://nvd.nist.gov/x"]}}'; Expected = '*Note fehlt*' }
         @{ Case = 'CPE ohne Präfix'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Cpe":["x:x"]}'; Expected = '*cpe:2.3*' }
         @{ Case = 'KEV ohne Hersteller'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"ProductPattern":"^X$"}]}'; Expected = '*Kev.Vendor fehlt*' }
         @{ Case = 'KEV mit ungültigem Muster'; Json = '{"Id":"x","Name":"X","Match":{"WingetId":["X.X"]},"Kev":[{"Vendor":"X","ProductPattern":"(x"}]}'; Expected = '*Ungültiges Muster*' }

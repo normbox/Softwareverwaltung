@@ -39,7 +39,7 @@ Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTIC
 | --- | --- |
 | Inventar | `Get-SoftwareInventory`, `Get-PortableSoftware`, `Invoke-InventoryScan`, `Find-InstalledSoftware`, `Get-ScanDrive`, `Resolve-InstallLocation` |
 | Scans | `Save-InventorySnapshot`, `Get-InventorySnapshot`, `Compare-InventorySnapshot` |
-| Versionen und Sicherheit | `Test-SoftwareUpdate`, `Compare-SoftwareVersion`, `Get-SoftwareVulnerability`, `Get-SecurityRating`, `Export-SecurityReport`, `Find-CpeCandidate`, `Get-CpeMapping`, `Set-CpeMapping`, `Remove-CpeMapping`, `Clear-CheckCache`, `Get-RefreshEstimate` |
+| Versionen und Sicherheit | `Test-SoftwareUpdate`, `Compare-SoftwareVersion`, `Get-SoftwareVulnerability`, `Get-SecurityRating`, `Export-SecurityReport`, `Find-CpeCandidate`, `Get-CpeMapping`, `Set-CpeMapping`, `Remove-CpeMapping`, `Get-CpeMappingReport`, `Clear-CheckCache`, `Get-RefreshEstimate` |
 | Aktionen | `Update-Software`, `Uninstall-Software`, `Get-UpdateQueuePlan`, `Invoke-UpdateQueue`, `Get-ActionLog`, `Test-WingetAvailability`, `Install-WingetPackageManager` |
 | Einstellungen und Schlüssel | `Get-InventorySetting`, `Set-InventorySetting`, `Get-SettingPreset`, `Get-ServiceTermsNotice`, `Set-ServiceCredential`, `Remove-ServiceCredential`, `Get-ServiceCredentialStatus` |
 | KI-Berater | `Get-AdvisorTool`, `Invoke-AdvisorTool`, `Set-AdvisorContext`, `Get-AdvisorEndpointPreset` |

@@ -4,6 +4,20 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### CPE-Zuordnung
+
+#### Neu
+
+- **„CPE zuordnen“** in den Details für Programme ohne CPE (Grau mit Grund `NoCpe`): unbestätigte Vorschläge aus dem NVD-Wörterbuch mit Bewertung und Link zur NVD oder eigene Eingabe, geprüft wie in `Set-CpeMapping`. Ein Vorschlag füllt nur das Eingabefeld; gespeichert wird erst mit „Zuordnen“ (Standard-Button „Abbrechen“). Danach wird nur dieses Programm neu geprüft. Eigene Zuordnungen lassen sich dort ändern und entfernen.
+- **„Vorschlag melden“** für eigene Zuordnungen: `Get-CpeMappingReport` baut den Link zu einem vorausgefüllten GitHub-Issue (Formular `.github/ISSUE_TEMPLATE/cpe-zuordnung.yml`), ohne Benutzer- und Rechnernamen. Die App zeigt den Inhalt vorher und öffnet den Browser erst nach Bestätigung; abgeschickt wird nur vom Benutzer selbst.
+- **Katalog:** Jede CPE trägt einen Prüfvermerk `CpeCheck` (Datum, Belege, Notiz) nach dem Maßstab in `docs/KATALOG.md` („CPE prüfen“); `Test-CatalogEntry` verlangt ihn. Die bestehenden Einträge sind nachgeprüft.
+
+#### Geändert
+
+- `Find-CpeCandidate` bereinigt den Namen gründlicher (Architektur, Zusätze in Klammern, „release“/„stable“), sucht bei Bedarf mit dem Produktteil der winget-ID weiter, vergleicht alle aussagekräftigen Wörter des Herausgebers und nutzt Herstelleraliase (`Data/cpe-vendor-alias.json`). Veraltete CPEs und Treffer ohne Bezug zum Produkt werden nicht mehr vorgeschlagen. Neu in der Ausgabe: `Query` und `Url`.
+- `Get-SoftwareVulnerability` liefert zusätzlich `CpeBase` (CPE ohne Version); die Details zeigen die CPE und ob sie vom Benutzer bestätigt ist.
+- Der Grund `NoCpe` nennt den Weg über „CPE zuordnen“.
+
 ### Portable Suche: laufende Installer
 
 #### Behoben

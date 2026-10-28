@@ -1,0 +1,15 @@
+{
+  "Hinweis": "Herstellerschlüssel (erstes Wort des Herausgebers, klein, wie Get-PublisherKey) -> Herstellernamen in der NVD. Nur für die Bewertung von Vorschlägen; ordnet nie selbst zu. Regeln: docs/KATALOG.md",
+  "Vendors": {
+    "irfan": ["irfanview"],
+    "krzysztof": ["krzysztof_kowalczyk", "sumatrapdfreader"],
+    "glavsoft": ["tightvnc", "glavsoft"],
+    "musicbrainz": ["metabrainz"],
+    "nmap": ["nmap", "insecure"],
+    "martin": ["winscp"],
+    "node": ["nodejs"],
+    "asustek": ["asus"],
+    "simon": ["putty", "simon_tatham"],
+    "the": ["libreoffice"]
+  }
+}

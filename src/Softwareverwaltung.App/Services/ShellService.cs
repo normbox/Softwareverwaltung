@@ -9,6 +9,9 @@ public interface IShellService
     void OpenFolder(string path);
 
     void CopyText(string text);
+
+    /// <summary>Öffnet einen https-Link im Standardbrowser.</summary>
+    void OpenUrl(Uri url);
 }
 
 public sealed class ShellService : IShellService
@@ -26,4 +29,14 @@ public sealed class ShellService : IShellService
     }
 
     public void CopyText(string text) => Clipboard.SetText(text);
+
+    public void OpenUrl(Uri url)
+    {
+        // Nur https: kein Start von Dateien oder anderen Protokollen
+        if (url.Scheme != Uri.UriSchemeHttps)
+        {
+            return;
+        }
+        Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true })?.Dispose();
+    }
 }

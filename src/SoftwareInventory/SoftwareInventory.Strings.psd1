@@ -99,7 +99,13 @@ Regeln:
     ReasonRateLimit                         = '{0}-Anfragelimit erreicht'
 
     # Sicherheitslücken
-    ReasonNoCpe                             = 'Keine CPE zugeordnet (kein Katalogeintrag, keine bestätigte Zuordnung; Vorschläge: Find-CpeCandidate)'
+    ReasonNoCpe                             = 'Keine CPE zugeordnet (kein Katalogeintrag, keine bestätigte Zuordnung). Zuordnen in den Details mit „CPE zuordnen“ oder mit Find-CpeCandidate und Set-CpeMapping'
+    ReasonNoUserCpeMapping                  = 'Für ''{0}'' gibt es keine vom Benutzer bestätigte CPE-Zuordnung.'
+    CpeReportTitle                          = 'CPE-Zuordnung: {0}'
+    CatalogCpeCheckMissing                  = 'CpeCheck fehlt: Bei Cpe muss stehen, wie die Zuordnung geprüft wurde (docs/KATALOG.md)'
+    CatalogCpeCheckDate                     = 'CpeCheck.CheckedAt muss ein Datum im Format JJJJ-MM-TT sein: ''{0}'''
+    CatalogCpeCheckEvidence                 = 'CpeCheck.Evidence braucht mindestens einen https-Link (z. B. zur CPE in der NVD)'
+    CatalogCpeCheckNote                     = 'CpeCheck.Note fehlt: kurz festhalten, was geprüft wurde'
     ReasonNoCpeKevOnly                      = 'Keine CPE zugeordnet (nur KEV-Zuordnung im Katalog)'
     ReasonVersionUnreadable                 = 'Version ''{0}'' nicht lesbar'
     ReasonNvdNoVersionRange                 = 'Versionsbereich in der NVD nicht angegeben'

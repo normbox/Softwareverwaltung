@@ -17,11 +17,12 @@ public sealed class MainViewModelActionTests
     private static ActionOutcome Planned(string action, string command = "winget upgrade --id Contoso.Tool", bool elevated = false) =>
         new() { Action = action, Name = "Contoso Tool", Result = "Planned", CommandLine = command, Elevated = elevated, RestorePoint = "NotRequested" };
 
-    private static async Task<(MainViewModel Vm, FakeActions Actions, FakeConfirmation Confirm)> CreateAsync(FakeActions? actions = null, bool confirm = true, WingetStatus? winget = null)
+    private static async Task<(MainViewModel Vm, FakeActions Actions, FakeConfirmation Confirm)> CreateAsync(FakeActions? actions = null, bool confirm = true, WingetStatus? winget = null,
+        ICpeService? cpe = null, IShellService? shell = null, SoftwareItem? item = null)
     {
         actions ??= new FakeActions();
         var confirmation = new FakeConfirmation { Answer = confirm };
-        var vm = new MainViewModel(new FakeInventory { Items = [Tool], Winget = winget ?? new WingetStatus(true, null, null) }, actions, confirmation);
+        var vm = new MainViewModel(new FakeInventory { Items = [item ?? Tool], Winget = winget ?? new WingetStatus(true, null, null) }, actions, confirmation, shell: shell, cpe: cpe);
         await vm.InitializeAsync();
         return (vm, actions, confirmation);
     }
@@ -281,12 +282,87 @@ public sealed class MainViewModelActionTests
         Assert.Contains(actions.Calls, c => c.StartsWith("Execute:Update", StringComparison.Ordinal));
     });
 
+    [Fact]
+    public void MapCpeSavesOnlyTheConfirmedChoiceAndRechecksTheRow() => RunOnDispatcher(async () =>
+    {
+        var noCpe = Tool with { NeedsCpe = true };
+        var mapped = noCpe with { NeedsCpe = false, CpeSource = "User", CpeBase = ["cpe:2.3:a:contoso:tool"] };
+        var cpe = new FakeCpe();
+        var actions = new FakeActions { Recheck = mapped };
+        var (vm, _, confirm) = await CreateAsync(actions, cpe: cpe, item: noCpe);
+        var row = vm.Items[0];
+
+        // Abgebrochen: nichts gespeichert, nichts neu geprüft
+        confirm.CpeChoice = null;
+        await vm.MapCpeCommand.ExecuteAsync(row);
+        Assert.NotNull(confirm.CpeDialog);
+        Assert.DoesNotContain(cpe.Calls, c => c.StartsWith("Set", StringComparison.Ordinal));
+        Assert.DoesNotContain(actions.Calls, c => c.StartsWith("Recheck", StringComparison.Ordinal));
+
+        // Zugeordnet: speichern, nur diese Zeile neu prüfen
+        confirm.CpeChoice = CpeMappingChoice.Assign("cpe:2.3:a:contoso:tool");
+        await vm.MapCpeCommand.ExecuteAsync(row);
+        Assert.Contains("Set:cpe:2.3:a:contoso:tool", cpe.Calls);
+        Assert.Contains(actions.Calls, c => c.StartsWith("Recheck", StringComparison.Ordinal));
+        Assert.True(vm.Items[0].HasUserCpe);
+
+        // Eigene Zuordnung entfernen
+        confirm.CpeChoice = CpeMappingChoice.RemoveMapping;
+        await vm.MapCpeCommand.ExecuteAsync(vm.Items[0]);
+        Assert.Contains("Remove", cpe.Calls);
+    });
+
+    [Fact]
+    public void MapCpeIsNotOfferedForCatalogEntries() => RunOnDispatcher(async () =>
+    {
+        var catalog = Tool with { CpeSource = "Catalog", CpeBase = ["cpe:2.3:a:contoso:tool"] };
+        var (vm, _, _) = await CreateAsync(cpe: new FakeCpe(), item: catalog);
+        Assert.False(vm.MapCpeCommand.CanExecute(vm.Items[0]));
+        Assert.False(vm.ReportCpeCommand.CanExecute(vm.Items[0]));
+    });
+
+    [Fact]
+    public void ReportCpeOpensTheBrowserOnlyAfterConfirmation() => RunOnDispatcher(async () =>
+    {
+        var own = Tool with { CpeSource = "User", CpeBase = ["cpe:2.3:a:contoso:tool"] };
+        var cpe = new FakeCpe();
+        var shell = new RecordingShell();
+        var (vm, _, confirm) = await CreateAsync(cpe: cpe, shell: shell, item: own);
+
+        confirm.ReportAnswer = false;
+        await vm.ReportCpeCommand.ExecuteAsync(vm.Items[0]);
+        Assert.Equal(cpe.Report, confirm.ShownReport);
+        Assert.Empty(shell.OpenedUrls);
+
+        confirm.ReportAnswer = true;
+        await vm.ReportCpeCommand.ExecuteAsync(vm.Items[0]);
+        Assert.Equal([cpe.Report.Url], shell.OpenedUrls);
+    });
+
     private sealed class FakeConfirmation : IConfirmationService
     {
         public bool Answer { get; set; } = true;
         public bool StoreAnswer { get; set; } = true;
 
         public bool ConfirmStoreAgreement(StoreAgreement agreement) => StoreAnswer;
+
+        public CpeMappingChoice? CpeChoice { get; set; }
+        public ViewModels.CpeMappingViewModel? CpeDialog { get; private set; }
+
+        public CpeMappingChoice? ChooseCpe(ViewModels.CpeMappingViewModel viewModel)
+        {
+            CpeDialog = viewModel;
+            return CpeChoice;
+        }
+
+        public bool ReportAnswer { get; set; }
+        public CpeReport? ShownReport { get; private set; }
+
+        public Task<bool> ConfirmCpeReportAsync(CpeReport report)
+        {
+            ShownReport = report;
+            return Task.FromResult(ReportAnswer);
+        }
         public List<ActionOutcome> Shown { get; } = [];
         public List<QueueConfirmation> Queues { get; } = [];
 
