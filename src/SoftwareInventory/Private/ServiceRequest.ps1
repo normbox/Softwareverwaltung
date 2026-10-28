@@ -10,6 +10,15 @@ $script:ServiceInterval = @{
 }
 $script:LastServiceCall = @{}
 
+# Zwischenspeicher-Steuerung je Lauf (siehe CacheTrace.ps1):
+#   CacheRefresh – $null: Cache normal nutzen; sonst Menge der in diesem Lauf schon frisch geholten Dateien
+#                  (jede Antwort wird pro Lauf höchstens einmal neu geholt, z. B. der KEV-Katalog).
+#   CheckTrace   – Liste der für das aktuelle Programm benutzten Einträge (Dienst, Datei, Abrufzeit, veraltet).
+$script:CacheRefresh = $null
+$script:CheckTrace = $null
+# Dienst → Schlüssel in den Einstellungen (CacheHours)
+$script:CacheHoursKey = @{ GitHub = 'LatestVersion'; WingetSearch = 'LatestVersion'; NVD = 'NVD'; EPSS = 'EPSS'; KEV = 'KEV' }
+
 function Get-CacheDirectory {
     Join-Path $env:LOCALAPPDATA 'SoftwareInventory\cache'
 }
@@ -21,7 +30,10 @@ function Invoke-ServiceRequest {
     .DESCRIPTION
         Bricht ab, wenn der Dienst in den Einstellungen nicht aktiviert ist. Mit -CacheKey
         wird die Antwort unter %LOCALAPPDATA%\SoftwareInventory\cache gespeichert und bis
-        -MaxAge wiederverwendet. Fehler werden als ServiceRequestException mit Grund
+        -MaxAge wiederverwendet (Standard: Haltbarkeit des Dienstes aus den Einstellungen, CacheHours).
+        Bei Neu prüfen (CacheRefresh) wird jede Antwort pro Lauf einmal frisch geholt. Ist der Dienst
+        nicht erreichbar oder am Anfragelimit, wird ein abgelaufener Eintrag verwendet und im Mitschrieb
+        als veraltet gekennzeichnet. Fehler werden als ServiceRequestException mit Grund
         (Disabled, RateLimit, NotFound, Http, Network) geworfen; Schlüssel sind entfernt.
     #>
     [CmdletBinding()]
@@ -29,7 +41,8 @@ function Invoke-ServiceRequest {
         [Parameter(Mandatory)] [ValidateSet('GitHub', 'NVD', 'KEV', 'EPSS', 'WingetSearch')] [string] $Service,
         [Parameter(Mandatory)] [uri] $Uri,
         [string] $CacheKey,
-        [timespan] $MaxAge = [timespan]::FromHours(12),
+        # Ohne Angabe: Haltbarkeit des Dienstes aus den Einstellungen
+        [Nullable[timespan]] $MaxAge,
         $Setting = (Read-InventorySetting)
     )
 
@@ -37,14 +50,16 @@ function Invoke-ServiceRequest {
         throw (New-ServiceRequestException -Service $Service -Reason Disabled -Message (Get-LocalizedString 'ServiceErrorDisabled' $Service))
     }
 
+    if ($null -eq $MaxAge) { $MaxAge = Get-CacheMaxAge -Service $Service -Setting $Setting }
     $cacheFile = $null
+    $entry = $null
     if ($CacheKey) {
-        $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($CacheKey)))
-        $cacheFile = Join-Path (Join-Path (Get-CacheDirectory) $Service) "$hash.json"
-        $cached = Read-ServiceCache -Path $cacheFile -MaxAge $MaxAge
-        if ($null -ne $cached) {
+        $cacheFile = Get-ServiceCacheFile -Service $Service -CacheKey $CacheKey
+        $entry = Read-ServiceCacheEntry -Path $cacheFile
+        if ($entry -and -not (Test-CacheRefresh $cacheFile) -and ([datetime]::UtcNow - $entry.FetchedAt) -le $MaxAge) {
             Write-Verbose "$Service aus Zwischenspeicher: $CacheKey"
-            return $cached
+            Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
+            return $entry.Data
         }
     }
 
@@ -67,13 +82,39 @@ function Invoke-ServiceRequest {
         $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec 60 -ErrorAction Stop
     }
     catch {
-        throw (ConvertTo-ServiceRequestException -Service $Service -ErrorRecord $_)
+        $failure = ConvertTo-ServiceRequestException -Service $Service -ErrorRecord $_
+        # Offline oder Anfragelimit: lieber alte Daten, als veraltet gekennzeichnet, als gar keine.
+        if ($entry -and $failure.Data['Reason'] -in 'Network', 'RateLimit', 'Http') {
+            Write-Verbose "$Service nicht erreichbar, verwende Zwischenspeicher vom $($entry.FetchedAt.ToString('o'))"
+            Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
+            return $entry.Data
+        }
+        throw $failure
     }
 
     $content = [string] $response.Content
     $data = $content | ConvertFrom-Json -DateKind String
-    if ($cacheFile) { Write-ServiceCache -Path $cacheFile -Content $content }
+    if ($cacheFile) {
+        Write-ServiceCache -Path $cacheFile -Content $content
+        Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt ([datetime]::UtcNow) -MaxAge $MaxAge
+    }
     $data
+}
+
+function Get-ServiceCacheFile {
+    param([string] $Service, [string] $CacheKey)
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($CacheKey)))
+    Join-Path (Join-Path (Get-CacheDirectory) $Service) "$hash.json"
+}
+
+function Get-CacheMaxAge {
+    # Haltbarkeit eines Dienstes aus den Einstellungen (CacheHours), sonst der Standard.
+    param([string] $Service, $Setting)
+    $key = $script:CacheHoursKey[$Service]
+    $hours = if ($key -and $Setting -and $Setting.PSObject.Properties['CacheHours'] -and $Setting.CacheHours) { $Setting.CacheHours.$key -as [int] }
+    if (-not $hours -and $key) { $hours = $script:DefaultCacheHours[$key] }
+    if (-not $hours) { $hours = 24 }
+    [timespan]::FromHours($hours)
 }
 
 function Wait-ServiceInterval {
@@ -88,19 +129,27 @@ function Wait-ServiceInterval {
     $script:LastServiceCall[$Service] = [datetime]::UtcNow
 }
 
-function Read-ServiceCache {
-    param([string] $Path, [timespan] $MaxAge)
+function Read-ServiceCacheEntry {
+    # Eintrag samt Abrufzeit (UTC), unabhängig vom Alter; $null, wenn keiner da oder unlesbar.
+    param([string] $Path)
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
     try {
         $entry = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -DateKind String
-        $fetched = [datetime]::Parse($entry.FetchedAt, [cultureinfo]::InvariantCulture, 'RoundtripKind')
-        if ([datetime]::UtcNow - $fetched -gt $MaxAge) { return $null }
-        $entry.Content | ConvertFrom-Json -DateKind String
+        $fetched = [datetime]::Parse($entry.FetchedAt, [cultureinfo]::InvariantCulture, 'RoundtripKind').ToUniversalTime()
+        @{ FetchedAt = $fetched; Data = ($entry.Content | ConvertFrom-Json -DateKind String) }
     }
     catch {
         Write-Verbose "Zwischenspeicher unlesbar, wird neu geladen: $Path"
         $null
     }
+}
+
+function Read-ServiceCache {
+    # Daten eines Eintrags, solange er jünger als -MaxAge ist.
+    param([string] $Path, [timespan] $MaxAge)
+    $entry = Read-ServiceCacheEntry -Path $Path
+    if (-not $entry -or [datetime]::UtcNow - $entry.FetchedAt -gt $MaxAge) { return $null }
+    $entry.Data
 }
 
 function Write-ServiceCache {

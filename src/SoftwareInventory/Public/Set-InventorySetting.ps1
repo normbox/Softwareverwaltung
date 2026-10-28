@@ -34,6 +34,10 @@ function Set-InventorySetting {
         $false schaltet die Herstellerordner-Regel und den Abgleich über Name/Version ab
         (mehr Treffer). Feste Systemausschlüsse und Ordner installierter Programme bleiben.
         Standard: $true. Vorlagen ändern den Wert nicht.
+    .PARAMETER CacheHoursLatestVersion
+        Haltbarkeit der zwischengespeicherten neuesten Versionen (GitHub, winget-Suche) in Stunden, 1–720 (Standard 6).
+    .PARAMETER CacheHoursNvd
+        Haltbarkeit der NVD-Antworten in Stunden, 1–720 (Standard 24). Ebenso -CacheHoursEpss und -CacheHoursKev.
     .PARAMETER LogRetentionDays
         Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
     .PARAMETER LogMaxSizeMB
@@ -102,6 +106,18 @@ function Set-InventorySetting {
 
         [bool] $SmartExclusions,
 
+        [ValidateRange(1, 720)]
+        [int] $CacheHoursLatestVersion,
+
+        [ValidateRange(1, 720)]
+        [int] $CacheHoursNvd,
+
+        [ValidateRange(1, 720)]
+        [int] $CacheHoursEpss,
+
+        [ValidateRange(1, 720)]
+        [int] $CacheHoursKev,
+
         [ValidateRange(1, 3650)]
         [int] $LogRetentionDays,
 
@@ -160,6 +176,10 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('ComputeHash')) { $setting.FileScan.ComputeHash = $ComputeHash }
     if ($PSBoundParameters.ContainsKey('ExcludePath')) { $setting.FileScan.ExcludePaths = [string[]] @($ExcludePath | Where-Object { $_ }) }
     if ($PSBoundParameters.ContainsKey('SmartExclusions')) { $setting.FileScan.SmartExclusions = $SmartExclusions }
+    if ($PSBoundParameters.ContainsKey('CacheHoursLatestVersion')) { $setting.CacheHours.LatestVersion = $CacheHoursLatestVersion }
+    if ($PSBoundParameters.ContainsKey('CacheHoursNvd')) { $setting.CacheHours.NVD = $CacheHoursNvd }
+    if ($PSBoundParameters.ContainsKey('CacheHoursEpss')) { $setting.CacheHours.EPSS = $CacheHoursEpss }
+    if ($PSBoundParameters.ContainsKey('CacheHoursKev')) { $setting.CacheHours.KEV = $CacheHoursKev }
     if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }
     if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }

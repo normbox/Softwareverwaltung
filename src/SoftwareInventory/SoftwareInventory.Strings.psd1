@@ -306,6 +306,7 @@ Regeln:
     ConfirmSaveSecret                       = 'Schlüssel speichern'
     ConfirmSaveSnapshot                     = 'Inventar speichern'
     ConfirmSaveSettings                     = 'Einstellungen speichern'
+    ConfirmClearCheckCache                  = 'Zwischengespeicherte Prüfergebnisse verwerfen'
 
     # HTML-Bericht (Export-SecurityReport)
     ReportTitle                             = 'Softwareverwaltung – Sicherheitsbericht'

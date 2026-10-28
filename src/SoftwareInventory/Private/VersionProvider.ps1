@@ -38,7 +38,7 @@ function Get-GitHubLatestVersion {
     $repo = $github.Repository
     try {
         $release = Invoke-ServiceRequest -Service GitHub -Uri "https://api.github.com/repos/$repo/releases/latest" `
-            -CacheKey "releases/latest/$repo" -MaxAge ([timespan]::FromHours(12)) -Setting $Setting
+            -CacheKey "releases/latest/$repo" -Setting $Setting
     }
     catch {
         $reason = Get-ServiceErrorReason $_
@@ -108,7 +108,7 @@ function Get-WingetSearchLatestVersion {
     $publisher = Get-PublisherKey $Record.Publisher
     if (-not $publisher) { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchNoPublisher) }
 
-    try { $search = Get-WingetSearchResult -Name $Record.Name -PublisherKey $publisher }
+    try { $search = Get-WingetSearchResult -Name $Record.Name -PublisherKey $publisher -Setting $Setting }
     catch { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchFailed (Protect-SecretText $_.Exception.Message)) }
     if ($search.AmbiguousCount) { return New-ProviderResult -Source WingetSearch -Reason (New-InventoryMessage WingetSearchAmbiguousCount $search.AmbiguousCount) }
 
@@ -126,21 +126,30 @@ function Get-WingetSearchLatestVersion {
 function Get-WingetSearchResult {
     <#
     .SYNOPSIS
-        Versionen der winget-Pakete mit passendem Namen und Hersteller, 24 Stunden zwischengespeichert.
+        Versionen der winget-Pakete mit passendem Namen und Hersteller, zwischengespeichert (CacheHours.LatestVersion).
     .DESCRIPTION
         Liefert @{ Versions = ...; AmbiguousCount = ... }. Gespeichert werden nur Daten, keine Texte
         (der Grund entsteht beim Lesen in der Sprache der Oberfläche). Fehler der Suche werden nicht gespeichert.
     #>
-    param([string] $Name, [string] $PublisherKey)
+    param([string] $Name, [string] $PublisherKey, $Setting = (Read-InventorySetting))
 
     # v2: frühere Einträge enthielten einen fertigen Text statt AmbiguousCount.
-    $key = "wingetsearch/v2/$Name/$PublisherKey".ToLowerInvariant()
-    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($key)))
-    $cacheFile = Join-Path (Join-Path (Get-CacheDirectory) 'WingetSearch') "$hash.json"
-    $cached = Read-ServiceCache -Path $cacheFile -MaxAge ([timespan]::FromHours(24))
-    if ($null -ne $cached) { return @{ Versions = @($cached.Versions); AmbiguousCount = $cached.AmbiguousCount } }
+    $cacheFile = Get-ServiceCacheFile -Service WingetSearch -CacheKey "wingetsearch/v2/$Name/$PublisherKey".ToLowerInvariant()
+    $maxAge = Get-CacheMaxAge -Service WingetSearch -Setting $Setting
+    $entry = Read-ServiceCacheEntry -Path $cacheFile
+    if ($entry -and -not (Test-CacheRefresh $cacheFile) -and ([datetime]::UtcNow - $entry.FetchedAt) -le $maxAge) {
+        Add-CheckTrace -Service WingetSearch -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $maxAge
+        return @{ Versions = @($entry.Data.Versions); AmbiguousCount = $entry.Data.AmbiguousCount }
+    }
 
-    $named = @(Find-WingetCandidate -Name $Name | Where-Object { Test-WingetNameMatch -PackageName $_.Name -Name $Name })
+    try { $found = @(Find-WingetCandidate -Name $Name) }
+    catch {
+        # Suche nicht möglich (z. B. offline): lieber den alten Eintrag, als veraltet gekennzeichnet.
+        if (-not $entry) { throw }
+        Add-CheckTrace -Service WingetSearch -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $maxAge
+        return @{ Versions = @($entry.Data.Versions); AmbiguousCount = $entry.Data.AmbiguousCount }
+    }
+    $named = @($found | Where-Object { Test-WingetNameMatch -PackageName $_.Name -Name $Name })
     $result = if ($named.Count -gt $script:WingetSearchMaxCandidates) {
         @{ Versions = @(); AmbiguousCount = $named.Count }
     }
@@ -149,6 +158,7 @@ function Get-WingetSearchResult {
         @{ Versions = @($hits | ForEach-Object Version); AmbiguousCount = $null }
     }
     Write-ServiceCache -Path $cacheFile -Content ([pscustomobject] $result | ConvertTo-Json -Compress)
+    Add-CheckTrace -Service WingetSearch -File $cacheFile -FetchedAt ([datetime]::UtcNow) -MaxAge $maxAge
     $result
 }
 
