@@ -146,5 +146,5 @@ function Invoke-UpdateQueue {
         $first = $ordered | Where-Object { $_.Result -ne 'Cancelled' -or $_.StartedAt -ne $_.CompletedAt } | Select-Object -First 1
         if ($first) { $first.RestorePoint = $restoreInfo.RestorePoint; $first.RestorePointMessage = $restoreInfo.RestorePointMessage }
     }
-    $ordered
+    foreach ($result in $ordered) { $result }
 }
