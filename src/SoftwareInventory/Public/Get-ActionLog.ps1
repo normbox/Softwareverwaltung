@@ -46,9 +46,13 @@ function Get-ActionLog {
         if (-not $source) { continue }
         $item = [ordered]@{ PSTypeName = 'SoftwareInventory.ActionLogEntry' }
         foreach ($p in $source.PSObject.Properties) { $item[$p.Name] = $p.Value }
+        # Text neu in der Sprache der Oberfläche; reiner Text aus älteren Protokollen wird gekennzeichnet.
+        foreach ($key in 'Message', 'RestorePointMessage') {
+            if ($item.Contains($key)) { $item[$key] = ConvertFrom-MessageData $item[$key] }
+        }
         if (-not $pair.Completed) {
             $item.Result = 'Incomplete'
-            $item.Message = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
+            $item.Message = New-InventoryMessage ActionIncomplete
         }
         $item.StartedAt = ConvertTo-LogTime $(if ($pair.Started) { $pair.Started.Timestamp } elseif ($source.PSObject.Properties['StartedAt']) { $source.StartedAt } else { $source.Timestamp })
         $item.CompletedAt = if ($pair.Completed) { ConvertTo-LogTime $pair.Completed.Timestamp } else { $null }

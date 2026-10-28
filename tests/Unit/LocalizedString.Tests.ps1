@@ -21,7 +21,11 @@ Describe 'Texte des Moduls' {
         $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern 'New-InventoryMessage\s+(?<key>\w+)' -AllMatches |
             ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique
         # Codes, die über eine Variable gewählt werden ($code)
-        $used = @($used) + 'PossiblyAffected', 'PossiblyAffectedKev', 'UpdateAvailable', 'UpdateAvailableUnconfirmed'
+        $used = @($used) + 'PossiblyAffected', 'PossiblyAffectedKev', 'UpdateAvailable', 'UpdateAvailableUnconfirmed', 'ActionVerbUpdate', 'ActionVerbUninstall'
+        # Codes des erhöhten Helfers (Text bildet das Modul) und aller bekannten Exit-Codes
+        $used += Select-String -Path (Join-Path $ModuleRoot 'Elevated\ElevatedHelper.ps1') -Pattern "Code = '(?<key>\w+)'" -AllMatches |
+            ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value }
+        $used += InModuleScope SoftwareInventory { $script:ExitCodeMap.Keys | ForEach-Object { "ExitCode$_" } }
         $strings = InModuleScope SoftwareInventory { $script:Strings }
         foreach ($code in $used) { $strings.ContainsKey("Reason$code") | Should -BeTrue -Because "Code '$code' wird im Code verwendet" }
     }

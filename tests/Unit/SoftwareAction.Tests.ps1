@@ -91,8 +91,8 @@ Describe 'Update-Software und Uninstall-Software' {
             # Inzwischen ist ein winget-Paket bekannt: Auto wählt winget statt msiexec.
             $r = $wingetRecord | Uninstall-Software -Confirm:$false -ConfirmedCommandLine $planned.CommandLine
             $r.Result | Should -Be 'Cancelled'
-            $r.Message | Should -Match 'seit der Bestätigung geändert'
-            $r.Message | Should -Match 'winget'
+            $r.Message.Code | Should -Be 'CommandChanged'
+            $r.Message.Args[0] | Should -Match 'winget'
             Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0
             Test-Path "$Machine\$Guid" | Should -BeTrue
             (Get-ActionLog).Result | Should -Be 'Cancelled'
@@ -138,7 +138,9 @@ Describe 'Update-Software und Uninstall-Software' {
             $r.Result | Should -Be 'NotVerified'
             $r.PresentAfter | Should -BeTrue
             $r.NextMethod | Should -Be 'Msi'
-            $r.Message | Should -Match '-Method Msi'
+            $r.Message.Code | Should -Be 'WithNextMethod'
+            $r.Message.Args[1] | Should -Be 'Msi'
+            $r.Message.Text | Should -Match '-Method Msi'
             Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1
         }
 
@@ -175,10 +177,13 @@ Describe 'Update-Software und Uninstall-Software' {
         }
 
         It 'meldet Prüffehler des Helfers als Failed' {
-            Set-HelperResult @{ Error = 'winget wurde im Administratorkontext nicht gefunden'; ExitCode = $null }
+            $problem = InModuleScope SoftwareInventory { New-InventoryMessage HelperWingetNotFound 'C:\x\winget.exe' }
+            Set-HelperResult @{ Error = $problem; ExitCode = $null }
             $r = $wingetRecord | Uninstall-Software -Confirm:$false
             $r.Result | Should -Be 'Failed'
-            $r.Message | Should -Match 'Administratorkontext'
+            # Mit nächster Methode eingepackt: WithNextMethod(<Prüffehler>, <Methode>)
+            $r.Message.Code | Should -Be 'WithNextMethod'
+            $r.Message.Args[0].Code | Should -Be 'HelperWingetNotFound'
         }
 
         It 'führt HKCU-Einträge ohne Adminrechte aus' {
@@ -205,7 +210,8 @@ Describe 'Update-Software und Uninstall-Software' {
             Mock -ModuleName SoftwareInventory Invoke-AppxRemoval { throw 'Bereitstellung fehlgeschlagen (0x80073CF6)' }
             $r = New-TestRecord @{ PackageFamilyName = 'C.App_a' } | Uninstall-Software -Confirm:$false
             $r.Result | Should -Be 'Failed'
-            $r.Message | Should -Match '0x80073CF6'
+            $r.Message.Code | Should -Be 'AppxRemoveFailed'
+            $r.Message.Args[0] | Should -Match '0x80073CF6'
         }
 
         It 'akzeptiert Objekte mit .Record (z. B. aus Get-SecurityRating)' {
@@ -314,11 +320,12 @@ Describe 'Update-Software und Uninstall-Software' {
         }
 
         It 'setzt die Aktion fort, wenn der Punkt nicht verfügbar ist, und meldet den Grund' {
-            Set-HelperResult @{ ExitCode = 0; RestorePoint = 'NotAvailable'; RestorePointMessage = 'Computerschutz ist ausgeschaltet' } { Remove-Item "$Machine\$Guid" }
+            $off = InModuleScope SoftwareInventory { New-InventoryMessage RestorePointProtectionDisabled }
+            Set-HelperResult @{ ExitCode = 0; RestorePoint = 'NotAvailable'; RestorePointMessage = $off } { Remove-Item "$Machine\$Guid" }
             $r = $msiRecord | Uninstall-Software -CreateRestorePoint -Confirm:$false
             $r.Result | Should -Be 'Succeeded'
             $r.RestorePoint | Should -Be 'NotAvailable'
-            $r.RestorePointMessage | Should -Be 'Computerschutz ist ausgeschaltet'
+            $r.RestorePointMessage.Code | Should -Be 'RestorePointProtectionDisabled'
         }
 
         It 'setzt die Aktion fort, wenn die UAC für den Punkt abgelehnt wird' {
@@ -326,7 +333,7 @@ Describe 'Update-Software und Uninstall-Software' {
             Set-HelperResult @{ ExitCode = 0 } { Remove-Item "$User\UserApp" }
             $r = $userRecord | Uninstall-Software -CreateRestorePoint -Confirm:$false
             $r.RestorePoint | Should -Be 'Failed'
-            $r.RestorePointMessage | Should -Match 'ohne Wiederherstellungspunkt fortgesetzt'
+            $r.RestorePointMessage.Code | Should -Be 'RestorePointContinueWithout'
             $r.Result | Should -Be 'Succeeded'
         }
 

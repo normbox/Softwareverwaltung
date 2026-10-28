@@ -24,19 +24,19 @@ function Install-WingetPackageManager {
         State = @{ Version = $before.ModuleVersion; Present = $before.CliAvailable }
     }
     $result = New-ActionResult $plan
-    $description = 'Lädt die neueste Version von App Installer (winget) bei Microsoft herunter und installiert sie für dieses Benutzerkonto, ohne Administratorrechte: ' + $plan.CommandLine
+    $description = New-InventoryMessage WingetInstallDescription $plan.CommandLine
 
     if (-not (Get-Command Repair-WinGetPackageManager -ErrorAction SilentlyContinue)) {
         $result.Result = 'Unsupported'
-        $result.Message = 'Das PowerShell-Modul Microsoft.WinGet.Client fehlt; winget lässt sich so nicht installieren. App Installer gibt es im Microsoft Store.'
+        $result.Message = New-InventoryMessage WingetInstallModuleMissing
         $result.VendorUrl = 'https://apps.microsoft.com/detail/9NBLGGH4NNS1'
         $result.CompletedAt = $result.StartedAt
         if (-not $WhatIfPreference) { Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $result) }
         return $result
     }
-    if (-not $PSCmdlet.ShouldProcess($plan.Name, $description)) {
+    if (-not $PSCmdlet.ShouldProcess($plan.Name, $description.Text)) {
         $result.Result = if ($WhatIfPreference) { 'Planned' } else { 'Cancelled' }
-        $result.Message = if ($WhatIfPreference) { $description } else { 'Nicht bestätigt; es wurde nichts ausgeführt.' }
+        $result.Message = if ($WhatIfPreference) { $description } else { New-InventoryMessage NotConfirmed }
         return $result
     }
 
@@ -47,12 +47,12 @@ function Install-WingetPackageManager {
         $after = Test-WingetAvailability
         $result.PresentAfter = $after.CliAvailable
         $result.VersionAfter = $after.ModuleVersion
-        if ($after.Available) { $result.Result = 'Succeeded'; $result.Message = 'winget ist installiert und nutzbar.' }
-        else { $result.Result = 'NotVerified'; $result.Message = "Repair-WinGetPackageManager ist durchgelaufen, winget ist aber noch nicht nutzbar: $($after.Message)" }
+        if ($after.Available) { $result.Result = 'Succeeded'; $result.Message = New-InventoryMessage WingetInstalled }
+        else { $result.Result = 'NotVerified'; $result.Message = New-InventoryMessage WingetInstallNotVerified (, $after.Message) }
     }
     catch {
         $result.Result = 'Failed'
-        $result.Message = "winget konnte nicht installiert werden: $(Protect-SecretText $_.Exception.Message)"
+        $result.Message = New-InventoryMessage WingetInstallFailed (Protect-SecretText $_.Exception.Message)
     }
     $result.CompletedAt = [datetime]::UtcNow
     Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $result)

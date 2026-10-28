@@ -25,7 +25,7 @@ Describe 'Test-WingetAvailability' {
         $s.Available | Should -BeFalse
         $s.CliAvailable | Should -BeFalse
         $s.ModuleAvailable | Should -BeTrue
-        $s.Message | Should -Match 'App Installer'
+        $s.Message.Code | Should -Be 'WingetStatusCliMissing'
         $s.InstallUrl | Should -Match '^https://apps\.microsoft\.com/'
     }
 
@@ -35,7 +35,7 @@ Describe 'Test-WingetAvailability' {
         $s = Test-WingetAvailability
         $s.Available | Should -BeFalse
         $s.ModuleAvailable | Should -BeFalse
-        $s.Message | Should -Match 'Microsoft\.WinGet\.Client'
+        $s.Message.Code | Should -Be 'WingetStatusModuleMissing'
         $s.InstallUrl | Should -BeNullOrEmpty
     }
 
@@ -44,7 +44,7 @@ Describe 'Test-WingetAvailability' {
         Mock -ModuleName SoftwareInventory Get-Command -ParameterFilter { $Name -eq 'Get-WinGetPackage' } { $null }
         $s = Test-WingetAvailability
         $s.Available | Should -BeFalse
-        $s.Message | Should -Match 'nur aus Registry und Store'
+        $s.Message.Code | Should -Be 'WingetStatusMissing'
     }
 }
 
@@ -65,7 +65,7 @@ Describe 'Install-WingetPackageManager' {
         $r.Result | Should -Be 'Planned'
         $r.CommandLine | Should -Be 'Repair-WinGetPackageManager -Latest'
         $r.Elevated | Should -BeFalse
-        $r.Message | Should -Match 'ohne Administratorrechte'
+        $r.Message.Code | Should -Be 'WingetInstallDescription'
         Should -Invoke -ModuleName SoftwareInventory Invoke-WingetRepair -Times 0
         Get-ActionLog | Should -BeNullOrEmpty
     }
@@ -88,7 +88,8 @@ Describe 'Install-WingetPackageManager' {
         Mock -ModuleName SoftwareInventory Invoke-WingetRepair { throw 'Keine Verbindung' }
         $r = Install-WingetPackageManager -Confirm:$false
         $r.Result | Should -Be 'Failed'
-        $r.Message | Should -Match 'Keine Verbindung'
+        $r.Message.Code | Should -Be 'WingetInstallFailed'
+        $r.Message.Args[0] | Should -Match 'Keine Verbindung'
         (Get-ActionLog).Result | Should -Be 'Failed'
     }
 

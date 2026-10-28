@@ -58,7 +58,7 @@ function Update-Software {
             $prepared = Resolve-SoftwareAction -Action Update -InputObject $item -RestorePoint $restorePoint -ConfirmedCommandLine $ConfirmedCommandLine
             if (-not $prepared) { continue }
             if ($prepared.Result) { $prepared.Result; continue }
-            if ($PSCmdlet.ShouldProcess($prepared.Plan.Name, $prepared.Description)) {
+            if ($PSCmdlet.ShouldProcess($prepared.Plan.Name, $prepared.Description.Text)) {
                 Invoke-ActionPlan -Plan $prepared.Plan -Record $prepared.Record -TimeoutMinutes $TimeoutMinutes
             }
             else {

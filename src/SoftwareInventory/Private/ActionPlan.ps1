@@ -220,25 +220,25 @@ function New-ActionPlan {
     $finish = { param($Result, $Message) $plan.Result = $Result; $plan.Message = $Message; [pscustomobject] $plan }
 
     if (-not $state.Present) {
-        return & $finish 'NotInstalled' 'Das Programm ist nicht (mehr) installiert; es wurde nichts ausgeführt.'
+        return & $finish 'NotInstalled' (New-InventoryMessage PlanNotInstalled)
     }
 
     if ($Action -eq 'Update') {
         if (-not ($plan.WingetId -and $plan.WingetSource)) {
             $plan.VendorUrl = Get-VendorUrl -Record $Record -State $state
-            $hint = if ($plan.VendorUrl) { "Update bitte manuell über den Hersteller: $($plan.VendorUrl)" } else { 'Update bitte manuell über den Hersteller; kein Link bekannt.' }
+            $hint = if ($plan.VendorUrl) { New-InventoryMessage PlanManualUpdateLink $plan.VendorUrl } else { New-InventoryMessage PlanManualUpdateNoLink }
             $plan.Method = 'VendorLink'
-            return & $finish 'ManualUpdateRequired' "Kein winget-Paket bekannt. $hint"
+            return & $finish 'ManualUpdateRequired' $hint
         }
-        if ($Method -notin 'Auto', 'Winget') { return & $finish 'Unsupported' 'Aktualisieren geht nur über winget.' }
+        if ($Method -notin 'Auto', 'Winget') { return & $finish 'Unsupported' (New-InventoryMessage PlanUpdateOnlyWinget) }
         $chosen = 'Winget'
         $available = @('Winget')
     }
     else {
         $available = @(Get-AvailableUninstallMethod -Record $Record -State $state)
-        if (-not $available) { return & $finish 'Unsupported' 'Keine Deinstallationsmethode bekannt (kein winget-Paket, kein MSI, keine Store-App, kein Deinstallationsbefehl).' }
+        if (-not $available) { return & $finish 'Unsupported' (New-InventoryMessage PlanNoUninstallMethod) }
         $chosen = if ($Method -eq 'Auto') { $available[0] } else { $Method }
-        if ($chosen -notin $available) { return & $finish 'Unsupported' "Methode $chosen ist für dieses Programm nicht verfügbar (verfügbar: $($available -join ', '))." }
+        if ($chosen -notin $available) { return & $finish 'Unsupported' (New-InventoryMessage PlanMethodNotAvailable $chosen, ($available -join ', ')) }
     }
     $plan.Method = $chosen
     $index = [array]::IndexOf($available, $chosen)
@@ -247,10 +247,10 @@ function New-ActionPlan {
     switch ($chosen) {
         'Winget' {
             if ($plan.WingetId -notmatch '^[\w.+-]+$' -or $plan.WingetSource -notmatch '^[\w.-]+$') {
-                return & $finish 'Unsupported' 'Ungültige winget-ID oder -Quelle.'
+                return & $finish 'Unsupported' (New-InventoryMessage PlanInvalidWingetId)
             }
             $winget = Get-WingetExecutable
-            if (-not $winget) { return & $finish 'Unsupported' 'winget wurde nicht gefunden (App Installer fehlt).' }
+            if (-not $winget) { return & $finish 'Unsupported' (New-InventoryMessage PlanWingetNotFound) }
             $plan.FilePath = $winget
             $plan.Arguments = Get-WingetArgument -Action $Action -Id $plan.WingetId -Source $plan.WingetSource -Scope $state.Scope
             # Unbekannter Bereich: keine eigene Erhöhung, winget fordert sie bei Bedarf selbst an.
@@ -274,7 +274,7 @@ function New-ActionPlan {
             # HKCU-Befehle kann jeder Prozess ohne Adminrechte schreiben: nie erhöht ausführen.
             $plan.Elevated = $state.Scope -eq 'Machine'
             if ($plan.Elevated -and (Test-UserWritablePath $command.FilePath)) {
-                return & $finish 'Unsupported' "Das Deinstallationsprogramm liegt an einem für Benutzer beschreibbaren Ort ($($command.FilePath)) und wird aus Sicherheitsgründen nicht mit Administratorrechten gestartet. Bitte manuell deinstallieren."
+                return & $finish 'Unsupported' (New-InventoryMessage PlanUninstallerUserWritable $command.FilePath)
             }
         }
     }

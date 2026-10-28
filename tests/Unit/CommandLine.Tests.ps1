@@ -48,11 +48,11 @@ Describe 'Resolve-UninstallCommand' {
         @{ Line = '"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -File x.ps1' }
         @{ Line = 'rundll32.exe shell32.dll,Control_RunDLL' }
     ) {
-        (InModuleScope SoftwareInventory -Parameters @{ L = $Line } { Resolve-UninstallCommand $L }).Error | Should -Match 'Interpreter'
+        (InModuleScope SoftwareInventory -Parameters @{ L = $Line } { Resolve-UninstallCommand $L }).Error.Code | Should -Be 'CommandInterpreter'
     }
 
     It 'meldet fehlende Programmdateien' {
-        (InModuleScope SoftwareInventory { Resolve-UninstallCommand '"C:\gibt-es-nicht\u.exe" /S' }).Error | Should -Match 'nicht gefunden'
+        (InModuleScope SoftwareInventory { Resolve-UninstallCommand '"C:\gibt-es-nicht\u.exe" /S' }).Error.Code | Should -Be 'CommandFileNotFound'
     }
 
     It 'akzeptiert vorhandene Programme' {

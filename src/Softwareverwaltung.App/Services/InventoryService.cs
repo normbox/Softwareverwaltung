@@ -37,7 +37,7 @@ public sealed class InventoryService(IPowerShellHost host) : IInventoryService
         var url = status.Properties["InstallUrl"]?.Value?.ToString();
         return new WingetStatus(
             status.Properties["Available"]?.Value is true,
-            status.Properties["Message"]?.Value?.ToString(),
+            SoftwareItem.MessageText(status.Properties["Message"]?.Value),
             Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null);
     }
 

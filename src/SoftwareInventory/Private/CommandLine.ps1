@@ -23,11 +23,11 @@ function Split-CommandLine {
     param([AllowNull()] [AllowEmptyString()] [string] $CommandLine)
 
     $text = if ($CommandLine) { $CommandLine.Trim() } else { '' }
-    if (-not $text) { return @{ FilePath = $null; Arguments = $null; Error = 'Leere Befehlszeile' } }
+    if (-not $text) { return @{ FilePath = $null; Arguments = $null; Error = (New-InventoryMessage CommandEmpty) } }
 
     if ($text.StartsWith('"')) {
         $end = $text.IndexOf('"', 1)
-        if ($end -lt 2) { return @{ FilePath = $null; Arguments = $null; Error = 'Anführungszeichen nicht geschlossen' } }
+        if ($end -lt 2) { return @{ FilePath = $null; Arguments = $null; Error = (New-InventoryMessage CommandUnclosedQuote) } }
         $path = [Environment]::ExpandEnvironmentVariables($text.Substring(1, $end - 1))
         return @{ FilePath = $path; Arguments = $text.Substring($end + 1).Trim(); Error = $null }
     }
@@ -41,7 +41,7 @@ function Split-CommandLine {
         $cut = if ($index -lt 0) { $text.Length } else { $index }
         if ($text.Substring(0, $cut).EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase)) { $candidates.Add($cut) }
     }
-    if (-not $candidates.Count) { return @{ FilePath = $null; Arguments = $null; Error = 'Kein Programm (.exe) in der Befehlszeile' } }
+    if (-not $candidates.Count) { return @{ FilePath = $null; Arguments = $null; Error = (New-InventoryMessage CommandNoExe) } }
 
     $chosen = $candidates[0]
     foreach ($cut in $candidates) {
@@ -75,11 +75,11 @@ function Resolve-UninstallCommand {
     if ($parts.Error) { return $parts }
     $name = [System.IO.Path]::GetFileName($parts.FilePath)
     if ($name -in $script:BlockedInterpreter) {
-        $parts.Error = "Befehl startet einen Interpreter ($name); aus Sicherheitsgründen nicht unterstützt, bitte manuell deinstallieren"
+        $parts.Error = New-InventoryMessage CommandInterpreter $name
         return $parts
     }
     if (-not (Test-Path -LiteralPath $parts.FilePath -PathType Leaf)) {
-        $parts.Error = "Programmdatei nicht gefunden: $($parts.FilePath)"
+        $parts.Error = New-InventoryMessage CommandFileNotFound $parts.FilePath
     }
     $parts
 }

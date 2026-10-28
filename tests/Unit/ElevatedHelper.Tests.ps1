@@ -25,7 +25,7 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         Mock Test-SystemProtectionDisabled { $false }
         $r = Invoke-RestorePoint -Description 'Test' -Type 1
         $r.Status | Should -Be 'Skipped'
-        $r.Message | Should -Match '24 Stunden'
+        $r.Code | Should -Be 'RestorePointNotCreated'
     }
 
     It 'meldet NotAvailable, wenn der Computerschutz aus ist' {
@@ -40,7 +40,7 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         Mock Invoke-CimMethod { [pscustomobject] @{ ReturnValue = 1058 } }
         $r = Invoke-RestorePoint -Description 'Test' -Type 1
         $r.Status | Should -Be 'NotAvailable'
-        $r.Message | Should -Match 'Computerschutz'
+        $r.Code | Should -Be 'RestorePointProtectionOff'
     }
 
     It 'meldet NotAvailable, wenn der deaktivierte Dienst als Ausnahme kommt (0x80070422)' {
@@ -48,7 +48,8 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         Mock Invoke-CimMethod { throw [System.Runtime.InteropServices.COMException]::new('Dienst deaktiviert', -2147023838) }
         $r = Invoke-RestorePoint -Description 'Test' -Type 1
         $r.Status | Should -Be 'NotAvailable'
-        $r.Message | Should -Match 'Computerschutz'
+        $r.Code | Should -Be 'RestorePointProtectionOffDetail'
+        $r.Args | Should -Be @('Dienst deaktiviert')
     }
 
     It 'erkennt vorzeichenlose HRESULTs und nennt unbekannte Codes in der Meldung' {
@@ -57,7 +58,8 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         Mock Invoke-CimMethod { throw [System.Runtime.InteropServices.COMException]::new('anders', -2147024891) }
         $r = Invoke-RestorePoint -Description 'Test' -Type 1
         $r.Status | Should -Be 'Failed'
-        $r.Message | Should -Match '0x80070005'
+        $r.Code | Should -Be 'RestorePointFailedDetail'
+        $r.Args[1] | Should -Match '0x80070005'
     }
 
     It 'meldet NotAvailable bei Win32-Fehler 1058 als Ausnahme' {
@@ -78,7 +80,8 @@ Describe 'Helferskript: Wiederherstellungspunkt' {
         Mock Invoke-CimMethod { throw 'Zugriff verweigert' }
         $r = Invoke-RestorePoint -Description 'Test' -Type 1
         $r.Status | Should -Be 'Failed'
-        $r.Message | Should -Match 'Zugriff verweigert'
+        $r.Code | Should -Be 'RestorePointFailedDetail'
+        $r.Args[0] | Should -Match 'Zugriff verweigert'
     }
 }
 
@@ -92,21 +95,21 @@ Describe 'Helferskript: Prüfungen' {
     }
 
     It 'lehnt Benutzer- und Temp-Ordner sowie relative Pfade ab' {
-        Test-HelperFilePath "$env:SystemDrive\Users\Public\x.exe" | Should -Match 'Benutzer- oder Temp'
-        Test-HelperFilePath "$env:windir\Temp\x.exe" | Should -Match 'Benutzer- oder Temp'
-        Test-HelperFilePath 'x.exe' | Should -Match 'nicht absolut'
+        (Test-HelperFilePath "$env:SystemDrive\Users\Public\x.exe").Code | Should -Be 'HelperPathInUserFolder'
+        (Test-HelperFilePath "$env:windir\Temp\x.exe").Code | Should -Be 'HelperPathInUserFolder'
+        (Test-HelperFilePath 'x.exe').Code | Should -Be 'HelperPathNotAbsolute'
     }
 
     It 'erlaubt Programme im Benutzerordner nur ohne Erhöhung (HKCU-Programme)' {
         $exe = Join-Path $TestDrive 'unins000.exe'
         Set-Content -LiteralPath $exe -Value 'x'
-        Test-HelperFilePath $exe | Should -Match 'Benutzer- oder Temp'
-        Test-HelperFilePath $exe -Elevated $true | Should -Match 'Benutzer- oder Temp'
+        (Test-HelperFilePath $exe).Code | Should -Be 'HelperPathInUserFolder'
+        (Test-HelperFilePath $exe -Elevated $true).Code | Should -Be 'HelperPathInUserFolder'
         Test-HelperFilePath $exe -Elevated $false | Should -BeNullOrEmpty
     }
 
     It 'lehnt winget außerhalb von WindowsApps mit klarer Meldung ab' {
-        Test-HelperFilePath "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe" | Should -Match 'winget wurde im Administratorkontext nicht gefunden'
+        (Test-HelperFilePath "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe").Code | Should -Be 'HelperWingetNotFound'
     }
 
     It 'lässt sich von Windows PowerShell 5.1 fehlerfrei parsen (UTF-8 mit BOM)' {
@@ -155,7 +158,8 @@ Describe 'Start-ElevatedHelper' {
             Start-ElevatedHelper -NoElevation -TimeoutSeconds 30 -HelperPlan @{ FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false }
         }
         $r.Status | Should -Be 'Failed'
-        $r.Error | Should -Match 'Exit-Code 3'
+        $r.Error.Code | Should -Be 'HelperExitedWithoutResult'
+        $r.Error.Args | Should -Be @(3)
     }
 
     It 'meldet ElevationDenied, wenn die UAC-Abfrage abgelehnt wird' {
@@ -184,7 +188,7 @@ Describe 'Start-ElevatedHelper' {
         }
         $r = InModuleScope SoftwareInventory { Start-ElevatedHelper -NoElevation -TimeoutSeconds 5 -HelperPlan @{ FilePath = 'x'; RestorePoint = $false } }
         $r.Status | Should -Be 'Failed'
-        $r.Error | Should -Match 'Unerwarteter Prozess'
+        $r.Error.Code | Should -Be 'HelperUnexpectedProcess'
     }
 
     It 'lässt Prozesse ohne Adminrechte nicht an die Pipe' {

@@ -24,16 +24,18 @@ function New-HelperResult {
     param($Plan)
     [ordered]@{
         Nonce               = $Plan.Nonce
-        HelperVersion       = 1
+        HelperVersion       = 2
         PowerShellVersion   = $PSVersionTable.PSVersion.ToString()
         RestorePoint        = 'NotRequested'
-        RestorePointMessage = $null
+        RestorePointCode    = $null   # Code und Args; den Text bildet das Modul (Sprache der Oberfläche)
+        RestorePointArgs    = @()
         Started             = $false
         ExitCode            = $null
         TimedOut            = $false
         Output              = $null
         InstallerLog        = $null
-        Error               = $null
+        ErrorCode           = $null
+        ErrorArgs           = @()
     }
 }
 
@@ -59,7 +61,7 @@ function Invoke-RestorePoint {
     .SYNOPSIS
         Legt einen Wiederherstellungspunkt an und meldet ehrlich, was passiert ist.
     .OUTPUTS
-        @{ Status = Created|Skipped|NotAvailable|Failed; Message }
+        @{ Status = Created|Skipped|NotAvailable|Failed; Code; Args } – Code und Args für den Text im Modul
     #>
     param([string] $Description, [uint32] $Type)
 
@@ -67,7 +69,7 @@ function Invoke-RestorePoint {
         $before = Get-LatestRestorePointSequence
     }
     catch {
-        return @{ Status = 'NotAvailable'; Message = "Systemwiederherstellung nicht verfügbar: $($_.Exception.Message)" }
+        return @{ Status = 'NotAvailable'; Code = 'RestorePointServiceUnavailable'; Args = @($_.Exception.Message) }
     }
 
     try {
@@ -79,26 +81,26 @@ function Invoke-RestorePoint {
         # Dienst deaktiviert kommt meist als Ausnahme, nicht als Rückgabewert.
         $codes = @(Get-ExceptionErrorCode $_.Exception)
         if ($codes | Where-Object { $_ -in $script:RestoreUnavailableCodes }) {
-            return @{ Status = 'NotAvailable'; Message = "Computerschutz ist ausgeschaltet oder der Dienst deaktiviert: $($_.Exception.Message)" }
+            return @{ Status = 'NotAvailable'; Code = 'RestorePointProtectionOffDetail'; Args = @($_.Exception.Message) }
         }
         $hex = ($codes | ForEach-Object { '0x{0:X8}' -f $_ }) -join ', '
-        return @{ Status = 'Failed'; Message = "Wiederherstellungspunkt fehlgeschlagen: $($_.Exception.Message) (Codes: $hex)" }
+        return @{ Status = 'Failed'; Code = 'RestorePointFailedDetail'; Args = @($_.Exception.Message, $hex) }
     }
 
     if ($code -in $script:RestoreUnavailableCodes) {
-        return @{ Status = 'NotAvailable'; Message = 'Computerschutz ist ausgeschaltet oder der Dienst deaktiviert' }
+        return @{ Status = 'NotAvailable'; Code = 'RestorePointProtectionOff'; Args = @() }
     }
     if ($code -ne 0) {
-        return @{ Status = 'Failed'; Message = "Wiederherstellungspunkt fehlgeschlagen (Code $code)" }
+        return @{ Status = 'Failed'; Code = 'RestorePointFailedCode'; Args = @($code) }
     }
 
     $after = $before
     try { $after = Get-LatestRestorePointSequence } catch { $after = $before }
-    if ($after -gt $before) { return @{ Status = 'Created'; Message = "Wiederherstellungspunkt angelegt (Nr. $after)" } }
+    if ($after -gt $before) { return @{ Status = 'Created'; Code = 'RestorePointCreatedNumber'; Args = @($after) } }
     if (Test-SystemProtectionDisabled) {
-        return @{ Status = 'NotAvailable'; Message = 'Computerschutz ist ausgeschaltet' }
+        return @{ Status = 'NotAvailable'; Code = 'RestorePointProtectionDisabled'; Args = @() }
     }
-    @{ Status = 'Skipped'; Message = 'Windows hat keinen neuen Punkt angelegt; meist, weil in den letzten 24 Stunden schon einer angelegt wurde' }
+    @{ Status = 'Skipped'; Code = 'RestorePointNotCreated'; Args = @() }
 }
 
 # 1058/1068 als Win32-Code und als HRESULT (0x80070422, 0x8007042C): Dienst deaktiviert bzw. Abhängigkeit fehlt.
@@ -136,21 +138,22 @@ function Test-HelperFilePath {
     # Adminrechte; hier zusätzlich: winget nur aus WindowsApps und, nur wenn erhöht wurde, keine
     # Benutzer- oder Temp-Ordner. Ohne Erhöhung liegen Programme des Benutzers (HKCU) genau dort.
     param([string] $FilePath, [bool] $Elevated = $true)
-    if (-not $FilePath -or -not [System.IO.Path]::IsPathRooted($FilePath)) { return 'Programmpfad fehlt oder ist nicht absolut' }
+    # Liefert $null oder @{ Code; Args } (Text im Modul).
+    if (-not $FilePath -or -not [System.IO.Path]::IsPathRooted($FilePath)) { return @{ Code = 'HelperPathNotAbsolute'; Args = @() } }
     $full = [System.IO.Path]::GetFullPath($FilePath)
     if ([System.IO.Path]::GetFileName($full) -ieq 'winget.exe') {
         $apps = (Join-Path $env:ProgramFiles 'WindowsApps').TrimEnd('\') + '\'
         if (-not $full.StartsWith($apps, [StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath $full -PathType Leaf)) {
-            return "winget wurde im Administratorkontext nicht gefunden ($full)"
+            return @{ Code = 'HelperWingetNotFound'; Args = @($full) }
         }
         return $null
     }
     $blocked = @((Join-Path $env:SystemDrive 'Users'), (Join-Path $env:windir 'Temp'), [System.IO.Path]::GetTempPath()) |
         ForEach-Object { $_.TrimEnd('\') + '\' }
     foreach ($root in $blocked) {
-        if ($Elevated -and $full.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { return "Programm liegt in einem Benutzer- oder Temp-Ordner ($full)" }
+        if ($Elevated -and $full.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { return @{ Code = 'HelperPathInUserFolder'; Args = @($full) } }
     }
-    if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return "Programmdatei nicht gefunden: $full" }
+    if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { return @{ Code = 'HelperFileNotFound'; Args = @($full) } }
     $null
 }
 
@@ -239,18 +242,20 @@ function Invoke-ElevatedHelperMain {
         if ($plan.RestorePoint) {
             $rp = Invoke-RestorePoint -Description $plan.RestorePointDescription -Type ([uint32] $plan.RestorePointType)
             $result.RestorePoint = $rp.Status
-            $result.RestorePointMessage = $rp.Message
+            $result.RestorePointCode = $rp.Code
+            $result.RestorePointArgs = @($rp.Args)
         }
         if ($plan.FilePath) {
             # Fehlt die Angabe (ältere App), gilt die strengere Prüfung für erhöhte Aufrufe.
             $elevated = -not ($plan.PSObject.Properties['Elevate'] -and $plan.Elevate -eq $false)
             $problem = Test-HelperFilePath $plan.FilePath -Elevated $elevated
-            if ($problem) { $result.Error = $problem }
+            if ($problem) { $result.ErrorCode = $problem.Code; $result.ErrorArgs = @($problem.Args) }
             else { Invoke-HelperProcess -Plan $plan -Result $result }
         }
     }
     catch {
-        $result.Error = $_.Exception.Message
+        $result.ErrorCode = 'HelperException'
+        $result.ErrorArgs = @($_.Exception.Message)
     }
     Send-HelperResult -PipeName $plan.PipeName -Result $result
 }

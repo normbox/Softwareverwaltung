@@ -49,7 +49,8 @@ function Write-ActionLogEntry {
         ModuleVersion = [string] (Get-SoftwareInventoryVersion)
     }
     foreach ($key in $Data.Keys) { if (-not $entry.Contains($key)) { $entry[$key] = $Data[$key] } }
-    $line = Protect-SecretText ($entry | ConvertTo-Json -Compress -Depth 5)
+    # Tiefe 8: Meldungen können verschachtelt sein (Code, Args mit weiteren Meldungen).
+    $line = Protect-SecretText ($entry | ConvertTo-Json -Compress -Depth 8)
 
     $directory = Get-ActionLogDirectory
     New-Item -ItemType Directory -Path $directory -Force | Out-Null

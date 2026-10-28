@@ -102,7 +102,8 @@ Describe 'New-ActionPlan' {
             (Get-Plan $record -Method Msi).Method | Should -Be 'Msi'
             $plan = Get-Plan $record -Method Appx
             $plan.Result | Should -Be 'Unsupported'
-            $plan.Message | Should -Match 'Winget, Msi'
+            $plan.Message.Code | Should -Be 'PlanMethodNotAvailable'
+            $plan.Message.Args[1] | Should -Match 'Winget, Msi'
         }
 
         It 'meldet NotInstalled, wenn der Eintrag nicht mehr existiert' {
@@ -129,7 +130,7 @@ Describe 'New-ActionPlan' {
             Mock -ModuleName SoftwareInventory Get-WingetExecutable { $null }
             $plan = Get-Plan (New-TestRecord @{ RegistryKey = "$Machine\$guid"; WingetId = 'Contoso.Tool'; WingetSource = 'winget' })
             $plan.Result | Should -Be 'Unsupported'
-            $plan.Message | Should -Match 'winget wurde nicht gefunden'
+            $plan.Message.Code | Should -Be 'PlanWingetNotFound'
         }
     }
 
@@ -165,7 +166,7 @@ Describe 'New-ActionPlan' {
             Mock -ModuleName SoftwareInventory Test-UserWritablePath { $true }
             $plan = Get-Plan (New-TestRecord @{ RegistryKey = "$Machine\Fabrikam_is1" })
             $plan.Result | Should -Be 'Unsupported'
-            $plan.Message | Should -Match 'beschreibbaren Ort'
+            $plan.Message.Code | Should -Be 'PlanUninstallerUserWritable'
         }
 
         It 'führt beschreibbare Dateien aus HKCU ohne Adminrechte aus' {

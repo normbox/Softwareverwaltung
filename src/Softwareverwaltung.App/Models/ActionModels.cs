@@ -63,9 +63,9 @@ public sealed record ActionOutcome
             CommandLine = Text(obj, "CommandLine"),
             Elevated = obj.Properties["Elevated"]?.Value is true,
             Result = Text(obj, "Result") ?? "Failed",
-            Message = Text(obj, "Message"),
+            Message = SoftwareItem.MessageText(obj.Properties["Message"]?.Value),
             RestorePoint = Text(obj, "RestorePoint"),
-            RestorePointMessage = Text(obj, "RestorePointMessage"),
+            RestorePointMessage = SoftwareItem.MessageText(obj.Properties["RestorePointMessage"]?.Value),
             NextMethod = Text(obj, "NextMethod"),
             VendorUrl = Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? uri : null,
             ExitCodeHex = Text(obj, "ExitCodeHex"),
@@ -101,7 +101,7 @@ public sealed record ActionHistoryEntry(DateTime? StartedAt, string Action, stri
         ActionOutcome.Text(obj, "Action") ?? "",
         ActionOutcome.Text(obj, "Method"),
         ActionOutcome.Text(obj, "Result") ?? "",
-        ActionOutcome.Text(obj, "Message"));
+        SoftwareItem.MessageText(obj.Properties["Message"]?.Value));
 
     private static DateTime? Date(object? value) => value switch
     {

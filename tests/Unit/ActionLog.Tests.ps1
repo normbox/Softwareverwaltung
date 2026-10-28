@@ -46,6 +46,28 @@ Describe 'Aktionsprotokoll' {
         (Get-ActionLog).Result | Should -Be 'Incomplete'
     }
 
+    It 'speichert Meldungen mit Code und baut den Text beim Lesen neu auf' {
+        $message = InModuleScope SoftwareInventory { New-InventoryMessage WithNextMethod (New-InventoryMessage NotVerifiedUninstall), 'Msi' }
+        Write-TestEntry -Id 'm1' -Phase Started
+        Write-TestEntry -Id 'm1' -Phase Completed -Data @{ Result = 'NotVerified'; Message = $message }
+        $line = Get-Content (Get-ChildItem $logDir -Filter '*.jsonl').FullName | Select-Object -Last 1 | ConvertFrom-Json
+        $line.Message.Code | Should -Be 'WithNextMethod'
+        $line.Message.Args[0].Code | Should -Be 'NotVerifiedUninstall'
+
+        $entry = Get-ActionLog
+        $entry.Message.Code | Should -Be 'WithNextMethod'
+        $entry.Message.Args[0].Code | Should -Be 'NotVerifiedUninstall'
+        $entry.Message.Text | Should -Be 'Das Programm meldet Erfolg, ist aber noch installiert. Nächste mögliche Methode: Msi (Aufruf mit -Method Msi).'
+    }
+
+    It 'kennzeichnet ältere Einträge ohne Code' {
+        Write-TestEntry -Id 'o1' -Phase Started
+        Write-TestEntry -Id 'o1' -Phase Completed -Data @{ Message = 'Store-App entfernt' }
+        $entry = Get-ActionLog
+        $entry.Message.Code | Should -Be 'LegacyText'
+        $entry.Message.Text | Should -Be 'Store-App entfernt (älterer Eintrag)'
+    }
+
     It 'überspringt beschädigte und abgeschnittene Zeilen mit Warnung' {
         Write-TestEntry -Id 'c1' -Phase Completed
         $file = (Get-ChildItem $logDir -Filter '*.jsonl').FullName
