@@ -17,6 +17,15 @@ Describe 'Texte des Moduls' {
         foreach ($key in $used) { $strings.ContainsKey($key) | Should -BeTrue -Because "Schlüssel '$key' wird im Code verwendet" }
     }
 
+    It 'enthält die Fortschrittstexte mit und ohne Zähler' {
+        $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern 'Write-CheckProgress\b.*?-Activity\s+(?<key>\w+)' -AllMatches |
+            ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique
+        $used | Should -Not -BeNullOrEmpty
+        $strings = InModuleScope SoftwareInventory { $script:Strings }
+        foreach ($key in $used) { $strings.ContainsKey($key) | Should -BeTrue -Because "Fortschritt '$key' wird im Code verwendet" }
+        foreach ($key in 'ProgressCheckUpdates', 'ProgressCheckVulnerabilities') { $strings.ContainsKey("${key}Counted") | Should -BeTrue }
+    }
+
     It 'enthält die zusammengesetzten Schlüssel der Berater-Tools, Fehlercodes und Vorgaben' {
         $missing = InModuleScope SoftwareInventory {
             $keys = [System.Collections.Generic.List[string]]::new()

@@ -59,6 +59,9 @@ function Invoke-ServiceRequest {
     }
 
     Wait-ServiceInterval -Service $Service -HasKey ([bool] $secret)
+    # Die englischen Fortschrittsmeldungen von Invoke-WebRequest nicht anzeigen; den Fortschritt
+    # melden die Prüfungen selbst (Write-CheckProgress).
+    $ProgressPreference = 'SilentlyContinue'
     Write-Verbose "$Service-Anfrage: $($Uri.GetLeftPart([UriPartial]::Path))"
     try {
         $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec 60 -ErrorAction Stop

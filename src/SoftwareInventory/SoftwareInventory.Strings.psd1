@@ -54,6 +54,17 @@ Regeln:
     AdvisorPresetNoteCustom                 = 'Jeder Server mit OpenAI-kompatibler Schnittstelle und Tool-Unterstützung (/v1/chat/completions mit tools).'
     AdvisorPresetLabelCustom                = 'Eigene Adresse'
 
+    # Fortschritt (Write-CheckProgress; Schlüssel + Counted = Text mit Zähler)
+    ProgressCheckUpdates                    = 'Prüfe neueste Versionen'
+    ProgressCheckUpdatesCounted             = 'Prüfe neueste Versionen ({0} von {1})'
+    ProgressCheckVulnerabilities            = 'Prüfe Sicherheitslücken'
+    ProgressCheckVulnerabilitiesCounted     = 'Prüfe Sicherheitslücken ({0} von {1})'
+    ProgressLoadKev                         = 'Lade die Liste aktiv ausgenutzter Lücken (CISA KEV)'
+    ProgressLoadEpss                        = 'Lade Ausnutzungswahrscheinlichkeiten (FIRST EPSS)'
+    ProgressReadWinget                      = 'Lese die winget-Paketliste'
+    ProgressFindFiles                       = 'Suche nach Programmdateien'
+    ProgressCheckFiles                      = 'Prüfe Programmdateien'
+
     # Suche nach portablen Programmen (Invoke-InventoryScan)
     PortableSearchNoLocation                = 'Dateisuche: Keine Option „Wo suchen“ gewählt oder die gewählte Option hat keinen Eintrag, daher wurden keine Dateien durchsucht.'
     PortableSearchNoTrace                   = 'Nutzungsspuren sind eingeschaltet, aber keine der Spuren ist gewählt.'

@@ -63,6 +63,7 @@ function Find-WingetCandidate {
     # Kapselt Find-WinGetPackage (nur Quelle winget, die Store-Quelle fragt langsam online).
     # Liefert Name, Id, Version – ohne Hersteller, der kostet pro Paket eine eigene Abfrage.
     param([string] $Name)
+    $ProgressPreference = 'SilentlyContinue'
     foreach ($pkg in Find-WinGetPackage -Query $Name -Source winget -ErrorAction Stop) {
         [pscustomobject] @{ Name = $pkg.Name; Id = $pkg.Id; Version = @($pkg.AvailableVersions)[0] }
     }
@@ -71,6 +72,7 @@ function Find-WingetCandidate {
 function Get-WingetPackagePublisher {
     # Hersteller eines winget-Pakets aus dem Manifest der angegebenen Version.
     param([string] $Id, [string] $Version)
+    $ProgressPreference = 'SilentlyContinue'
     $pkg = Find-WinGetPackage -Id $Id -MatchOption Equals -Source winget -ErrorAction Stop | Select-Object -First 1
     if ($pkg) { $pkg.GetPackageVersionInfo($Version).Publisher }
 }

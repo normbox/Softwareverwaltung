@@ -27,10 +27,13 @@ function Test-SoftwareUpdate {
         $setting = Read-InventorySetting
         $catalog = Get-SoftwareCatalog
         $state = @{ GitHubBlocked = $false }
+        $done = 0
     }
     process {
         foreach ($record in $InputObject) {
             if ($null -eq $record) { continue }
+            $done++
+            Write-CheckProgress -Id 3 -Activity ProgressCheckUpdates -Index $done -Total $InputObject.Count -Name $record.Name
             $match = Find-CatalogEntry -Record $record -Catalog $catalog
             $reasons = [System.Collections.Generic.List[string]]::new()
             $result = $null
@@ -50,6 +53,7 @@ function Test-SoftwareUpdate {
             New-UpdateStatus -Record $record -Result $result -Reasons $reasons -CatalogId $(if ($match) { $match.Entry.Id })
         }
     }
+    end { Write-CheckProgress -Id 3 -Activity ProgressCheckUpdates -Completed }
 }
 
 function New-UpdateStatus {

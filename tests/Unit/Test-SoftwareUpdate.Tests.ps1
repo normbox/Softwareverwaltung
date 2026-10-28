@@ -42,6 +42,18 @@ Describe 'Test-SoftwareUpdate' {
         $r.Confirmed | Should -BeTrue
     }
 
+    It 'meldet eigenen Fortschritt mit Zähler und Programmname' {
+        Use-Setting; Use-Catalog @()
+        Mock -ModuleName SoftwareInventory Write-Progress { }
+        $records = @(
+            New-TestRecord 'Alpha' '1.0' -WingetId 'A.A'
+            New-TestRecord 'Beta' '2.0' -WingetId 'B.B'
+        )
+        Test-SoftwareUpdate -InputObject $records | Out-Null
+        Should -Invoke -ModuleName SoftwareInventory Write-Progress -ParameterFilter { $Activity -eq 'Prüfe neueste Versionen (2 von 2)' -and $Status -eq 'Beta' } -Times 1 -Exactly
+        Should -Invoke -ModuleName SoftwareInventory Write-Progress -ParameterFilter { $Completed } -Times 1 -Exactly
+    }
+
     It 'nutzt winget: kein Update gemeldet heißt aktuell' {
         Use-Setting; Use-Catalog @()
         $r = New-TestRecord '7-Zip' '26.05' -WingetId '7zip.7zip' | Test-SoftwareUpdate

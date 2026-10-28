@@ -172,7 +172,7 @@ function Get-PortableSoftware {
     # Sortiert, damit Gleichstände (gleiche Größe, gleiche Pfadlänge) immer gleich aufgelöst werden.
     foreach ($c in $candidates.Keys | Sort-Object | ForEach-Object { $candidates[$_] }) {
         $i++
-        Write-Progress -Activity 'Prüfe Programmdateien' -Status $c.Path -PercentComplete ($i * 100 / $candidates.Count) -Id 2
+        Write-Progress -Activity (Get-LocalizedString 'ProgressCheckFiles') -Status $c.Path -PercentComplete ($i * 100 / $candidates.Count) -Id 2
         try {
             $info = Get-ExecutableInfo -Path $c.Path -SkipHash:(-not $ComputeHash)
         }
@@ -191,7 +191,7 @@ function Get-PortableSoftware {
         $info | Add-Member -Force -NotePropertyMembers @{ Evidence = [string[]] @($c.Evidence); LastRun = $c.LastRun; RunCount = $c.RunCount }
         $infos.Add($info)
     }
-    Write-Progress -Activity 'Prüfe Programmdateien' -Id 2 -Completed
+    Write-Progress -Activity (Get-LocalizedString 'ProgressCheckFiles') -Id 2 -Completed
 
     # Herstellerordner mit nachweislich installierten Dateien gehören ganz zur Installation
     # (z. B. unsignierte Hilfsprogramme ohne Versionsinfo).

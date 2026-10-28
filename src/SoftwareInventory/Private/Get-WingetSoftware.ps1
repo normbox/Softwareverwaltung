@@ -11,6 +11,9 @@ function Get-WingetPackageData {
     param()
 
     $flags = [System.Reflection.BindingFlags] 'Public, NonPublic, Instance'
+    # Eigene Meldung statt der englischen des WinGet-Moduls.
+    Write-CheckProgress -Id 5 -Activity ProgressReadWinget
+    $ProgressPreference = 'SilentlyContinue'
 
     foreach ($pkg in Get-WinGetPackage -ErrorAction Stop) {
         $codes = @()
