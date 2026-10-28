@@ -9,6 +9,18 @@
              xmlns:models="clr-namespace:Softwareverwaltung.App.Models"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    <UserControl.Resources>
+        <!-- Textspalten: voller Text als Tooltip, wenn die Spalte ihn abschneidet -->
+        <Style x:Key="TextCellWithTooltip" TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="ToolTip" Value="{x:Null}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -145,7 +157,12 @@
                       EnableRowVirtualization="True"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
-                      AutomationProperties.Name="{loc:Text ProgramsListName}">
+                      AutomationProperties.Name="{loc:Text ProgramsListName}"
+                      PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown">
+                <!-- Esc klappt die Details zu -->
+                <DataGrid.InputBindings>
+                    <KeyBinding Key="Escape" Command="{Binding CloseDetailsCommand}" />
+                </DataGrid.InputBindings>
                 <DataGrid.Columns>
                     <DataGridTemplateColumn Header="{loc:Text ColumnRating}" SortMemberPath="Rating" Width="90">
                         <DataGridTemplateColumn.CellTemplate>
@@ -157,14 +174,14 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="{loc:Text ColumnName}" Binding="{Binding Name}" Width="2*" />
-                    <DataGridTextColumn Header="{loc:Text ColumnPublisher}" Binding="{Binding Publisher}" Width="*" />
-                    <DataGridTextColumn Header="{loc:Text ColumnInstalled}" Binding="{Binding InstalledVersion}" Width="140" />
+                    <DataGridTextColumn Header="{loc:Text ColumnName}" Binding="{Binding Name}" Width="2*" ElementStyle="{StaticResource TextCellWithTooltip}" />
+                    <DataGridTextColumn Header="{loc:Text ColumnPublisher}" Binding="{Binding Publisher}" Width="*" ElementStyle="{StaticResource TextCellWithTooltip}" />
+                    <DataGridTextColumn Header="{loc:Text ColumnInstalled}" Binding="{Binding InstalledVersion}" Width="140" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTemplateColumn Header="{loc:Text ColumnLatest}" SortMemberPath="LatestVersion" Width="200">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate DataType="{x:Type models:SoftwareItem}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding LatestVersion}" />
+                                    <TextBlock Text="{Binding LatestVersion}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LatestVersion}" />
                                     <TextBlock Margin="4,0,0,0" Text="{loc:Text LatestUnconfirmed}"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                ToolTip="{loc:Text LatestUnconfirmedTooltip}"
@@ -173,7 +190,7 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="{loc:Text ColumnVulnerabilities}" Binding="{Binding VulnerabilityText}" SortMemberPath="VulnerabilityCount" Width="110" />
+                    <DataGridTextColumn Header="{loc:Text ColumnVulnerabilities}" Binding="{Binding VulnerabilityText}" SortMemberPath="VulnerabilityCount" Width="110" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTemplateColumn Header="{loc:Text ColumnReason}" SortMemberPath="ReasonSummary" Width="3*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate DataType="{x:Type models:SoftwareItem}">
@@ -182,15 +199,20 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="{loc:Text ColumnSource}" Binding="{Binding Sources}" Width="140" />
+                    <DataGridTextColumn Header="{loc:Text ColumnSource}" Binding="{Binding Sources}" Width="140" ElementStyle="{StaticResource TextCellWithTooltip}" />
                 </DataGrid.Columns>
 
                 <!-- Angeklickte Zeile: alle Gründe, Lücken und widerlegte Treffer -->
                 <DataGrid.RowDetailsTemplate>
                     <DataTemplate DataType="{x:Type models:SoftwareItem}">
                         <StackPanel Margin="32,6,16,12">
+                            <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                            <!-- Schließen klappt die Details zu, ebenso Esc und ein zweiter Klick auf die Zeile -->
+                            <ui:Button DockPanel.Dock="Right" Content="{loc:Text CommonClose}" Icon="{ui:SymbolIcon ChevronUp24}"
+                                       ToolTip="{loc:Text DetailsCloseTooltip}"
+                                       Command="{Binding DataContext.CloseDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                             <!-- Aktionen: erst Bestätigungsdialog mit genauem Befehl, dann Ausführung -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left"
                                         Visibility="{Binding DataContext.ActionsAvailable, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisibility}}">
                                 <ui:Button Content="{loc:Text ActionUpdate}" Appearance="Primary" Icon="{ui:SymbolIcon ArrowUpload24}" Margin="0,0,8,0"
                                            Command="{Binding DataContext.UpdateCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
@@ -200,6 +222,7 @@
                                            Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                            CommandParameter="{Binding}" />
                             </StackPanel>
+                            </DockPanel>
 
                             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                        Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}">
@@ -209,10 +232,26 @@
                                        Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}">
                                 <Run Text="{loc:Text DetailsWingetIdLabel}" /><Run Text="{Binding WingetId, Mode=OneWay}" />
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"
-                                       Visibility="{Binding InstallLocation, Converter={StaticResource NullToVisibility}}">
-                                <Run Text="{loc:Text DetailsLocationLabel}" /><Run Text="{Binding InstallLocation, Mode=OneWay}" />
-                            </TextBlock>
+
+                            <!-- Installationsordner: ermittelt das Modul erst beim Aufklappen, mit Herkunft oder Grund -->
+                            <StackPanel Margin="0,0,0,8" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}">
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding SelectedLocation.IsKnown, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                                    <Run Text="{loc:Text DetailsFolderLabel}" /><Run Text="{Binding SelectedLocation.Path, Mode=OneWay}" />
+                                    <Run Text="{Binding SelectedLocation.Note, Mode=OneWay, StringFormat='({0})'}" />
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding SelectedLocation.Reason, Converter={StaticResource NullToVisibility}, FallbackValue=Collapsed}">
+                                    <Run Text="{loc:Text DetailsFolderUnknown}" /><Run Text="{Binding SelectedLocation.Reason, Mode=OneWay}" />
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
+                                            Visibility="{Binding SelectedLocation.IsKnown, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                                    <ui:Button Content="{loc:Text DetailsOpenFolder}" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0"
+                                               Command="{Binding OpenFolderCommand}"
+                                               Visibility="{Binding SelectedLocation.CanOpen, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}" />
+                                    <ui:Button Content="{loc:Text DetailsCopyPath}" Icon="{ui:SymbolIcon Copy24}" Command="{Binding CopyPathCommand}" />
+                                </StackPanel>
+                            </StackPanel>
 
                             <TextBlock Text="{loc:Text DetailsReasonsTitle}" FontWeight="SemiBold" />
                             <ItemsControl ItemsSource="{Binding Reasons}">

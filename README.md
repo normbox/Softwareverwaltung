@@ -133,6 +133,8 @@ dotnet run --project src/Softwareverwaltung.App            # App starten
 
 Die App liest dieselben Einstellungen wie das Modul. Auf der Seite „Einstellungen“ lassen sich alle Schalter, der Dateiscan, die externen Dienste, die API-Schlüssel und die Aufbewahrung der Logs einstellen; gespeichert wird mit „Speichern“. Beim ersten Start fragt die App „Privat“ oder „Firma“ ab und zeigt die passenden Hinweise zu den Nutzungsbedingungen der Dienste; eingeschaltet wird dabei nichts.
 
+Ein Klick auf ein Programm klappt die Details auf. Sie zeigen Gründe, Lücken und bisherige Aktionen sowie den Installationsordner mit Herkunft („laut Installer-Eintrag“ oder „vermutlich, …“). Dazu gibt es „Ordner öffnen“ und „Pfad kopieren“. Zugeklappt wird mit „Schließen“, mit Esc oder mit einem zweiten Klick auf die Zeile. Abgeschnittene Spalten zeigen den vollen Text als Tooltip.
+
 Tests:
 
 ```powershell

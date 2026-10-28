@@ -265,9 +265,6 @@
   <data name="DetailsWingetIdLabel" xml:space="preserve">
     <value>winget-ID: </value>
   </data>
-  <data name="DetailsLocationLabel" xml:space="preserve">
-    <value>Ort: </value>
-  </data>
   <data name="DetailsReasonsTitle" xml:space="preserve">
     <value>Gründe für die Ampel</value>
   </data>
@@ -708,5 +705,23 @@
   </data>
   <data name="StatusProgramGone" xml:space="preserve">
     <value>Das Programm ist nicht mehr installiert.</value>
+  </data>
+  <data name="DetailsFolderLabel" xml:space="preserve">
+    <value>Installationsordner: </value>
+  </data>
+  <data name="DetailsFolderUnknown" xml:space="preserve">
+    <value>Ordner unbekannt: </value>
+  </data>
+  <data name="DetailsOpenFolder" xml:space="preserve">
+    <value>Ordner öffnen</value>
+  </data>
+  <data name="DetailsCopyPath" xml:space="preserve">
+    <value>Pfad kopieren</value>
+  </data>
+  <data name="DetailsCloseTooltip" xml:space="preserve">
+    <value>Details zuklappen (auch mit Esc oder einem zweiten Klick auf die Zeile)</value>
+  </data>
+  <data name="StatusPathCopied" xml:space="preserve">
+    <value>Pfad kopiert.</value>
   </data>
 </root>

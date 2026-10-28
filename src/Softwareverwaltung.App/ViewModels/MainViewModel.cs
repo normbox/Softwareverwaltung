@@ -14,16 +14,20 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IInventoryService _inventory;
     private readonly IActionService? _actions;
     private readonly IConfirmationService? _confirmation;
+    private readonly IShellService? _shell;
     private readonly TimeProvider _time;
+    // Installationsordner je Programm, für die Sitzung gemerkt (ermittelt erst beim Aufklappen).
+    private readonly Dictionary<string, InstallLocationInfo> _locations = [];
     private bool _initialized;
     private bool _ready;
     private Notice? _wingetNotice;
 
-    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null)
+    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null, IShellService? shell = null)
     {
         _inventory = inventory;
         _actions = actions;
         _confirmation = confirmation;
+        _shell = shell;
         _time = time ?? TimeProvider.System;
         ItemsView = new ListCollectionView(Items) { Filter = Matches };
         ItemsView.SortDescriptions.Add(new SortDescription(nameof(SoftwareItem.Rating), ListSortDirection.Ascending));
@@ -46,6 +50,11 @@ public sealed partial class MainViewModel : ObservableObject
     private SoftwareItem? _selectedItem;
 
     public ObservableCollection<ActionHistoryEntry> History { get; } = [];
+
+    /// <summary>Installationsordner des angeklickten Programms; null, solange er ermittelt wird.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenFolderCommand), nameof(CopyPathCommand))]
+    private InstallLocationInfo? _selectedLocation;
 
     /// <summary>Ergebnis der letzten Aktion, als Karte oben angezeigt, bis der Benutzer sie schließt.</summary>
     [ObservableProperty]
@@ -204,7 +213,63 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void DismissOutcome() => LastOutcome = null;
 
-    partial void OnSelectedItemChanged(SoftwareItem? value) => _ = LoadHistoryAsync(value);
+    partial void OnSelectedItemChanged(SoftwareItem? value)
+    {
+        _ = LoadHistoryAsync(value);
+        _ = LoadLocationAsync(value);
+    }
+
+    /// <summary>Klappt die Details zu (Button „Schließen“, Esc, zweiter Klick auf die Zeile).</summary>
+    [RelayCommand]
+    private void CloseDetails() => SelectedItem = null;
+
+    [RelayCommand(CanExecute = nameof(CanOpenFolder))]
+    private void OpenFolder() => _shell?.OpenFolder(SelectedLocation!.Path!);
+
+    private bool CanOpenFolder() => _shell is not null && SelectedLocation is { IsKnown: true, CanOpen: true };
+
+    [RelayCommand(CanExecute = nameof(CanCopyPath))]
+    private void CopyPath()
+    {
+        _shell?.CopyText(SelectedLocation!.Path!);
+        StatusText = AppText.Get("StatusPathCopied");
+    }
+
+    private bool CanCopyPath() => _shell is not null && SelectedLocation is { IsKnown: true };
+
+    private async Task LoadLocationAsync(SoftwareItem? item)
+    {
+        SelectedLocation = null;
+        if (item?.Source is null || IsBusy || !_ready)
+        {
+            return;
+        }
+        var key = LocationKey(item);
+        if (!_locations.TryGetValue(key, out var location))
+        {
+            try
+            {
+                location = await _inventory.ResolveInstallLocationAsync(item.Source);
+            }
+            catch (Exception)
+            {
+                // Der Ordner ist eine Zusatzinfo; fehlt er, bleibt die Zeile leer.
+                return;
+            }
+            if (location is null)
+            {
+                return;
+            }
+            _locations[key] = location;
+        }
+        if (SelectedItem == item)
+        {
+            SelectedLocation = location;
+        }
+    }
+
+    // Gleiches Programm in gleicher Version: nach einem Update (neue Version) wird neu ermittelt.
+    private static string LocationKey(SoftwareItem item) => $"{item.Name}|{item.InstalledVersion}|{item.Sources}|{item.InstallLocation}";
 
     /// <summary>
     /// Ablauf jeder Aktion: Plan mit -WhatIf holen, Bestätigung zeigen, genau diesen Befehl ausführen,
@@ -263,6 +328,7 @@ public sealed partial class MainViewModel : ObservableObject
             RefreshView();
         }
         await LoadHistoryAsync(SelectedItem);
+        await LoadLocationAsync(SelectedItem);
     }
 
     private void ShowOutcome(ActionOutcome outcome, SoftwareItem? item)

@@ -199,6 +199,18 @@ Regeln:
     ReasonWingetClientNotInstalled          = 'winget (App Installer) ist nicht installiert'
     ReasonWingetDataUnavailable             = 'winget-Daten nicht verfügbar: {0}'
 
+    # Installationsordner (Resolve-InstallLocation): Quelle und Grund, wenn er unbekannt ist
+    ReasonInstallLocationFromInstallerEntry = 'laut Installer-Eintrag'
+    ReasonInstallLocationFromAppPackage     = 'laut App-Paket'
+    ReasonInstallLocationFromFileSearch     = 'laut Dateisuche'
+    ReasonInstallLocationFromDisplayIcon    = 'vermutlich, abgeleitet aus dem Programmsymbol'
+    ReasonInstallLocationFromUninstallCommand = 'vermutlich, abgeleitet aus dem Deinstallationsbefehl'
+    ReasonInstallLocationFromMsiComponents  = 'vermutlich, abgeleitet aus den installierten MSI-Komponenten'
+    ReasonLocationNotFound                  = 'Der Ordner aus dem Installer-Eintrag existiert nicht: {0}'
+    ReasonLocationNoProgramExe              = 'Im abgeleiteten Ordner liegt kein Programm (.exe): {0}'
+    ReasonLocationOnlyInstallerCache        = 'Nur Zwischenspeicher des Installers gefunden (z. B. Windows\Installer), kein Programmordner.'
+    ReasonLocationNoData                    = 'Weder Installer-Eintrag noch Programmsymbol oder Deinstallationsbefehl nennen einen Ordner.'
+
     # Exit-Codes (ConvertFrom-ActionExitCode; Schlüssel = ReasonExitCode + Schreibweise aus Format-ExitCode)
     ReasonExitCode0                         = 'Erfolgreich beendet'
     ReasonExitCode3010                      = 'Erfolgreich, ein Neustart ist nötig'

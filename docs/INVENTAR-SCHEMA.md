@@ -67,6 +67,38 @@ Warnsignale und Hinweise (`Flags`):
 
 Leere Felder sind `null`.
 
+## Installationsordner (`Resolve-InstallLocation`)
+
+Ermittelt den Ordner eines Programms erst auf Anfrage (die App ruft es beim Aufklappen der Details auf und merkt sich das Ergebnis für die Sitzung). Die Quellen in dieser Reihenfolge:
+
+| Quelle (`Source`) | Grundlage | Anzeige |
+|---|---|---|
+| `InstallerEntry` | `InstallLocation` aus dem Installer-Eintrag | „laut Installer-Eintrag“ |
+| `AppPackage` | Ordner der Store-App | „laut App-Paket“ |
+| `FileSearch` | Ordner der gefundenen Datei (portable Programme) | „laut Dateisuche“ |
+| `DisplayIcon` | Ordner des Programmsymbols | „vermutlich, abgeleitet aus dem Programmsymbol“ |
+| `UninstallCommand` | Ordner eines eigenen Deinstallationsprogramms (`unins*`, `uninstall*`, `setup*`) | „vermutlich, abgeleitet aus dem Deinstallationsbefehl“ |
+| `MsiComponents` | gemeinsamer Ordner der `.exe`-Komponenten eines MSI-Produkts | „vermutlich, abgeleitet aus den installierten MSI-Komponenten“ |
+
+Die ersten drei gelten als sicher (`Certain`). Die übrigen sind abgeleitet und zählen nur unter zwei Bedingungen:
+- Im Ordner liegt ein Programm, also eine `.exe`, die kein Deinstallations- oder Setup-Programm ist.
+- Der Ordner ist kein Zwischenspeicher des Installers.
+
+Nie verwendet werden:
+- `Windows\Installer`, `AppData\…\Installer`, `InstallShield Installation Information`, `ProgramData\Package Cache`, Temp- und Systemordner;
+- `msiexec` und die Starter anderer Programme (z. B. Steam).
+
+Ohne Ergebnis bleibt `Path` leer und `Reason` nennt den Grund als Meldung:
+
+| Code | Bedeutung |
+|---|---|
+| `LocationNotFound` | Der Ordner aus dem Installer-Eintrag existiert nicht (Pfad in den Args). |
+| `LocationNoProgramExe` | Im abgeleiteten Ordner liegt kein Programm. |
+| `LocationOnlyInstallerCache` | Gefunden wurden nur Zwischenspeicher des Installers. |
+| `LocationNoData` | Keine Quelle nennt einen Ordner. |
+
+`CanOpen` ist bei Store-Apps (`WindowsApps`) falsch. Dort bietet die App nur „Pfad kopieren“ an.
+
 ## Wiedererkennung zwischen Scans
 
 `Compare-InventorySnapshot` erkennt ein Programm in dieser Reihenfolge wieder: `RegistryKey`, `PackageFamilyName`, `WingetId`, `FilePath`, `Name`. Der Name steht bewusst zuletzt, weil er oft die Version enthält.
