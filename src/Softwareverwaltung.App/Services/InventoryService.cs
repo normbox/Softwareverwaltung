@@ -15,6 +15,9 @@ public interface IInventoryService
     Task<WingetStatus> GetWingetStatusAsync(CancellationToken cancellationToken = default);
 
     Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Installationsordner eines Programms (Resolve-InstallLocation); null, wenn das Modul nichts liefert.</summary>
+    Task<InstallLocationInfo?> ResolveInstallLocationAsync(PSObject source, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Ruft die Modulfunktionen auf und bildet die Ergebnisse auf Modelle ab.</summary>
@@ -48,5 +51,12 @@ public sealed class InventoryService(IPowerShellHost host) : IInventoryService
         var result = await host.InvokeAsync(command, progress, cancellationToken).ConfigureAwait(false);
         var items = result.Output.Select(SoftwareItem.FromRating).ToList();
         return new ScanResult(items, result.Warnings.Distinct().ToList(), result.Errors);
+    }
+
+    public async Task<InstallLocationInfo?> ResolveInstallLocationAsync(PSObject source, CancellationToken cancellationToken = default)
+    {
+        var command = new PSCommand().AddCommand("Resolve-InstallLocation").AddParameter("InputObject", source);
+        var result = await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return result.Output.FirstOrDefault() is { } location ? InstallLocationInfo.FromPs(location) : null;
     }
 }

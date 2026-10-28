@@ -4,6 +4,25 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Detailansicht: Installationsordner
+
+#### Neu
+
+- `Resolve-InstallLocation` ermittelt den Installationsordner mit Herkunft.
+  - **Sicher:** Installer-Eintrag, App-Paket, Dateisuche.
+  - **Vermutlich:** Programmsymbol, eigenes Deinstallationsprogramm, MSI-Komponenten. Abgeleitete Ordner zählen nur, wenn dort ein Programm liegt.
+  - **Nie verwendet:** Zwischenspeicher des Installers, `msiexec` und Starter anderer Programme.
+  - **Ohne Ergebnis:** Grund als Code (`LocationNotFound`, `LocationNoProgramExe`, `LocationOnlyInstallerCache`, `LocationNoData`).
+- **Details der App:**
+  - zeigen den vollen Pfad mit Herkunft oder „Ordner unbekannt“ mit Grund;
+  - bieten „Ordner öffnen“ (nicht bei Store-Apps) und „Pfad kopieren“;
+  - ermitteln den Ordner erst beim Aufklappen und merken ihn für die Sitzung.
+- Die Details klappen mit „Schließen“, Esc oder einem zweiten Klick auf die Zeile zu.
+
+#### Geändert
+
+- Alle Textspalten der Liste zeigen den vollen Text als Tooltip und kürzen mit „…“.
+
 ### Zwischenetappe: Texte auslagern (Modul)
 
 #### Geändert

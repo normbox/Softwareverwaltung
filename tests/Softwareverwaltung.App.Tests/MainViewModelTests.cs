@@ -117,6 +117,59 @@ public sealed class MainViewModelTests
         Assert.Equal("Scan abgebrochen.", vm.StatusText);
     });
 
+    [Fact]
+    public void ResolvesInstallFolderOnExpandOnceAndOffersOpenAndCopy() => RunOnDispatcher(async () =>
+    {
+        var tool = new SoftwareItem { Name = "Contoso Tool", InstalledVersion = "1.0", Source = new System.Management.Automation.PSObject() };
+        var inventory = new FakeInventory
+        {
+            Items = [tool],
+            Location = new InstallLocationInfo(@"C:\Program Files\Contoso", "vermutlich, abgeleitet aus dem Programmsymbol", null, CanOpen: true),
+        };
+        var shell = new FakeShell();
+        var vm = new MainViewModel(inventory, shell: shell);
+        await vm.InitializeAsync();
+
+        vm.SelectedItem = tool;
+        await Task.Yield();
+        Assert.Equal(@"C:\Program Files\Contoso", vm.SelectedLocation?.Path);
+        Assert.True(vm.OpenFolderCommand.CanExecute(null));
+        vm.OpenFolderCommand.Execute(null);
+        vm.CopyPathCommand.Execute(null);
+        Assert.Equal([@"C:\Program Files\Contoso"], shell.Opened);
+        Assert.Equal([@"C:\Program Files\Contoso"], shell.Copied);
+
+        // Zuklappen und wieder aufklappen: für die Sitzung gemerkt, nicht neu ermittelt.
+        vm.CloseDetailsCommand.Execute(null);
+        Assert.Null(vm.SelectedItem);
+        Assert.Null(vm.SelectedLocation);
+        vm.SelectedItem = tool;
+        await Task.Yield();
+        Assert.NotNull(vm.SelectedLocation);
+        Assert.Equal(1, inventory.ResolveCalls);
+    });
+
+    [Fact]
+    public void HidesOpenForStoreAppsAndCopyForUnknownFolders() => RunOnDispatcher(async () =>
+    {
+        var app = new SoftwareItem { Name = "Store App", Source = new System.Management.Automation.PSObject() };
+        var inventory = new FakeInventory { Items = [app], Location = new InstallLocationInfo(@"C:\Program Files\WindowsApps\X", "laut App-Paket", null, CanOpen: false) };
+        var vm = new MainViewModel(inventory, shell: new FakeShell());
+        await vm.InitializeAsync();
+
+        vm.SelectedItem = app;
+        await Task.Yield();
+        Assert.False(vm.OpenFolderCommand.CanExecute(null));
+        Assert.True(vm.CopyPathCommand.CanExecute(null));
+
+        var unknown = new SoftwareItem { Name = "Unknown", Source = new System.Management.Automation.PSObject() };
+        inventory.Location = new InstallLocationInfo(null, null, "Weder Installer-Eintrag noch Programmsymbol …", CanOpen: false);
+        vm.SelectedItem = unknown;
+        await Task.Yield();
+        Assert.False(vm.SelectedLocation!.IsKnown);
+        Assert.False(vm.CopyPathCommand.CanExecute(null));
+    });
+
     private static List<string> Names(MainViewModel vm) => vm.ItemsView.Cast<SoftwareItem>().Select(i => i.Name).ToList();
 
     private sealed class FakeInventory : IInventoryService
@@ -142,5 +195,24 @@ public sealed class MainViewModelTests
             }
             return new ScanResult(Items, Warnings, Errors);
         }
+
+        public InstallLocationInfo? Location { get; set; }
+        public int ResolveCalls { get; private set; }
+
+        public Task<InstallLocationInfo?> ResolveInstallLocationAsync(System.Management.Automation.PSObject source, CancellationToken cancellationToken = default)
+        {
+            ResolveCalls++;
+            return Task.FromResult(Location);
+        }
+    }
+
+    private sealed class FakeShell : IShellService
+    {
+        public List<string> Opened { get; } = [];
+        public List<string> Copied { get; } = [];
+
+        public void OpenFolder(string path) => Opened.Add(path);
+
+        public void CopyText(string text) => Copied.Add(text);
     }
 }

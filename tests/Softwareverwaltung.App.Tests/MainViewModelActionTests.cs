@@ -231,5 +231,8 @@ public sealed class MainViewModelActionTests
 
         public Task<ScanResult> ScanAsync(IProgress<string>? progress = null, CancellationToken cancellationToken = default) =>
             Task.FromResult(new ScanResult(Items, [], []));
+
+        public Task<InstallLocationInfo?> ResolveInstallLocationAsync(System.Management.Automation.PSObject source, CancellationToken cancellationToken = default) =>
+            Task.FromResult<InstallLocationInfo?>(null);
     }
 }
