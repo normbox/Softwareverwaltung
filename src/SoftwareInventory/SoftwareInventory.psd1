@@ -9,6 +9,7 @@
     CompatiblePSEditions = @('Core')
     FunctionsToExport    = @(
         'Get-SoftwareInventory'
+        'Resolve-InstallLocation'
         'Save-InventorySnapshot'
         'Get-InventorySnapshot'
         'Compare-InventorySnapshot'
