@@ -36,7 +36,7 @@ Externe Dienste sind standardmäßig aus (`Set-InventorySetting -Enable GitHub, 
 | `Status` | `UpToDate`, `Outdated` oder `Unknown` |
 | `Source` | `Winget`, `GitHub` oder `WingetSearch` |
 | `Confirmed` | `false` bei Ergebnissen, die nur über Name und Hersteller gefunden wurden |
-| `Reason` | bei `Unknown` immer gesetzt, z. B. „Dienst GitHub nicht aktiviert“, „Keine Versionsquelle bekannt“, „Installierte Version 'Unknown' nicht lesbar“ |
+| `Reason` | bei `Unknown` immer gesetzt, als Meldung mit Code, z. B. `ServiceDisabled` („Dienst GitHub nicht aktiviert“), `NoVersionSource`, `InstalledVersionUnreadable`. Liefern mehrere Quellen nichts, steht `NoLatestVersion` da, mit den einzelnen Gründen als Args |
 | `CatalogId` | zugeordneter Katalogeintrag (siehe [KATALOG.md](KATALOG.md)) |
 | `Record` | der geprüfte Datensatz |
 

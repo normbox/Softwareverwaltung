@@ -42,6 +42,7 @@ Stand der Adressen: 26.10.2026. Maßgeblich ist die Dokumentation des jeweiligen
 - Fehler kommen als `Ok = $false` mit festem Code (`Code`, im JSON `error_code`) und einer Meldung in der Sprache der Oberfläche zurück, damit das Modell sich korrigieren kann. Codes: `UnknownTool`, `InvalidArguments`, `InvalidId`, `UnknownId`, `InvalidLimit`, `InvalidRating`, `ReasonMissing`, `NoUpdateKnown`, `ToolFailed`; Vorschläge melden `ProposalCreated`.
 - Vorschläge führen nichts aus. `Proposal` enthält Aktion, Programm, Begründung und die Bewertung für die Oberfläche. Das Modell bekommt nur die Vorschlags-ID und den Hinweis, dass der Benutzer selbst entscheidet. Bestätigt und ausgeführt wird wie bei den Buttons, also mit Bestätigungsdialog und genau dem bestätigten Befehl (siehe [AKTIONEN.md](AKTIONEN.md)).
 - `Get-AdvisorTool -SystemPrompt` liefert die Systemanweisung: auf Deutsch antworten, nur auf Tool-Ergebnisse stützen, nur vorschlagen, „möglicherweise betroffen“ nicht als sicher darstellen.
+- Gründe, Hinweise und widerlegte Treffer bekommt das Modell als `code`, `args` und `text`. So hängt auch dort die Logik am Code, und der Text ist in der Sprache der Oberfläche.
 - Alle Texte (Tool-Beschreibungen, Systemanweisung, Meldungen, Hinweise zu den Vorgaben) stehen in `src/SoftwareInventory/SoftwareInventory.Strings.psd1` und kommen über `Import-LocalizedData` in der Sprache der Oberfläche; vorerst gibt es nur Deutsch.
 
 ## Bereinigung

@@ -4,6 +4,18 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Zwischenetappe: Texte auslagern (Modul)
+
+#### Geändert
+
+- **Meldungen mit Code:** Gründe der Ampel, Gründe und Hinweise der Versions- und Sicherheitsprüfung, widerlegte KEV-Treffer und Meldungen der Aktionen sind Meldungen vom Typ `SoftwareInventory.Message` mit `Code`, `Args` und `Text`. Logik und Tests prüfen den Code, App und Bericht zeigen den Text, der KI-Berater bekommt alle drei Felder. Die Texte sind wortgleich geblieben.
+- **Aktionsprotokoll:** Es speichert Code und Args. `Get-ActionLog` baut den Text in der Sprache der Oberfläche neu auf. Ältere Einträge mit reinem Text sind mit „(älterer Eintrag)“ gekennzeichnet.
+- **Erhöhter Helfer:** Er liefert nur noch Codes, den Text bildet das Modul.
+- **Weitere Texte in der psd1:** Warnungen, Fehler, Bestätigungstexte, Exit-Code-Meldungen, Hinweise zu den Nutzungsbedingungen, Prüfmeldungen des Katalogs und der HTML-Bericht stehen jetzt in `SoftwareInventory.Strings.psd1`. Der Bericht übernimmt Datumsformat und Sprachangabe aus der Sprache der Oberfläche.
+- **Sprache:** Die eingebettete Engine läuft ausdrücklich in der UI-Sprache der App. Ohne Übersetzung gelten die deutschen Basistexte.
+- **Fortschritt:** Die Statuszeile zeigt eigene Meldungen wie „Prüfe Sicherheitslücken (12 von 85): Programmname“. Die englischen Fortschrittsmeldungen von PowerShell bei Webabfragen und winget sind unterdrückt.
+- **Dokumentation:** Neuer Abschnitt „Texte und Meldungen“ in `docs/ENTWICKLUNG.md`.
+
 ### Zwischenetappe: Texte auslagern (App)
 
 #### Geändert

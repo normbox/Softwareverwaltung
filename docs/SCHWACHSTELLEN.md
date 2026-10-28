@@ -45,11 +45,11 @@ Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das
 | `CpeSource` | `Catalog` oder `User` (bestätigte Zuordnung) |
 | `Cpe` | abgefragte CPE-Namen mit Version |
 | `Status` | `Checked` (NVD abgefragt) oder `Unknown` |
-| `Reason` | bei `Unknown` immer gesetzt: „Dienst NVD nicht aktiviert“, „Keine CPE zugeordnet …“, „Version '…' nicht lesbar“, „NVD-Anfragelimit erreicht“ … |
-| `Notes` | Hinweise, z. B. „Dienst KEV nicht aktiviert“ |
+| `Reason` | bei `Unknown` immer gesetzt, als Meldung mit Code: `ServiceDisabled` („Dienst NVD nicht aktiviert“), `NoCpe`, `VersionUnreadable`, `RateLimit`, `ServiceUnavailable` … |
+| `Notes` | Hinweise als Meldungen, z. B. `ServiceDisabled` mit Args `KEV` |
 | `Vulnerabilities` | Liste, KEV zuerst, dann nach CVSS absteigend; Hinweise (`Informational`) am Ende |
 
-Je Schwachstelle (`SoftwareInventory.Vulnerability`): `CveId`, `Assessment` (`Affected`, `PossiblyAffected` oder `Informational`), `Note`, `Score`, `Severity`, `CvssVersion` (höchste vorhandene: 4.0 vor 3.1, 3.0, 2.0; bevorzugt die Bewertung der NVD), `Published`, `Description` (englisch, gekürzt), `Kev`, `KevDateAdded`, `KevRansomware`, `Epss`, `EpssPercentile`, `Url`.
+Je Schwachstelle (`SoftwareInventory.Vulnerability`): `CveId`, `Assessment` (`Affected`, `PossiblyAffected` oder `Informational`), `Note` (Meldung, z. B. `KevNvdNoVersionData`), `Score`, `Severity`, `CvssVersion` (höchste vorhandene: 4.0 vor 3.1, 3.0, 2.0; bevorzugt die Bewertung der NVD), `Published`, `Description` (englisch, gekürzt), `Kev`, `KevDateAdded`, `KevRansomware`, `Epss`, `EpssPercentile`, `Url`.
 
 ## CPE für Programme ohne Katalogeintrag
 

@@ -78,11 +78,11 @@ Mit Adminrechten läuft nur ein kleines Helferskript (`src/SoftwareInventory/Ele
 | `Elevated` | mit Administratorrechten ausgeführt |
 | `Result` | siehe unten |
 | `ExitCode`, `ExitCodeHex` | Exit-Code; winget-Codes zusätzlich als `0x8A15…` |
-| `Message` | Klartext |
+| `Message` | Meldung mit `Code`, `Args` und `Text` (siehe [ENTWICKLUNG.md](ENTWICKLUNG.md), „Texte und Meldungen“) |
 | `Output` | Letzte Zeilen der Ausgabe von winget bzw. des Installationsprogramms |
 | `InstallerLog` | Pfad des aufgehobenen MSI-Logs (`.zip`, nur bei Fehlern) |
 | `VersionBefore`, `VersionAfter`, `PresentBefore`, `PresentAfter` | Zustand vor und nach der Aktion |
-| `RestorePoint`, `RestorePointMessage` | `NotRequested`, `Planned` (nur `-WhatIf`), `Created`, `Skipped`, `NotAvailable`, `Failed` |
+| `RestorePoint`, `RestorePointMessage` | `NotRequested`, `Planned` (nur `-WhatIf`), `Created`, `Skipped`, `NotAvailable`, `Failed`; dazu der Grund als Meldung |
 | `VendorUrl` | Herstellerlink bei `ManualUpdateRequired` |
 | `NextMethod` | Nächste mögliche Methode, falls diese fehlschlägt |
 | `StartedAt`, `CompletedAt` | UTC |
