@@ -4,6 +4,17 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Dokumentation: Datenschutz, Lizenzen, Technik, Rechtliches
+
+#### Neu
+
+- `PRIVACY.md` (Datenschutz) im Hauptverzeichnis, `docs/TECHNIK.md` (Bestandteile, Datenablage, Netzwerkverbindungen), `docs/EXTERNE-DIENSTE.md` (was an welchen Dienst geht, Freigabestufen als Planung), `docs/RECHTLICHES.md` (Lizenz, Haftung, Bedingungen der Datenquellen) und `docs/FIRMENEINSATZ.md` (Checkliste für Unternehmen). Die Entwürfe vom 24.10.2026 sind auf den Stand vom 28.10.2026 gebracht.
+
+#### Geändert
+
+- `THIRD-PARTY-NOTICES.md` ist um Entwicklungswerkzeuge, aufgerufene Programme, Daten der Dienste, Pflichthinweise und Regeln für neue Abhängigkeiten erweitert.
+- Das README verweist auf die neuen Dokumente.
+
 ### Mehrfachauswahl und Update-Warteschlange
 
 #### Neu

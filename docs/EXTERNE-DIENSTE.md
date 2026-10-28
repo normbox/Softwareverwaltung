@@ -1,47 +1,52 @@
 # Externe Dienste: was wohin geht
 
-Stand: 24.10.2026
+Stand: 28.10.2026
 
-Das Inventar selbst entsteht vollständig auf dem eigenen Rechner. Erst für den Versions- und Sicherheitsabgleich und für den KI-Berater spricht die App mit Diensten im Internet. Dieses Dokument zeigt für jeden Dienst, welche Daten übertragen werden, wer sie bekommt und was man vor der Nutzung beachten sollte.
+Das Inventar selbst entsteht vollständig auf dem eigenen Rechner. Erst für den Versions- und Sicherheitsabgleich und für den KI-Berater spricht die App mit Diensten im Internet bzw. im eigenen Netz. Dieses Dokument zeigt für jeden Dienst, welche Daten übertragen werden, wer sie bekommt und was man vor der Nutzung beachten sollte.
 
 > **Keine Rechtsberatung.** Die Angaben zu Bedingungen der Anbieter geben den recherchierten Stand wieder. Anbieter ändern ihre Bedingungen; vor dem Einsatz, besonders in Firmen, die aktuelle Fassung lesen.
 
 ## Grundsätze
 
-1. **Alles Externe ist abschaltbar.** Jeder Dienst lässt sich in den Einstellungen einzeln aus- und einschalten. Ohne Netzwerk funktioniert das Inventar weiterhin.
-2. **Sparsam fragen.** Wo ein Dienst eine Gesamtliste anbietet (CISA KEV, EPSS, NVD-Datenbestand), lädt die App die ganze Liste und vergleicht lokal. Dann erfährt der Anbieter nicht, welche Programme installiert sind.
-3. **Eigene Schlüssel.** Das Projekt betreibt keinen eigenen Server und hat keinen Zugang zu den Daten der Nutzer. API-Schlüssel gehören dem Nutzer und liegen in der Windows-Anmeldeinformationsverwaltung.
-4. **Transparenz.** Die Einstellungen zeigen vor dem ersten Senden an eine Cloud-KI eine Vorschau der zu übertragenden Daten.
-5. **Jeder Abruf überträgt die IP-Adresse** des Rechners (bzw. des Firmen-Proxys) und technische Daten wie Uhrzeit und Programmkennung (User-Agent). Das gilt für alle folgenden Dienste und wird nicht jedes Mal wiederholt.
+1. **Alles Externe ist aus, bis es eingeschaltet wird.** Jeder Dienst lässt sich in den Einstellungen einzeln ein- und ausschalten. Ohne Netzwerk funktioniert das Inventar weiterhin.
+2. **Sparsam fragen.** Wo ein Dienst eine Gesamtliste anbietet (CISA KEV), lädt die App die ganze Liste und vergleicht lokal. Dann erfährt der Anbieter nicht, welche Programme installiert sind. Wo das nicht geht (NVD, EPSS, GitHub), fragt die App gezielt und nur mit den nötigen Angaben.
+3. **Zwischenspeicher.** Antworten werden zwischengespeichert, die Haltbarkeit ist je Quelle einstellbar (Standard: neueste Version 6 Stunden, NVD, EPSS und KEV je 24 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter und sind als veraltet gekennzeichnet.
+4. **Eigene Schlüssel.** Das Projekt betreibt keinen eigenen Server und hat keinen Zugang zu den Daten der Nutzer. API-Schlüssel gehören dem Nutzer und liegen in der Windows-Anmeldeinformationsverwaltung.
+5. **Jeder Abruf überträgt die IP-Adresse** des Rechners (bzw. des Firmen-Proxys) und technische Daten wie Uhrzeit und Programmkennung (User-Agent `SoftwareInventory/<Version>`). Das gilt für alle folgenden Dienste und wird nicht jedes Mal wiederholt.
 
 ## Dienste einrichten: alles manuell, für alle gleich
 
 Die App schaltet keinen externen Dienst selbst ein und unterscheidet nicht zwischen Privat- und Firmennutzung. Jeder Dienst wird vom Nutzer bzw. Administrator bewusst eingerichtet, auf dieselbe Weise für alle.
 
-- **Standard:** Alle Dienste sind nach der Installation aus. Ein Einrichtungsassistent beim ersten Start stellt sie vor und lässt jeden einzeln einschalten; überspringen ist möglich.
-- **Pro Dienst:** einschalten, ggf. eigenen Schlüssel eintragen, Freigabestufe wählen (bei KI), Bedingungen bestätigen.
-- **Bedingungen sichtbar machen statt entscheiden:** Die App zeigt zu jedem Dienst aus dem Dienstkatalog an, welche Nutzung der Anbieter erlaubt (z. B. „Kostenlose API nur für private, nicht-kommerzielle Nutzung“), was übertragen wird und wohin. Der Nutzer bestätigt beim Einschalten, dass seine Nutzung den Bedingungen entspricht. Die App kann das nicht prüfen; die Verantwortung liegt beim Nutzer.
-- **Ohne Dienst weiter:** Ist ein Dienst nicht eingerichtet, läuft die App ohne ihn und zeigt an, welche Prüfung dadurch fehlt (z. B. „Hash-Abgleich nicht aktiv“).
-- **Optional für Firmen:** Ein Administrator kann Einstellungen vorab festlegen und sperren, über eine Richtlinie in der Registry (Vorschlag: `HKLM\SOFTWARE\Policies\Softwareverwaltung`). Ohne Richtlinie ist alles frei einstellbar. Die Richtlinie automatisiert nichts, sie übernimmt nur die Einstellungen, die der Administrator selbst gewählt hat.
+- **Standard:** Alle Dienste sind nach der Installation aus.
+- **Erster Start:** Die App fragt einmal „Privat“ oder „Firma“ und zeigt die passenden Hinweise zu den Nutzungsbedingungen der Dienste. Die Angabe schaltet nichts ein.
+- **Einstellungen:** Jeder Dienst hat einen eigenen Schalter mit dem Hinweis, was übertragen wird. Vorlagen („Schnell“, „Gründlich“) setzen nur sichtbare Häkchen, nie Dienste; übernommen wird erst mit „Speichern“.
+- **Bedingungen sichtbar machen statt entscheiden:** Die App zeigt zu jedem Dienst an, welche Nutzung der Anbieter erlaubt, was übertragen wird und wohin. Die App kann nicht prüfen, ob die eigene Nutzung den Bedingungen entspricht; die Verantwortung liegt beim Nutzer.
+- **Ohne Dienst weiter:** Ist ein Dienst nicht eingeschaltet, läuft die App ohne ihn und nennt den Grund, z. B. „Nicht auf Lücken geprüft: Dienst NVD nicht aktiviert“.
+- **Für Firmen (geplant, Etappe 6):** Ein Administrator soll Einstellungen vorab festlegen und sperren können, über eine Richtlinie in der Registry (Vorschlag: `HKLM\SOFTWARE\Policies\Softwareverwaltung`). Die Richtlinie automatisiert nichts, sie übernimmt nur die Einstellungen, die der Administrator selbst gewählt hat.
 
-## Dienstkatalog: neue Anbieter aufnehmen
+## Hinweise je Dienst: wie sie gepflegt werden
 
-Damit weitere Anbieter (andere KI-Dienste, Schwachstellen- oder Versionsquellen, Virenscanner) ohne Sonderlogik dazukommen, beschreibt ein Eintrag im Dienstkatalog jeden Dienst. Die App zeigt daraus die Hinweise beim Einrichten an.
+Die Hinweise zu den Nutzungsbedingungen stehen im Modul (`Get-ServiceTermsNotice`) mit Dienst, Name, Kurzfassung der Bedingungen, einem zusätzlichen Hinweis für Firmen und dem Link zu den Originalbedingungen. Die Texte liegen in `SoftwareInventory.Strings.psd1`.
 
-| Feld | Bedeutung | Beispiel VirusTotal |
+Für weitere Anbieter ist ein ausführlicherer Dienstkatalog vorgesehen:
+
+| Feld | Bedeutung | Beispiel |
 | --- | --- | --- |
-| `Id`, `Name`, `Operator`, `Country` | Kennung, Anzeigename, Betreiber, Sitz | `virustotal`, VirusTotal, Google, USA |
-| `Category` | Versionen, Schwachstellen, KI, Reputation, Recherche | Reputation |
-| `UsageClass` | Hinweis auf die Nutzungsbedingungen: `A` frei für alle, `B` kostenlos nur privat, `C` eigenes Konto/Vertrag | `B` |
-| `UsageNote` | Bedingungen in einem Satz, wird beim Einschalten angezeigt | „Kostenlose API nur privat; geschäftlich Premium nötig“ |
-| `SendsInventoryData` | überträgt der Dienst Programmnamen, Versionen, Hashes? | ja (Hashes) |
-| `DataSent` | Klartext für die Einstellungen | „SHA256-Hash der Datei“ |
-| `RequiresKey` | Schlüssel nötig? | ja |
-| `TermsUrl`, `TermsCheckedOn` | Bedingungen und Datum der letzten Prüfung | Link, 2026-10-24 |
+| `Id`, `Name`, `Operator`, `Country` | Kennung, Anzeigename, Betreiber, Sitz | `nvd`, NVD, NIST, USA |
+| `Category` | Versionen, Schwachstellen, KI, Reputation, Recherche | Schwachstellen |
+| `UsageClass` | Hinweis auf die Nutzungsbedingungen: `A` frei für alle, `B` kostenlos nur privat, `C` eigenes Konto/Vertrag | `A` |
+| `UsageNote` | Bedingungen in einem Satz, wird beim Einschalten angezeigt | „Kostenlos, auch kommerziell; Hinweis auf die NVD“ |
+| `SendsInventoryData` | überträgt der Dienst Programmnamen, Versionen, Hashes? | ja (CPE mit Version) |
+| `DataSent` | Klartext für die Einstellungen | „Hersteller, Produkt und Version (CPE)“ |
+| `RequiresKey` | Schlüssel nötig? | nein (optional) |
+| `TermsUrl`, `TermsCheckedOn` | Bedingungen und Datum der letzten Prüfung | Link, 2026-10-26 |
 
-Regeln für Beiträge: Ein neuer Dienst braucht einen vollständigen Eintrag, einen Link auf die geprüften Bedingungen und einen Abschnitt in diesem Dokument. Er ist immer standardmäßig aus. Im Zweifel wird er als Klasse B eingestuft. Ändert ein Anbieter seine Bedingungen, wird `TermsCheckedOn` aktualisiert und die Klasse neu bewertet.
+Regeln für Beiträge: Ein neuer Dienst braucht einen Hinweis zu den Bedingungen, einen Link auf die geprüften Bedingungen und einen Abschnitt in diesem Dokument. Er ist immer standardmäßig aus. Im Zweifel wird er als Klasse B eingestuft.
 
 ## Was die KI sehen darf: Freigabestufen
+
+Geplant für Etappe 4b. Bis dahin geben die Werkzeuge des Beraters gar keine Nutzungsspuren weiter; ein Test sichert das ab.
 
 Unabhängig vom Anbieter lässt sich festlegen, wie tief der KI-Berater in die Daten schauen darf. Die Grenze setzt das Modul selbst: Die Werkzeuge (`get_inventory` usw.) geben nur die Felder der eingestellten Stufe zurück. Was nicht freigegeben ist, erreicht das Modell gar nicht; eine Anweisung im Prompt allein würde nicht genügen.
 
@@ -53,117 +58,109 @@ Unabhängig vom Anbieter lässt sich festlegen, wie tief der KI-Berater in die D
 | **3 Portable Programme** | zusätzlich gefundene portable Programme mit Version, Signaturstatus und Fundort-Art (z. B. „Downloads“) | Nutzungsspuren |
 | **4 Nutzungsspuren, vergröbert** | zusätzlich „zuletzt genutzt“ in groben Klassen (unter 1 Monat, 1 bis 6 Monate, länger, nie) und „läuft im Autostart“ | genaue Zeitstempel, Startzähler, Benutzerzuordnung |
 
-Genaue Zeitstempel, Startzähler und die Zuordnung zu einzelnen Benutzern gibt es für keine KI, auch nicht lokal. Für die Beratung („Das Programm haben Sie seit Monaten nicht genutzt, deinstallieren?“) reichen die groben Klassen.
+Genaue Zeitstempel, Startzähler und die Zuordnung zu einzelnen Benutzern gibt es für keine KI, auch nicht lokal.
 
 Weitere Einschränkungen:
 
-- **Getrennt nach Anbieter:** Für lokale und externe KI gelten eigene Stufen. Voreinstellung: lokal Stufe 3, extern Stufe 1.
-- **Ausschlussliste:** Einzelne Programme, Hersteller oder Ordner lassen sich ganz vor der KI verbergen (z. B. interne Firmenprogramme). Sie erscheinen dann weder in Listen noch in Suchanfragen.
-- **Tiefenscan ohne KI:** Die Nutzungsspuren können für die eigene Ansicht gelesen werden, ohne sie der KI freizugeben.
-- **Firmen (optional):** Ein Administrator kann per Richtlinie die höchste erlaubte Stufe je Anbieter festlegen; Nutzer können sie dann nur senken. Empfehlung: extern höchstens Stufe 1, Stufe 4 nur mit Betriebsvereinbarung.
-- **Vorschau:** Die Einstellungen zeigen für jede Stufe ein Beispiel der Daten, die tatsächlich übertragen würden.
+- **Vorerst nur lokale Anbieter**, Voreinstellung Stufe 3, mit einer Vorschau der übertragenen Daten. Für spätere externe Anbieter gelten eigene Stufen (Vorschlag: höchstens Stufe 1).
+- **Ausschlussliste (geplant):** Einzelne Programme, Hersteller oder Ordner lassen sich ganz vor der KI verbergen (z. B. interne Firmenprogramme).
+- **Firmen (geplant):** Ein Administrator kann per Richtlinie die höchste erlaubte Stufe je Anbieter festlegen; Nutzer können sie dann nur senken.
 - Die Bereinigung von Benutzer- und Rechnernamen gilt zusätzlich auf jeder Stufe.
 
 ## Übersicht
 
 Klassen: **A** frei für alle · **B** kostenlos nur privat · **C** eigenes Konto/Vertrag.
 
-| Dienst | Betreiber, Sitz | Übertragene Inhalte | Klasse | Standard |
-| --- | --- | --- | --- | --- |
-| winget-Quellen | Microsoft, USA | Abfrage der Paketkataloge; bei Aktionen die Paket-ID | A | an (Teil des Inventars), abschaltbar |
-| GitHub Releases | GitHub (Microsoft), USA | Name des abgefragten Repositorys (z. B. `notepad-plus-plus/notepad-plus-plus`) | A (Token optional) | aus |
-| NVD CVE-API | NIST, USA | Produktkennung (CPE) bzw. Änderungszeitraum, je nach Abfrageart | A (Schlüssel optional) | aus |
-| CISA KEV | CISA, USA | nichts außer dem Abruf der Gesamtliste | A | aus |
-| EPSS | FIRST.org, USA | Gesamtliste oder CVE-Nummern | A | aus |
-| OSV.dev | Google, USA | Paketname und Version | A | aus |
-| Claude API | Anthropic, USA | Chat-Text und Werkzeugergebnisse (Programmliste, Versionen, CVEs), bereinigt | C | aus |
-| Ollama / LM Studio lokal | eigener Rechner | nichts verlässt den Rechner | A (Modelllizenz beachten) | aus |
-| Ollama auf eigenem Server | eigener Server | wie Claude API, aber zum eigenen Server | A | aus |
-| Web-Recherche des Beraters | abhängig von der Umsetzung (z. B. Suchwerkzeug der Claude API) | Suchbegriffe, meist Programmnamen | je nach Anbieter | aus |
-| VirusTotal | Google, USA | SHA256-Hash einer Datei, **niemals die Datei selbst** | B | aus |
-| Installierter Virenschutz (Bitdefender, Defender u. a.) | eigener Rechner | Datei wird lokal vom Virenscanner geprüft; ob dieser selbst etwas an seine Cloud meldet, bestimmt seine eigene Einstellung | A (Bedingungen des Virenschutzes) | aus |
-| Firmen-Virenschutz mit API (z. B. Bitdefender GravityZone, Microsoft Defender for Endpoint) | Hersteller bzw. eigene Konsole | Abfrage von Status und Funden je Rechner | C | aus |
+| Dienst | Betreiber, Sitz | Übertragene Inhalte | Klasse | Status | Standard |
+| --- | --- | --- | --- | --- | --- |
+| winget-Paketliste | Microsoft, USA | Abfrage der Paketkataloge durch winget | A | vorhanden | aus |
+| winget-Suche nach neuen Versionen | Microsoft, USA | Paket-IDs oder Programmnamen an die Quelle `winget` | A | vorhanden | aus |
+| Updates und Deinstallation über winget | Microsoft bzw. Hersteller | Paket-ID; Download des Installationsprogramms | A | vorhanden | nur nach Bestätigung |
+| GitHub Releases | GitHub (Microsoft), USA | Name des Repositorys aus dem Katalog | A (Token optional) | vorhanden | aus |
+| NVD CVE- und CPE-API | NIST, USA | Produktkennung (CPE) mit Version; bei CPE-Vorschlägen der Programmname | A (Schlüssel optional) | vorhanden | aus |
+| CISA KEV | CISA, USA | nichts außer dem Abruf der Gesamtliste | A | vorhanden | aus |
+| EPSS | FIRST.org, USA | Nummern der gefundenen Lücken (CVE-IDs) | A | vorhanden | aus |
+| Lokaler KI-Server (Ollama, LM Studio, Unsloth Studio) | eigener Rechner | nichts verlässt den Rechner | A (Modelllizenz beachten) | geplant (4b) | aus |
+| KI-Server unter eigener Adresse | eigener Server | bereinigte Unterhaltung und Werkzeugergebnisse an diesen Server | A | geplant (4b) | aus |
 
-Klasse und Hinweis geben den Stand der Prüfung am 24.10.2026 wieder.
+Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 
 ## Die Dienste im Einzelnen
 
 ### winget (Microsoft)
 
-- **Was:** Beim Lesen der Paketliste aktualisiert winget seine Quellen (Download der Kataloge). Bei Update oder Deinstallation lädt winget das Installationsprogramm vom Hersteller oder aus dem Store.
-- **Beachten:** Die Quelle `msstore` hat eine eigene Vereinbarung, der der Nutzer einmal zustimmen muss. Die App übergeht das nicht stillschweigend. winget sendet Telemetrie gemäß den Windows-Diagnoseeinstellungen; abschaltbar in `winget settings`.
+- **Was:** Beim Lesen der Paketliste aktualisiert winget seine Quellen (Download der Kataloge). Die winget-Suche fragt die Quelle `winget` nach Programmen ohne winget-ID. Bei Update oder Deinstallation lädt winget das Installationsprogramm vom Hersteller oder aus dem Store.
+- **Beachten:** Die Quelle `msstore` hat eine eigene Vereinbarung. Updates von Store-Paketen laufen derzeit mit `--accept-source-agreements`; das soll vorher sichtbar bestätigt werden (offen). winget sendet Telemetrie gemäß den Windows-Diagnoseeinstellungen; abschaltbar in `winget settings`.
 - **Firmen:** winget lässt sich per Gruppenrichtlinie steuern (erlaubte Quellen, eigene REST-Quelle).
 
 ### GitHub Releases
 
-- **Was:** Für Programme mit bekanntem GitHub-Repository fragt die App die neueste Veröffentlichung ab.
-- **Grenzen:** ohne Token 60 Anfragen pro Stunde und IP, mit Token 5.000. Hinter einem gemeinsamen Firmen-Proxy ist die Grenze ohne Token schnell erreicht.
+- **Was:** Für Programme mit bekanntem GitHub-Repository (aus dem Katalog) fragt die App die neueste Veröffentlichung ab.
+- **Grenzen:** ohne Token 60 Anfragen pro Stunde und IP, mit Token 5.000. Hinter einem gemeinsamen Firmen-Proxy ist die Grenze ohne Token schnell erreicht; die App bricht weitere GitHub-Abfragen im selben Lauf dann ab.
 - **Token:** Ein „fine-grained“ Token **ohne jede Berechtigung** genügt für öffentliche Repositorys. Keine Tokens mit Schreibrechten verwenden.
 
 ### NVD (National Vulnerability Database)
 
-- **Was:** CVEs und Schweregrade (CVSS) zu Produkten.
-- **Bedingungen:** Pflichthinweis „This product uses the NVD API but is not endorsed or certified by the NVD.“ (in der App unter „Über“). Schlüssel sind persönlich und dürfen nicht weitergegeben oder ins Repository gelegt werden. Ohne Schlüssel gelten deutlich engere Abfragegrenzen; die App wartet zwischen Anfragen entsprechend.
-- **Datenschutz:** Abfragen nach Produkt verraten, welche Software installiert ist. Datensparsamer ist die Synchronisierung des Gesamtbestands über Änderungszeiträume mit lokalem Abgleich (Empfehlung für die Umsetzung in Etappe 2).
+- **Was:** CVEs und Schweregrade (CVSS) zu Produkten, abgefragt über die zugeordnete CPE mit Version. Außerdem Vorschläge für CPE-Zuordnungen aus dem CPE-Wörterbuch.
+- **Bedingungen:** Pflichthinweis „This product uses the NVD API but is not endorsed or certified by the NVD.“. Schlüssel sind persönlich und dürfen nicht weitergegeben oder ins Repository gelegt werden. Ohne Schlüssel gelten engere Abfragegrenzen; die App wartet dann 6 Sekunden zwischen zwei Anfragen, mit Schlüssel 0,6 Sekunden.
+- **Datenschutz:** Abfragen nach Produkt und Version verraten, welche Software installiert ist. Ein datensparsamerer Gesamtabgleich (Synchronisierung des NVD-Bestands über Änderungszeiträume, lokaler Vergleich) ist nicht umgesetzt.
 
 ### CISA KEV und EPSS
 
 - **Was:** Liste aktiv ausgenutzter Lücken (KEV) und Ausnutzungswahrscheinlichkeit (EPSS).
-- **Datenschutz:** Beide werden als Gesamtliste geladen; es fließen keine Inventardaten ab.
-- **Bedingungen:** KEV ist gemeinfrei (CC0). EPSS ist frei nutzbar; Quellenangabe in der App.
+- **Datenschutz:** KEV wird als Gesamtliste geladen; es fließen keine Inventardaten ab. EPSS erhält die Nummern der gefundenen Lücken (CVE-IDs), nicht die Programmnamen.
+- **Bedingungen:** KEV ist gemeinfrei (CC0), Logo und Siegel der CISA dürfen nicht verwendet werden. EPSS ist frei nutzbar; Quellenangabe in der App.
 
-### OSV.dev und GitHub Advisory Database
+### Lokale KI (Ollama, LM Studio, Unsloth Studio) – geplant für Etappe 4b
 
-- **Was:** Schwachstellen in Open-Source-Paketen.
-- **Datenschutz:** Abfragen enthalten Paketname und Version.
-- **Bedingungen:** Daten stehen unter der Lizenz ihrer Ursprungsdatenbank (GitHub Advisory Database: CC BY 4.0, Namensnennung).
-
-### Claude API (Anthropic)
-
-- **Was:** Der KI-Berater schickt die Unterhaltung und die Ergebnisse der Werkzeugaufrufe (z. B. Programmliste mit Versionen, gefundene CVEs) an das Modell.
-- **Bereinigung vor dem Senden:** Benutzername, Rechnername und Benutzerpfade (`C:\Users\<Name>\…`) werden durch Platzhalter ersetzt. Das ist eine **Pseudonymisierung, keine Anonymisierung**: Eine Liste installierter Software kann einen Rechner trotzdem kennzeichnen. Im Firmeneinsatz gilt die DSGVO daher weiter.
-- **Bedingungen (Stand Oktober 2026, vor Nutzung prüfen):** Die API fällt unter die Commercial Terms von Anthropic, auch bei privater Nutzung. Laut Anthropic werden API-Eingaben nicht zum Training verwendet und standardmäßig nach 30 Tagen gelöscht; längere Speicherung ist bei Verstößen gegen die Nutzungsrichtlinie möglich. „Zero Data Retention“ gibt es nur nach Vereinbarung. Die Verarbeitung erfolgt in den USA.
-- **Kosten:** Abrechnung nach Tokens über das Konto des Nutzers. Die App zeigt den Verbrauch an (geplant).
-- **Firmen:** Auftragsverarbeitung, Drittlandübermittlung und Alternativen siehe [FIRMENEINSATZ.md](FIRMENEINSATZ.md).
-- **Umfang:** begrenzt durch die Freigabestufe (Voreinstellung extern: Stufe 1, nur Programmliste).
-- **Was nie gesendet wird:** API-Schlüssel, Inhalte von Dateien, Protokolle mit Benutzernamen, Hashes von Dateien aus privaten Ordnern.
-
-### Lokale KI (Ollama, LM Studio)
-
-- **Was:** Das Modell läuft auf dem eigenen Rechner; nichts verlässt ihn. Datenschutzrechtlich die einfachste Wahl.
-- **Beachten:** Ollama lauscht standardmäßig nur auf `localhost`. Wer es im Netzwerk freigibt (`OLLAMA_HOST=0.0.0.0`), sollte den Zugriff per Firewall beschränken, da Ollama keine Anmeldung kennt. Läuft Ollama auf einem Server im Firmennetz, gehen die Daten dorthin; dann gilt dasselbe wie für jeden internen Dienst.
+- **Was:** Das Modell läuft auf dem eigenen Rechner; nichts verlässt ihn. Datenschutzrechtlich die einfachste Wahl. Angesprochen wird jeder Server mit OpenAI-kompatibler Schnittstelle und Tool-Unterstützung.
+- **Bereinigung:** Benutzername, Rechnername und Benutzerpfade werden auch für lokale Modelle ersetzt.
+- **Beachten:** Ollama lauscht standardmäßig nur auf `localhost`. Wer es im Netzwerk freigibt (`OLLAMA_HOST=0.0.0.0`), sollte den Zugriff per Firewall beschränken, da Ollama keine Anmeldung kennt. Läuft der Server im Firmennetz, gehen die Daten dorthin; dann gilt dasselbe wie für jeden internen Dienst. Unsloth Studio verlangt einen API-Schlüssel.
 - **Lizenzen:** Jedes Modell hat eine eigene Lizenz. Für Firmen eignen sich Modelle unter Apache-2.0 oder MIT am einfachsten; bei Llama und Gemma die jeweiligen Bedingungen lesen.
-- **Qualität:** Kleine lokale Modelle beherrschen Tool-Aufrufe unterschiedlich gut. Das Standardmodell ist noch offen.
+- **Qualität:** Kleine lokale Modelle beherrschen Tool-Aufrufe unterschiedlich gut. Es gibt kein Standardmodell; gewählt wird aus den installierten Modellen.
 
-### Web-Recherche des Beraters
+## Geplant oder nur als Idee (nicht umgesetzt)
 
-- **Was:** Für unbekannte Programme kann der Berater im Web suchen. Ergebnisse gelten als „unbestätigt“.
-- **Datenschutz:** Suchbegriffe enthalten meist Programmnamen, ggf. Hersteller. Benutzerdaten werden nicht in Suchanfragen übernommen. Welcher Suchanbieter die Anfragen erhält, hängt von der Umsetzung ab und wird in den Einstellungen genannt.
+Diese Dienste sind nicht eingebaut. Die Notizen bleiben für die spätere Umsetzung stehen.
 
-### Installierter Virenschutz (z. B. Bitdefender, Microsoft Defender)
+### CIRCL Vulnerability-Lookup (geplant)
 
-Idee für einen späteren Ausbau, noch nicht umgesetzt und nicht getestet.
+Zweite Quelle für Schwachstellen neben der NVD, einzeln schaltbar. Wird nach der Umsetzung oben aufgenommen.
 
-- **Bitdefender für Privatkunden** (Total Security, Premium Security) hat nach unserer Recherche **keine öffentliche Schnittstelle** und keinen offiziellen Befehlszeilen-Scanner. Eine direkte Anbindung „Bitdefender, prüfe diese Datei und sag mir das Ergebnis“ gibt es daher nicht.
-- **Herstellerunabhängig über Windows** geht trotzdem einiges, und zwar mit jedem Virenschutz, der sich bei Windows anmeldet:
-  - **Status:** Welcher Virenschutz installiert ist, ob er aktiv ist und ob die Signaturen aktuell sind, liefert das Windows-Sicherheitscenter (WMI `root\SecurityCenter2`, Klasse `AntiVirusProduct`). Nur lesen, Benutzerrechte genügen. Das ist ein sinnvoller Punkt für die Sicherheitsampel („Virenschutz aktiv und aktuell“).
-  - **Datei prüfen lassen:** Über die Windows-Schnittstellen AMSI (Antimalware Scan Interface) oder den Anlagen-Dienst (`IAttachmentExecute`, wie ihn Browser für Downloads nutzen) kann die App eine Datei dem installierten Virenschutz zur Prüfung übergeben. Ob Bitdefender dabei ein verwertbares Ergebnis zurückgibt, muss getestet werden.
-  - **Microsoft Defender** bietet zusätzlich PowerShell-Befehle (`Get-MpComputerStatus`, `Get-MpThreat`, `Start-MpScan`), aber nur, wenn Defender der aktive Virenschutz ist.
-- **Firmen:** Business-Produkte haben echte Schnittstellen, z. B. die Public API von Bitdefender GravityZone oder die API von Microsoft Defender for Endpoint. Sie lassen sich als eigener Dienst (Klasse C) anbinden, um Funde und Schutzstatus pro Rechner einzublenden.
-- **Datenschutz:** Die lokale Prüfung verlässt den Rechner nicht über unsere App. Viele Virenscanner melden Funde oder Dateimerkmale aber an die Cloud des Herstellers; das richtet sich nach den Einstellungen des Virenschutzes selbst.
+### Claude API und andere Cloud-KI (später als Erweiterung)
 
-### VirusTotal (optional)
+- Der KI-Berater würde die Unterhaltung und die Ergebnisse der Werkzeugaufrufe an das Modell schicken, bereinigt und im Umfang der Freigabestufe (Vorschlag für extern: Stufe 1).
+- Die Bereinigung ist eine **Pseudonymisierung, keine Anonymisierung**: Eine Liste installierter Software kann einen Rechner trotzdem kennzeichnen.
+- Bedingungen (Stand Oktober 2026, vor Nutzung prüfen): Die API fällt unter die Commercial Terms von Anthropic, auch bei privater Nutzung. Laut Anthropic werden API-Eingaben nicht zum Training verwendet und standardmäßig nach 30 Tagen gelöscht. Die Verarbeitung erfolgt in den USA.
 
-- **Was:** Abgleich des SHA256-Hashs einer unbekannten Datei mit der VirusTotal-Datenbank.
-- **Nur Hashes:** Die App lädt niemals Dateien hoch. Hochgeladene Dateien werden bei VirusTotal mit Sicherheitsfirmen geteilt und sind für zahlende Kunden abrufbar; bei internen oder vertraulichen Programmen wäre das ein Datenabfluss.
-- **Bedingungen:** Die öffentliche (kostenlose) API **darf nicht in kommerziellen Produkten oder geschäftlichen Abläufen** verwendet werden und ist auf 4 Anfragen pro Minute und 500 pro Tag begrenzt. Deshalb Klasse B: Die App zeigt diesen Hinweis beim Einschalten; geschäftlich ist ein Premium-Schlüssel nötig.
-- **Zustimmung:** Abfrage nur nach ausdrücklicher Einwilligung, einzeln oder pro Scan.
+### Web-Recherche des Beraters (später)
+
+Für unbekannte Programme könnte der Berater im Web suchen; Ergebnisse gälten als „unbestätigt“. Suchbegriffe enthielten meist Programmnamen.
+
+### OSV.dev und GitHub Advisory Database (Idee)
+
+Schwachstellen in Open-Source-Paketen. Abfragen enthielten Paketname und Version; Daten stehen unter der Lizenz ihrer Ursprungsdatenbank (GitHub Advisory Database: CC BY 4.0).
+
+### VirusTotal (Idee)
+
+- Abgleich des SHA256-Hashs einer unbekannten Datei, **niemals die Datei selbst**.
+- Die öffentliche (kostenlose) API **darf nicht in kommerziellen Produkten oder geschäftlichen Abläufen** verwendet werden und ist auf 4 Anfragen pro Minute und 500 pro Tag begrenzt (Klasse B).
+
+### Installierter Virenschutz (Idee)
+
+- Bitdefender für Privatkunden hat nach unserer Recherche keine öffentliche Schnittstelle.
+- Herstellerunabhängig ginge über Windows: der Status aus dem Windows-Sicherheitscenter (WMI `root\SecurityCenter2`, Klasse `AntiVirusProduct`) als Punkt für die Ampel, und die Prüfung einer Datei über AMSI. Microsoft Defender bietet zusätzlich `Get-MpComputerStatus` und `Get-MpThreat`.
+- Business-Produkte (z. B. Bitdefender GravityZone, Microsoft Defender for Endpoint) haben echte Schnittstellen (Klasse C).
+
+### EUVD der ENISA (zurückgestellt)
+
+Nutzungsbedingungen, Datenlizenz und Abfragegrenzen der API waren am 28.10.2026 nicht auffindbar; die API antwortete schnell mit HTTP 429. Erneut prüfen, wenn es Neuigkeiten gibt.
 
 ## Empfehlungen für Nutzer
 
 | Situation | Empfehlung |
 | --- | --- |
-| Privat, maximaler Datenschutz | Lokale KI (Ollama), Online-Quellen KEV und EPSS an, NVD mit Gesamtabgleich, VirusTotal aus |
-| Privat, beste Beratung | Claude API mit Vorschau der gesendeten Daten; Bereinigung eingeschaltet lassen |
-| Firma | Vorher [FIRMENEINSATZ.md](FIRMENEINSATZ.md) durcharbeiten; Cloud-KI erst nach Datenschutzprüfung, VirusTotal nur mit Premium |
-| Ohne Internet | Nur Inventar; Abgleich später nachholen |
+| Privat, maximaler Datenschutz | KEV an; NVD und EPSS nur bei Bedarf; KI-Berater mit Modell auf dem eigenen Rechner |
+| Privat, gründliche Prüfung | NVD (mit kostenlosem Schlüssel), KEV, EPSS, GitHub und winget-Suche an |
+| Firma | Vorher [FIRMENEINSATZ.md](FIRMENEINSATZ.md) durcharbeiten; Dienste einzeln bewerten |
+| Ohne Internet | Nur Inventar; Ergebnisse aus dem Zwischenspeicher sind als veraltet gekennzeichnet; Abgleich später nachholen |

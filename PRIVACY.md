@@ -1,6 +1,6 @@
 # Datenschutz
 
-Stand: 24.10.2026
+Stand: 28.10.2026
 
 Softwareverwaltung ist ein Programm, das man auf dem eigenen Rechner ausführt. Es gibt **keinen Server des Projekts**, kein Benutzerkonto und keine Telemetrie. Die Projektverantwortlichen erhalten keine Daten der Nutzer.
 
@@ -16,32 +16,35 @@ Wer das Programm einsetzt, ist für die damit verarbeiteten Daten selbst verantw
 | Installationspfade, Deinstallationsbefehle | `C:\Users\anna\AppData\Local\Programs\…` | ja, wenn der Benutzername im Pfad steht |
 | Benutzerbezogene Installationen (HKCU) | Programme nur des angemeldeten Benutzers | ja |
 | Rechnername, Benutzername | aus der Umgebung | ja |
-| **Nutzungsspuren** (ab Etappe 1b): Amcache, BAM, UserAssist, Prefetch | „Programm X zuletzt gestartet am …, 37 Starts“ | **ja, beschreibt Verhalten**; bei mehreren Benutzern auch das anderer Personen |
-| Dateiscan gewählter Ordner (ab 1b) | Dateiname, Pfad, Version, Signatur, Hash von `.exe`-Dateien | ja, Pfade und Dateinamen können persönlich sein |
-| Chatverlauf mit dem KI-Berater | Fragen und Antworten | je nach Inhalt |
+| **Nutzungsspuren** (nur wenn eingeschaltet): UserAssist, laufende Prozesse, Autostart, geplante Aufgaben | „Programm X zuletzt gestartet am …“ | **ja, beschreibt Verhalten** |
+| Dateisuche in gewählten Laufwerken oder Ordnern (nur wenn eingeschaltet) | Dateiname, Pfad, Version, Signatur, optional Hash von `.exe`-Dateien | ja, Pfade und Dateinamen können persönlich sein |
 | Aktionsprotokoll | „Update von 7-Zip am … durch Benutzer …“ | ja |
+| Chatverlauf mit dem KI-Berater (geplant, Etappe 4c) | Fragen und Antworten | je nach Inhalt |
 
-Nicht verarbeitet werden: Inhalte von Dokumenten, Browserverlauf, E-Mails, Passwörter. Programmdateien werden nur gelesen (Versionsinfo, Signatur, Hash), nie ausgeführt.
+Nicht verarbeitet werden: Inhalte von Dokumenten, Browserverlauf, E-Mails, Passwörter. Programmdateien werden nur gelesen (Versionsinfo, Signatur, Hash), nie ausgeführt. Amcache, BAM und Prefetch liest das Programm nicht.
 
 ## 2. Wo die Daten bleiben
 
-Standardmäßig ausschließlich auf dem eigenen Rechner im Benutzerprofil (`%LOCALAPPDATA%\SoftwareInventory`, `%APPDATA%\SoftwareInventory`). Einzelheiten in [docs/TECHNIK.md](docs/TECHNIK.md#datenablage).
+Ausschließlich auf dem eigenen Rechner im Benutzerprofil. Einzelheiten in [docs/TECHNIK.md](docs/TECHNIK.md#datenablage).
 
-- Gespeicherte Scans lassen sich in der App oder durch Löschen des Ordners entfernen. Eine einstellbare automatische Löschung ist vorgesehen.
+- `%LOCALAPPDATA%\SoftwareInventory`: Aktionsprotokoll, Installer-Logs nach Fehlern, Zwischenspeicher der Online-Abfragen, Fehlerprotokoll der App, gespeicherte Scans.
+- `%APPDATA%\SoftwareInventory`: Einstellungen und eigene CPE-Zuordnungen.
+- **Automatische Bereinigung:** Protokolle und Zwischenspeicher werden beim Start aufgeräumt, höchstens 30 Tage alt und höchstens 100 MB insgesamt (beides einstellbar, Ältestes zuerst). Installer-Logs werden nach erfolgreicher Aktion sofort gelöscht.
+- **Scans:** Die App speichert keine Scans. Gespeichert wird nur, wer im Modul ausdrücklich `Save-InventorySnapshot` aufruft. Diese Dateien bleiben, bis man sie löscht.
 - API-Schlüssel liegen in der Windows-Anmeldeinformationsverwaltung, nicht in Dateien.
 
 ## 3. Wann Daten den Rechner verlassen
 
-Nur wenn Online-Funktionen eingeschaltet sind. Jeder Dienst ist einzeln abschaltbar. Die vollständige Liste mit übertragenen Inhalten, Empfängern und Bedingungen steht in **[docs/EXTERNE-DIENSTE.md](docs/EXTERNE-DIENSTE.md)**.
+Nur wenn Online-Funktionen eingeschaltet sind. Alle sind nach der Installation aus und werden einzeln eingeschaltet. Die vollständige Liste mit übertragenen Inhalten, Empfängern und Bedingungen steht in **[docs/EXTERNE-DIENSTE.md](docs/EXTERNE-DIENSTE.md)**.
 
 Kurz:
 
-- **Sicherheits- und Versionsabgleich** (NVD, CISA KEV, EPSS, OSV, GitHub, winget): Je nach Dienst werden Programmnamen, Produktkennungen oder Versionen abgefragt, sonst nur Gesamtlisten geladen. Keine Benutzer- oder Rechnernamen.
-- **KI-Berater mit Cloud-Modell** (Claude API, standardmäßig aus): Unterhaltung und Werkzeugergebnisse gehen an Anthropic in den USA, im Umfang der gewählten Freigabestufe (Voreinstellung: nur Programmliste). Benutzername, Rechnername und Benutzerpfade werden vorher ersetzt. Eine Vorschau zeigt, was gesendet wird.
-- **KI-Berater mit lokalem Modell** (Ollama): Es verlässt nichts den Rechner.
-- **VirusTotal** (standardmäßig aus): nur Hashwerte, nur nach Zustimmung, nie Dateien.
+- **winget-Daten und Updates** (Microsoft): winget liest seine Paketkataloge. Bei einem Update lädt winget das Installationsprogramm. Die winget-Suche nach neuen Versionen sendet Paket-IDs oder Programmnamen an die winget-Quellen.
+- **Versions- und Sicherheitsabgleich** (GitHub, NVD, CISA KEV, FIRST EPSS): Je nach Dienst werden Repository-Namen, Produktkennungen (CPE) mit Version oder CVE-Nummern abgefragt, bei KEV nur die Gesamtliste. Keine Benutzer- oder Rechnernamen, keine Pfade.
+- **KI-Berater** (geplant, Etappe 4b/4c): vorerst nur mit lokalen Modellservern (Ollama, LM Studio, Unsloth Studio oder eine eigene Adresse). Auf dem eigenen Rechner verlässt nichts den Rechner. Bei einer eigenen Adresse im Netz gehen die Daten an diesen Server. Benutzername, Rechnername und Benutzerpfade werden immer vorher ersetzt, auch für lokale Modelle. Cloud-Anbieter (z. B. die Claude API) kommen erst später als Erweiterung dazu und werden dann hier ergänzt.
+- **„Vorschlag melden“** (geplant): Wer eine bestätigte CPE-Zuordnung als Verbesserung für den Katalog melden möchte, bekommt ein vorbereitetes GitHub-Issue im Browser. Es enthält Programmname, Hersteller, winget-ID und CPE, keine Pfade und keine Benutzer- oder Rechnernamen. Abgeschickt wird es nur vom Nutzer selbst, und das Issue ist öffentlich.
 
-Alle Empfänger sitzen in den USA. Bei jeder Verbindung erhält der Anbieter die IP-Adresse.
+Alle derzeit angebundenen Empfänger sitzen in den USA (Microsoft, GitHub, NIST, CISA, FIRST). Bei jeder Verbindung erhält der Anbieter die IP-Adresse.
 
 ## 4. Einordnung nach DSGVO
 
@@ -49,9 +52,8 @@ Alle Empfänger sitzen in den USA. Bei jeder Verbindung erhält der Anbieter die
 
 Wer das Programm ausschließlich für persönliche oder familiäre Zwecke auf dem eigenen Rechner nutzt, fällt nach Art. 2 Abs. 2 lit. c DSGVO („Haushaltsausnahme“) in der Regel nicht unter die DSGVO. Trotzdem empfehlenswert:
 
-- Teilen sich mehrere Personen den Rechner, die anderen informieren, bevor der Tiefenscan (Nutzungsspuren) läuft, und ihn nur bei Bedarf einschalten.
-- Für den KI-Berater das lokale Modell bevorzugen oder die Vorschau der gesendeten Daten ansehen.
-- Für die Claude API gelten die Bedingungen von Anthropic auch für Privatpersonen; der Anbieter ist selbst für seine Verarbeitung verantwortlich.
+- Teilen sich mehrere Personen den Rechner, die anderen informieren, bevor die Nutzungsspuren ausgewertet werden, und sie nur bei Bedarf einschalten.
+- Für den KI-Berater ein Modell auf dem eigenen Rechner bevorzugen.
 
 ### Einsatz in Unternehmen, Behörden, Vereinen
 
@@ -61,13 +63,13 @@ Dann ist die einsetzende Organisation Verantwortliche im Sinne der DSGVO, und es
 
 Diese Regeln gelten für jeden Beitrag zum Projekt:
 
-1. **Lokal zuerst.** Neue Funktionen müssen ohne Cloud nutzbar sein; Cloud-Dienste sind Ergänzungen und standardmäßig aus, wenn sie Inventardaten übertragen.
+1. **Lokal zuerst.** Neue Funktionen müssen ohne Cloud nutzbar sein. Online-Dienste sind Ergänzungen und standardmäßig aus.
 2. **Datensparsam abfragen.** Gesamtlisten laden und lokal vergleichen, wo der Dienst das erlaubt.
-3. **Bereinigen vor dem Senden.** Benutzername, Rechnername, Benutzerpfade, Domänennamen und E-Mail-Adressen werden vor jeder Übertragung an eine KI ersetzt. Neue Felder im Datensatz sind daraufhin zu prüfen.
-4. **Nutzungsspuren getrennt halten.** Amcache, BAM, UserAssist und Prefetch nur im ausdrücklich gestarteten Tiefenscan lesen. Genaue Zeitstempel, Startzähler und Benutzerzuordnung gehen an keine KI; was die KI sieht, begrenzen Freigabestufen, die das Modul durchsetzt (siehe [docs/EXTERNE-DIENSTE.md](docs/EXTERNE-DIENSTE.md#was-die-ki-sehen-darf-freigabestufen)).
+3. **Bereinigen vor dem Senden.** Benutzername, Rechnername, Benutzerpfade, Domänennamen und E-Mail-Adressen werden vor jeder Übertragung an eine KI ersetzt (`Protect-PrivateText`), auch an lokale Modelle. Neue Felder im Datensatz sind daraufhin zu prüfen.
+4. **Nutzungsspuren getrennt halten.** Nutzungsspuren werden nur gelesen, wenn sie in den Einstellungen eingeschaltet sind. Genaue Zeitstempel, Startzähler und Benutzerzuordnung gehen an keine KI. Was die KI sieht, begrenzen Freigabestufen, die das Modul durchsetzt (geplant in Etappe 4b, siehe [docs/EXTERNE-DIENSTE.md](docs/EXTERNE-DIENSTE.md#was-die-ki-sehen-darf-freigabestufen)). Bis dahin geben die Werkzeuge des Beraters gar keine Nutzungsspuren weiter.
 5. **Keine Telemetrie** des Projekts, auch keine „anonyme“.
 6. **Sichtbar machen.** Die Einstellungen zeigen, welche Dienste aktiv sind und was sie erhalten.
-7. **Löschbar.** Alles, was gespeichert wird, lässt sich in der App löschen.
+7. **Löschbar und selbst aufräumend.** Protokolle und Zwischenspeicher bereinigen sich selbst. Alles, was gespeichert wird, lässt sich löschen.
 
 ## 6. Kontakt
 

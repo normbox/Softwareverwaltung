@@ -1,8 +1,8 @@
 # Technische Daten
 
-Stand: 24.10.2026 · Modulversion 0.1.0 (Etappe 1 abgeschlossen, Etappe 1b in Arbeit)
+Stand: 28.10.2026 · Etappen 1 bis 3 und 4a fertig; Detailansicht, Zwischenspeicher und Update-Warteschlange umgesetzt; Etappe 4b (KI-Berater in der App) als Nächstes
 
-Dieses Dokument beschreibt, woraus das Programm besteht, was es auf dem Rechner tut, wo es Daten ablegt und mit welchen Diensten es spricht. Begründungen und Fahrplan stehen in [KONZEPT.md](KONZEPT.md), der Datensatzaufbau in [INVENTAR-SCHEMA.md](INVENTAR-SCHEMA.md).
+Dieses Dokument beschreibt, woraus das Programm besteht, was es auf dem Rechner tut, wo es Daten ablegt und mit welchen Diensten es spricht. Begründungen und Fahrplan stehen in [KONZEPT.md](KONZEPT.md), der Datensatzaufbau in [INVENTAR-SCHEMA.md](INVENTAR-SCHEMA.md), Aktionen in [AKTIONEN.md](AKTIONEN.md).
 
 Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgesehen, Angaben können sich noch ändern.
 
@@ -10,12 +10,12 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 
 | Punkt | Endbenutzer | Entwicklung |
 | --- | --- | --- |
-| Betriebssystem | Windows 10 oder 11, x64 (Arm64 geplant prüfen) | Windows 10 oder 11 |
-| Laufzeit | keine Zusatzinstallation: .NET 10 und PowerShell-Engine sind in der App enthalten (self-contained) | .NET SDK 10, PowerShell 7.6 LTS |
-| winget | Windows-Paket „App-Installer“ (enthält winget und dessen COM-Schnittstelle). Auf normalen Windows-10-(ab 1809) und -11-Installationen vorhanden und über den Store aktuell gehalten. Fehlt oft auf LTSC-, Server- und Sandbox-Systemen sowie frischen Images ohne Store-Update. Ohne App-Installer läuft die App weiter, nur ohne winget-Abgleich und winget-Aktionen; sie zeigt einen Hinweis und bietet die Installation über `Repair-WinGetPackageManager` an (nur nach Zustimmung). | ebenso, plus Modul `Microsoft.WinGet.Client` |
-| Rechte | normaler Benutzer; Administratorrechte nur für einzelne Aktionen und den Tiefenscan (UAC) | normaler Benutzer |
-| Netzwerk | optional; ohne Netzwerk funktioniert das reine Inventar | – |
-| Windows PowerShell 5.1 | wird nicht verwendet und nicht unterstützt | – |
+| Betriebssystem | Windows 10 oder 11, x64 | Windows 10 oder 11 |
+| Laufzeit | keine Zusatzinstallation: .NET 10 und die PowerShell-Engine sind in der App enthalten (self-contained) | .NET SDK 10, PowerShell 7.6 LTS |
+| Windows PowerShell 5.1 | wird nur für den erhöhten Helfer gestartet (Aktionen mit Administratorrechten); auf jedem Windows 10/11 vorhanden | ebenso |
+| winget | Windows-Paket „App-Installer“ (enthält winget und dessen COM-Schnittstelle). Auf normalen Windows-10-(ab 1809) und -11-Installationen vorhanden und über den Store aktuell gehalten. Fehlt oft auf LTSC-, Server- und Sandbox-Systemen. Ohne App-Installer läuft die App weiter, nur ohne winget-Abgleich und winget-Aktionen; sie zeigt einen Hinweis und bietet die Installation über `Repair-WinGetPackageManager` an (nur nach Bestätigung). | ebenso, plus Modul `Microsoft.WinGet.Client` |
+| Rechte | normaler Benutzer; Administratorrechte (UAC) nur für die einzelne Aktion bzw. einmal für den erhöhten Teil einer Update-Warteschlange und für den Wiederherstellungspunkt | normaler Benutzer |
+| Netzwerk | optional; ohne Netzwerk funktioniert das Inventar, Online-Ergebnisse kommen dann aus dem Zwischenspeicher (als veraltet gekennzeichnet) | – |
 
 ## Bestandteile
 
@@ -23,25 +23,28 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 | --- | --- | --- |
 | Kern-Modul `SoftwareInventory` | PowerShell-Skriptmodul, `CompatiblePSEditions = Core`, PowerShell ≥ 7.6 | vorhanden |
 | Inventarquellen | Registry (Uninstall-Schlüssel HKLM, HKLM\WOW6432Node, HKCU), `Get-AppxPackage`, `Get-WinGetPackage` | vorhanden |
-| Portable Programme | Amcache, BAM, UserAssist, Prefetch, Prozesse, Autostart, Dateiscan, PE-Versionsinfo, Authenticode, SHA256 | Etappe 1b |
-| Versionsabgleich | winget, GitHub Releases, Herstellerregeln, KI-Recherche (unbestätigt) | geplant (Etappe 2) |
-| Sicherheitsprüfung | NVD CVE-API 2.0, CISA KEV, EPSS, OSV, GitHub Security Advisories | geplant (Etappe 2) |
-| Desktop-App | .NET 10 WPF, Fluent-Design über WPF-UI, PowerShell eingebettet über `Microsoft.PowerShell.SDK` | geplant (Etappe 3) |
-| KI-Berater | Provider-Abstraktion: Claude API (Tool-Use) oder Ollama/LM Studio (lokal) | geplant (Etappe 4) |
-| MCP-Server | optionaler Zugang für Claude Desktop u. a. | geplant (Etappe 5) |
+| Portable Programme | Nutzungsspuren (UserAssist, laufende Prozesse, Autostart, geplante Aufgaben), Dateisuche in Laufwerken oder Ordnern, PE-Versionsinfo, Authenticode, optional SHA256 | vorhanden |
+| Versionsabgleich | winget, GitHub Releases (Katalog), winget-Suche (unbestätigt) | vorhanden |
+| Sicherheitsprüfung | NVD CVE-API 2.0, CISA KEV, EPSS; Ampel und HTML-Bericht | vorhanden |
+| Aktionen | Aktualisieren und Deinstallieren über winget, MSI, Deinstallationsbefehl, Store-App; Update-Warteschlange | vorhanden |
+| Desktop-App | .NET 10 WPF, Fluent-Design über WPF-UI, PowerShell eingebettet über `Microsoft.PowerShell.SDK` | vorhanden |
+| KI-Berater | Werkzeuge und Bereinigung im Modul (4a) vorhanden; Anbindung in der App über die OpenAI-kompatible Schnittstelle lokaler Server (4b), Chat (4c); Cloud-Anbieter später als Erweiterung | teilweise, geplant |
+| MCP-Server | optionaler Zugang für andere KI-Programme | geplant (Etappe 5) |
 
 Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-## Öffentliche Befehle des Moduls (Stand 0.1.0)
+## Öffentliche Befehle des Moduls
 
-| Befehl | Wirkung |
+| Bereich | Befehle |
 | --- | --- |
-| `Get-SoftwareInventory` | Liest alle Quellen und liefert einen Datensatz pro Programm |
-| `Save-InventorySnapshot` | Speichert ein Inventar als JSON-Datei |
-| `Get-InventorySnapshot` | Lädt gespeicherte Scans |
-| `Compare-InventorySnapshot` | Zeigt Unterschiede zwischen zwei Scans |
+| Inventar | `Get-SoftwareInventory`, `Get-PortableSoftware`, `Invoke-InventoryScan`, `Find-InstalledSoftware`, `Get-ScanDrive`, `Resolve-InstallLocation` |
+| Scans | `Save-InventorySnapshot`, `Get-InventorySnapshot`, `Compare-InventorySnapshot` |
+| Versionen und Sicherheit | `Test-SoftwareUpdate`, `Compare-SoftwareVersion`, `Get-SoftwareVulnerability`, `Get-SecurityRating`, `Export-SecurityReport`, `Find-CpeCandidate`, `Get-CpeMapping`, `Set-CpeMapping`, `Remove-CpeMapping`, `Clear-CheckCache`, `Get-RefreshEstimate` |
+| Aktionen | `Update-Software`, `Uninstall-Software`, `Get-UpdateQueuePlan`, `Invoke-UpdateQueue`, `Get-ActionLog`, `Test-WingetAvailability`, `Install-WingetPackageManager` |
+| Einstellungen und Schlüssel | `Get-InventorySetting`, `Set-InventorySetting`, `Get-SettingPreset`, `Get-ServiceTermsNotice`, `Set-ServiceCredential`, `Remove-ServiceCredential`, `Get-ServiceCredentialStatus` |
+| KI-Berater | `Get-AdvisorTool`, `Invoke-AdvisorTool`, `Set-AdvisorContext`, `Get-AdvisorEndpointPreset` |
 
-Das Modul ändert in Etappe 1 nichts am System: Es liest nur.
+Jeder Befehl hat eine kommentarbasierte Hilfe (`Get-Help <Befehl> -Full`).
 
 ## Was auf dem Rechner gelesen wird
 
@@ -51,20 +54,22 @@ Das Modul ändert in Etappe 1 nichts am System: Es liest nur.
 | `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall` | lesen, nur angemeldeter Benutzer | Benutzer | vorhanden |
 | Installierte MSIX-/Store-Pakete samt Manifest | lesen | Benutzer | vorhanden |
 | winget-Paketliste (über die WinGet-COM-Schnittstelle) | lesen | Benutzer | vorhanden |
-| Amcache, BAM, Prefetch | lesen | Administrator | Etappe 1b |
-| UserAssist, laufende Prozesse, Autostart | lesen | Benutzer | Etappe 1b |
-| Gewählte Ordner (Downloads, Desktop, …) | Dateien auflisten, Versionsinfo und Signatur lesen, Hash bilden; **nichts ausführen** | Benutzer | Etappe 1b |
+| Windows Installer: Komponentenpfade eines MSI-Produkts (nur beim Aufklappen der Details) | lesen | Benutzer | vorhanden |
+| Nutzungsspuren: UserAssist, laufende Prozesse, Autostart, geplante Aufgaben | lesen, nur wenn eingeschaltet | Benutzer | vorhanden |
+| Gewählte Laufwerke oder Ordner | Dateien auflisten, Versionsinfo und Signatur lesen, optional Hash bilden; **nichts ausführen** | Benutzer | vorhanden |
 
-Hinweis: Amcache, BAM, UserAssist und Prefetch sind **Nutzungsspuren**. Sie zeigen, wer wann welches Programm gestartet hat. Das ist für die Erkennung portabler Programme nützlich, aber datenschutzrechtlich heikel, besonders auf Rechnern mit mehreren Personen und in Firmen. Siehe [PRIVACY.md](../PRIVACY.md) und [FIRMENEINSATZ.md](FIRMENEINSATZ.md).
+Amcache, BAM und Prefetch werden nicht gelesen.
 
-## Was auf dem Rechner verändert wird (geplant)
+Hinweis: Nutzungsspuren zeigen, wer wann welches Programm gestartet hat. Das ist für die Erkennung portabler Programme nützlich, aber datenschutzrechtlich heikel, besonders auf Rechnern mit mehreren Personen und in Firmen. Siehe [PRIVACY.md](../PRIVACY.md) und [FIRMENEINSATZ.md](FIRMENEINSATZ.md).
 
-Nur nach Bestätigung im UI, einzeln und protokolliert:
+## Was auf dem Rechner verändert wird
 
-- `winget upgrade --id <Id> --exact` bzw. `winget uninstall --id <Id> --exact`
-- Fallback: Deinstallationsbefehl aus der Registry, MSI über `msiexec /x {ProductCode}`
-- Store-Apps: `Remove-AppxPackage`
-- Optional vorher ein Windows-Wiederherstellungspunkt
+Nur nach Bestätigung im UI (mit dem genauen Befehl), protokolliert, Administratorrechte nur wenn nötig. Einzelheiten in [AKTIONEN.md](AKTIONEN.md).
+
+- `winget upgrade --id <Id> --exact --source <Quelle des Pakets> --silent --accept-source-agreements --disable-interactivity …` bzw. `winget uninstall …` mit denselben Angaben
+- Deinstallieren ohne winget je nach Programm: MSI über `msiexec /x {ProductCode}`, Deinstallationsbefehl aus der Registry (keine Skript-Interpreter), Store-Apps über `Remove-AppxPackage`. Nach einem Fehlschlag wird die nächste Methode nur vorgeschlagen, nie automatisch genutzt.
+- Optional vorher ein Windows-Wiederherstellungspunkt (bei der Warteschlange einer für alle)
+- `Repair-WinGetPackageManager`, wenn winget fehlt und der Benutzer zustimmt
 
 Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 
@@ -72,14 +77,17 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 
 | Daten | Ort | Inhalt | Status |
 | --- | --- | --- | --- |
-| Scans (Snapshots) | `%LOCALAPPDATA%\SoftwareInventory\scans\<yyyyMMdd-HHmmss-fff>.json` | Inventar mit Zeitstempel (UTC), Schema in [INVENTAR-SCHEMA.md](INVENTAR-SCHEMA.md) | vorhanden |
-| Cache der Online-Abfragen | `%LOCALAPPDATA%\SoftwareInventory\cache\` (Vorschlag) | KEV-Liste, EPSS-Werte, CVE- und Versionsantworten | geplant |
-| Aktionsprotokoll | `%LOCALAPPDATA%\SoftwareInventory\log\` (Vorschlag) | Zeitpunkt, Aktion, Programm, Befehl, Ergebnis | geplant |
-| Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` (Vorschlag) | eingerichtete Dienste und Bestätigungen der Bedingungen, gewählte Quellen, KI-Provider, Ordner für Dateiscan | geplant |
-| Richtlinien (Firma) | `HKLM\SOFTWARE\Policies\Softwareverwaltung` (Vorschlag) | optional: vom Administrator festgelegte Einstellungen (Dienste, Freigabestufen, Schlüsselquellen); sperrt diese in der App | geplant |
-| API-Schlüssel | Windows-Anmeldeinformationsverwaltung (Credential Manager) oder Umgebungsvariable; **nie** in Einstellungsdateien oder im Repository | Anthropic, NVD, GitHub, ggf. VirusTotal | geplant |
+| Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` | eingeschaltete Quellen, Dienste und Nutzungsspuren, Dateisuche, Haltbarkeit des Zwischenspeichers, Aufbewahrung der Logs, KI-Server | vorhanden |
+| Eigene CPE-Zuordnungen | `%APPDATA%\SoftwareInventory\cpe-map.json` | vom Benutzer bestätigte Zuordnungen Programm → CPE | vorhanden |
+| Zwischenspeicher der Online-Abfragen | `%LOCALAPPDATA%\SoftwareInventory\cache\<Dienst>\`, Index je Programm in `cache\index\` | Antworten von NVD, KEV, EPSS, GitHub und winget-Suche mit Abrufzeit | vorhanden |
+| Aktionsprotokoll | `%LOCALAPPDATA%\SoftwareInventory\logs\actions\<Datum>.jsonl` | Zeitpunkt, Benutzer, Aktion, Programm, Befehl, Ergebnis | vorhanden |
+| Installer-Logs | `%LOCALAPPDATA%\SoftwareInventory\logs\installer\` | nur nach Fehlern, komprimiert | vorhanden |
+| Fehlerprotokoll der App | `%LOCALAPPDATA%\SoftwareInventory\logs\app-errors-<Datum>.log` | unerwartete Fehler mit Details | vorhanden |
+| Scans (Snapshots) | `%LOCALAPPDATA%\SoftwareInventory\scans\<yyyyMMdd-HHmmss-fff>.json` | nur über `Save-InventorySnapshot`; die App speichert keine Scans | vorhanden |
+| API-Schlüssel | Windows-Anmeldeinformationsverwaltung oder Umgebungsvariable; **nie** in Einstellungsdateien oder im Repository | NVD, GitHub, KI-Server | vorhanden |
+| Richtlinien (Firma) | `HKLM\SOFTWARE\Policies\Softwareverwaltung` (Vorschlag) | vom Administrator festgelegte und gesperrte Einstellungen | geplant (Etappe 6) |
 
-Alle Dateien liegen unverschlüsselt im Benutzerprofil und sind nur für den Benutzer (und Administratoren) lesbar. Scans können Benutzerpfade enthalten (z. B. `InstallLocation` unter `C:\Users\<Name>\...`) und damit den Benutzernamen. Es gibt noch keine automatische Löschung alter Scans; vorgesehen ist eine einstellbare Aufbewahrungsdauer.
+Logs und Zwischenspeicher räumen sich beim Start selbst auf: höchstens 30 Tage alt und höchstens 100 MB insgesamt, beides einstellbar, Ältestes zuerst. Scans sind davon ausgenommen. Alle Dateien liegen unverschlüsselt im Benutzerprofil und sind nur für den Benutzer (und Administratoren) lesbar. Scans und Protokolle können Benutzerpfade und damit den Benutzernamen enthalten.
 
 Deinstallation des Programms: Die Ordner `%LOCALAPPDATA%\SoftwareInventory` und `%APPDATA%\SoftwareInventory` löschen und die Einträge des Programms in der Anmeldeinformationsverwaltung entfernen.
 
@@ -89,25 +97,24 @@ Eine vollständige Liste mit Datenschutzbewertung steht in [EXTERNE-DIENSTE.md](
 
 | Dienst | Host(s) | Wann | Status |
 | --- | --- | --- | --- |
-| winget-Quellen | `cdn.winget.microsoft.com`, `storeedgefd.dsx.mp.microsoft.com` | beim Lesen der winget-Daten und bei Aktionen | vorhanden (über winget) |
-| GitHub API | `api.github.com` | Versionsabgleich | geplant |
-| NVD | `services.nvd.nist.gov` | CVE-Abfragen | geplant |
-| CISA KEV | `www.cisa.gov` | tägliches Laden der KEV-Liste | geplant |
-| EPSS | `api.first.org` bzw. `epss.empiricalsecurity.com` (Download) | Priorisierung | geplant |
-| OSV | `api.osv.dev` | Open-Source-Schwachstellen | geplant |
-| Claude API | `api.anthropic.com` | nur wenn Cloud-KI gewählt | geplant |
-| Ollama | `localhost:11434` (Standard) oder ein selbst betriebener Server | nur wenn lokale KI gewählt | geplant |
-| VirusTotal | `www.virustotal.com` | nur nach ausdrücklicher Zustimmung | geplant, optional |
+| winget-Quellen | `cdn.winget.microsoft.com` und die Download-Server der Hersteller | beim Lesen der winget-Daten, bei der winget-Suche und bei Aktionen | vorhanden (über winget) |
+| GitHub API | `api.github.com` | Versionsabgleich für Programme aus dem Katalog | vorhanden |
+| NVD | `services.nvd.nist.gov` | CVE-Abfragen, CPE-Vorschläge | vorhanden |
+| CISA KEV | `www.cisa.gov` | Laden der KEV-Liste | vorhanden |
+| EPSS | `api.first.org` | Ausnutzungswahrscheinlichkeit für gefundene CVEs | vorhanden |
+| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse | nur wenn der KI-Berater eingerichtet ist | geplant (Etappe 4b) |
 
-Die Hostnamen der geplanten Dienste sind vorläufig und vor der Umsetzung gegen die aktuelle Dokumentation der Anbieter zu prüfen. Proxy-Einstellungen des Systems werden übernommen (geplant).
+Alle Abfragen nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt den User-Agent `SoftwareInventory/<Version>`.
 
 ## Sicherheitsmerkmale
 
 - Läuft als normaler Benutzer, UAC nur für die einzelne Aktion.
+- Der erhöhte Helfer ist ein Skript, dessen SHA256 vor dem Start geprüft wird; das Ergebnis kommt über eine Named Pipe zurück, mit der sich nur erhöhte Prozesse verbinden dürfen (Prozess-ID und Zufallszahl werden geprüft).
+- Es wird genau der bestätigte Befehl ausgeführt; hat er sich geändert, bricht die Aktion ohne Ausführung ab.
 - Liest Programmdateien nur (PE-Versionsinfo, Signatur, Hash), führt nichts aus.
 - KI darf nur vorschlagen; jede Aktion braucht einen Klick und wird protokolliert.
-- Vor dem Senden an Cloud-Modelle werden Benutzername, Rechnername und Benutzerpfade ersetzt.
-- Ergebnisse aus Web-Recherche werden als „unbestätigt“ gekennzeichnet.
+- Vor dem Senden an jedes Modell, auch an lokale, werden Benutzername, Rechnername und Benutzerpfade ersetzt.
+- Ergebnisse aus unbestätigten Quellen werden als „unbestätigt“ gekennzeichnet.
 - Geplant für den Firmeneinsatz: signierte Skripte und signierte Releases (Authenticode), damit SmartScreen und AppLocker/WDAC-Regeln greifen.
 
 ## Telemetrie
@@ -115,10 +122,10 @@ Die Hostnamen der geplanten Dienste sind vorläufig und vor der Umsetzung gegen 
 Das Projekt selbst sendet keine Telemetrie und soll das auch künftig nicht tun. Zu beachten sind Bestandteile von Microsoft:
 
 - **winget** sendet Nutzungsdaten gemäß den Windows-Diagnoseeinstellungen. Abschaltbar in den winget-Einstellungen (`winget settings`, Abschnitt `"telemetry": { "disable": true }`).
-- **PowerShell** kennt Telemetrie (Umgebungsvariable `POWERSHELL_TELEMETRY_OPTOUT=1` schaltet sie ab). Ob die eingebettete Engine überhaupt sendet, ist in Etappe 3 zu prüfen; vorsorglich setzt die App die Variable vor dem Start der Runspace (geplant).
+- **PowerShell** kennt Telemetrie (Umgebungsvariable `POWERSHELL_TELEMETRY_OPTOUT=1` schaltet sie ab). Ob die eingebettete Engine sendet, ist noch nicht geprüft; vorsorglich soll die App die Variable vor dem Start der Runspace setzen (offen).
 
-## Build und Veröffentlichung (geplant)
+## Build und Veröffentlichung
 
-- `dotnet publish -c Release -r win-x64 --self-contained` erzeugt die App mit eingebetteter .NET-Laufzeit.
+- `.\build\Publish-App.ps1` ruft `dotnet publish -c Release -r win-x64 --self-contained true` auf und legt die App mit eingebetteter .NET-Laufzeit in `artifacts\publish\Softwareverwaltung` und als ZIP in `artifacts\` ab.
 - Das Modul `Microsoft.WinGet.Client` (MIT) wird in fester Version mitgeliefert und aus dem App-Ordner geladen. Seine Version wird zusammen mit `Microsoft.PowerShell.SDK` aktualisiert, weil beide dieselbe .NET-/PowerShell-Version voraussetzen (Modul 1.29: .NET 10, PowerShell 7.6). winget selbst (App-Installer) wird nicht mitgeliefert.
-- Jedes Release enthält `LICENSE`, `THIRD-PARTY-NOTICES.md` und die Hinweisdateien der eingebetteten Laufzeiten; der passende Quellcode ist über den Git-Tag des Releases verfügbar (GPLv3 § 6).
+- Jedes Release enthält `LICENSE` und `THIRD-PARTY-NOTICES.md` (kopiert das Skript), dazu die Hinweisdateien der eingebetteten Laufzeiten; der passende Quellcode ist über den Git-Tag des Releases verfügbar (GPLv3 § 6).
