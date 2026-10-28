@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Threading;
@@ -16,13 +17,19 @@ public sealed class PowerShellHost : IPowerShellHost
     public const string WinGetModuleName = "Microsoft.WinGet.Client";
 
     private readonly string _modulesDirectory;
+    private readonly CultureInfo _culture;
+    private readonly CultureInfo _uiCulture;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private Runspace? _runspace;
     private bool _disposed;
 
-    public PowerShellHost(string? modulesDirectory = null)
+    /// <param name="uiCulture">Sprache der Modultexte; Standard ist die Sprache der Oberfläche, damit Anzeige und Modul nie gemischt sind.</param>
+    /// <param name="culture">Format für Datum und Zahlen; Standard ist das der App.</param>
+    public PowerShellHost(string? modulesDirectory = null, CultureInfo? uiCulture = null, CultureInfo? culture = null)
     {
         _modulesDirectory = modulesDirectory ?? Path.Combine(AppContext.BaseDirectory, "Modules");
+        _uiCulture = uiCulture ?? CultureInfo.CurrentUICulture;
+        _culture = culture ?? CultureInfo.CurrentCulture;
     }
 
     /// <summary>Warnungen und Fehler beim Laden der Module (z. B. winget-Modul fehlt).</summary>
@@ -52,6 +59,8 @@ public sealed class PowerShellHost : IPowerShellHost
             var runspace = RunspaceFactory.CreateRunspace(state);
             runspace.ApartmentState = ApartmentState.MTA;
             await Task.Run(runspace.Open, cancellationToken).ConfigureAwait(false);
+            // Vor dem Laden der Module: Import-LocalizedData wählt die Texte nach $PSUICulture.
+            await SetCultureAsync(runspace, _culture, _uiCulture).ConfigureAwait(false);
             await SetModulePathAsync(runspace, BuildModulePath(_modulesDirectory)).ConfigureAwait(false);
 
             var messages = new List<string>();
@@ -156,6 +165,19 @@ public sealed class PowerShellHost : IPowerShellHost
         var windowsModules = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "Modules");
         return string.Join(Path.PathSeparator, modulesDirectory, windowsModules);
     }
+
+    /// <summary>
+    /// Kultur der Runspace = Kultur der App. Die Runspace läuft auf einem eigenen, wiederverwendeten
+    /// Thread (ReuseThread) mit der Kultur des Systems; deshalb einmal auf diesem Thread setzen.
+    /// </summary>
+    private static Task SetCultureAsync(Runspace runspace, CultureInfo culture, CultureInfo uiCulture) => Task.Run(() =>
+    {
+        using var ps = PowerShell.Create();
+        ps.Runspace = runspace;
+        ps.AddScript("param($Culture, $UiCulture) [cultureinfo]::CurrentCulture = $Culture; [cultureinfo]::CurrentUICulture = $UiCulture")
+            .AddParameter("Culture", culture).AddParameter("UiCulture", uiCulture);
+        ps.Invoke();
+    });
 
     private static Task SetModulePathAsync(Runspace runspace, string modulePath) => Task.Run(() =>
     {
