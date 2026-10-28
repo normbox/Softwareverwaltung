@@ -507,3 +507,27 @@ Describe 'Reproduzierbare Ergebnisse' {
         $first | Should -Contain "$TestDrive\c\x\one.exe|"
     }
 }
+
+Describe 'Get-ProcessTrace' {
+    BeforeAll {
+        Mock -ModuleName SoftwareInventory Get-Process {
+            [pscustomobject] @{ Path = 'C:\Users\x\AppData\Local\Temp\is-ABC12.tmp\CodeSetup-stable.tmp' }
+            [pscustomobject] @{ Path = 'C:\Users\x\AppData\Local\Temp\dropper.exe' }
+            [pscustomobject] @{ Path = 'D:\Tools\Tool.EXE' }
+            [pscustomobject] @{ Path = $null }
+        }
+        $output = @(InModuleScope SoftwareInventory { Get-ProcessTrace -Debug 5>&1 })
+        $script:debugMessages = @($output | Where-Object { $_ -is [System.Management.Automation.DebugRecord] } | ForEach-Object Message)
+        $script:trace = @($output | Where-Object { $_ -isnot [System.Management.Automation.DebugRecord] })
+    }
+
+    It 'übernimmt laufende .exe, auch aus Temp' {
+        $trace.Path | Should -Be @('C:\Users\x\AppData\Local\Temp\dropper.exe', 'D:\Tools\Tool.EXE')
+        $trace.Evidence | Should -Be @('Process', 'Process')
+    }
+
+    It 'ignoriert Prozesse ohne .exe (z. B. Inno-Setup-Installer) und vermerkt sie im Debug-Datenstrom mit Pfad' {
+        $trace.Path | Should -Not -Contain 'C:\Users\x\AppData\Local\Temp\is-ABC12.tmp\CodeSetup-stable.tmp'
+        $debugMessages | Should -Be @('Prozess ohne .exe ignoriert: C:\Users\x\AppData\Local\Temp\is-ABC12.tmp\CodeSetup-stable.tmp')
+    }
+}

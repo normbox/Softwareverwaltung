@@ -86,10 +86,17 @@ function Resolve-KnownFolderPath {
 
 function Get-ProcessTrace {
     # Laufende Prozesse des aktuellen Benutzers (fremde Prozesse liefern ohne Admin keinen Pfad).
+    # Nur .exe: Installer wie Inno Setup laufen als %TEMP%\is-*.tmp\Setup.tmp und sind kein Programm.
+    # Laufende .exe aus Temp bleiben drin (Merkmal InDownloadsOrTemp).
     [CmdletBinding()]
     param()
-    Get-Process -ErrorAction SilentlyContinue | Where-Object Path | Select-Object -ExpandProperty Path -Unique |
-        ForEach-Object { New-ExecutionTrace -Path $_ -Evidence Process }
+    foreach ($path in Get-Process -ErrorAction SilentlyContinue | Where-Object Path | Select-Object -ExpandProperty Path -Unique) {
+        if ($path -notmatch '\.exe$') {
+            Write-Debug "Prozess ohne .exe ignoriert: $path"
+            continue
+        }
+        New-ExecutionTrace -Path $path -Evidence Process
+    }
 }
 
 function Get-AutostartTrace {

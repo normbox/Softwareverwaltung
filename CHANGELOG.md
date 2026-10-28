@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Portable Suche: laufende Installer
+
+#### Behoben
+
+- Laufende Prozesse zählen nur noch als Spur eines portablen Programms, wenn die Datei auf `.exe` endet. Installer wie Inno Setup (`%TEMP%\is-*.tmp\Setup.tmp`) erschienen sonst als portables Programm. Ignorierte Prozesse stehen mit Pfad im Debug-Datenstrom (`-Debug`). Laufende `.exe` aus Temp bleiben in der Liste, mit dem Merkmal `InDownloadsOrTemp`.
+
 ### Store-Vereinbarung und Telemetrie
 
 #### Geändert
