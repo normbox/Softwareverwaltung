@@ -61,13 +61,17 @@ function Get-WingetArgument {
         [Parameter(Mandatory)] [ValidateSet('Update', 'Uninstall')] [string] $Action,
         [Parameter(Mandatory)] [string] $Id,
         [Parameter(Mandatory)] [string] $Source,
-        [ValidateSet('User', 'Machine', 'Unknown')] [string] $Scope = 'Unknown'
+        [ValidateSet('User', 'Machine', 'Unknown')] [string] $Scope = 'Unknown',
+        # Nur nach gespeicherter Zustimmung des Benutzers (Store-Vereinbarung) für die Quelle „msstore“
+        [switch] $StoreAgreementAccepted
     )
 
     $verb = if ($Action -eq 'Update') { 'upgrade' } else { 'uninstall' }
     $list = [System.Collections.Generic.List[string]]::new()
-    $list.AddRange([string[]] @($verb, '--id', $Id, '--exact', '--source', $Source, '--silent',
-            '--accept-source-agreements', '--disable-interactivity'))
+    $list.AddRange([string[]] @($verb, '--id', $Id, '--exact', '--source', $Source, '--silent'))
+    # Der Quelle „msstore“ wird nie still zugestimmt: nur, wenn der Benutzer die Vereinbarung bestätigt hat.
+    if ($Source -ne 'msstore' -or $StoreAgreementAccepted) { $list.Add('--accept-source-agreements') }
+    $list.Add('--disable-interactivity')
     # Ohne Zustimmung zu Paketlizenzen bricht ein Upgrade ohne Rückfrage ab.
     if ($Action -eq 'Update') { $list.Add('--accept-package-agreements') }
     # Beim Deinstallieren den Bereich festlegen, falls dasselbe Paket für Benutzer und Rechner installiert ist.

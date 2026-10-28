@@ -54,6 +54,8 @@ function Get-ElevatedHelperBootstrap {
     # Kurzer Startbefehl für -Command: Skript lesen, Hash prüfen, Inhalt ausführen. Nur einfache Anführungszeichen.
     param([string] $HelperPath, [string] $Hash, [string] $PlanBase64)
     $path = $HelperPath.Replace("'", "''")
+    # Telemetrie aus, bevor irgendetwas läuft: ein mit UAC gestarteter Prozess erbt die Umgebung der App nicht.
+    "`$env:POWERSHELL_TELEMETRY_OPTOUT='1';" +
     "`$b=[IO.File]::ReadAllBytes('$path');" +
     "`$h=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash(`$b)).Replace('-','');" +
     "if(`$h -ne '$Hash'){exit 3};" +

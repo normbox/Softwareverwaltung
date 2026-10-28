@@ -160,6 +160,7 @@ Regeln:
     ReasonNotVerifiedUninstall              = 'Das Programm meldet Erfolg, ist aber noch installiert.'
     ReasonNotVerifiedUpdate                 = 'Das Programm meldet Erfolg, die Version hat sich aber nicht erhöht.'
     ReasonWithNextMethod                    = '{0} Nächste mögliche Methode: {1} (Aufruf mit -Method {1}).'
+    ReasonStoreAgreementRequired            = 'Die Vereinbarung der Microsoft-Store-Quelle (msstore) ist noch nicht bestätigt. Ohne Zustimmung wird über diese Quelle nichts ausgeführt.'
     ReasonQueueCancelled                    = 'Abgebrochen, nicht ausgeführt (Warteschlange abgebrochen).'
     ReasonRestorePointNameQueue             = 'Softwareverwaltung: {0} Programme aktualisieren'
     ReasonActionIncomplete                  = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
@@ -278,6 +279,16 @@ Regeln:
     ReasonExitCode0x80072F8F                = 'Netzwerkfehler: sichere Verbindung fehlgeschlagen. Datum und Uhrzeit oder Proxy prüfen.'
     ReasonExitCode0x80072EFE                = 'Netzwerkfehler: Verbindung abgebrochen. Erneut versuchen.'
     ReasonExitCodeUnknown                   = 'Unbekannter Exit-Code {0}'
+
+    # Vereinbarung der winget-Quelle „msstore“ (Get-StoreAgreementNotice)
+    StoreAgreementText                      = @'
+Dieses Programm stammt aus der Quelle „msstore“ (Microsoft Store). Für Aktualisieren und Deinstallieren über diese Quelle verlangt winget die Zustimmung zu ihrer Vereinbarung:
+
+• Es gelten die „Terms of Transaction“ des Microsoft Store (Link unten).
+• Die Quelle sendet die zweistellige Region dieses Rechners an den Dienst von Microsoft (z. B. „DE“), damit sie funktioniert.
+
+Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung führt die App über diese Quelle nichts aus.
+'@
 
     # Fehler (Get-LocalizedString)
     ErrorNotInventoryRecord                 = 'Eingabe ist kein Inventar-Datensatz (SoftwareRecord, SecurityRating oder UpdateStatus).'

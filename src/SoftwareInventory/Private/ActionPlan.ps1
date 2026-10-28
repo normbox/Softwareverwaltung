@@ -251,8 +251,13 @@ function New-ActionPlan {
             }
             $winget = Get-WingetExecutable
             if (-not $winget) { return & $finish 'Unsupported' (New-InventoryMessage PlanWingetNotFound) }
+            # Store-Pakete erst nach bestätigter Store-Vereinbarung (einmal, in der App mit Rückfrage).
+            $storeAccepted = Test-StoreAgreementAccepted
+            if ($plan.WingetSource -eq 'msstore' -and -not $storeAccepted) {
+                return & $finish 'StoreAgreementRequired' (New-InventoryMessage StoreAgreementRequired)
+            }
             $plan.FilePath = $winget
-            $plan.Arguments = Get-WingetArgument -Action $Action -Id $plan.WingetId -Source $plan.WingetSource -Scope $state.Scope
+            $plan.Arguments = Get-WingetArgument -Action $Action -Id $plan.WingetId -Source $plan.WingetSource -Scope $state.Scope -StoreAgreementAccepted:$storeAccepted
             # Unbekannter Bereich: keine eigene Erhöhung, winget fordert sie bei Bedarf selbst an.
             $plan.Elevated = $state.Scope -eq 'Machine'
         }
