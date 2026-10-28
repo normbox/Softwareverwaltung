@@ -75,5 +75,5 @@ Einzelheiten: [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md) und [THIRD-PARTY-NOTICES.
 - [ ] `SECURITY.md` anlegen und „Private vulnerability reporting“ in den Repository-Einstellungen auf GitHub aktivieren
 - [x] Lizenz von `Microsoft.WinGet.Client` geklärt: MIT, Mitliefern erlaubt (mit Lizenztext und NOTICE)
 - [ ] Hinweistexte vollständig in die App übernehmen: Seite „Über“ mit NVD-, KEV- und EPSS-Hinweis (stehen bisher nur bei den Hinweisen zu den Nutzungsbedingungen), KI-Kennzeichnung (Etappe 4c), Haftungshinweis im Bestätigungsdialog
-- [ ] Updates von Store-Paketen (`msstore`): Zustimmung zur Quellvereinbarung sichtbar machen statt `--accept-source-agreements` im Befehl
+- [x] Updates von Store-Paketen (`msstore`): Zustimmung zur Quellvereinbarung sichtbar machen statt `--accept-source-agreements` im Befehl
 - [ ] Projektnamen vor der Festlegung auf Marken prüfen

@@ -16,6 +16,9 @@ public interface IConfirmationService
 
     /// <summary>Gemeinsame Bestätigung der Update-Warteschlange mit allen genauen Befehlen.</summary>
     bool ConfirmQueue(QueueConfirmation confirmation);
+
+    /// <summary>Einmalige Zustimmung zur Vereinbarung der winget-Quelle „msstore“ (Standard „Abbrechen“).</summary>
+    bool ConfirmStoreAgreement(StoreAgreement agreement);
 }
 
 public sealed class ConfirmationService : IConfirmationService
@@ -23,6 +26,12 @@ public sealed class ConfirmationService : IConfirmationService
     public bool Confirm(ActionOutcome plan)
     {
         var dialog = new ConfirmActionWindow { DataContext = plan, Owner = Application.Current?.MainWindow };
+        return dialog.ShowDialog() == true;
+    }
+
+    public bool ConfirmStoreAgreement(StoreAgreement agreement)
+    {
+        var dialog = new StoreAgreementWindow { DataContext = agreement, Owner = Application.Current?.MainWindow };
         return dialog.ShowDialog() == true;
     }
 

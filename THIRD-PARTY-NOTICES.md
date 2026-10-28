@@ -58,7 +58,7 @@ Die App fragt diese Quellen ab oder lädt deren Daten, nur wenn der Dienst einge
 | EPSS (FIRST.org) | frei nutzbar laut EPSS Usage Agreement | Quellenangabe |
 | GitHub REST API (Releases) | GitHub Terms of Service, API-Nutzungsregeln | Abfragegrenzen einhalten, eigenes Token des Nutzers |
 | winget-Community-Quelle (microsoft/winget-pkgs) | Manifeste MIT; installierte Pakete unter ihrer eigenen Lizenz | Bei Übernahme von Manifestdaten in den Produktkatalog: Copyright-Hinweis |
-| Microsoft-Store-Quelle (`msstore`) | eigene Quellvereinbarung von Microsoft | Die winget-Suche nutzt nur die Quelle `winget`. Updates und Deinstallationen laufen über die Quelle, aus der das Paket stammt; bei Store-Paketen ist das `msstore`, und der Befehl enthält `--accept-source-agreements`. **Offen:** Die Zustimmung zur Store-Vereinbarung soll vorher sichtbar erfolgen statt still im Befehl (eigener Fix). |
+| Microsoft-Store-Quelle (`msstore`) | eigene Quellvereinbarung von Microsoft | Die winget-Suche nutzt nur die Quelle `winget`. Updates und Deinstallationen laufen über die Quelle, aus der das Paket stammt; bei Store-Paketen ist das `msstore`, Die Store-Vereinbarung wird vor dem ersten Store-Update einmal angezeigt; erst nach Zustimmung des Benutzers enthält der Befehl `--accept-source-agreements`. |
 
 Geplante weitere Quellen (z. B. CIRCL Vulnerability-Lookup, Cloud-KI als Erweiterung) werden hier eingetragen, sobald sie umgesetzt sind.
 

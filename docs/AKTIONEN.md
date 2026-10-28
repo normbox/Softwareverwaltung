@@ -30,6 +30,8 @@ Beide Funktionen nehmen Datensätze aus `Get-SoftwareInventory` oder `Get-Invent
 
 Aktualisieren: `winget upgrade --id <Id> --exact --source <Quelle> --silent --accept-source-agreements --disable-interactivity --accept-package-agreements`.
 
+Quelle `msstore`: Bei Paketen aus der Quelle `msstore` zeigt die App vor dem ersten Update oder der ersten Deinstallation einmal die Vereinbarung der Store-Quelle (Standard-Button „Abbrechen“). Erst nach Zustimmung, die in den Einstellungen gespeichert wird, enthält der Befehl `--accept-source-agreements`; ohne Zustimmung ist die Aktion nicht ausführbar (Grund `StoreAgreementRequired`).
+
 Pakete werden nur über die exakte winget-ID aus dem Scan angesprochen, nie über den Namen. winget wird mit vollem Pfad aus dem App-Installer-Paket (`%ProgramFiles%\WindowsApps\Microsoft.DesktopAppInstaller_…\winget.exe`) gestartet. Der übliche Alias in `%LOCALAPPDATA%` fehlt im Profil eines anderen Administratorkontos, und den Paketordner können nur Administratoren beschreiben.
 
 Befehle aus der Registry werden ohne Shell gestartet, nie über `cmd /c` oder `Invoke-Expression`. Der Programmpfad wird herausgelöst, in Anführungszeichen oder als längster vorhandener `.exe`-Präfix. Der Rest bleibt unverändert als Argumentzeichenfolge. Programmnamen ohne Ordner (z. B. `MsiExec.exe`) werden nur in System32 gesucht. Interpreter (`cmd`, `powershell`, `pwsh`, `wscript`, `cscript`, `mshta`, `rundll32`, `regsvr32`, …) werden abgelehnt (`Unsupported`).

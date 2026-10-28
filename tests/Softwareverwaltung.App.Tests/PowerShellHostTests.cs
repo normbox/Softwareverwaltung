@@ -29,6 +29,14 @@ public sealed class PowerShellHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task EmbeddedEngineRunsWithTelemetryOptOut()
+    {
+        var result = await _host.InvokeAsync(new PSCommand().AddScript("$env:POWERSHELL_TELEMETRY_OPTOUT"));
+
+        Assert.Equal("1", result.Output.Single().BaseObject);
+    }
+
+    [Fact]
     public async Task RunspaceUsesUiCultureOfTheApp()
     {
         var result = await _host.InvokeAsync(new PSCommand().AddScript("$PSUICulture; [cultureinfo]::CurrentCulture.Name"));

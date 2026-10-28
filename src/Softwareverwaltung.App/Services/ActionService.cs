@@ -18,6 +18,12 @@ public interface IActionService
     /// <summary>Verwirft die zwischengespeicherten Online-Ergebnisse eines Programms (Clear-CheckCache).</summary>
     Task ClearCheckCacheAsync(PSObject source, CancellationToken cancellationToken = default);
 
+    /// <summary>Vereinbarung der winget-Quelle „msstore“ zum Anzeigen (Get-StoreAgreementNotice).</summary>
+    Task<StoreAgreement> GetStoreAgreementAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Speichert die Zustimmung des Benutzers zur Store-Vereinbarung (Set-InventorySetting -StoreAgreementAccepted).</summary>
+    Task AcceptStoreAgreementAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Plant die Update-Warteschlange ohne Ausführung (Get-UpdateQueuePlan).</summary>
     Task<IReadOnlyList<QueueEntry>> PlanUpdateQueueAsync(IReadOnlyList<PSObject> sources, IProgress<string>? progress = null, CancellationToken cancellationToken = default);
 
@@ -52,6 +58,24 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
             }
         }
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<StoreAgreement> GetStoreAgreementAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await host.InvokeAsync(new PSCommand().AddCommand("Get-StoreAgreementNotice"), cancellationToken: cancellationToken).ConfigureAwait(false);
+        return result.Output.FirstOrDefault() is { } notice
+            ? StoreAgreement.FromPs(notice)
+            : throw new InvalidOperationException(AppText.Get("ErrorModuleNoResult"));
+    }
+
+    public async Task AcceptStoreAgreementAsync(CancellationToken cancellationToken = default)
+    {
+        var command = new PSCommand().AddCommand("Set-InventorySetting").AddParameter("StoreAgreementAccepted", true).AddParameter("Confirm", false);
+        var result = await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (result.Errors.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, result.Errors));
+        }
     }
 
     public async Task<IReadOnlyList<QueueEntry>> PlanUpdateQueueAsync(IReadOnlyList<PSObject> sources, IProgress<string>? progress = null, CancellationToken cancellationToken = default)

@@ -4,6 +4,17 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Store-Vereinbarung und Telemetrie
+
+#### Geändert
+
+- **Store-Pakete (`msstore`):** Die Vereinbarung der Store-Quelle wird nicht mehr still im Befehl akzeptiert. Vor der ersten Aktion zeigt die App sie einmal an (Standard-Button „Abbrechen“) und speichert die Zustimmung (`Set-InventorySetting -StoreAgreementAccepted`, Text über `Get-StoreAgreementNotice`). Ohne Zustimmung ist die Aktion nicht ausführbar, Grund `StoreAgreementRequired`; das gilt auch in der Warteschlange.
+- **Telemetrie:** `POWERSHELL_TELEMETRY_OPTOUT=1` für die eingebettete PowerShell und den erhöhten Helfer; in `PRIVACY.md` und `docs/TECHNIK.md` beschrieben.
+
+#### Behoben
+
+- `Write-InventorySetting` hat die Zwischenspeicher-Dauern (`CacheHours`) nicht gespeichert. Jetzt werden alle Bereiche der Einstellungen gespeichert; ein Test prüft das.
+
 ### Dokumentation: Datenschutz, Lizenzen, Technik, Rechtliches
 
 #### Neu

@@ -90,7 +90,7 @@ Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 ### winget (Microsoft)
 
 - **Was:** Beim Lesen der Paketliste aktualisiert winget seine Quellen (Download der Kataloge). Die winget-Suche fragt die Quelle `winget` nach Programmen ohne winget-ID. Bei Update oder Deinstallation lädt winget das Installationsprogramm vom Hersteller oder aus dem Store.
-- **Beachten:** Die Quelle `msstore` hat eine eigene Vereinbarung. Updates von Store-Paketen laufen derzeit mit `--accept-source-agreements`; das soll vorher sichtbar bestätigt werden (offen). winget sendet Telemetrie gemäß den Windows-Diagnoseeinstellungen; abschaltbar in `winget settings`.
+- **Beachten:** Die Quelle `msstore` hat eine eigene Vereinbarung. Die App zeigt sie vor der ersten Aktion an einem Store-Paket einmal an (Standard „Abbrechen“) und speichert die Zustimmung; erst dann enthält der Befehl `--accept-source-agreements`. Dabei geht unter anderem der Ländercode des Rechners an Microsoft. winget sendet Telemetrie gemäß den Windows-Diagnoseeinstellungen; abschaltbar in `winget settings`.
 - **Firmen:** winget lässt sich per Gruppenrichtlinie steuern (erlaubte Quellen, eigene REST-Quelle).
 
 ### GitHub Releases
