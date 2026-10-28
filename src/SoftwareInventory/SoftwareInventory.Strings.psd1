@@ -64,6 +64,8 @@ Regeln:
     ProgressReadWinget                      = 'Lese die winget-Paketliste'
     ProgressFindFiles                       = 'Suche nach Programmdateien'
     ProgressCheckFiles                      = 'Prüfe Programmdateien'
+    ProgressUpdateQueue                     = 'Aktualisiere'
+    ProgressUpdateQueueCounted              = 'Aktualisiere {0} von {1}'
 
     # Suche nach portablen Programmen (Invoke-InventoryScan)
     PortableSearchNoLocation                = 'Dateisuche: Keine Option „Wo suchen“ gewählt oder die gewählte Option hat keinen Eintrag, daher wurden keine Dateien durchsucht.'
@@ -156,6 +158,8 @@ Regeln:
     ReasonNotVerifiedUninstall              = 'Das Programm meldet Erfolg, ist aber noch installiert.'
     ReasonNotVerifiedUpdate                 = 'Das Programm meldet Erfolg, die Version hat sich aber nicht erhöht.'
     ReasonWithNextMethod                    = '{0} Nächste mögliche Methode: {1} (Aufruf mit -Method {1}).'
+    ReasonQueueCancelled                    = 'Abgebrochen, nicht ausgeführt (Warteschlange abgebrochen).'
+    ReasonRestorePointNameQueue             = 'Softwareverwaltung: {0} Programme aktualisieren'
     ReasonActionIncomplete                  = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
     ReasonLegacyText                        = '{0} (älterer Eintrag)'
 

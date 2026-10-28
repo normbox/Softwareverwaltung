@@ -12,6 +12,8 @@
         'Resolve-InstallLocation'
         'Clear-CheckCache'
         'Get-RefreshEstimate'
+        'Get-UpdateQueuePlan'
+        'Invoke-UpdateQueue'
         'Save-InventorySnapshot'
         'Get-InventorySnapshot'
         'Compare-InventorySnapshot'
