@@ -6,6 +6,8 @@ function Get-RefreshEstimate {
         Zählt die NVD-Anfragen (je Programm mit CPE-Zuordnung und lesbarer Version eine je CPE) und
         rechnet mit dem Mindestabstand der NVD: ohne Schlüssel 6 Sekunden, mit Schlüssel 0,6 Sekunden.
         Weitere Seiten und KEV-Nachfragen kommen hinzu; die Schätzung ist eine Untergrenze.
+        Ist CIRCL eingeschaltet, kommt je CPE eine CIRCL-Anfrage hinzu (3 bzw. 1,5 Sekunden Abstand).
+        Beide Dienste warten nur auf ihren eigenen Abstand, daher zählt die längere der beiden Zeiten.
         NeedsConfirmation ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist: Dann fragt
         die App vor einem Scan ohne Zwischenspeicher nach.
     .EXAMPLE
@@ -44,13 +46,19 @@ function Get-RefreshEstimate {
         $nvd = Test-ServiceEnabled -Name NVD -Setting $setting
         $hasKey = [bool] (Get-ServiceSecret -Service NVD)
         $interval = if ($hasKey) { $script:ServiceInterval.NVD.WithKey } else { $script:ServiceInterval.NVD.Anonymous }
+        $circl = Test-ServiceEnabled -Name CIRCL -Setting $setting
+        $circlInterval = if ($circl -and (Get-ServiceSecret -Service CIRCL)) { $script:ServiceInterval.CIRCL.WithKey } else { $script:ServiceInterval.CIRCL.Anonymous }
+        $nvdSeconds = if ($nvd) { $requests * $interval } else { 0 }
+        $circlSeconds = if ($circl) { $requests * $circlInterval } else { 0 }
         [pscustomobject] [ordered]@{
             PSTypeName        = 'SoftwareInventory.RefreshEstimate'
             Programs          = $programs
             NvdEnabled        = $nvd
             NvdRequests       = if ($nvd) { $requests } else { 0 }
             HasNvdKey         = $hasKey
-            Seconds           = if ($nvd) { [int] [Math]::Ceiling($requests * $interval) } else { 0 }
+            CirclEnabled      = $circl
+            CirclRequests     = if ($circl) { $requests } else { 0 }
+            Seconds           = [int] [Math]::Ceiling([Math]::Max($nvdSeconds, $circlSeconds))
             NeedsConfirmation = $nvd -and -not $hasKey
         }
     }

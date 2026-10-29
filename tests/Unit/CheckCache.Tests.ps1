@@ -175,6 +175,19 @@ Describe 'Get-RefreshEstimate' {
         $e.NeedsConfirmation | Should -BeTrue
     }
 
+    It 'zählt CIRCL mit 3 Sekunden je Anfrage dazu, aber nur die längere Wartezeit' {
+        Mock -ModuleName SoftwareInventory Get-ServiceSecret { $null }
+        Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting CIRCL }
+        $e = 1..3 | ForEach-Object { New-TestRecord -Name "Tool $_" } | Get-RefreshEstimate
+        $e.CirclRequests | Should -Be 3
+        $e.NvdRequests | Should -Be 0
+        $e.Seconds | Should -Be 9
+        $e.NeedsConfirmation | Should -BeFalse
+
+        Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting NVD, CIRCL }
+        (1..3 | ForEach-Object { New-TestRecord -Name "Tool $_" } | Get-RefreshEstimate).Seconds | Should -Be 18
+    }
+
     It 'fragt mit Schlüssel oder ohne aktivierte NVD nicht nach' {
         Mock -ModuleName SoftwareInventory Get-ServiceSecret { 'nvd-test-123' }
         Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting NVD }

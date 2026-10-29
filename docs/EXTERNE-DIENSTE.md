@@ -9,8 +9,8 @@ Das Inventar selbst entsteht vollständig auf dem eigenen Rechner. Erst für den
 ## Grundsätze
 
 1. **Alles Externe ist aus, bis es eingeschaltet wird.** Jeder Dienst lässt sich in den Einstellungen einzeln ein- und ausschalten. Ohne Netzwerk funktioniert das Inventar weiterhin.
-2. **Sparsam fragen.** Wo ein Dienst eine Gesamtliste anbietet (CISA KEV), lädt die App die ganze Liste und vergleicht lokal. Dann erfährt der Anbieter nicht, welche Programme installiert sind. Wo das nicht geht (NVD, EPSS, GitHub), fragt die App gezielt und nur mit den nötigen Angaben.
-3. **Zwischenspeicher.** Antworten werden zwischengespeichert, die Haltbarkeit ist je Quelle einstellbar (Standard: neueste Version 6 Stunden, NVD, EPSS und KEV je 24 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter und sind als veraltet gekennzeichnet.
+2. **Sparsam fragen.** Wo ein Dienst eine Gesamtliste anbietet (CISA KEV), lädt die App die ganze Liste und vergleicht lokal. Dann erfährt der Anbieter nicht, welche Programme installiert sind. Wo das nicht geht (NVD, CIRCL, EPSS, GitHub), fragt die App gezielt und nur mit den nötigen Angaben.
+3. **Zwischenspeicher.** Antworten werden zwischengespeichert, die Haltbarkeit ist je Quelle einstellbar (Standard: neueste Version 6 Stunden, NVD, CIRCL, EPSS und KEV je 24 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter und sind als veraltet gekennzeichnet.
 4. **Eigene Schlüssel.** Das Projekt betreibt keinen eigenen Server und hat keinen Zugang zu den Daten der Nutzer. API-Schlüssel gehören dem Nutzer und liegen in der Windows-Anmeldeinformationsverwaltung.
 5. **Jeder Abruf überträgt die IP-Adresse** des Rechners (bzw. des Firmen-Proxys) und technische Daten wie Uhrzeit und Programmkennung (User-Agent `SoftwareInventory/<Version>`). Das gilt für alle folgenden Dienste und wird nicht jedes Mal wiederholt.
 
@@ -78,6 +78,7 @@ Klassen: **A** frei für alle · **B** kostenlos nur privat · **C** eigenes Kon
 | Updates und Deinstallation über winget | Microsoft bzw. Hersteller | Paket-ID; Download des Installationsprogramms | A | vorhanden | nur nach Bestätigung |
 | GitHub Releases | GitHub (Microsoft), USA | Name des Repositorys aus dem Katalog | A (Token optional) | vorhanden | aus |
 | NVD CVE- und CPE-API | NIST, USA | Produktkennung (CPE) mit Version; bei CPE-Vorschlägen der Programmname | A (Schlüssel optional) | vorhanden | aus |
+| CIRCL Vulnerability-Lookup | CIRCL, Luxemburg | Hersteller und Produkt aus der CPE, ohne Version | A (Schlüssel optional) | vorhanden | aus |
 | CISA KEV | CISA, USA | nichts außer dem Abruf der Gesamtliste | A | vorhanden | aus |
 | EPSS | FIRST.org, USA | Nummern der gefundenen Lücken (CVE-IDs) | A | vorhanden | aus |
 | Lokaler KI-Server (Ollama, LM Studio, Unsloth Studio) | eigener Rechner | nichts verlässt den Rechner | A (Modelllizenz beachten) | geplant (4b) | aus |
@@ -105,6 +106,13 @@ Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 - **Bedingungen:** Pflichthinweis „This product uses the NVD API but is not endorsed or certified by the NVD.“. Schlüssel sind persönlich und dürfen nicht weitergegeben oder ins Repository gelegt werden. Ohne Schlüssel gelten engere Abfragegrenzen; die App wartet dann 6 Sekunden zwischen zwei Anfragen, mit Schlüssel 0,6 Sekunden.
 - **Datenschutz:** Abfragen nach Produkt und Version verraten, welche Software installiert ist. Ein datensparsamerer Gesamtabgleich (Synchronisierung des NVD-Bestands über Änderungszeiträume, lokaler Vergleich) ist nicht umgesetzt.
 
+### CIRCL Vulnerability-Lookup
+
+- **Was:** Zweite Quelle für Schwachstellen neben der NVD, einzeln schaltbar. Abgefragt wird `/api/vulnerability/search/{hersteller}/{produkt}` mit Hersteller und Produkt aus der zugeordneten CPE. CIRCL liefert die CVE-Datensätze des CVE-Programms (Format CVE 5, mit Ergänzungen der CISA); die App wertet die Versionsangaben auf dem eigenen Rechner aus. Was sich nicht auswerten lässt, gilt wie bei der NVD ohne Versionsdaten: jünger als 5 Jahre „möglicherweise betroffen“, älter nur als Hinweis.
+- **Zusammenführung:** Gleiche CVE-ID heißt gleiche Lücke, sie wird nur einmal gezählt. Die Details zeigen die Angabe jeder Quelle einzeln. Meldet eine Quelle „betroffen“ und die andere mit Versionsdaten „nicht betroffen“, gilt „möglicherweise betroffen“ mit dem Grund „Quellen widersprechen sich“ (Gelb), nicht widerlegt. Fehlt zu einem CIRCL-Treffer die NVD-Angabe, schlägt die App diese eine CVE in der NVD nach (nur wenn die NVD eingeschaltet ist).
+- **Bedingungen:** Kostenlos. Ohne Schlüssel 20 Anfragen pro Minute (die App wartet 3 Sekunden), mit Schlüssel aus einem Benutzerkonto bei CIRCL 40 (1,5 Sekunden). Die App nennt sich im User-Agent mit der Projektadresse und spiegelt den Bestand nicht. Die CVE-Datensätze stehen unter CC BY 4.0; die App nennt die Quelle bei jedem Treffer und im Bericht. Details in [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
+- **Datenschutz:** Datensparsamer als die NVD-Abfrage, weil keine Version gesendet wird; CIRCL erfährt trotzdem, nach welchen Produkten gefragt wird. Sitz in Luxemburg (EU).
+
 ### CISA KEV und EPSS
 
 - **Was:** Liste aktiv ausgenutzter Lücken (KEV) und Ausnutzungswahrscheinlichkeit (EPSS).
@@ -122,10 +130,6 @@ Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 ## Geplant oder nur als Idee (nicht umgesetzt)
 
 Diese Dienste sind nicht eingebaut. Die Notizen bleiben für die spätere Umsetzung stehen.
-
-### CIRCL Vulnerability-Lookup (geplant)
-
-Zweite Quelle für Schwachstellen neben der NVD, einzeln schaltbar. Wird nach der Umsetzung oben aufgenommen.
 
 ### Claude API und andere Cloud-KI (später als Erweiterung)
 

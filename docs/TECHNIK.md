@@ -25,7 +25,7 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 | Inventarquellen | Registry (Uninstall-Schlüssel HKLM, HKLM\WOW6432Node, HKCU), `Get-AppxPackage`, `Get-WinGetPackage` | vorhanden |
 | Portable Programme | Nutzungsspuren (UserAssist, laufende Prozesse, Autostart, geplante Aufgaben), Dateisuche in Laufwerken oder Ordnern, PE-Versionsinfo, Authenticode, optional SHA256 | vorhanden |
 | Versionsabgleich | winget, GitHub Releases (Katalog), winget-Suche (unbestätigt) | vorhanden |
-| Sicherheitsprüfung | NVD CVE-API 2.0, CISA KEV, EPSS; Ampel und HTML-Bericht | vorhanden |
+| Sicherheitsprüfung | NVD CVE-API 2.0, CIRCL Vulnerability-Lookup, CISA KEV, EPSS; Ampel und HTML-Bericht | vorhanden |
 | Aktionen | Aktualisieren und Deinstallieren über winget, MSI, Deinstallationsbefehl, Store-App; Update-Warteschlange | vorhanden |
 | Desktop-App | .NET 10 WPF, Fluent-Design über WPF-UI, PowerShell eingebettet über `Microsoft.PowerShell.SDK` | vorhanden |
 | KI-Berater | Werkzeuge und Bereinigung im Modul (4a) vorhanden; Anbindung in der App über die OpenAI-kompatible Schnittstelle lokaler Server (4b), Chat (4c); Cloud-Anbieter später als Erweiterung | teilweise, geplant |
@@ -79,12 +79,12 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | --- | --- | --- | --- |
 | Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` | eingeschaltete Quellen, Dienste und Nutzungsspuren, Dateisuche, Haltbarkeit des Zwischenspeichers, Aufbewahrung der Logs, KI-Server | vorhanden |
 | Eigene CPE-Zuordnungen | `%APPDATA%\SoftwareInventory\cpe-map.json` | vom Benutzer bestätigte Zuordnungen Programm → CPE | vorhanden |
-| Zwischenspeicher der Online-Abfragen | `%LOCALAPPDATA%\SoftwareInventory\cache\<Dienst>\`, Index je Programm in `cache\index\` | Antworten von NVD, KEV, EPSS, GitHub und winget-Suche mit Abrufzeit | vorhanden |
+| Zwischenspeicher der Online-Abfragen | `%LOCALAPPDATA%\SoftwareInventory\cache\<Dienst>\`, Index je Programm in `cache\index\` | Antworten von NVD, CIRCL, KEV, EPSS, GitHub und winget-Suche mit Abrufzeit | vorhanden |
 | Aktionsprotokoll | `%LOCALAPPDATA%\SoftwareInventory\logs\actions\<Datum>.jsonl` | Zeitpunkt, Benutzer, Aktion, Programm, Befehl, Ergebnis | vorhanden |
 | Installer-Logs | `%LOCALAPPDATA%\SoftwareInventory\logs\installer\` | nur nach Fehlern, komprimiert | vorhanden |
 | Fehlerprotokoll der App | `%LOCALAPPDATA%\SoftwareInventory\logs\app-errors-<Datum>.log` | unerwartete Fehler mit Details | vorhanden |
 | Scans (Snapshots) | `%LOCALAPPDATA%\SoftwareInventory\scans\<yyyyMMdd-HHmmss-fff>.json` | nur über `Save-InventorySnapshot`; die App speichert keine Scans | vorhanden |
-| API-Schlüssel | Windows-Anmeldeinformationsverwaltung oder Umgebungsvariable; **nie** in Einstellungsdateien oder im Repository | NVD, GitHub, KI-Server | vorhanden |
+| API-Schlüssel | Windows-Anmeldeinformationsverwaltung oder Umgebungsvariable; **nie** in Einstellungsdateien oder im Repository | NVD, CIRCL, GitHub, KI-Server | vorhanden |
 | Richtlinien (Firma) | `HKLM\SOFTWARE\Policies\Softwareverwaltung` (Vorschlag) | vom Administrator festgelegte und gesperrte Einstellungen | geplant (Etappe 6) |
 
 Logs und Zwischenspeicher räumen sich beim Start selbst auf: höchstens 30 Tage alt und höchstens 100 MB insgesamt, beides einstellbar, Ältestes zuerst. Scans sind davon ausgenommen. Alle Dateien liegen unverschlüsselt im Benutzerprofil und sind nur für den Benutzer (und Administratoren) lesbar. Scans und Protokolle können Benutzerpfade und damit den Benutzernamen enthalten.
@@ -100,6 +100,7 @@ Eine vollständige Liste mit Datenschutzbewertung steht in [EXTERNE-DIENSTE.md](
 | winget-Quellen | `cdn.winget.microsoft.com` und die Download-Server der Hersteller | beim Lesen der winget-Daten, bei der winget-Suche und bei Aktionen | vorhanden (über winget) |
 | GitHub API | `api.github.com` | Versionsabgleich für Programme aus dem Katalog | vorhanden |
 | NVD | `services.nvd.nist.gov` | CVE-Abfragen, CPE-Vorschläge | vorhanden |
+| CIRCL | `vulnerability.circl.lu` | CVE-Datensätze je Hersteller und Produkt | vorhanden |
 | CISA KEV | `www.cisa.gov` | Laden der KEV-Liste | vorhanden |
 | EPSS | `api.first.org` | Ausnutzungswahrscheinlichkeit für gefundene CVEs | vorhanden |
 | Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse | nur wenn der KI-Berater eingerichtet ist | geplant (Etappe 4b) |

@@ -4,6 +4,22 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Zweite Quelle: CIRCL Vulnerability-Lookup
+
+#### Neu
+
+- **CIRCL als zweite Quelle für Sicherheitslücken** (Dienst `CIRCL`, standardmäßig aus, nur mit zugeordneter CPE). Gesendet werden nur Hersteller und Produkt, die Versionsangaben der CVE-Datensätze (CVE 5) wertet das Modul lokal aus: strukturierte Bereiche, einfache Textformen (`< 8.9.6.1`, `>= 9.11, < 26.01`) und feste englische Muster („Fixed in X“, „before X“, „prior to X“, „X and earlier“). Nicht auswertbare Angaben fallen unter die Altersregel.
+- **Angabe je Quelle:** Jede Lücke erscheint einmal (gleiche CVE-ID) und nennt in `Sources` die Angabe von NVD und CIRCL einzeln mit Bereich, Namensnennung und Link. Die Details der App und der HTML-Bericht zeigen sie immer, auch wenn die Quellen übereinstimmen; bei CIRCL steht „Daten: CVE-Programm über CIRCL, CC BY 4.0“.
+- **Widerspruch der Quellen:** Meldet eine Quelle „betroffen“ und die andere mit Versionsdaten „nicht betroffen“, gilt „möglicherweise betroffen“ mit Grund `SourcesDisagree` (Gelb). Ein Widerspruch widerlegt nie.
+- Optionaler **CIRCL-Schlüssel** (Anmeldeinformationsverwaltung oder `CIRCL_API_KEY`), eigene Haltbarkeit `CacheHours.CIRCL` und Nutzungshinweis; in der App unter Einstellungen.
+
+#### Geändert
+
+- **HTTP 429:** Mit `Retry-After` bis 60 Sekunden wartet das Modul einmal und wiederholt die Anfrage; sonst gilt wie bisher der veraltete Zwischenspeicher. Gilt für alle Dienste.
+- Der User-Agent nennt die Projektadresse als Kontakt.
+- `Get-RefreshEstimate` zählt CIRCL-Anfragen mit (`CirclEnabled`, `CirclRequests`).
+- `PRIVACY.md`, `THIRD-PARTY-NOTICES.md`, `docs/EXTERNE-DIENSTE.md`, `docs/SCHWACHSTELLEN.md` und `docs/TECHNIK.md` beschreiben CIRCL (Sitz Luxemburg, CC BY 4.0, Abfragegrenzen).
+
 ### CPE-Zuordnung
 
 #### Neu
