@@ -1,0 +1,18 @@
+{
+  "Id": "cursor",
+  "Name": "Cursor",
+  "Match": {
+    "WingetId": ["Anysphere.Cursor"],
+    "NamePattern": "^Cursor( \\(User\\))?$",
+    "Publisher": ["Anysphere"]
+  },
+  "Cpe": ["cpe:2.3:a:anysphere:cursor"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aanysphere%3Acursor",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-63093"
+    ],
+    "Note": "NVD-Titel „Anysphere Cursor 2.0.x“, Versionen dreistellig wie installiert (2.4.28). Stichprobe CVE-2026-63093 betrifft Cursor für Windows."
+  }
+}

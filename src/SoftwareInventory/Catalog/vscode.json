@@ -1,0 +1,18 @@
+{
+  "Id": "vscode",
+  "Name": "Visual Studio Code",
+  "Match": {
+    "WingetId": ["Microsoft.VisualStudioCode", "XP9KHM4BK9FZ7Q"],
+    "NamePattern": "^Microsoft Visual Studio Code",
+    "Publisher": ["Microsoft Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:visual_studio_code"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Avisual_studio_code",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-102231"
+    ],
+    "Note": "Versionen dreistellig wie installiert (1.144.0). Viele CVEs der CPE betreffen Erweiterungen („for Python“); die Stichprobe muss den Editor selbst treffen. Stichprobe CVE-2026-102231 betrifft den Editor selbst."
+  }
+}

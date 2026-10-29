@@ -1,0 +1,18 @@
+{
+  "Id": "sumatrapdf",
+  "Name": "SumatraPDF",
+  "Match": {
+    "WingetId": ["SumatraPDF.SumatraPDF"],
+    "NamePattern": "^SumatraPDF",
+    "Publisher": ["Krzysztof Kowalczyk"]
+  },
+  "Cpe": ["cpe:2.3:a:sumatrapdfreader:sumatrapdf"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Asumatrapdfreader%3Asumatrapdf",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-25961"
+    ],
+    "Note": "Aktive CPE ist sumatrapdfreader:sumatrapdf; krzysztof_kowalczyk:sumatrapdf ist vollständig veraltet (31 von 31). Versionsform passt (3.6). Stichprobe CVE-2026-25961 betrifft SumatraPDF 3.5.x unter Windows."
+  }
+}

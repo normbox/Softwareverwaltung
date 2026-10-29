@@ -64,6 +64,21 @@ function Test-CatalogEntry {
         if (-not $cpe) { continue }
         if ($cpe -notmatch '^cpe:2\.3:[aho]:(\\.|[^:\\])+:(\\.|[^:\\])+$') { (Get-LocalizedString 'CatalogCpeForm' $cpe) }
     }
+    # Jede CPE-Zuordnung nennt, wie sie geprüft wurde, damit Beiträge denselben Maßstab haben.
+    if (@(Get-CatalogValue $Entry 'Cpe') | Where-Object { $_ }) {
+        $check = Get-CatalogValue $Entry 'CpeCheck'
+        if (-not $check) { (Get-LocalizedString 'CatalogCpeCheckMissing') }
+        else {
+            # ConvertFrom-Json macht aus „2026-10-28“ unter Umständen schon ein DateTime
+            $date = Get-CatalogValue $check 'CheckedAt'
+            $parsed = [datetime]::MinValue
+            if ($date -isnot [datetime] -and -not [datetime]::TryParseExact([string] $date, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture, 'None', [ref] $parsed)) {
+                (Get-LocalizedString 'CatalogCpeCheckDate' $date)
+            }
+            if (-not (@(Get-CatalogValue $check 'Evidence') | Where-Object { $_ -match '^https://' })) { (Get-LocalizedString 'CatalogCpeCheckEvidence') }
+            if (-not (Get-CatalogValue $check 'Note')) { (Get-LocalizedString 'CatalogCpeCheckNote') }
+        }
+    }
     $versionPattern = Get-CatalogValue $Entry 'CpeVersionPattern'
     if ($versionPattern) {
         try { [void] [regex]::new($versionPattern) } catch { (Get-LocalizedString 'CatalogInvalidPattern' $versionPattern) }

@@ -1,0 +1,30 @@
+{
+  "Id": "dotnet",
+  "Name": ".NET Runtime",
+  "Match": {
+    "WingetId": [
+      "Microsoft.DotNet.Runtime.6",
+      "Microsoft.DotNet.Runtime.7",
+      "Microsoft.DotNet.Runtime.8",
+      "Microsoft.DotNet.Runtime.9",
+      "Microsoft.DotNet.Runtime.10",
+      "Microsoft.DotNet.DesktopRuntime.6",
+      "Microsoft.DotNet.DesktopRuntime.7",
+      "Microsoft.DotNet.DesktopRuntime.8",
+      "Microsoft.DotNet.DesktopRuntime.9",
+      "Microsoft.DotNet.DesktopRuntime.10"
+    ],
+    "NamePattern": "^Microsoft (Windows Desktop Runtime|\\.NET Runtime) - ",
+    "Publisher": ["Microsoft Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:.net"],
+  "CpeVersionPattern": "^(?<version>\\d+\\.\\d+\\.\\d+)",
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3A.net",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-111497"
+    ],
+    "Note": "Nur Runtime und Desktop Runtime: Dateiversion 8.0.33.36622 entspricht .NET 8.0.33 (CpeVersionPattern). Das SDK bleibt draußen, seine Dateiversion (10.4.326) ist nicht die SDK-Version (10.0.403). Stichprobe CVE-2026-111497 betrifft den in .NET enthaltenen Brotli-Decoder."
+  }
+}

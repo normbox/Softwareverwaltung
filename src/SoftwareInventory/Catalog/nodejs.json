@@ -1,0 +1,18 @@
+{
+  "Id": "nodejs",
+  "Name": "Node.js",
+  "Match": {
+    "WingetId": ["OpenJS.NodeJS", "OpenJS.NodeJS.LTS"],
+    "NamePattern": "^Node\\.js$",
+    "Publisher": ["Node.js Foundation"]
+  },
+  "Cpe": ["cpe:2.3:a:nodejs:node.js"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Anodejs%3Anode.js",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-111497"
+    ],
+    "Note": "Versionen dreistellig wie installiert (24.22.1). Stichprobe CVE-2026-111497 betrifft den in Node.js enthaltenen Brotli-Decoder."
+  }
+}

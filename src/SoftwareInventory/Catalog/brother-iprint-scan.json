@@ -1,0 +1,16 @@
+{
+  "Id": "brother-iprint-scan",
+  "Name": "Brother iPrint&Scan",
+  "Match": {
+    "WingetId": ["Brother.iPrintScan"]
+  },
+  "Cpe": ["cpe:2.3:a:brother:iprint\\&scan"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Abrother%3Aiprint%5C%26scan",
+      "https://nvd.nist.gov/vuln/detail/CVE-2023-51654"
+    ],
+    "Note": "NVD führt Windows- und Android-Einträge unter derselben CPE; lieber ein Fehlalarm mehr als ein übersehenes Programm. Stichprobe CVE-2023-51654 betrifft iPrint&Scan Desktop für Windows."
+  }
+}

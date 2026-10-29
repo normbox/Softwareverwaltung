@@ -6,5 +6,13 @@
     "NamePattern": "^KeePass Password Safe",
     "Publisher": ["Dominik Reichl"]
   },
-  "Cpe": ["cpe:2.3:a:keepass:keepass"]
+  "Cpe": ["cpe:2.3:a:keepass:keepass"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Akeepass%3Akeepass",
+      "https://nvd.nist.gov/vuln/detail/CVE-2023-32784"
+    ],
+    "Note": "NVD-Titel „KeePass 2.5x“, Versionsform passt (2.59). Stichprobe CVE-2023-32784 betrifft KeePass 2.x vor 2.54."
+  }
 }

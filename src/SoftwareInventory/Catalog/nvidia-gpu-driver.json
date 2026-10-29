@@ -1,0 +1,17 @@
+{
+  "Id": "nvidia-gpu-driver",
+  "Name": "NVIDIA-Grafiktreiber",
+  "Match": {
+    "NamePattern": "^NVIDIA (Grafiktreiber|Graphics Driver) \\d",
+    "Publisher": ["NVIDIA Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:nvidia:gpu_display_driver"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Anvidia%3Agpu_display_driver",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-24199"
+    ],
+    "Note": "NVD-Titel „NVIDIA GPU Display Driver 5xx.xx for Windows“, Versionsform passt (617.14). Der Programmname ist übersetzt, daher Muster für Deutsch und Englisch. Stichprobe CVE-2026-24199 betrifft den Linux-Treiber; das Modul wertet die Plattform nicht aus, also eher ein Fehlalarm als ein übersehenes Programm."
+  }
+}

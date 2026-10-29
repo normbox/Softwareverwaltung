@@ -1,0 +1,17 @@
+{
+  "Id": "npcap",
+  "Name": "Npcap",
+  "Match": {
+    "NamePattern": "^Npcap",
+    "Publisher": ["Nmap Project"]
+  },
+  "Cpe": ["cpe:2.3:a:nmap:npcap"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Anmap%3Anpcap",
+      "https://nvd.nist.gov/vuln/detail/CVE-2019-11490"
+    ],
+    "Note": "Nur ein Wörterbucheintrag, eine CVE; Versionsform passt (1.88). insecure:npcap gibt es nicht. Stichprobe CVE-2019-11490 betrifft Npcap 0.992."
+  }
+}

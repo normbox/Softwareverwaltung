@@ -8,6 +8,14 @@
   },
   "GitHub": { "Repository": "ip7z/7zip" },
   "Cpe": ["cpe:2.3:a:7-zip:7-zip"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3A7-zip%3A7-zip",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-14266"
+    ],
+    "Note": "NVD-Versionen zweistellig (26.03) wie installiert (26.05). Stichprobe CVE-2026-14266 betrifft 7-Zip (XZ-Entpacker)."
+  },
   "Kev": [{ "Vendor": "7-Zip", "ProductPattern": "^7-Zip$" }],
   "KevFixed": { "CVE-2025-0411": "24.09" }
 }

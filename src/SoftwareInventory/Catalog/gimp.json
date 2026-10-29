@@ -1,0 +1,18 @@
+{
+  "Id": "gimp",
+  "Name": "GIMP",
+  "Match": {
+    "WingetId": ["GIMP.GIMP.3", "GIMP.GIMP"],
+    "NamePattern": "^GIMP \\d",
+    "Publisher": ["The GIMP Team"]
+  },
+  "Cpe": ["cpe:2.3:a:gimp:gimp"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Agimp%3Agimp",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-82343"
+    ],
+    "Note": "NVD-Versionen dreistellig, installiert 3.2.4.0 (vierte Stelle 0). Stichprobe CVE-2026-82343 betrifft das PSD-Plugin von GIMP."
+  }
+}

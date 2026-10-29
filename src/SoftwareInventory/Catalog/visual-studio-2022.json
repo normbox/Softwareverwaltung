@@ -1,0 +1,22 @@
+{
+  "Id": "visual-studio-2022",
+  "Name": "Visual Studio 2022",
+  "Match": {
+    "WingetId": [
+      "Microsoft.VisualStudio.2022.Community",
+      "Microsoft.VisualStudio.2022.Professional",
+      "Microsoft.VisualStudio.2022.Enterprise"
+    ],
+    "NamePattern": "^Visual Studio (Community|Professional|Enterprise) 2022$",
+    "Publisher": ["Microsoft Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:visual_studio_2022"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Avisual_studio_2022",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-96957"
+    ],
+    "Note": "NVD-Versionen 17.x wie installiert (17.13.4); visual_studio_community hat nur einen alten Eintrag und bleibt draußen. Stichprobe CVE-2026-96957 betrifft das mitgelieferte .NET, das die NVD unter Visual Studio 2022 führt."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "Id": "httrack",
+  "Name": "HTTrack Website Copier",
+  "Match": {
+    "WingetId": ["XavierRoche.HTTrack"],
+    "NamePattern": "^WinHTTrack Website Copier",
+    "Publisher": ["HTTrack"]
+  },
+  "Cpe": ["cpe:2.3:a:httrack:httrack"],
+  "CpeVersionPattern": "^(?<version>\\d+\\.\\d+)-\\d+$",
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Ahttrack%3Ahttrack",
+      "https://nvd.nist.gov/vuln/detail/CVE-2010-5252"
+    ],
+    "Note": "Ein Wörterbucheintrag (3.0); WinHTTrack ist die Windows-Oberfläche desselben Programms, httrack:winhttrack steht nicht im Wörterbuch. Installiert 3.50-5 → 3.50 (CpeVersionPattern). Stichprobe CVE-2010-5252 betrifft HTTrack 3.43-9."
+  }
+}

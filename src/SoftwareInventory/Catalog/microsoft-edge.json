@@ -1,0 +1,20 @@
+{
+  "Id": "microsoft-edge",
+  "Name": "Microsoft Edge",
+  "Match": {
+    "WingetId": ["Microsoft.Edge"],
+    "NamePattern": "^Microsoft Edge$",
+    "Publisher": ["Microsoft Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:edge_chromium", "cpe:2.3:a:microsoft:edge"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Aedge_chromium",
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Aedge",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-88097",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-70341"
+    ],
+    "Note": "NVD führt den Chromium-Edge unter beiden Namen (Punkt 5); Versionen vierstellig wie installiert (156.0.4314.50). „Microsoft Edge für Game Bar“ passt nicht auf das Muster. Stichproben CVE-2026-88097 (edge_chromium) und CVE-2026-70341 (edge) betreffen beide Edge (Chromium-based)."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "Id": "laragon",
+  "Name": "Laragon",
+  "Match": {
+    "WingetId": ["LeNgocKhoa.Laragon"],
+    "NamePattern": "^Laragon",
+    "Publisher": ["leokhoa"]
+  },
+  "Cpe": ["cpe:2.3:a:laragon:laragon"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Alaragon%3Alaragon",
+      "https://nvd.nist.gov/vuln/detail/CVE-2024-0864"
+    ],
+    "Note": "Gleiches Produkt; NVD führt Versionen bis 3.5, installiert 8.6.1 (gleiche Form, neuere Reihe). Stichprobe CVE-2024-0864 betrifft ein in Laragon mitgeliefertes Beispiel-Plugin."
+  }
+}

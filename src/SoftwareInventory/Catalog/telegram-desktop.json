@@ -8,5 +8,13 @@
     "Publisher": ["Telegram Messenger LLP", "Telegram FZ-LLC"]
   },
   "GitHub": { "Repository": "telegramdesktop/tdesktop" },
-  "Cpe": ["cpe:2.3:a:telegram:telegram_desktop"]
+  "Cpe": ["cpe:2.3:a:telegram:telegram_desktop"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Atelegram%3Atelegram_desktop",
+      "https://nvd.nist.gov/vuln/detail/CVE-2021-47793"
+    ],
+    "Note": "NVD-Titel „Telegram Desktop“, Versionsform passt (Store 7.3.3.0). Stichprobe CVE-2021-47793 betrifft Telegram Desktop 2.9.2."
+  }
 }

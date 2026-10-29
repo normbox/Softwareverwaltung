@@ -1,0 +1,18 @@
+{
+  "Id": "irfanview",
+  "Name": "IrfanView",
+  "Match": {
+    "WingetId": ["IrfanSkiljan.IrfanView"],
+    "NamePattern": "^IrfanView",
+    "Publisher": ["Irfan Skiljan"]
+  },
+  "Cpe": ["cpe:2.3:a:irfanview:irfanview"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Airfanview%3Airfanview",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-7325"
+    ],
+    "Note": "88 von 220 Einträgen veraltet, die übrigen aktiv; Versionen zweistellig wie installiert (4.72). Stichprobe CVE-2025-7325 betrifft das CADImage-Plugin, das unter derselben CPE geführt wird."
+  }
+}

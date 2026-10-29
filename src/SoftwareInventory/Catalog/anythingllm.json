@@ -1,0 +1,17 @@
+{
+  "Id": "anythingllm",
+  "Name": "AnythingLLM",
+  "Match": {
+    "NamePattern": "^AnythingLLM",
+    "Publisher": ["Mintplex Labs Inc"]
+  },
+  "Cpe": ["cpe:2.3:a:mintplexlabs:anythingllm"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amintplexlabs%3Aanythingllm",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-48116"
+    ],
+    "Note": "NVD-Titel „Mintplex Labs AnythingLLM“, Versionsform passt (1.16.1); kein winget-Paket, daher Name und Herausgeber. Stichprobe CVE-2026-48116 betrifft AnythingLLM vor 1.13.0."
+  }
+}

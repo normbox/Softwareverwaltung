@@ -9,6 +9,7 @@ public sealed class ConfirmWindowTests
     [InlineData("ConfirmActionWindow.xaml")]
     [InlineData("QueueConfirmWindow.xaml")]
     [InlineData("StoreAgreementWindow.xaml")]
+    [InlineData("CpeMappingWindow.xaml")]
     public void CancelIsTheDefaultButton(string file)
     {
         var path = Path.Combine(RepositoryRoot(), "src", "Softwareverwaltung.App", "Views", file);

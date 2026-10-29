@@ -1,0 +1,18 @@
+{
+  "Id": "google-chrome",
+  "Name": "Google Chrome",
+  "Match": {
+    "WingetId": ["Google.Chrome"],
+    "NamePattern": "^Google Chrome$",
+    "Publisher": ["Google LLC"]
+  },
+  "Cpe": ["cpe:2.3:a:google:chrome"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Agoogle%3Achrome",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-118359"
+    ],
+    "Note": "NVD-Versionen vierstellig wie installiert (156.0.8078.49). Stichprobe CVE-2026-118359 betrifft Chrome vor 156.0.8078.73."
+  }
+}

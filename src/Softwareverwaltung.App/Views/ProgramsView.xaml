@@ -323,6 +323,23 @@
                                        Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}">
                                 <Run Text="{loc:Text DetailsWingetIdLabel}" /><Run Text="{Binding WingetId, Mode=OneWay}" />
                             </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}">
+                                <Run Text="{loc:Text DetailsCpeLabel}" /><Run Text="{Binding CpeText, Mode=OneWay}" />
+                            </TextBlock>
+                            <!-- CPE: ohne Zuordnung „CPE zuordnen“; bei eigener Zuordnung ändern und „Vorschlag melden“ -->
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,8"
+                                        Visibility="{Binding CanMapCpe, Converter={StaticResource BoolToVisibility}}">
+                                <ui:Button Content="{loc:Text DetailsMapCpe}" Icon="{ui:SymbolIcon Tag24}" Margin="0,0,8,0"
+                                           ToolTip="{loc:Text DetailsMapCpeTooltip}"
+                                           Command="{Binding DataContext.MapCpeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                           CommandParameter="{Binding}" />
+                                <ui:Button Content="{loc:Text DetailsReportCpe}" Icon="{ui:SymbolIcon Share24}"
+                                           ToolTip="{loc:Text DetailsReportCpeTooltip}"
+                                           Command="{Binding DataContext.ReportCpeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                           CommandParameter="{Binding}"
+                                           Visibility="{Binding HasUserCpe, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
 
                             <!-- Installationsordner: ermittelt das Modul erst beim Aufklappen, mit Herkunft oder Grund -->
                             <StackPanel Margin="0,0,0,8" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}">

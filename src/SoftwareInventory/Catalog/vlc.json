@@ -7,5 +7,13 @@
     "Publisher": ["VideoLAN"]
   },
   "Cpe": ["cpe:2.3:a:videolan:vlc_media_player"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Avideolan%3Avlc_media_player",
+      "https://nvd.nist.gov/vuln/detail/CVE-2023-46814"
+    ],
+    "Note": "NVD-Titel „VideoLAN VLC Media Player 3.0.x“, Versionen wie installiert (3.0.24). Stichprobe CVE-2023-46814 betrifft VLC unter Windows vor 3.0.19."
+  },
   "Kev": [{ "Vendor": "VideoLAN", "ProductPattern": "\\bVLC\\b" }]
 }

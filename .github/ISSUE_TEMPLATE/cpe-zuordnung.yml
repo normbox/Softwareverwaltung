@@ -1,0 +1,43 @@
+name: CPE-Zuordnung vorschlagen
+description: Eine selbst bestätigte CPE-Zuordnung für den Katalog vorschlagen (über „Vorschlag melden“ in der App vorausgefüllt).
+title: "CPE-Zuordnung: "
+labels: ["cpe-zuordnung"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke! Dieses Issue ist **öffentlich**. Bitte vor dem Absenden prüfen, dass keine persönlichen Angaben enthalten sind
+        (Benutzername, Rechnername und Benutzerpfade ersetzt die App vorher).
+        Aufgenommen wird eine Zuordnung erst nach eigener Prüfung nach dem Maßstab in `docs/KATALOG.md` (Abschnitt „CPE prüfen“).
+  - type: input
+    id: program
+    attributes:
+      label: Programm
+      description: Name, wie er in der Liste steht
+    validations:
+      required: true
+  - type: input
+    id: publisher
+    attributes:
+      label: Hersteller
+  - type: input
+    id: winget-id
+    attributes:
+      label: winget-ID
+      description: falls vorhanden (stärkste Zuordnung)
+  - type: input
+    id: version
+    attributes:
+      label: Installierte Version
+  - type: textarea
+    id: cpe
+    attributes:
+      label: CPE (ohne Version)
+      description: z. B. cpe:2.3:a:gimp:gimp, eine pro Zeile
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Wie geprüft?
+      description: Link zur CPE in der NVD und kurz, warum sie zu diesem Programm passt (z. B. Titel in der NVD, Versionen, Hersteller-Hinweis)

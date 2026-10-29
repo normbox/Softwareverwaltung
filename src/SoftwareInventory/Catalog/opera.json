@@ -1,0 +1,18 @@
+{
+  "Id": "opera",
+  "Name": "Opera",
+  "Match": {
+    "WingetId": ["Opera.Opera"],
+    "NamePattern": "^Opera Stable",
+    "Publisher": ["Opera Software"]
+  },
+  "Cpe": ["cpe:2.3:a:opera:opera_browser"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aopera%3Aopera_browser",
+      "https://nvd.nist.gov/vuln/detail/CVE-2018-18913"
+    ],
+    "Note": "NVD-Versionen vierstellig wie installiert (137.0.6036.63); opera:opera sind Android-Einträge und bleiben draußen. Stichprobe CVE-2018-18913 betrifft den Opera-Browser."
+  }
+}

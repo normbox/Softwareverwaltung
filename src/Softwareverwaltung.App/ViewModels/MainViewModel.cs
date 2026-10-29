@@ -15,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IActionService? _actions;
     private readonly IConfirmationService? _confirmation;
     private readonly IShellService? _shell;
+    private readonly ICpeService? _cpe;
     private readonly TimeProvider _time;
     // Installationsordner je Programm, für die Sitzung gemerkt (ermittelt erst beim Aufklappen).
     private readonly Dictionary<string, InstallLocationInfo> _locations = [];
@@ -24,12 +25,13 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _ready;
     private Notice? _wingetNotice;
 
-    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null, IShellService? shell = null)
+    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null, IShellService? shell = null, ICpeService? cpe = null)
     {
         _inventory = inventory;
         _actions = actions;
         _confirmation = confirmation;
         _shell = shell;
+        _cpe = cpe;
         _time = time ?? TimeProvider.System;
         ItemsView = new ListCollectionView(Items) { Filter = Matches };
         Items.CollectionChanged += (_, e) =>
@@ -52,7 +54,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Notice> Notices { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isBusy;
 
     /// <summary>Angeklicktes Programm; seine früheren Aktionen stehen in <see cref="History"/>.</summary>
@@ -310,6 +312,75 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void DismissOutcome() => LastOutcome = null;
+
+    private bool CanMapCpe(SoftwareItem? item) => !IsBusy && _ready && _cpe is not null && _confirmation is not null && item?.Source is not null && item.CanMapCpe;
+
+    /// <summary>
+    /// Details: „CPE zuordnen“. Vorschläge sind unbestätigt; gespeichert wird nur, was der Benutzer
+    /// mit „Zuordnen“ bestätigt. Danach wird nur dieses Programm neu geprüft.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMapCpe))]
+    private async Task MapCpeAsync(SoftwareItem? item)
+    {
+        var dialog = new CpeMappingViewModel(item!, _cpe!);
+        // Suche läuft, während das Fenster offen ist; Fehler zeigt das Fenster selbst als Hinweis.
+        _ = dialog.SearchAsync();
+        var choice = _confirmation!.ChooseCpe(dialog);
+        if (choice is null)
+        {
+            StatusText = AppText.Get("StatusCpeCancelled");
+            return;
+        }
+        IsBusy = true;
+        try
+        {
+            if (choice.Remove)
+            {
+                await _cpe!.RemoveMappingAsync(item!.Source!);
+                StatusText = AppText.Format("StatusCpeRemoved", item.Name);
+            }
+            else
+            {
+                await _cpe!.SetMappingAsync(item!.Source!, choice.Cpe!);
+                StatusText = AppText.Format("StatusCpeAssigned", item.Name, choice.Cpe!);
+            }
+            await RecheckAsync(item);
+        }
+        catch (Exception ex)
+        {
+            AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeCpeFailed"), $"{item!.Name}: {ex.Message}"), permanent: false);
+            StatusText = AppText.Get("NoticeCpeFailed");
+        }
+        finally
+        {
+            IsBusy = false;
+            RefreshView();
+        }
+    }
+
+    private bool CanReportCpe(SoftwareItem? item) => !IsBusy && _ready && _cpe is not null && _confirmation is not null && _shell is not null && item?.Source is not null && item.HasUserCpe;
+
+    /// <summary>
+    /// „Vorschlag melden“: zeigt den Inhalt des vorbereiteten GitHub-Issues und öffnet es erst nach
+    /// Bestätigung im Browser. Abgeschickt wird es nur vom Benutzer selbst.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanReportCpe))]
+    private async Task ReportCpeAsync(SoftwareItem? item)
+    {
+        try
+        {
+            var report = await _cpe!.GetReportAsync(item!.Source!);
+            if (await _confirmation!.ConfirmCpeReportAsync(report))
+            {
+                _shell!.OpenUrl(report.Url);
+                StatusText = AppText.Get("StatusCpeReportOpened");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeCpeReportFailed"), $"{item!.Name}: {ex.Message}"), permanent: false);
+        }
+    }
 
     partial void OnSelectedItemChanged(SoftwareItem? value)
     {

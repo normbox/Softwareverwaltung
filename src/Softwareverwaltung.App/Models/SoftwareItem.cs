@@ -39,6 +39,16 @@ public sealed record SoftwareItem
     public IReadOnlyList<string> Refuted { get; init; } = [];
     public string Sources { get; init; } = "";
     public string? WingetId { get; init; }
+    /// <summary>CPE-Namen ohne Version (Katalog oder eigene Zuordnung).</summary>
+    public IReadOnlyList<string> CpeBase { get; init; } = [];
+    /// <summary>Herkunft der CPE: „Catalog“ oder „User“ (vom Benutzer bestätigt).</summary>
+    public string? CpeSource { get; init; }
+    /// <summary>Grau mit Grund NoCpe: keine CPE, daher nicht auf Lücken geprüft.</summary>
+    public bool NeedsCpe { get; init; }
+    public bool HasUserCpe => CpeSource == "User";
+    /// <summary>„CPE zuordnen“ anbieten: ohne CPE oder bei eigener Zuordnung (ändern, entfernen); Katalogeinträge nicht.</summary>
+    public bool CanMapCpe => NeedsCpe || HasUserCpe;
+    public string? CpeText => CpeBase.Count == 0 ? null : string.Join(", ", CpeBase) + (HasUserCpe ? " " + AppText.Get("CpeUserConfirmed") : "");
     public string? InstallLocation { get; init; }
     /// <summary>Kurzbeschreibung für die Details, z. B. „MSI · für alle Benutzer · X64“.</summary>
     public string? InstallInfo { get; init; }
@@ -142,6 +152,9 @@ public sealed record SoftwareItem
             Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => MessageText(r.Properties["Note"]?.Value)).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
             WingetId = record is null ? null : GetString(record, "WingetId"),
+            CpeBase = vulnerability is null ? [] : GetStrings(vulnerability, "CpeBase"),
+            CpeSource = vulnerability is null ? null : GetString(vulnerability, "CpeSource"),
+            NeedsCpe = vulnerability?.Properties["Reason"]?.Value is PSObject reason && GetString(reason, "Code") == "NoCpe",
             InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
             InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,

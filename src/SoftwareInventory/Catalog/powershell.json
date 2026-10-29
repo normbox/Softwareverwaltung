@@ -4,5 +4,13 @@
   "Match": {
     "WingetId": ["Microsoft.PowerShell"]
   },
-  "Cpe": ["cpe:2.3:a:microsoft:powershell"]
+  "Cpe": ["cpe:2.3:a:microsoft:powershell"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Apowershell",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-96303"
+    ],
+    "Note": "NVD-Titel „Microsoft PowerShell 7.x“, installiert 7.6.9.0 (vierte Stelle 0). Stichprobe CVE-2026-96303 betrifft PowerShell."
+  }
 }

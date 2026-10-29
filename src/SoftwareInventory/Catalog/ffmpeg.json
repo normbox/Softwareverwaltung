@@ -1,0 +1,18 @@
+{
+  "Id": "ffmpeg",
+  "Name": "FFmpeg",
+  "Match": {
+    "WingetId": ["Gyan.FFmpeg", "BtbN.FFmpeg"],
+    "NamePattern": "^FFmpeg$",
+    "Publisher": ["Gyan"]
+  },
+  "Cpe": ["cpe:2.3:a:ffmpeg:ffmpeg"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Affmpeg%3Affmpeg",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-107698"
+    ],
+    "Note": "Gyan- und BtbN-Builds sind die FFmpeg-Programme selbst; NVD-Versionen 4.x–7.x in derselben Form wie installiert (7.1.1). Stichprobe CVE-2026-107698 betrifft FFmpeg selbst (libavformat)."
+  }
+}

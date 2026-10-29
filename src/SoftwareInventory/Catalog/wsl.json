@@ -1,0 +1,17 @@
+{
+  "Id": "wsl",
+  "Name": "Windows-Subsystem für Linux",
+  "Match": {
+    "WingetId": ["Microsoft.WSL"],
+    "PackageFamilyName": ["MicrosoftCorporationII.WindowsSubsystemForLinux_8wekyb3d8bbwe"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:windows_subsystem_for_linux"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Awindows_subsystem_for_linux",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-85879"
+    ],
+    "Note": "NVD-Versionen 2.x in derselben Form wie installiert (2.7.10.0). Stichprobe CVE-2026-85879 betrifft das Windows-Subsystem für Linux."
+  }
+}

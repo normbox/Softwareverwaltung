@@ -7,5 +7,12 @@
     "Publisher": ["Thingamahoochie Software"]
   },
   "GitHub": { "Repository": "WinMerge/winmerge" },
-  "Cpe": ["cpe:2.3:a:winmerge:winmerge"]
+  "Cpe": ["cpe:2.3:a:winmerge:winmerge"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Awinmerge%3Awinmerge"
+    ],
+    "Note": "NVD-Titel „WinMerge 2.x“, Versionen dreistellig, installiert 2.16.54.2 (gleiche Reihe); derzeit keine CVE in der NVD. Keine CVE für eine Stichprobe."
+  }
 }

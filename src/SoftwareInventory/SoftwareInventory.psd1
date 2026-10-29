@@ -33,6 +33,7 @@
         'Test-SoftwareUpdate'
         'Get-SoftwareVulnerability'
         'Find-CpeCandidate'
+        'Get-CpeMappingReport'
         'Set-CpeMapping'
         'Get-CpeMapping'
         'Remove-CpeMapping'

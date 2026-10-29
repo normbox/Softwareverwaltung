@@ -101,7 +101,7 @@ Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 
 ### NVD (National Vulnerability Database)
 
-- **Was:** CVEs und Schweregrade (CVSS) zu Produkten, abgefragt über die zugeordnete CPE mit Version. Außerdem Vorschläge für CPE-Zuordnungen aus dem CPE-Wörterbuch.
+- **Was:** CVEs und Schweregrade (CVSS) zu Produkten, abgefragt über die zugeordnete CPE mit Version. Außerdem Vorschläge für CPE-Zuordnungen aus dem CPE-Wörterbuch („CPE zuordnen“ in den Details): Suchbegriff ist der Programmname ohne Version, Architektur und Zusätze, falls nötig zusätzlich der Produktteil der winget-ID (z. B. „Total Commander“).
 - **Bedingungen:** Pflichthinweis „This product uses the NVD API but is not endorsed or certified by the NVD.“. Schlüssel sind persönlich und dürfen nicht weitergegeben oder ins Repository gelegt werden. Ohne Schlüssel gelten engere Abfragegrenzen; die App wartet dann 6 Sekunden zwischen zwei Anfragen, mit Schlüssel 0,6 Sekunden.
 - **Datenschutz:** Abfragen nach Produkt und Version verraten, welche Software installiert ist. Ein datensparsamerer Gesamtabgleich (Synchronisierung des NVD-Bestands über Änderungszeiträume, lokaler Vergleich) ist nicht umgesetzt.
 

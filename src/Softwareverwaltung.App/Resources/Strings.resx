@@ -905,4 +905,101 @@ Trotzdem schließen?</value>
   <data name="StoreAgreementOpenTerms" xml:space="preserve">
     <value>Terms of Transaction des Microsoft Store öffnen</value>
   </data>
+  <data name="DetailsCpeLabel" xml:space="preserve">
+    <value>CPE: </value>
+  </data>
+  <data name="CpeUserConfirmed" xml:space="preserve">
+    <value>(von Ihnen bestätigt)</value>
+  </data>
+  <data name="DetailsMapCpe" xml:space="preserve">
+    <value>CPE zuordnen</value>
+  </data>
+  <data name="DetailsMapCpeTooltip" xml:space="preserve">
+    <value>Ohne CPE prüft die App dieses Programm nicht auf Sicherheitslücken. Hier wählen Sie einen Vorschlag aus der NVD oder geben die CPE selbst ein.</value>
+  </data>
+  <data name="DetailsReportCpe" xml:space="preserve">
+    <value>Vorschlag melden</value>
+  </data>
+  <data name="DetailsReportCpeTooltip" xml:space="preserve">
+    <value>Öffnet ein vorbereitetes GitHub-Issue, damit Ihre bestätigte Zuordnung in den Katalog aufgenommen werden kann. Sie sehen vorher, was darin steht.</value>
+  </data>
+  <data name="CpeMappingTitle" xml:space="preserve">
+    <value>CPE zuordnen</value>
+  </data>
+  <data name="CpeMappingHeading" xml:space="preserve">
+    <value>CPE für „{0}“</value>
+  </data>
+  <data name="CpeMappingCurrent" xml:space="preserve">
+    <value>Ihre bisherige Zuordnung: </value>
+  </data>
+  <data name="CpeMappingCandidatesTitle" xml:space="preserve">
+    <value>Vorschläge aus der NVD</value>
+  </data>
+  <data name="CpeMappingUnconfirmedHint" xml:space="preserve">
+    <value>Unbestätigt: automatisch gefunden. Bitte in der NVD prüfen, ob Hersteller und Produkt wirklich zu diesem Programm gehören. Ein Vorschlag füllt nur das Eingabefeld.</value>
+  </data>
+  <data name="CpeMappingSearching" xml:space="preserve">
+    <value>Suche in der NVD …</value>
+  </data>
+  <data name="CpeMappingInputLabel" xml:space="preserve">
+    <value>CPE (ohne Version)</value>
+  </data>
+  <data name="CpeMappingInvalid" xml:space="preserve">
+    <value>Form: cpe:2.3:a:hersteller:produkt, ohne Version. Sonderzeichen wie in der NVD mit \ (z. B. notepad\+\+).</value>
+  </data>
+  <data name="CpeMappingCheckHint" xml:space="preserve">
+    <value>Prüfen Sie in der NVD, ob Titel und Versionen zum Programm passen. Eine falsche CPE führt zu falschen oder fehlenden Treffern.</value>
+  </data>
+  <data name="CpeMappingAssign" xml:space="preserve">
+    <value>Zuordnen</value>
+  </data>
+  <data name="CpeMappingRemove" xml:space="preserve">
+    <value>Zuordnung entfernen</value>
+  </data>
+  <data name="CpeCandidateDetails" xml:space="preserve">
+    <value>Übereinstimmung {0} von 5 · {1} Einträge in der NVD</value>
+  </data>
+  <data name="CpeCandidateOpenNvd" xml:space="preserve">
+    <value>in der NVD ansehen</value>
+  </data>
+  <data name="CpeNoCandidates" xml:space="preserve">
+    <value>Keine passenden Vorschläge gefunden. Sie können die CPE selbst eingeben.</value>
+  </data>
+  <data name="CpeSearchFailed" xml:space="preserve">
+    <value>Vorschläge nicht abrufbar: {0}</value>
+  </data>
+  <data name="StatusCpeCancelled" xml:space="preserve">
+    <value>CPE-Zuordnung abgebrochen.</value>
+  </data>
+  <data name="StatusCpeAssigned" xml:space="preserve">
+    <value>CPE für {0} zugeordnet: {1}</value>
+  </data>
+  <data name="StatusCpeRemoved" xml:space="preserve">
+    <value>CPE-Zuordnung für {0} entfernt.</value>
+  </data>
+  <data name="NoticeCpeFailed" xml:space="preserve">
+    <value>CPE-Zuordnung nicht gespeichert</value>
+  </data>
+  <data name="CpeReportConfirmTitle" xml:space="preserve">
+    <value>Vorschlag melden</value>
+  </data>
+  <data name="CpeReportConfirmText" xml:space="preserve">
+    <value>Im Browser öffnet sich ein vorbereitetes GitHub-Issue mit diesen Angaben:
+
+{0}
+
+Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wird das Issue erst, wenn Sie es dort selbst abschicken. Issues sind öffentlich. Benutzername, Rechnername und Benutzerpfade sind bereits ersetzt.</value>
+  </data>
+  <data name="CpeReportConfirmOpen" xml:space="preserve">
+    <value>Im Browser öffnen</value>
+  </data>
+  <data name="StatusCpeReportOpened" xml:space="preserve">
+    <value>Vorbereitetes GitHub-Issue im Browser geöffnet.</value>
+  </data>
+  <data name="NoticeCpeReportFailed" xml:space="preserve">
+    <value>Vorschlag melden nicht möglich</value>
+  </data>
+  <data name="CpeMappingPlaceholder" xml:space="preserve">
+    <value>cpe:2.3:a:hersteller:produkt</value>
+  </data>
 </root>

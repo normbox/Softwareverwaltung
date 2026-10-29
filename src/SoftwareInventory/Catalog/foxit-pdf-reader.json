@@ -1,0 +1,18 @@
+{
+  "Id": "foxit-pdf-reader",
+  "Name": "Foxit PDF Reader",
+  "Match": {
+    "WingetId": ["Foxit.FoxitReader", "Foxit.FoxitReader.Inno"],
+    "NamePattern": "^Foxit PDF Reader",
+    "Publisher": ["Foxit Software Inc."]
+  },
+  "Cpe": ["cpe:2.3:a:foxit:pdf_reader"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Afoxit%3Apdf_reader",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-91818"
+    ],
+    "Note": "NVD-Titel „Foxit PDF Reader“, Versionen vierstellig mit Jahreszahl wie installiert (2024.3.0.26795); foxit:foxit_reader gibt es nicht. Stichprobe CVE-2026-91818 betrifft Foxit PDF Reader."
+  }
+}

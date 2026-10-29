@@ -70,7 +70,7 @@ Get-CpeMapping                                             # bestätigte Zuordnu
 Get-CpeMapping | Where-Object Name -like 'GIMP*' | Remove-CpeMapping
 ```
 
-`Find-CpeCandidate` sucht den Programmnamen ohne Versionsangabe im CPE-Wörterbuch (Dienst `NVD`, Ergebnis 7 Tage zwischengespeichert) und bewertet, wie gut Produkt und Hersteller passen. Vorschläge werden nie automatisch verwendet. Bestätigte Zuordnungen liegen unter `%APPDATA%\SoftwareInventory\cpe-map.json` (Schlüssel: winget-ID, sonst Name ohne Version und Hersteller). Ein Katalogeintrag mit CPE hat Vorrang.
+`Find-CpeCandidate` sucht den Programmnamen ohne Version, Architektur und Zusätze in Klammern im CPE-Wörterbuch (Dienst `NVD`, Ergebnis 7 Tage zwischengespeichert). Passt dabei kein Produkt genau, sucht es mit dem Produktteil der winget-ID weiter („Ghisler.TotalCommander“ → „Total Commander“). Bewertet wird, wie gut Produkt und Hersteller passen (Herstelleraliase in `Data/cpe-vendor-alias.json`); veraltete CPEs und Treffer ohne Bezug zum Produkt entfallen. Vorschläge werden nie automatisch verwendet. In der App geht das über „CPE zuordnen“ in den Details; dort lässt sich eine eigene Zuordnung auch wieder entfernen und mit „Vorschlag melden“ für den Katalog vorschlagen (`Get-CpeMappingReport`). Bestätigte Zuordnungen liegen unter `%APPDATA%\SoftwareInventory\cpe-map.json` (Schlüssel: winget-ID, sonst Name ohne Version und Hersteller). Ein Katalogeintrag mit CPE hat Vorrang.
 
 ## Grenzen
 
