@@ -105,6 +105,7 @@ function ConvertTo-AdvisorDetail {
                     cvss        = $_.Score
                     epss        = $_.Epss
                     note        = ConvertTo-MessageData $_.Note
+                    sources     = @(if ($_.PSObject.Properties['Sources']) { $_.Sources | ForEach-Object { [ordered]@{ source = $_.Source; verdict = $_.Verdict; range = $_.Range } } })
                     description = if ($_.Description -and $_.Description.Length -gt 400) { $_.Description.Substring(0, 400) + '…' } else { $_.Description }
                 }
             }

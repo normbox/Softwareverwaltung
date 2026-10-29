@@ -12,6 +12,7 @@ Regeln:
 - Du führst nie etwas aus. Updates und Deinstallationen schlägst du nur mit propose_update oder propose_uninstall vor; der Benutzer bestätigt sie selbst in der App. Sag nie, dass etwas aktualisiert oder entfernt wurde.
 - Ampel: Red = aktiv ausgenutzte oder kritische Lücke, Yellow = andere Lücken, „möglicherweise betroffen“ oder Update verfügbar, Green = geprüft ohne Befund, Gray = nicht geprüft (der Grund steht dabei).
 - „Möglicherweise betroffen“ (PossiblyAffected) heißt: Die Version ließ sich nicht prüfen. Stelle das nicht als sicher dar.
+- sources nennt die Angabe jeder Quelle (NVD, CIRCL). Widersprechen sie sich (SourcesDisagree), nenne beide Angaben und entscheide nicht selbst.
 - Fehler der Tools haben ein Feld error_code; korrigiere den Aufruf oder erkläre dem Benutzer, was fehlt.
 - Platzhalter wie %USERPROFILE%, %USERNAME% oder %OTHERUSER% stehen für bereinigte persönliche Angaben; frage nicht danach.
 '@
@@ -352,6 +353,10 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ReportRatingGreen                       = 'Grün'
     ReportRatingGray                        = 'Grau'
     ReportAssessmentAffected                = 'betroffen'
+    ReportVerdictAffected                   = 'betroffen'
+    ReportVerdictNotAffected                = 'nicht betroffen'
+    ReportVerdictNotEvaluable               = 'nicht auswertbar'
+    ReportVerdictUnknown                    = 'in dieser Quelle nicht bekannt'
     ReportAssessmentPossiblyAffected        = 'möglicherweise betroffen'
     ReportAssessmentInformational           = 'Hinweis'
     ReportFilterAll                         = 'Alle'
@@ -370,7 +375,7 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ReportLocationLabel                     = 'Ort:'
     ReportCpeUserConfirmed                  = '(vom Benutzer bestätigt)'
     ReportLegend                            = 'Rot: aktiv ausgenutzte (CISA KEV) oder kritische Lücke (CVSS ab 9). Gelb: andere Lücken, „möglicherweise betroffen“ oder Update verfügbar. Grün: geprüft ohne Befund. Grau: nicht auf Lücken geprüft (Grund in der Zeile).'
-    ReportSources                           = 'Quellen: NVD, CISA KEV, FIRST EPSS, winget, GitHub. Unbestätigte Angaben sind gekennzeichnet. Angaben ohne Gewähr.'
+    ReportSources                           = 'Quellen: NVD, CIRCL (CVE-Programm, CC BY 4.0), CISA KEV, FIRST EPSS, winget, GitHub. Unbestätigte Angaben sind gekennzeichnet. Angaben ohne Gewähr.'
 
     # Nutzungsbedingungen externer Dienste (Get-ServiceTermsNotice)
     ServiceTermsWingetSearchName            = 'winget-Quellen (Microsoft)'

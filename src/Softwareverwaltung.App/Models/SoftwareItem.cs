@@ -203,7 +203,7 @@ public sealed record SoftwareItem
         return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
-    private static IEnumerable<PSObject> GetObjects(PSObject obj, string name) => obj.Properties[name]?.Value switch
+    internal static IEnumerable<PSObject> GetObjects(PSObject obj, string name) => obj.Properties[name]?.Value switch
     {
         null => [],
         string => [],
@@ -243,6 +243,9 @@ public sealed record SoftwareItem
 /// <summary>Eine Lücke aus VulnerabilityStatus.Vulnerabilities, für die Detailansicht.</summary>
 public sealed record VulnerabilityItem(string CveId, string? Assessment, string? Note, bool Kev, double? Score, double? Epss, Uri? Url, string? Description)
 {
+    /// <summary>Angabe jeder Quelle einzeln (NVD, CIRCL), auch wenn sie übereinstimmen.</summary>
+    public IReadOnlyList<SourceStatementItem> Sources { get; init; } = [];
+
     public string AssessmentText => Assessment is null ? "" : AppText.Find("Assessment" + Assessment) ?? Assessment;
 
     /// <summary>Kurzinfo hinter der CVE-Nummer, z. B. „betroffen · aktiv ausgenutzt (KEV) · CVSS 7.0 · EPSS 67 %“.</summary>
@@ -264,9 +267,15 @@ public sealed record VulnerabilityItem(string CveId, string? Assessment, string?
             obj.Properties["Kev"]?.Value is true,
             Number(obj.Properties["Score"]?.Value),
             Number(obj.Properties["Epss"]?.Value),
-            Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null,
-            obj.Properties["Description"]?.Value?.ToString());
+            HttpsUri(url),
+            obj.Properties["Description"]?.Value?.ToString())
+        {
+            Sources = SoftwareItem.GetObjects(obj, "Sources").Select(SourceStatementItem.FromPs).ToList(),
+        };
     }
+
+    internal static Uri? HttpsUri(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri : null;
 
     private static double? Number(object? value) => value switch
     {
@@ -276,4 +285,28 @@ public sealed record VulnerabilityItem(string CveId, string? Assessment, string?
         IConvertible c => c.ToDouble(System.Globalization.CultureInfo.InvariantCulture),
         _ => null,
     };
+}
+
+/// <summary>Angabe einer Quelle zu einer Lücke: Urteil, Versionsbereich, Namensnennung (z. B. CC BY 4.0) und Link.</summary>
+public sealed record SourceStatementItem(string Source, string Verdict, string? Range, string? Note, string? Attribution, Uri? Url)
+{
+    /// <summary>z. B. „CIRCL: betroffen (&lt; 24.09)“.</summary>
+    public string Line
+    {
+        get
+        {
+            var verdict = AppText.Find("SourceVerdict" + Verdict) ?? Verdict;
+            return Range is null
+                ? AppText.Format("SourceStatementLine", Source, verdict)
+                : AppText.Format("SourceStatementLineRange", Source, verdict, Range);
+        }
+    }
+
+    public static SourceStatementItem FromPs(PSObject obj) => new(
+        obj.Properties["Source"]?.Value?.ToString() ?? "",
+        obj.Properties["Verdict"]?.Value?.ToString() ?? "",
+        obj.Properties["Range"]?.Value?.ToString() is { Length: > 0 } range ? range : null,
+        SoftwareItem.MessageText(obj.Properties["Note"]?.Value),
+        SoftwareItem.MessageText(obj.Properties["Attribution"]?.Value),
+        VulnerabilityItem.HttpsUri(obj.Properties["Url"]?.Value?.ToString()));
 }

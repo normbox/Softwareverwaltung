@@ -142,4 +142,26 @@ public sealed class SoftwareItemTests
         Assert.Equal("", item.Sources);
         Assert.False(item.UpdateAvailable);
     }
+    [Fact]
+    public void ShowsEachSourceSeparatelyWithAttribution()
+    {
+        var vuln = VulnerabilityItem.FromPs(Ps(
+            ("CveId", "CVE-2026-1001"), ("Assessment", "PossiblyAffected"),
+            ("Sources", new object[]
+            {
+                Ps(("Source", "NVD"), ("Verdict", "Affected"), ("Range", "< 24.09"), ("Attribution", Ps(("Code", "AttributionNVD"), ("Text", "Daten: National Vulnerability Database (NIST)"))),
+                   ("Url", "https://nvd.nist.gov/vuln/detail/CVE-2026-1001")),
+                Ps(("Source", "CIRCL"), ("Verdict", "NotAffected"), ("Range", "< 24.0"), ("Attribution", Ps(("Code", "AttributionCIRCL"), ("Text", "Daten: CVE-Programm über CIRCL, CC BY 4.0"))),
+                   ("Url", "https://vulnerability.circl.lu/vuln/CVE-2026-1001")),
+                Ps(("Source", "CIRCL"), ("Verdict", "Unknown"), ("Url", "http://unsicher.example/x")),
+            })));
+
+        Assert.Equal(3, vuln.Sources.Count);
+        Assert.Equal("NVD: betroffen (Bereich < 24.09)", vuln.Sources[0].Line);
+        Assert.Equal("CIRCL: nicht betroffen (Bereich < 24.0)", vuln.Sources[1].Line);
+        Assert.Equal("Daten: CVE-Programm über CIRCL, CC BY 4.0", vuln.Sources[1].Attribution);
+        Assert.Equal(new Uri("https://vulnerability.circl.lu/vuln/CVE-2026-1001"), vuln.Sources[1].Url);
+        Assert.Equal("CIRCL: in dieser Quelle nicht bekannt", vuln.Sources[2].Line);
+        Assert.Null(vuln.Sources[2].Url);   // nur https
+    }
 }

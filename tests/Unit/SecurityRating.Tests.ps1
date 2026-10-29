@@ -150,6 +150,21 @@ Describe 'Export-SecurityReport' {
         $html | Should -Not -Match '<script src=|<link '
     }
 
+    It 'nennt im Bericht die Angabe jeder Quelle mit Namensnennung' {
+        $vuln = New-Vuln -Id 'CVE-2026-0002'
+        $sources = InModuleScope SoftwareInventory {
+            @((New-SourceStatement -Source NVD -Verdict Affected -CveId 'CVE-2026-0002' -Range '< 2.0'),
+                (New-SourceStatement -Source CIRCL -Verdict NotAffected -CveId 'CVE-2026-0002' -Range '< 1.0'))
+        }
+        $vuln | Add-Member Sources $sources
+        $r = $rating.PSObject.Copy()
+        $r.VulnerabilityStatus = New-VulnStatus -Vulns @($vuln)
+        $f = $r | Export-SecurityReport -Path (Join-Path $TestDrive 'quellen.html')
+        $text = Get-Content $f.FullName -Raw
+        $text | Should -Match 'NVD: betroffen \(&lt; 2\.0\)'
+        $text | Should -Match 'CIRCL: nicht betroffen \(&lt; 1\.0\) · Daten: CVE-Programm (über|&#252;ber) CIRCL, CC BY 4\.0'
+    }
+
     It 'maskiert Werte als HTML' {
         $html | Should -Match 'Tool &lt;script&gt;alert\(1\)&lt;/script&gt;'
         $html | Should -Not -Match '<script>alert'

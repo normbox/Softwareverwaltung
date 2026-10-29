@@ -42,9 +42,14 @@ function ConvertTo-SecurityReportHtml {
             $score = if ($null -ne $x.Score) { "$($x.Score)" } else { '–' }
             $kev = if ($x.Kev) { "<span class='tag kev'>KEV</span>" } else { '' }
             $published = if ($x.Published) { ([string] $x.Published).Substring(0, [Math]::Min(10, ([string] $x.Published).Length)) } else { '–' }
+            # Angabe jeder Quelle mit Namensnennung (CC BY 4.0 bei CIRCL)
+            $sources = @(if ($x.PSObject.Properties['Sources']) { $x.Sources }) | Where-Object { $_ } | ForEach-Object {
+                $line = (& $t "Verdict$($_.Verdict)") + $(if ($_.Range) { " ($(& $e $_.Range))" })
+                "<br><span class='muted'>$(& $e $_.Source): $line · $(& $e (ConvertTo-MessageText $_.Attribution))</span>"
+            }
             "<tr class='$(if ($x.Assessment -eq 'Informational') { 'info' })'><td><a href='$(& $e $x.Url)'>$(& $e $x.CveId)</a> $kev</td>" +
             "<td>$(& $t "Assessment$($x.Assessment)")</td><td>$score</td><td>$epss</td><td>$published</td>" +
-            "<td>$(& $e (ConvertTo-MessageText $x.Note)) <span class='muted'>$(& $e $x.Description)</span></td></tr>"
+            "<td>$(& $e (ConvertTo-MessageText $x.Note)) <span class='muted'>$(& $e $x.Description)</span>$($sources -join '')</td></tr>"
         }
         $location = $r.Record.FilePath
         if (-not $location) { $location = $r.Record.InstallLocation }

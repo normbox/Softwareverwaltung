@@ -382,6 +382,26 @@
                                             </WrapPanel>
                                             <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
                                                        Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                            <!-- Angabe jeder Quelle einzeln, mit Namensnennung (CC BY 4.0 bei CIRCL) -->
+                                            <ItemsControl ItemsSource="{Binding Sources}" Margin="12,2,0,2">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type models:SourceStatementItem}">
+                                                        <StackPanel Margin="0,1,0,1">
+                                                            <WrapPanel>
+                                                                <TextBlock Text="{Binding Line}" VerticalAlignment="Center" />
+                                                                <ui:HyperlinkButton Content="{loc:Text SourceOpen}" NavigateUri="{Binding Url}" Padding="0" Margin="8,0,0,0"
+                                                                                    Visibility="{Binding Url, Converter={StaticResource NullToVisibility}}"
+                                                                                    AutomationProperties.Name="{Binding Line}" />
+                                                            </WrapPanel>
+                                                            <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
+                                                                       Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                                            <TextBlock Text="{Binding Attribution}" TextWrapping="Wrap" FontSize="11"
+                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                       Visibility="{Binding Attribution, Converter={StaticResource NullToVisibility}}" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                             <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
                                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                        Visibility="{Binding Description, Converter={StaticResource NullToVisibility}}" />

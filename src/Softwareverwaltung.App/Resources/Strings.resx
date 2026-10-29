@@ -607,6 +607,27 @@
   <data name="AssessmentInformational" xml:space="preserve">
     <value>Hinweis</value>
   </data>
+  <data name="SourceVerdictAffected" xml:space="preserve">
+    <value>betroffen</value>
+  </data>
+  <data name="SourceVerdictNotAffected" xml:space="preserve">
+    <value>nicht betroffen</value>
+  </data>
+  <data name="SourceVerdictNotEvaluable" xml:space="preserve">
+    <value>nicht auswertbar</value>
+  </data>
+  <data name="SourceVerdictUnknown" xml:space="preserve">
+    <value>in dieser Quelle nicht bekannt</value>
+  </data>
+  <data name="SourceStatementLine" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="SourceStatementLineRange" xml:space="preserve">
+    <value>{0}: {1} (Bereich {2})</value>
+  </data>
+  <data name="SourceOpen" xml:space="preserve">
+    <value>ansehen</value>
+  </data>
   <data name="VulnerabilityKev" xml:space="preserve">
     <value>aktiv ausgenutzt (KEV)</value>
   </data>
