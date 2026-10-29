@@ -32,6 +32,8 @@ function Get-RatingFromResult {
         $yellow.Add($(if ($max) { New-InventoryMessage KnownVulnerabilitiesMaxCvss $other.Count, $max } else { New-InventoryMessage KnownVulnerabilities $other.Count }))
     }
     foreach ($v in $possible) {
+        # Widersprechen sich die Quellen, ist der Treffer nicht widerlegt, sondern Gelb mit eigenem Grund.
+        if ($v.PSObject.Properties['SourcesDisagree'] -and $v.SourcesDisagree) { $yellow.Add((New-InventoryMessage SourcesDisagree $v.CveId)); continue }
         $code = if ($v.Kev) { 'PossiblyAffectedKev' } else { 'PossiblyAffected' }
         $yellow.Add((New-InventoryMessage $code $v.CveId, $v.Note))
     }
