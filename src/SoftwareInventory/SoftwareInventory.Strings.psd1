@@ -81,8 +81,16 @@ Regeln:
     # Ampel
     ReasonKevAffected                       = 'Aktiv ausgenutzte Lücke {0} (CISA KEV)'
     ReasonCriticalCvss                      = 'Kritische Lücke {0} (CVSS {1})'
-    ReasonKnownVulnerabilities              = '{0} bekannte Lücke(n)'
-    ReasonKnownVulnerabilitiesMaxCvss       = '{0} bekannte Lücke(n), höchster CVSS {1}'
+    # Einzahl über den Zusatz One (erstes Argument = 1); Args: Anzahl, höchster CVSS, bei einer Lücke deren CVE
+    ReasonKnownVulnerabilities              = '{0} bekannte Lücken'
+    ReasonKnownVulnerabilitiesOne           = 'Bekannte Lücke {1}'
+    ReasonKnownVulnerabilitiesMaxCvss       = '{0} bekannte Lücken, höchster CVSS {1}'
+    ReasonKnownVulnerabilitiesMaxCvssOne    = 'Bekannte Lücke {2} (CVSS {1})'
+    # Neben roten Gründen (KEV, kritisch): die übrigen Lücken als „weitere“, damit die Zahl nicht wie die Gesamtzahl wirkt
+    ReasonOtherVulnerabilities              = '{0} weitere Lücken'
+    ReasonOtherVulnerabilitiesOne           = 'Weitere Lücke {1}'
+    ReasonOtherVulnerabilitiesMaxCvss       = '{0} weitere Lücken, höchster CVSS {1}'
+    ReasonOtherVulnerabilitiesMaxCvssOne    = 'Weitere Lücke {2} (CVSS {1})'
     ReasonPossiblyAffected                  = 'Möglicherweise betroffen: {0} ({1})'
     ReasonPossiblyAffectedKev               = 'Möglicherweise betroffen: {0} (aktiv ausgenutzt, {1})'
     ReasonUpdateAvailable                   = 'Update verfügbar: {0} → {1} (Quelle {2})'
@@ -309,7 +317,8 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     # Warnungen, Fehler und Bestätigungen (Get-LocalizedString)
     WarningActionLogLocked                  = 'Protokoll ist gesperrt; Eintrag wird trotzdem geschrieben.'
     WarningActionLogUnreadable              = 'Protokolldatei nicht lesbar: {0}'
-    WarningActionLogBadLines                = '{0} beschädigte Protokollzeile(n) übersprungen.'
+    WarningActionLogBadLines                = '{0} beschädigte Protokollzeilen übersprungen.'
+    WarningActionLogBadLinesOne             = 'Eine beschädigte Protokollzeile übersprungen.'
     WarningInstallerLogCompress             = 'Installer-Log konnte nicht komprimiert werden: {0}'
     WarningCatalogEntrySkipped              = 'Katalogeintrag {0} übersprungen: {1}'
     WarningCpeMappingUnreadable             = 'CPE-Zuordnungen nicht lesbar ({0}): {1}'

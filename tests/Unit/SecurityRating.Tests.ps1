@@ -41,6 +41,27 @@ Describe 'Ampelregeln' {
         ($r.Reasons | Where-Object Code -EQ 'KnownVulnerabilitiesMaxCvss').Args | Should -Be @(2, 7.5)
     }
 
+    It 'nennt <Case> in Ein- oder Mehrzahl' -ForEach @(
+        @{ Case = 'eine Lücke mit CVE'; Scores = @(7.5); Code = 'KnownVulnerabilitiesMaxCvss'; Text = 'Bekannte Lücke CVE-2026-0101 (CVSS 7.5)' }
+        @{ Case = 'mehrere Lücken'; Scores = @(7.5, 4.0); Code = 'KnownVulnerabilitiesMaxCvss'; Text = '2 bekannte Lücken, höchster CVSS 7.5' }
+        @{ Case = 'eine weitere Lücke neben einer kritischen'; Scores = @(9.8, 8.7); Code = 'OtherVulnerabilitiesMaxCvss'; Text = 'Weitere Lücke CVE-2026-0102 (CVSS 8.7)' }
+        @{ Case = 'mehrere weitere Lücken neben einer kritischen'; Scores = @(9.8, 8.7, 5.0); Code = 'OtherVulnerabilitiesMaxCvss'; Text = '2 weitere Lücken, höchster CVSS 8.7' }
+    ) {
+        $i = 100
+        $vulns = foreach ($s in $Scores) { $i++; New-Vuln -Id "CVE-2026-0$i" -Score $s }
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($vulns))
+        $reason = $r.Reasons | Where-Object Code -EQ $Code
+        $reason.Text | Should -Be $Text
+        $reason.Args[0] | Should -Be @($Scores | Where-Object { $_ -lt 9 }).Count
+    }
+
+    It 'nennt eine Lücke ohne CVSS mit ihrer CVE' {
+        $v = New-Vuln -Id 'CVE-2026-0200'
+        $v.Score = $null
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($v))
+        ($r.Reasons | Where-Object Code -EQ 'KnownVulnerabilities').Text | Should -Be 'Bekannte Lücke CVE-2026-0200'
+    }
+
     It 'Gelb (nicht Rot) bei KEV-Eintrag, dessen Version nicht prüfbar ist' {
         $possible = New-Vuln -Assessment PossiblyAffected -Kev -Score 9.8 -Note (New-Msg KevNvdNoVersionData)
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($possible))

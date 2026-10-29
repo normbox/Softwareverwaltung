@@ -28,8 +28,12 @@ function Get-RatingFromResult {
     }
     $other = @($affected | Where-Object { -not $_.Kev -and -not ($null -ne $_.Score -and $_.Score -ge $script:CriticalCvss) })
     if ($other) {
+        # Neben roten Gründen heißen die übrigen „weitere“; bei einer Lücke steht ihre CVE im Text.
+        $code = if ($red.Count) { 'OtherVulnerabilities' } else { 'KnownVulnerabilities' }
         $max = ($other | ForEach-Object { [double] $_.Score } | Measure-Object -Maximum).Maximum
-        $yellow.Add($(if ($max) { New-InventoryMessage KnownVulnerabilitiesMaxCvss $other.Count, $max } else { New-InventoryMessage KnownVulnerabilities $other.Count }))
+        $single = if ($other.Count -eq 1) { $other[0].CveId }
+        $yellow.Add($(if ($max) { New-InventoryMessage "${code}MaxCvss" (@($other.Count, $max) + @($single | Where-Object { $_ })) }
+                else { New-InventoryMessage $code (@($other.Count) + @($single | Where-Object { $_ })) }))
     }
     foreach ($v in $possible) {
         # Widersprechen sich die Quellen, ist der Treffer nicht widerlegt, sondern Gelb mit eigenem Grund.
