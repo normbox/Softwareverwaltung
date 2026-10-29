@@ -1,0 +1,18 @@
+{
+  "Id": "ubisoft-connect",
+  "Name": "Ubisoft Connect",
+  "Match": {
+    "WingetId": ["Ubisoft.Connect"],
+    "NamePattern": "^Ubisoft Connect$",
+    "Publisher": ["Ubisoft"]
+  },
+  "Cpe": ["cpe:2.3:a:ubisoft:uplay"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aubisoft%3Auplay",
+      "https://nvd.nist.gov/vuln/detail/CVE-2019-14737"
+    ],
+    "Note": "Ubisoft Connect ist das umbenannte Uplay; ubisoft:ubisoft_connect steht nicht im Wörterbuch. Zwei Einträge (92.0.0.6280), Versionsform passt (157.1.11142). Stichprobe CVE-2019-14737 betrifft Uplay 92.0.0.6280."
+  }
+}

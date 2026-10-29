@@ -1,0 +1,18 @@
+{
+  "Id": "shotcut",
+  "Name": "Shotcut",
+  "Match": {
+    "WingetId": ["Meltytech.Shotcut"],
+    "NamePattern": "^Shotcut$",
+    "Publisher": ["Meltytech"]
+  },
+  "Cpe": ["cpe:2.3:a:meltytech:shotcut"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Ameltytech%3Ashotcut",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-65834"
+    ],
+    "Note": "Versionen JJ.MM.TT mit führender Null (25.01.25); das Modul fragt normalisiert 25.1.25 ab, Versionsbereiche der CVEs greifen trotzdem. Stichprobe CVE-2025-65834 betrifft Shotcut 25.10.31."
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "Id": "overwolf",
+  "Name": "Overwolf",
+  "Match": {
+    "NamePattern": "^Overwolf$",
+    "Publisher": ["Overwolf Ltd."]
+  },
+  "Cpe": ["cpe:2.3:a:overwolf:overwolf"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aoverwolf%3Aoverwolf",
+      "https://nvd.nist.gov/vuln/detail/CVE-2024-7834"
+    ],
+    "Note": "Nur der Overwolf-Client, nicht damit gebaute Apps (z. B. CurseForge). Versionsform passt (0.311.1.4). Stichprobe CVE-2024-7834 betrifft den Overwolf-Client unter Windows."
+  }
+}

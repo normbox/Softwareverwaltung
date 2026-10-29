@@ -1,0 +1,18 @@
+{
+  "Id": "tightvnc",
+  "Name": "TightVNC",
+  "Match": {
+    "WingetId": ["GlavSoft.TightVNC"],
+    "NamePattern": "^TightVNC",
+    "Publisher": ["GlavSoft LLC."]
+  },
+  "Cpe": ["cpe:2.3:a:tightvnc:tightvnc"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Atightvnc%3Atightvnc",
+      "https://nvd.nist.gov/vuln/detail/CVE-2023-27830"
+    ],
+    "Note": "NVD führt das Produkt unter tightvnc:tightvnc; glavsoft:tightvnc gibt es nicht. Versionsform 2.8.x passt. Stichprobe CVE-2023-27830 betrifft TightVNC vor 2.8.75."
+  }
+}

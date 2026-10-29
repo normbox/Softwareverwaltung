@@ -1,0 +1,18 @@
+{
+  "Id": "odbc-driver-sql-server",
+  "Name": "Microsoft ODBC Driver for SQL Server",
+  "Match": {
+    "WingetId": ["Microsoft.msodbcsql.17", "Microsoft.msodbcsql.18"],
+    "NamePattern": "^Microsoft ODBC Driver \\d+ for SQL Server",
+    "Publisher": ["Microsoft Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:odbc_driver_for_sql_server"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Aodbc_driver_for_sql_server",
+      "https://nvd.nist.gov/vuln/detail/CVE-2024-29043"
+    ],
+    "Note": "NVD-Titel „Microsoft ODBC Driver For SQL Server 18.x for Windows“, Versionen vierstellig wie installiert (17.10.6.1). Stichprobe CVE-2024-29043 betrifft den ODBC-Treiber."
+  }
+}

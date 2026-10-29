@@ -1,0 +1,17 @@
+{
+  "Id": "samsung-magician",
+  "Name": "Samsung Magician",
+  "Match": {
+    "NamePattern": "^Samsung Magician",
+    "Publisher": ["Samsung Electronics"]
+  },
+  "Cpe": ["cpe:2.3:a:samsung:magician"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Asamsung%3Amagician",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-57836"
+    ],
+    "Note": "NVD-Versionen 5.0–8.3.2, installiert 9.0.1.950 (gleiche Form mit Build-Nummer). Stichprobe CVE-2025-57836 betrifft Samsung Magician 6.3.0 bis 8.3.2 unter Windows."
+  }
+}

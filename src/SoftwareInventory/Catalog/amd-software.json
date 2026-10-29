@@ -1,0 +1,17 @@
+{
+  "Id": "amd-software",
+  "Name": "AMD Software: Adrenalin Edition",
+  "Match": {
+    "NamePattern": "^AMD Software$",
+    "Publisher": ["Advanced Micro Devices, Inc."]
+  },
+  "Cpe": ["cpe:2.3:a:amd:radeon_software"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aamd%3Aradeon_software",
+      "https://nvd.nist.gov/vuln/detail/CVE-2024-36333"
+    ],
+    "Note": "NVD-Versionen 24.6.1/24.7.1 in derselben Form wie installiert (24.10.16); Einträge wie 25.Q4 sind die Pro Edition. Nicht die Store-App „AMD Radeon Software“ und nicht die Chipsatz-Software. Stichprobe CVE-2024-36333 betrifft das mit AMD Software gelieferte Cleanup Utility."
+  }
+}

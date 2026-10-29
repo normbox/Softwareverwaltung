@@ -7,5 +7,13 @@
     "Publisher": ["Audacity Team", "Muse Group"]
   },
   "GitHub": { "Repository": "audacity/audacity", "TagPattern": "^Audacity-(?<version>\\d.*)$" },
-  "Cpe": ["cpe:2.3:a:audacity:audacity"]
+  "Cpe": ["cpe:2.3:a:audacityteam:audacity"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aaudacityteam%3Aaudacity",
+      "https://nvd.nist.gov/vuln/detail/CVE-2020-11867"
+    ],
+    "Note": "audacity:audacity ist veraltet und durch audacityteam:audacity ersetzt (67 Einträge, alle CVEs dort). Versionsform dreistellig wie installiert (3.7.9). Stichprobe CVE-2020-11867 betrifft Audacity bis 2.3.3 (Linux-Pfad, Produkt plattformübergreifend)."
+  }
 }

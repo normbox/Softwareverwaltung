@@ -1,0 +1,16 @@
+{
+  "Id": "myasus",
+  "Name": "MyASUS",
+  "Match": {
+    "PackageFamilyName": ["B9ECED6F.ASUSPCAssistant_qmba6cd70vzyy"]
+  },
+  "Cpe": ["cpe:2.3:a:asus:myasus"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aasus%3Amyasus",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-12793"
+    ],
+    "Note": "NVD-Titel „ASUS MyASUS“, Versionsform passt (4.0.77.0). Stichprobe CVE-2025-12793 betrifft den AsusSoftwareManagerAgent von MyASUS."
+  }
+}

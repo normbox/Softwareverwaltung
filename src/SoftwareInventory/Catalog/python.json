@@ -6,5 +6,13 @@
     "Publisher": ["Python Software Foundation"]
   },
   "Cpe": ["cpe:2.3:a:python:python"],
-  "CpeVersionPattern": "^(?<version>\\d+\\.\\d+\\.\\d+?)\\d{3}(\\.\\d+)?$"
+  "CpeVersionPattern": "^(?<version>\\d+\\.\\d+\\.\\d+?)\\d{3}(\\.\\d+)?$",
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Apython%3Apython",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-15308"
+    ],
+    "Note": "83 von 651 Einträgen veraltet, Rest aktiv. Dateiversion 3.13.15150.0 bedeutet 3.13.15 (CpeVersionPattern). Stichprobe CVE-2026-15308 betrifft html.parser aus der Standardbibliothek."
+  }
 }

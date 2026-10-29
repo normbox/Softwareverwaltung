@@ -1,0 +1,18 @@
+{
+  "Id": "realvnc-viewer",
+  "Name": "RealVNC Viewer",
+  "Match": {
+    "WingetId": ["RealVNC.VNCViewer"],
+    "NamePattern": "^RealVNC Viewer",
+    "Publisher": ["RealVNC"]
+  },
+  "Cpe": ["cpe:2.3:a:realvnc:vnc_viewer"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Arealvnc%3Avnc_viewer",
+      "https://nvd.nist.gov/vuln/detail/CVE-2022-41975"
+    ],
+    "Note": "Nur ein Wörterbucheintrag (6.21.406), Versionsform passt (installiert 7.13.1.57); 2 CVEs. Stichprobe CVE-2022-41975 betrifft VNC Viewer unter Windows."
+  }
+}

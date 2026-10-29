@@ -1,0 +1,18 @@
+{
+  "Id": "teamviewer",
+  "Name": "TeamViewer",
+  "Match": {
+    "WingetId": ["TeamViewer.TeamViewer"],
+    "NamePattern": "^TeamViewer( \\d+)?$",
+    "Publisher": ["TeamViewer"]
+  },
+  "Cpe": ["cpe:2.3:a:teamviewer:teamviewer"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Ateamviewer%3Ateamviewer",
+      "https://nvd.nist.gov/vuln/detail/CVE-2024-6053"
+    ],
+    "Note": "NVD-Versionen 15.x dreistellig wie installiert (15.82.6). Stichprobe CVE-2024-6053 betrifft den TeamViewer Full Client."
+  }
+}

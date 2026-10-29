@@ -1,0 +1,16 @@
+{
+  "Id": "armoury-crate",
+  "Name": "Armoury Crate",
+  "Match": {
+    "PackageFamilyName": ["B9ECED6F.ArmouryCrate_qmba6cd70vzyy"]
+  },
+  "Cpe": ["cpe:2.3:a:asus:armoury_crate"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aasus%3Aarmoury_crate",
+      "https://nvd.nist.gov/vuln/detail/CVE-2023-5716"
+    ],
+    "Note": "NVD-Versionen 4.x/5.x, installiert 6.7.6.0 (gleiche Form, neuere Reihe). Nur die App, nicht der Dienst „Armoury Crate Service“. Stichprobe CVE-2023-5716 betrifft Armoury Crate."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "Id": "onedrive",
+  "Name": "Microsoft OneDrive",
+  "Match": {
+    "WingetId": ["Microsoft.OneDrive"],
+    "NamePattern": "^Microsoft OneDrive$",
+    "Publisher": ["Microsoft Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:onedrive"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Aonedrive",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-65680"
+    ],
+    "Note": "Gemischte Plattformen und führende Nullen (26.189.0928.0009); lieber ein Fehlalarm mehr als ein übersehenes Programm. Stichprobe CVE-2026-65680 betrifft Microsoft OneDrive."
+  }
+}

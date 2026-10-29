@@ -1,0 +1,16 @@
+{
+  "Id": "whatsapp",
+  "Name": "WhatsApp",
+  "Match": {
+    "PackageFamilyName": ["5319275A.WhatsAppDesktop_cv1g1gvanyjgm"]
+  },
+  "Cpe": ["cpe:2.3:a:whatsapp:whatsapp"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Awhatsapp%3Awhatsapp",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-23866"
+    ],
+    "Note": "Eine CPE für alle Plattformen; Desktop-Einträge („Desktop Edition 2.2145.0“) haben dieselbe Form wie installiert (2.2641.101.0). whatsapp:whatsapp_desktop steht nicht im Wörterbuch. Stichprobe CVE-2026-23866 betrifft iOS und Android; das Modul wertet die Plattform nicht aus, also eher ein Fehlalarm als ein übersehenes Programm."
+  }
+}

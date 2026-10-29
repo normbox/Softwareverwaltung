@@ -1,0 +1,16 @@
+{
+  "Id": "xbox-gaming-services",
+  "Name": "Gaming Services",
+  "Match": {
+    "PackageFamilyName": ["Microsoft.GamingServices_8wekyb3d8bbwe"]
+  },
+  "Cpe": ["cpe:2.3:a:microsoft:xbox_gaming_services"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amicrosoft%3Axbox_gaming_services",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-58611"
+    ],
+    "Note": "Nur das Paket „Gaming Services“, nicht die App „XBOX“ (Microsoft.GamingApp). Versionsform passt. Stichprobe CVE-2026-58611 betrifft Gaming Services."
+  }
+}

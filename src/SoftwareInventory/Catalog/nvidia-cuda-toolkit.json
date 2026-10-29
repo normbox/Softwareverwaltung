@@ -1,0 +1,18 @@
+{
+  "Id": "nvidia-cuda-toolkit",
+  "Name": "NVIDIA CUDA Toolkit",
+  "Match": {
+    "WingetId": ["Nvidia.CUDA"],
+    "NamePattern": "^NVIDIA CUDA Toolkit",
+    "Publisher": ["NVIDIA Corporation"]
+  },
+  "Cpe": ["cpe:2.3:a:nvidia:cuda_toolkit"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Anvidia%3Acuda_toolkit",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-33231"
+    ],
+    "Note": "NVD-Versionen 11.x–13.x in derselben Form wie installiert (12.8). Stichprobe CVE-2025-33231 betrifft Nsight Systems für Windows, das mit dem CUDA Toolkit ausgeliefert wird."
+  }
+}

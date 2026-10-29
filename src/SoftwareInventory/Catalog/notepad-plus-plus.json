@@ -8,5 +8,15 @@
   },
   "GitHub": { "Repository": "notepad-plus-plus/notepad-plus-plus" },
   "Cpe": ["cpe:2.3:a:notepad-plus-plus:notepad\\+\\+", "cpe:2.3:a:don_ho:notepad\\+\\+"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Anotepad-plus-plus%3Anotepad%5C%2B%5C%2B",
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Adon_ho%3Anotepad%5C%2B%5C%2B",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-52885",
+      "https://nvd.nist.gov/vuln/detail/CVE-2014-9456"
+    ],
+    "Note": "NVD führt das Produkt unter notepad-plus-plus und don_ho (Punkt 5); Versionen wie installiert (8.9.x). Stichproben CVE-2026-52885 (notepad-plus-plus) und CVE-2014-9456 (don_ho) betreffen Notepad++."
+  },
   "Kev": [{ "Vendor": "Notepad++", "ProductPattern": "^Notepad\\+\\+$" }]
 }

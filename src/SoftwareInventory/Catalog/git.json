@@ -5,5 +5,13 @@
     "WingetId": ["Git.Git"]
   },
   "Cpe": ["cpe:2.3:a:git-scm:git"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Agit-scm%3Agit",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-48384"
+    ],
+    "Note": "39 von 1036 Einträgen veraltet, Rest aktiv; NVD-Titel „git-scm git“, Versionen dreistellig wie installiert (2.52.0). Stichprobe CVE-2025-48384 betrifft Git selbst."
+  },
   "Kev": [{ "Vendor": "Git", "ProductPattern": "^Git$" }]
 }

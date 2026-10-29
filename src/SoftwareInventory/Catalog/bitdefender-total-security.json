@@ -1,0 +1,17 @@
+{
+  "Id": "bitdefender-total-security",
+  "Name": "Bitdefender Total Security",
+  "Match": {
+    "NamePattern": "^Bitdefender Total Security",
+    "Publisher": ["Bitdefender"]
+  },
+  "Cpe": ["cpe:2.3:a:bitdefender:total_security"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Abitdefender%3Atotal_security",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-6851"
+    ],
+    "Note": "NVD-Titel „Bitdefender Total Security“, Versionsform passt (27.0.64.366). Stichprobe CVE-2026-6851 betrifft Bitdefender Total Security unter Windows."
+  }
+}

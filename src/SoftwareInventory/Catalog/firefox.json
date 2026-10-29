@@ -8,5 +8,13 @@
     "Publisher": ["Mozilla"]
   },
   "Cpe": ["cpe:2.3:a:mozilla:firefox"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amozilla%3Afirefox",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-106016"
+    ],
+    "Note": "63 von 1217 Einträgen veraltet, Rest aktiv; Versionen wie installiert. Store-Version 158.0.1.0 mit angehängter 0 vergleicht gleich. Stichprobe CVE-2026-106016 betrifft Firefox vor 157.0.1."
+  },
   "Kev": [{ "Vendor": "Mozilla", "ProductPattern": "\\bFirefox\\b(?!\\s+ESR\\b)|^Multiple Products$" }]
 }

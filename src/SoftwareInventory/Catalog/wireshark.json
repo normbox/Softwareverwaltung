@@ -1,0 +1,16 @@
+{
+  "Id": "wireshark",
+  "Name": "Wireshark",
+  "Match": {
+    "WingetId": ["WiresharkFoundation.Wireshark"]
+  },
+  "Cpe": ["cpe:2.3:a:wireshark:wireshark"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Awireshark%3Awireshark",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-96423"
+    ],
+    "Note": "NVD-Titel „Wireshark 4.6.x“, Versionen dreistellig wie installiert (4.6.6). Stichprobe CVE-2026-96423 betrifft Wireshark 4.6.0 bis 4.6.8."
+  }
+}

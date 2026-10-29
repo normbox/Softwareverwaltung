@@ -37,15 +37,17 @@ Describe 'CPE-Zuordnungen des Benutzers' {
     }
 
     It 'nutzt bestätigte Zuordnungen in Get-SoftwareVulnerability, Katalog hat Vorrang' {
-        New-TestRecord | Set-CpeMapping -Cpe 'cpe:2.3:a:gimp:gimp' | Out-Null
+        # Programm ohne Katalogeintrag
+        $uae = @{ Name = 'WinUAE 64-bit 6.0.2'; Version = '6.0.2'; Publisher = 'Arabuusimiehet' }
+        New-TestRecord @uae | Set-CpeMapping -Cpe 'cpe:2.3:a:winuae:winuae' | Out-Null
         New-TestRecord -Name '7-Zip' -Version '26.05' -Publisher 'Igor Pavlov' -WingetId '7zip.7zip' | Set-CpeMapping -Cpe 'cpe:2.3:a:falsch:falsch' | Out-Null
         Mock -ModuleName SoftwareInventory Read-InventorySetting { $s = InModuleScope SoftwareInventory { New-DefaultSetting }; $s.Services.NVD = $true; $s }
         Mock -ModuleName SoftwareInventory Invoke-ServiceRequest { [pscustomobject] @{ totalResults = 0; resultsPerPage = 0; vulnerabilities = @() } }
 
-        $gimp = New-TestRecord | Get-SoftwareVulnerability
-        $gimp.Status | Should -Be 'Checked'
-        $gimp.CpeSource | Should -Be 'User'
-        $gimp.Cpe | Should -Be @('cpe:2.3:a:gimp:gimp:3.2.4:*:*:*:*:*:*:*')
+        $user = New-TestRecord @uae | Get-SoftwareVulnerability
+        $user.Status | Should -Be 'Checked'
+        $user.CpeSource | Should -Be 'User'
+        $user.Cpe | Should -Be @('cpe:2.3:a:winuae:winuae:6.0.2:*:*:*:*:*:*:*')
 
         $zip = New-TestRecord -Name '7-Zip' -Version '26.05' -Publisher 'Igor Pavlov' -WingetId '7zip.7zip' | Get-SoftwareVulnerability
         $zip.CpeSource | Should -Be 'Catalog'

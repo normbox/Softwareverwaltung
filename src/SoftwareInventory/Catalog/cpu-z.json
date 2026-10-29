@@ -1,0 +1,17 @@
+{
+  "Id": "cpu-z",
+  "Name": "CPU-Z",
+  "Match": {
+    "NamePattern": "^CPUID (ASUS )?CPU-Z",
+    "Publisher": ["CPUID, Inc."]
+  },
+  "Cpe": ["cpe:2.3:a:cpuid:cpu-z"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Acpuid%3Acpu-z",
+      "https://nvd.nist.gov/vuln/detail/CVE-2025-65264"
+    ],
+    "Note": "NVD-Titel „CPUID CPU-Z 1.9x for Windows“, Versionsform passt (2.08). Die ASUS-Ausgabe ist dasselbe Programm mit anderem Aussehen. Stichprobe CVE-2025-65264 betrifft den Kerneltreiber von CPU-Z bis 2.17."
+  }
+}

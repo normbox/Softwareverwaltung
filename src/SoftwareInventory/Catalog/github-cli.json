@@ -7,5 +7,13 @@
     "Publisher": ["GitHub, Inc.", "GitHub"]
   },
   "GitHub": { "Repository": "cli/cli" },
-  "Cpe": ["cpe:2.3:a:github:cli"]
+  "Cpe": ["cpe:2.3:a:github:cli"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Agithub%3Acli",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-48501"
+    ],
+    "Note": "NVD-Titel „GitHub CLI 2.9x.0“, Versionen dreistellig wie installiert (2.103.2). Stichprobe CVE-2026-48501 betrifft GitHub CLI vor 2.93.0."
+  }
 }

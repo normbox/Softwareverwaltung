@@ -1,0 +1,18 @@
+{
+  "Id": "total-commander",
+  "Name": "Total Commander",
+  "Match": {
+    "WingetId": ["Ghisler.TotalCommander"],
+    "NamePattern": "^Total Commander",
+    "Publisher": ["Ghisler Software GmbH"]
+  },
+  "Cpe": ["cpe:2.3:a:ghisler:total_commander"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Aghisler%3Atotal_commander",
+      "https://nvd.nist.gov/vuln/detail/CVE-2020-17381"
+    ],
+    "Note": "Nur ein Wörterbucheintrag (9.51), Versionsform passt (11.51); 5 CVEs. Stichprobe CVE-2020-17381 betrifft Total Commander 9.51."
+  }
+}

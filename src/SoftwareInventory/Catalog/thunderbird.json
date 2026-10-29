@@ -1,0 +1,21 @@
+{
+  "Id": "thunderbird",
+  "Name": "Mozilla Thunderbird",
+  "Match": {
+    "WingetId": ["Mozilla.Thunderbird", "Mozilla.Thunderbird.ESR"],
+    "NamePattern": "^Mozilla Thunderbird",
+    "Publisher": ["Mozilla"]
+  },
+  "Cpe": ["cpe:2.3:a:mozilla:thunderbird", "cpe:2.3:a:mozilla:thunderbird_esr"],
+  "CpeCheck": {
+    "CheckedAt": "2026-10-29",
+    "Evidence": [
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amozilla%3Athunderbird",
+      "https://nvd.nist.gov/products/cpe/search/results?namingFormat=2.3&keyword=cpe%3A2.3%3Aa%3Amozilla%3Athunderbird_esr",
+      "https://nvd.nist.gov/vuln/detail/CVE-2026-103500",
+      "https://nvd.nist.gov/vuln/detail/CVE-2018-5185"
+    ],
+    "Note": "NVD führt Thunderbird und Thunderbird ESR getrennt (Punkt 5); Versionen dreistellig wie installiert (153.5.1). Stichproben CVE-2026-103500 (Thunderbird) und CVE-2018-5185 (Thunderbird ESR) betreffen Thunderbird."
+  },
+  "Kev": [{ "Vendor": "Mozilla", "ProductPattern": "\\bThunderbird\\b" }]
+}
