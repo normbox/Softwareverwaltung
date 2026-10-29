@@ -79,7 +79,7 @@ Gleiche CVE-ID heißt gleiche Lücke; sie erscheint einmal, auch wenn die Quelle
 | unbekannt | betroffen | `Affected` |
 | unbekannt | nicht auswertbar (jung) | `PossiblyAffected` |
 
-Ein Widerspruch widerlegt nie. Grün gibt es nur, wenn keine Quelle „betroffen“ meldet. Für CIRCL-Treffer, die die NVD-Suche nicht geliefert hat, schlägt das Modul die CVE einzeln in der NVD nach. Fällt eine Quelle aus, gilt das Programm als geprüft, solange die andere lief; der Ausfall steht in `Notes`.
+Ein Widerspruch widerlegt nie. Grün gibt es nur, wenn keine Quelle „betroffen“ meldet. Für CIRCL-Treffer, die die NVD-Suche nicht geliefert hat, fragt das Modul die NVD einmal je Produkt nach allen CVEs mit Daten zu diesem Produkt (`virtualMatchString` mit der CPE ohne Version, bis 2000 je Seite). Steht die CVE darin, gilt die Angabe der NVD für die installierte Version, sonst „in dieser Quelle nicht bekannt“. Einzelabrufe je CVE gibt es dafür nicht, sie wären ohne Schlüssel 6 Sekunden je CVE. Fällt eine Quelle aus, gilt das Programm als geprüft, solange die andere lief; der Ausfall steht in `Notes`.
 
 ## Ergebnis (`SoftwareInventory.VulnerabilityStatus`)
 

@@ -207,6 +207,10 @@ Describe 'Get-SoftwareVulnerability mit NVD und CIRCL' {
         Mock -ModuleName SoftwareInventory Invoke-ServiceRequest {
             switch ($Service) {
                 'NVD' {
+                    if ("$Uri" -match 'virtualMatchString=') {
+                        $all = @($script:NvdById.Values)
+                        return [pscustomobject] @{ totalResults = $all.Count; resultsPerPage = $all.Count; vulnerabilities = @($all | ForEach-Object { [pscustomobject] @{ cve = $_ } }) }
+                    }
                     if ("$Uri" -match 'cveId=(?<id>CVE-[\d-]+)') {
                         $c = $script:NvdById[$Matches.id]
                         return [pscustomobject] @{ vulnerabilities = @(if ($c) { [pscustomobject] @{ cve = $c } }) }
@@ -267,6 +271,16 @@ Describe 'Get-SoftwareVulnerability mit NVD und CIRCL' {
         ($byId['CVE-2026-2002'].Sources | Where-Object Source -eq NVD).Verdict | Should -Be 'Unknown'
         $byId['CVE-2026-2002'].Description | Should -Be 'Test CVE-2026-2002'
         $byId['CVE-2026-2002'].Score | Should -Be 7.8
+        Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 1 -Exactly -ParameterFilter { "$Uri" -match 'virtualMatchString=cpe%3A2\.3%3Aa%3A7-zip%3A7-zip&' }
+        Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 0 -Exactly -ParameterFilter { "$Uri" -match 'cveId=' }
+    }
+
+    It 'fragt bei vielen CIRCL-Treffern die NVD nur einmal je Produkt statt je CVE' {
+        Use-Setting NVD, CIRCL
+        $script:CirclRecords = @(1..40 | ForEach-Object { New-ZipCve5 "CVE-2026-3$('{0:d3}' -f $_)" -LessThan '25.0' })
+        $r = New-TestRecord | Get-SoftwareVulnerability
+        @($r.Vulnerabilities).Count | Should -Be 40
+        Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 2 -Exactly -ParameterFilter { $Service -eq 'NVD' }   # Versionssuche + Sammelabfrage
     }
 
     It 'prüft mit CIRCL allein, wenn die NVD aus ist, und zeigt Altdaten nur als Hinweis' {

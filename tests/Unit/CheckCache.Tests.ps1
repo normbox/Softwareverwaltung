@@ -185,7 +185,10 @@ Describe 'Get-RefreshEstimate' {
         $e.NeedsConfirmation | Should -BeFalse
 
         Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting NVD, CIRCL }
-        (1..3 | ForEach-Object { New-TestRecord -Name "Tool $_" } | Get-RefreshEstimate).Seconds | Should -Be 18
+        # mit beiden Diensten je CPE zwei NVD-Anfragen (Versionssuche und Sammelabfrage für den Abgleich)
+        $both = 1..3 | ForEach-Object { New-TestRecord -Name "Tool $_" } | Get-RefreshEstimate
+        $both.NvdRequests | Should -Be 6
+        $both.Seconds | Should -Be 36
     }
 
     It 'fragt mit Schlüssel oder ohne aktivierte NVD nicht nach' {
