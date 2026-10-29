@@ -1,20 +1,20 @@
 function Get-ServiceCredentialStatus {
     <#
     .SYNOPSIS
-        Zeigt, ob für NVD, GitHub und den KI-Berater ein Schlüssel hinterlegt ist und woher er kommt.
+        Zeigt, ob für NVD, CIRCL, GitHub und den KI-Berater ein Schlüssel hinterlegt ist und woher er kommt.
     .DESCRIPTION
         Gibt nie den Schlüssel selbst aus, nur ob er vorhanden ist. Source nennt die Ablage, die
         tatsächlich benutzt wird: CredentialManager vor Environment; ohne Schlüssel $null.
     .PARAMETER Service
-        NVD, GitHub, Advisor oder alle (Standard).
+        NVD, CIRCL, GitHub, Advisor oder alle (Standard).
     .EXAMPLE
         Get-ServiceCredentialStatus
     #>
     [CmdletBinding()]
     [OutputType('SoftwareInventory.CredentialStatus')]
     param(
-        [ValidateSet('NVD', 'GitHub', 'Advisor')]
-        [string[]] $Service = @('NVD', 'GitHub', 'Advisor')
+        [ValidateSet('NVD', 'CIRCL', 'GitHub', 'Advisor')]
+        [string[]] $Service = @('NVD', 'CIRCL', 'GitHub', 'Advisor')
     )
 
     foreach ($name in $Service) {

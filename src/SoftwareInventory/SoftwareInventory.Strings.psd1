@@ -375,6 +375,8 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ServiceTermsGitHubCompany               = 'Verwenden Sie in der Firma nur ein Token, das Ihre Richtlinien erlauben, am besten ohne Rechte (nur Lesen öffentlicher Daten).'
     ServiceTermsNVDName                     = 'National Vulnerability Database (NIST)'
     ServiceTermsNVDTerms                    = 'Kostenlos, auch kommerziell. Die NVD bittet um den Hinweis: „This product uses the NVD API but is not endorsed or certified by the NVD.“ Ohne API-Schlüssel gelten strengere Abfragegrenzen.'
+    ServiceTermsCIRCLName                   = 'Vulnerability-Lookup (CIRCL, Luxemburg)'
+    ServiceTermsCIRCLTerms                  = 'Kostenloser Dienst des Computer Incident Response Center Luxembourg. Genutzt werden die CVE-Datensätze des CVE-Programms (CC BY 4.0). Ohne Schlüssel 20 Anfragen pro Minute, mit Schlüssel aus einem Benutzerkonto bei CIRCL 40. Das Programm wartet zwischen zwei Anfragen und nennt sich mit einer Kontaktadresse.'
     ServiceTermsKEVName                     = 'Known Exploited Vulnerabilities (CISA)'
     ServiceTermsKEVTerms                    = 'Gemeinfrei (CC0 1.0), auch kommerziell nutzbar. Logo und Siegel der CISA dürfen nicht verwendet werden.'
     ServiceTermsEPSSName                    = 'Exploit Prediction Scoring System (FIRST)'

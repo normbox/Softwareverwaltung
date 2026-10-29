@@ -6,7 +6,7 @@ $script:InstalledSources = @('RegistryMachine', 'RegistryUser', 'Winget', 'Appx'
 $script:TraceSources = @('UserAssist', 'Process', 'Autostart', 'ScheduledTask')
 # Externe Dienste: senden Produkt-/Herstellernamen, Versionen oder CVE-IDs ins Internet.
 # Werden nur einzeln aktiviert, nie über eine Vorlage.
-$script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS')
+$script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS')
 # Optionen für Aktualisieren/Deinstallieren; ebenfalls standardmäßig aus.
 $script:ActionOptions = @('RestorePoint')
 # KI-Berater: nur lokale Server mit OpenAI-kompatibler Schnittstelle (Etappe 4). Vorgaben sind
@@ -23,7 +23,7 @@ $script:AdvisorPresets = [ordered]@{
 $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
 # Haltbarkeit des Zwischenspeichers je Quelle in Stunden (1–720); LatestVersion gilt für GitHub und winget-Suche.
-$script:DefaultCacheHours = [ordered]@{ LatestVersion = 6; NVD = 24; EPSS = 24; KEV = 24 }
+$script:DefaultCacheHours = [ordered]@{ LatestVersion = 6; NVD = 24; CIRCL = 24; EPSS = 24; KEV = 24 }
 # Bereiche, die Write-InventorySetting speichert
 $script:SettingSections = @('SchemaVersion', 'Usage', 'Sources', 'Traces', 'Services', 'Actions', 'Agreements', 'Maintenance',
     'CacheHours', 'Advisor', 'PortableSearch', 'FileScan')

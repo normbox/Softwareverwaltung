@@ -1,12 +1,12 @@
 function Set-ServiceCredential {
     <#
     .SYNOPSIS
-        Speichert einen API-Schlüssel (NVD, lokaler KI-Server) oder ein Token (GitHub) in der Windows-Anmeldeinformationsverwaltung.
+        Speichert einen API-Schlüssel (NVD, CIRCL, lokaler KI-Server) oder ein Token (GitHub) in der Windows-Anmeldeinformationsverwaltung.
     .DESCRIPTION
         Der Eintrag gilt nur für den angemeldeten Benutzer auf diesem PC. Ein gespeicherter Schlüssel
         hat Vorrang vor der Umgebungsvariablen. Der Schlüssel wird nie ausgegeben oder protokolliert.
     .PARAMETER Service
-        NVD, GitHub oder Advisor (Schlüssel des lokalen KI-Servers, z. B. Unsloth Studio).
+        NVD, CIRCL, GitHub oder Advisor (Schlüssel des lokalen KI-Servers, z. B. Unsloth Studio).
     .PARAMETER Secret
         Der Schlüssel als SecureString, z. B. aus Read-Host -AsSecureString.
     .EXAMPLE
@@ -16,7 +16,7 @@ function Set-ServiceCredential {
     [OutputType('SoftwareInventory.CredentialStatus')]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('NVD', 'GitHub', 'Advisor')]
+        [ValidateSet('NVD', 'CIRCL', 'GitHub', 'Advisor')]
         [string] $Service,
 
         [Parameter(Mandatory)]

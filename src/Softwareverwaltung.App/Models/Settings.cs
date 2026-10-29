@@ -31,6 +31,7 @@ public sealed record AppSettings
     /// <summary>Haltbarkeit des Zwischenspeichers in Stunden (CacheHours), 1–720; geprüft im Modul.</summary>
     public int CacheHoursLatestVersion { get; init; } = 6;
     public int CacheHoursNvd { get; init; } = 24;
+    public int CacheHoursCircl { get; init; } = 24;
     public int CacheHoursEpss { get; init; } = 24;
     public int CacheHoursKev { get; init; } = 24;
 
@@ -69,6 +70,7 @@ public sealed record AppSettings
             LogMaxSizeMB = Convert.ToInt32(maintenance?.Properties["LogMaxSizeMB"]?.Value ?? 100),
             CacheHoursLatestVersion = Convert.ToInt32(cache?.Properties["LatestVersion"]?.Value ?? 6),
             CacheHoursNvd = Convert.ToInt32(cache?.Properties["NVD"]?.Value ?? 24),
+            CacheHoursCircl = Convert.ToInt32(cache?.Properties["CIRCL"]?.Value ?? 24),
             CacheHoursEpss = Convert.ToInt32(cache?.Properties["EPSS"]?.Value ?? 24),
             CacheHoursKev = Convert.ToInt32(cache?.Properties["KEV"]?.Value ?? 24),
         };

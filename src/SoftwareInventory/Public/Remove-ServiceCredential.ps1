@@ -13,7 +13,7 @@ function Remove-ServiceCredential {
     [OutputType('SoftwareInventory.CredentialStatus')]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('NVD', 'GitHub', 'Advisor')]
+        [ValidateSet('NVD', 'CIRCL', 'GitHub', 'Advisor')]
         [string] $Service
     )
 

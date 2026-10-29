@@ -50,7 +50,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.NotEmpty(initial.Switches);
         Assert.DoesNotContain(true, initial.Switches.Values);
 
-        var switches = initial.Switches.ToDictionary(s => s.Key, s => s.Key is "RegistryMachine" or "NVD" or "RestorePoint");
+        var switches = initial.Switches.ToDictionary(s => s.Key, s => s.Key is "RegistryMachine" or "NVD" or "CIRCL" or "RestorePoint");
         var saved = await _service.SaveAsync(initial with
         {
             Usage = "Company",
@@ -66,13 +66,14 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             ScanMode = "Drives",
             LogRetentionDays = 7,
             LogMaxSizeMB = 50,
+            CacheHoursCircl = 12,
         });
 
         var loaded = await _service.LoadAsync();
         foreach (var settings in new[] { saved, loaded })
         {
             Assert.Equal("Company", settings.Usage);
-            Assert.Equal(["NVD", "RegistryMachine", "RestorePoint"], settings.Switches.Where(s => s.Value).Select(s => s.Key).Order());
+            Assert.Equal(["CIRCL", "NVD", "RegistryMachine", "RestorePoint"], settings.Switches.Where(s => s.Value).Select(s => s.Key).Order());
             Assert.Equal(["%USERPROFILE%\\Tools"], settings.ScanPaths);
             Assert.Equal(["D:"], settings.ScanDrives);
             Assert.Equal(["%USERPROFILE%\\Builds"], settings.ExcludePaths);
@@ -85,6 +86,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             Assert.Equal("Drives", settings.ScanMode);
             Assert.Equal(7, settings.LogRetentionDays);
             Assert.Equal(50, settings.LogMaxSizeMB);
+            Assert.Equal(12, settings.CacheHoursCircl);
         }
 
         // Alles wieder aus, auch leere Listen werden gespeichert.
@@ -159,7 +161,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.Equal("CredentialManager", stored.Source);
 
         var all = await _service.GetCredentialStatusAsync();
-        Assert.Equal(["Advisor", "GitHub", "NVD"], all.Select(s => s.Service).Order());
+        Assert.Equal(["Advisor", "CIRCL", "GitHub", "NVD"], all.Select(s => s.Service).Order());
         Assert.DoesNotContain("nvd-app-test-key", string.Join(" ", all));
 
         var removed = await _service.RemoveCredentialAsync("NVD");

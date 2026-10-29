@@ -53,6 +53,7 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
             .AddParameter("LogMaxSizeMB", settings.LogMaxSizeMB)
             .AddParameter("CacheHoursLatestVersion", settings.CacheHoursLatestVersion)
             .AddParameter("CacheHoursNvd", settings.CacheHoursNvd)
+            .AddParameter("CacheHoursCircl", settings.CacheHoursCircl)
             .AddParameter("CacheHoursEpss", settings.CacheHoursEpss)
             .AddParameter("CacheHoursKev", settings.CacheHoursKev);
         if (settings.Usage is not null)

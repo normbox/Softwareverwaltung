@@ -15,7 +15,7 @@ function Set-InventorySetting {
     .PARAMETER Enable
         Einzuschaltende Bereiche: RegistryMachine, RegistryUser, Winget, Appx,
         UserAssist, Process, Autostart, ScheduledTask sowie die externen Dienste
-        WingetSearch, GitHub, NVD, KEV, EPSS. Externe Dienste schaltet keine Vorlage ein.
+        WingetSearch, GitHub, NVD, CIRCL, KEV, EPSS. Externe Dienste schaltet keine Vorlage ein.
         RestorePoint: vor jedem Aktualisieren/Deinstallieren einen Wiederherstellungspunkt
         anlegen (eigene UAC-Abfrage). Keine Vorlage schaltet ihn ein.
     .PARAMETER Disable
@@ -41,7 +41,7 @@ function Set-InventorySetting {
     .PARAMETER CacheHoursLatestVersion
         Haltbarkeit der zwischengespeicherten neuesten Versionen (GitHub, winget-Suche) in Stunden, 1–720 (Standard 6).
     .PARAMETER CacheHoursNvd
-        Haltbarkeit der NVD-Antworten in Stunden, 1–720 (Standard 24). Ebenso -CacheHoursEpss und -CacheHoursKev.
+        Haltbarkeit der NVD-Antworten in Stunden, 1–720 (Standard 24). Ebenso -CacheHoursCircl, -CacheHoursEpss und -CacheHoursKev.
     .PARAMETER LogRetentionDays
         Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
     .PARAMETER LogMaxSizeMB
@@ -85,11 +85,11 @@ function Set-InventorySetting {
         [string] $Preset,
 
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
-            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint')]
+            'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'RestorePoint')]
         [string[]] $Enable = @(),
 
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
-            'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint')]
+            'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'RestorePoint')]
         [string[]] $Disable = @(),
 
         [ValidateSet('None', 'Drives', 'Folders')]
@@ -115,6 +115,9 @@ function Set-InventorySetting {
 
         [ValidateRange(1, 720)]
         [int] $CacheHoursNvd,
+
+        [ValidateRange(1, 720)]
+        [int] $CacheHoursCircl,
 
         [ValidateRange(1, 720)]
         [int] $CacheHoursEpss,
@@ -184,6 +187,7 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('SmartExclusions')) { $setting.FileScan.SmartExclusions = $SmartExclusions }
     if ($PSBoundParameters.ContainsKey('CacheHoursLatestVersion')) { $setting.CacheHours.LatestVersion = $CacheHoursLatestVersion }
     if ($PSBoundParameters.ContainsKey('CacheHoursNvd')) { $setting.CacheHours.NVD = $CacheHoursNvd }
+    if ($PSBoundParameters.ContainsKey('CacheHoursCircl')) { $setting.CacheHours.CIRCL = $CacheHoursCircl }
     if ($PSBoundParameters.ContainsKey('CacheHoursEpss')) { $setting.CacheHours.EPSS = $CacheHoursEpss }
     if ($PSBoundParameters.ContainsKey('CacheHoursKev')) { $setting.CacheHours.KEV = $CacheHoursKev }
     if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }

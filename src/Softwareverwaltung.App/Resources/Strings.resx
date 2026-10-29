@@ -406,6 +406,12 @@
   <data name="SettingsServiceNVDText" xml:space="preserve">
     <value>Sendet Hersteller, Produkt und Version (CPE) an die National Vulnerability Database der USA.</value>
   </data>
+  <data name="SettingsServiceCIRCL" xml:space="preserve">
+    <value>Sicherheitslücken (CIRCL Vulnerability-Lookup)</value>
+  </data>
+  <data name="SettingsServiceCIRCLText" xml:space="preserve">
+    <value>Zweite Quelle neben der NVD. Sendet Hersteller und Produkt aus der zugeordneten CPE an CIRCL in Luxemburg; die Version bleibt auf diesem PC.</value>
+  </data>
   <data name="SettingsServiceKEV" xml:space="preserve">
     <value>Aktiv ausgenutzte Lücken (CISA KEV)</value>
   </data>
@@ -429,6 +435,12 @@
   </data>
   <data name="SettingsCredentialNVDText" xml:space="preserve">
     <value>Optional. Ohne Schlüssel funktioniert die NVD-Abfrage, ist aber deutlich langsamer.</value>
+  </data>
+  <data name="SettingsCredentialCIRCL" xml:space="preserve">
+    <value>CIRCL-API-Schlüssel</value>
+  </data>
+  <data name="SettingsCredentialCIRCLText" xml:space="preserve">
+    <value>Optional. Mit Schlüssel aus einem Benutzerkonto bei CIRCL sind doppelt so viele Anfragen pro Minute erlaubt.</value>
   </data>
   <data name="SettingsCredentialGitHub" xml:space="preserve">
     <value>GitHub-Token</value>
@@ -797,6 +809,9 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
   </data>
   <data name="SettingsCacheNvd" xml:space="preserve">
     <value>NVD (Stunden)</value>
+  </data>
+  <data name="SettingsCacheCircl" xml:space="preserve">
+    <value>CIRCL (Stunden)</value>
   </data>
   <data name="SettingsCacheEpss" xml:space="preserve">
     <value>EPSS (Stunden)</value>
