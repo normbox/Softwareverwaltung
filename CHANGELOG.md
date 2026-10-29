@@ -11,6 +11,11 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 - **„CPE zuordnen“** in den Details für Programme ohne CPE (Grau mit Grund `NoCpe`): unbestätigte Vorschläge aus dem NVD-Wörterbuch mit Bewertung und Link zur NVD oder eigene Eingabe, geprüft wie in `Set-CpeMapping`. Ein Vorschlag füllt nur das Eingabefeld; gespeichert wird erst mit „Zuordnen“ (Standard-Button „Abbrechen“). Danach wird nur dieses Programm neu geprüft. Eigene Zuordnungen lassen sich dort ändern und entfernen.
 - **„Vorschlag melden“** für eigene Zuordnungen: `Get-CpeMappingReport` baut den Link zu einem vorausgefüllten GitHub-Issue (Formular `.github/ISSUE_TEMPLATE/cpe-zuordnung.yml`), ohne Benutzer- und Rechnernamen. Die App zeigt den Inhalt vorher und öffnet den Browser erst nach Bestätigung; abgeschickt wird nur vom Benutzer selbst.
 - **Katalog:** Jede CPE trägt einen Prüfvermerk `CpeCheck` (Datum, Belege, Notiz) nach dem Maßstab in `docs/KATALOG.md` („CPE prüfen“); `Test-CatalogEntry` verlangt ihn. Die bestehenden Einträge sind nachgeprüft.
+- **Katalog erweitert:** 46 neue Einträge mit geprüfter CPE, u. a. Google Chrome, Microsoft Edge, Thunderbird, LibreOffice, GIMP, Node.js, .NET Runtime, Visual Studio Code und 2022, PuTTY, WinSCP, Wireshark, TeamViewer, NVIDIA-Grafiktreiber und CUDA Toolkit. Abgelehnte Kandidaten (Versionen nicht vergleichbar, anderes Produkt oder nicht im NVD-Wörterbuch) bekommen keine CPE und bleiben Grau mit Grund `NoCpe`.
+
+#### Behoben
+
+- **Audacity:** Die CPE `audacity:audacity` ist in der NVD veraltet und durch `audacityteam:audacity` ersetzt; Audacity wurde deshalb bisher nie auf Lücken geprüft.
 
 #### Geändert
 
