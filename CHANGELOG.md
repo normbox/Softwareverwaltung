@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Zwischenspeicher
+
+- **NVD-Antworten verschlankt gespeichert:** nur ID, Datum, englische Beschreibung, CVSS und `configurations` (vollständig); gemessen 86 MB → 26 MB. Antworten ohne Lücken (CPE-Suche) bleiben unverändert.
+- **Bereinigung nach Größe:** zuerst der Zwischenspeicher, dann die Logs (das Aktionsprotokoll bleibt so länger erhalten).
+- **CIRCL-Bestände mit eigener Grenze** `CirclStoreMaxSizeMB` (Standard 200 MB, in der App unter Einstellungen), nicht mehr Teil von `LogMaxSizeMB`. Gelöscht werden sie nach Alter, über der eigenen Grenze (Ältestes zuerst) oder nach einem vollständigen Scan, in dem das Produkt nicht mehr vorkommt (`Remove-UnusedCirclStore`). Vorher räumte die allgemeine Grenze sie als Älteste zuerst ab; große Bestände wie Chrome mussten dann neu geladen werden.
+
 ### Zweite Quelle: CIRCL Vulnerability-Lookup
 
 #### Neu

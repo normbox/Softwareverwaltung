@@ -318,6 +318,13 @@
                                     Text="{Binding LogMaxSizeMB, UpdateSourceTrigger=PropertyChanged}"
                                     AutomationProperties.Name="{loc:Text SettingsLogsMaxSizeName}" />
                     </StackPanel>
+                    <StackPanel Margin="24,0,0,0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCirclStoreMaxSize}" />
+                        <ui:TextBox Width="160" HorizontalAlignment="Left"
+                                    Text="{Binding CirclStoreMaxSizeMB, UpdateSourceTrigger=PropertyChanged}"
+                                    ToolTip="{loc:Text SettingsCirclStoreMaxSizeTooltip}"
+                                    AutomationProperties.Name="{loc:Text SettingsCirclStoreMaxSizeName}" />
+                    </StackPanel>
                 </StackPanel>
 
                 <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsCacheTitle}" />

@@ -22,6 +22,8 @@ $script:AdvisorPresets = [ordered]@{
 # Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
 $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
+# CIRCL-Bestände je Produkt: eigene Grenze, nicht Teil von LogMaxSizeMB (Neuaufbau kostet Minuten).
+$script:DefaultCirclStoreMaxSizeMB = 200
 # Haltbarkeit des Zwischenspeichers je Quelle in Stunden (1–720); LatestVersion gilt für GitHub und winget-Suche.
 $script:DefaultCacheHours = [ordered]@{ LatestVersion = 6; NVD = 24; CIRCL = 24; EPSS = 24; KEV = 24 }
 # Bereiche, die Write-InventorySetting speichert
@@ -56,6 +58,7 @@ function New-DefaultSetting {
         Maintenance   = [pscustomobject] [ordered]@{
             LogRetentionDays = $script:DefaultLogRetentionDays
             LogMaxSizeMB     = $script:DefaultLogMaxSizeMB
+            CirclStoreMaxSizeMB = $script:DefaultCirclStoreMaxSizeMB
         }
         CacheHours    = [pscustomobject] ([ordered]@{} + $script:DefaultCacheHours)
         Advisor       = [pscustomobject] [ordered]@{
@@ -103,7 +106,7 @@ function Read-InventorySetting {
         }
     }
     if ($data.PSObject.Properties['Maintenance']) {
-        foreach ($name in 'LogRetentionDays', 'LogMaxSizeMB') {
+        foreach ($name in 'LogRetentionDays', 'LogMaxSizeMB', 'CirclStoreMaxSizeMB') {
             $value = $data.Maintenance.PSObject.Properties[$name]
             if ($value -and ($value.Value -as [int]) -ge 1) { $setting.Maintenance.$name = [int] $value.Value }
         }

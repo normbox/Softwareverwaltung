@@ -10,6 +10,14 @@ Describe 'Invoke-InventoryScan' {
         $script:portable = InModuleScope SoftwareInventory { New-SoftwareRecord -Name 'Portabel' -Source Portable -Property @{ Version = '2.0' } }
         Mock -ModuleName SoftwareInventory Get-SoftwareInventory { $script:installed }
         Mock -ModuleName SoftwareInventory Get-PortableSoftware { $script:portable }
+        # Nie echte CIRCL-Bestände anfassen; geprüft wird das Aufräumen in einem eigenen Test.
+        Mock -ModuleName SoftwareInventory Remove-UnusedCirclStore { 0 }
+    }
+
+    It 'räumt am Ende die CIRCL-Bestände mit allen gefundenen Programmen auf' {
+        Set-InventorySetting -PortableSearch $true -TraceSearch $true -Enable Process | Out-Null
+        @(Invoke-InventoryScan -WarningAction SilentlyContinue).Name | Should -Be @('Installiert', 'Portabel')
+        Should -Invoke -ModuleName SoftwareInventory Remove-UnusedCirclStore -Times 1 -Exactly -ParameterFilter { @($Record).Name -join ',' -eq 'Installiert,Portabel' }
     }
 
     It 'sucht nicht und meldet nichts, solange der Hauptschalter aus ist, auch wenn alles gewählt ist' {

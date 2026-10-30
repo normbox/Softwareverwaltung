@@ -374,6 +374,33 @@ Describe 'Remove-CirclLegacyCache' {
     }
 }
 
+Describe 'Remove-UnusedCirclStore' {
+    BeforeEach {
+        $cache = Join-Path $TestDrive "$([guid]::NewGuid())\cache"
+        Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
+        Mock -ModuleName SoftwareInventory Read-CpeMapping { @{} }
+        $script:Store = { param($v, $p) InModuleScope SoftwareInventory -Parameters @{ V = $v; P = $p } { Get-CirclStoreFile -Vendor $V -Product $P } }
+        foreach ($f in (& $script:Store '7-zip' '7-zip'), (& $script:Store 'google' 'chrome')) {
+            New-Item -ItemType Directory -Path (Split-Path $f) -Force | Out-Null
+            Set-Content -LiteralPath $f -Value '{}'
+            Set-Content -LiteralPath ([System.IO.Path]::ChangeExtension($f, '.due')) -Value ''
+        }
+    }
+
+    It 'löscht die Bestände von Produkten, die kein gefundenes Programm mehr hat, samt Merker' {
+        $zip = InModuleScope SoftwareInventory { New-SoftwareRecord -Name '7-Zip 24.08 (x64)' -Source Registry -Property @{ Version = '24.08'; Publisher = 'Igor Pavlov'; WingetId = '7zip.7zip' } }
+        InModuleScope SoftwareInventory -Parameters @{ R = $zip } { Remove-UnusedCirclStore -Record @($R) } | Should -Be 2
+        Test-Path (& $script:Store '7-zip' '7-zip') | Should -BeTrue
+        Test-Path ([System.IO.Path]::ChangeExtension((& $script:Store '7-zip' '7-zip'), '.due')) | Should -BeTrue
+        Test-Path (& $script:Store 'google' 'chrome') | Should -BeFalse
+    }
+
+    It 'löscht nichts, wenn der Scan keine Programme fand' {
+        InModuleScope SoftwareInventory { Remove-UnusedCirclStore -Record @() } | Should -Be 0
+        Test-Path (& $script:Store 'google' 'chrome') | Should -BeTrue
+    }
+}
+
 Describe 'Clear-CheckCache und der CIRCL-Bestand' {
     BeforeAll {
         function New-ZipRecord {
