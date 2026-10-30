@@ -109,10 +109,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         Credentials =
         [
             new("NVD", AppText.Get("SettingsCredentialNVD"), AppText.Get("SettingsCredentialNVDText")),
-            // CIRCL-Schlüssel ausgeblendet (30.10.2026): CIRCL setzt die Grenze derzeit nicht durch, und die
-            // Serverzeit großer Seiten (2–4 s) bremst stärker als der Abstand; ein Schlüssel bringt praktisch nichts.
-            // Das Modul nutzt einen gespeicherten Schlüssel weiter. Bei Bedarf diese Zeile wieder einhängen:
-            // new("CIRCL", AppText.Get("SettingsCredentialCIRCL"), AppText.Get("SettingsCredentialCIRCLText")),
             new("GitHub", AppText.Get("SettingsCredentialGitHub"), AppText.Get("SettingsCredentialGitHubText")),
         ];
         foreach (var item in AllSwitches)
