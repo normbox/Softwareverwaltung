@@ -14,17 +14,18 @@ Die Funktion nimmt Datensätze aus `Get-SoftwareInventory` und `Get-PortableSoft
 | Quelle | Zweck | Dienst | Zwischenspeicher |
 | --- | --- | --- | --- |
 | NVD CVE-API 2.0 | CVEs je CPE und Version, CVSS | `NVD` | Standard 24 h je CPE und Seite |
-| CIRCL Vulnerability-Lookup | CVE-Datensätze (CVE 5) je Hersteller und Produkt, Versionsauswertung lokal | `CIRCL` | Standard 24 h je Produkt und Seite |
+| CIRCL Vulnerability-Lookup | CVE-Datensätze (CVE 5) je Hersteller und Produkt, Versionsauswertung lokal | `CIRCL` | Bestand je Produkt, Standard 24 h, dann nur Änderungen nachladen; alle 30 Tage vollständig |
 | CISA KEV | aktiv ausgenutzte Lücken | `KEV` | Standard 24 h (ganzer Katalog) |
 | FIRST EPSS | Wahrscheinlichkeit einer Ausnutzung | `EPSS` | Standard 24 h je Sammelabfrage |
 
 ### Zwischenspeicher
 
 - **Haltbarkeit:** Die Haltbarkeit je Quelle steht in der Einstellung `CacheHours` mit `LatestVersion` (GitHub und winget-Suche, Standard 6), `NVD`, `CIRCL`, `EPSS` und `KEV` (je Standard 24). Erlaubt sind 1 bis 720 Stunden. Die CPE-Suche bleibt fest bei 7 Tagen. Geprüft wird beim Lesen, eine Änderung wirkt also sofort.
-- **Neu prüfen ohne Cache:** `Get-SecurityRating -Refresh`, ebenso `Test-SoftwareUpdate` und `Get-SoftwareVulnerability`. Jede Antwort wird pro Lauf einmal frisch geholt, der KEV-Katalog also einmal.
+- **Neu prüfen ohne Cache:** `Get-SecurityRating -Refresh`, ebenso `Test-SoftwareUpdate` und `Get-SoftwareVulnerability`. Jede Antwort wird pro Lauf einmal frisch geholt, der KEV-Katalog also einmal. Bei CIRCL heißt das: der Bestand des Produkts wird vollständig neu geladen.
+- **CIRCL-Bestand:** Je Produkt (Hersteller und Produkt der CPE, unabhängig von der Version) eine Datei `cache\CIRCL\store-<Hash>.json` mit den ausgewerteten Feldern der CVE-Datensätze (Metadaten, `affected`, englische Beschreibung, CVSS). Jünger als `CacheHours.CIRCL`: keine Anfrage. Älter: nur die seither geänderten Datensätze mit `since=<Tag des letzten Abrufs>` (CIRCL filtert nach `dateUpdated`, also kommen auch nachgetragene Versionsbereiche alter CVEs an); gleiche CVE-ID ersetzt den alten Datensatz, zurückgezogene (`state` nicht `PUBLISHED`) fallen heraus. Vollständig geladen wird, wenn der Bestand fehlt (z. B. aufgeräumt), unlesbar ist, der letzte vollständige Abruf mehr als **30 Tage** zurückliegt (fest im Modul) oder bei Neu prüfen ohne Cache. Geschrieben wird nur nach einem ganz gelungenen Abruf, Bestand und Abrufdatum gemeinsam; bricht das Nachladen ab, bleibt das Datum stehen und der alte Bestand gilt als veraltet weiter. Ein Ergebnis aus einem halben Bestand gibt es nie.
 - **Offline oder am Anfragelimit:** Dann gilt ein abgelaufener Eintrag weiter. `CheckStale` ist dann wahr, die App kennzeichnet „Geprüft“ dezent als veraltet.
 - **Prüfzeitpunkt:** `CheckedAt` an `UpdateStatus`, `VulnerabilityStatus` und `SecurityRating` ist der älteste benutzte Abruf (UTC). In der Ampel ist es das Ältere beider Prüfungen, `UpdateCheckedAt` und `VulnerabilityCheckedAt` nennen beide einzeln. Wurde nichts online geprüft, bleibt `CheckedAt` leer.
-- **Gezielt verwerfen:** Ein Index je Programm und Version (`cache\index`) merkt sich die benutzten Einträge. `Clear-CheckCache` verwirft die Einträge eines Programms, der gemeinsame KEV-Katalog bleibt erhalten. Die App ruft das nach jeder Aktion auf.
+- **Gezielt verwerfen:** Ein Index je Programm und Version (`cache\index`) merkt sich die benutzten Einträge. `Clear-CheckCache` verwirft die Einträge eines Programms, der gemeinsame KEV-Katalog bleibt erhalten. Der CIRCL-Bestand bleibt ebenfalls (er gilt für alle Versionen), wird aber bei der nächsten Prüfung per `since` nachgeladen; die neue Version wird dabei neu bewertet. Nach einer Deinstallation räumt ihn die normale Bereinigung auf. Die App ruft das nach jeder Aktion auf.
 - **Dauer schätzen:** `Get-RefreshEstimate` schätzt die Dauer einer Prüfung ohne Cache: Zahl der NVD-Anfragen mal 6 Sekunden ohne Schlüssel bzw. 0,6 Sekunden mit Schlüssel; mit CIRCL zählt die längere der beiden Zeiten (CIRCL: 3 bzw. 1,5 Sekunden je Anfrage). `NeedsConfirmation` ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist. Dann fragt die App vor „Ohne Cache scannen“ nach.
 
 Alle Dienste sind standardmäßig aus und werden einzeln aktiviert. Gesendet werden nur CPE-Namen mit Version (z. B. `cpe:2.3:a:7-zip:7-zip:24.8:*:*:*:*:*:*:*`), an CIRCL nur Hersteller und Produkt ohne Version, und CVE-IDs – keine Pfade, keine Benutzer- oder Rechnernamen.
@@ -47,7 +48,7 @@ Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das
    - NVD hat Versionsdaten und die Version ist betroffen → `Affected`
    - NVD hat Versionsdaten und die Version ist nicht betroffen → entfällt
    - keine Versionsdaten oder NVD nicht aktiviert → `PossiblyAffected` mit Hinweis „Version nicht prüfbar“ (in der Ampel: Gelb mit Hinweis)
-6. **CIRCL** (wenn eingeschaltet): alle CVE-Datensätze zu Hersteller und Produkt der CPE, seitenweise. Ausgewertet wird lokal, siehe [Versionsangaben bei CIRCL](#versionsangaben-bei-circl).
+6. **CIRCL** (wenn eingeschaltet): alle CVE-Datensätze zu Hersteller und Produkt der CPE, beim ersten Mal seitenweise, danach aus dem Bestand mit Nachladen der Änderungen (siehe Zwischenspeicher). Ausgewertet wird lokal, siehe [Versionsangaben bei CIRCL](#versionsangaben-bei-circl).
 7. **Zusammenführen** je CVE-ID (siehe [Zwei Quellen](#zwei-quellen-nvd-und-circl)).
 8. **EPSS** als eine Sammelabfrage für alle gefundenen CVEs.
 

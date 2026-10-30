@@ -215,6 +215,13 @@ Describe 'Invoke-AppDataCleanup' {
         }
     }
 
+    It 'räumt auch leere Ordner auf, wenn alle Dateien zu alt sind' {
+        $old = New-AgedFile 'cache\CIRCL\store-alt.json' 60
+        InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 30 -MaxSizeMB 100 -Root $R } | Should -Be 1
+        Test-Path $old | Should -BeFalse
+        Test-Path (Join-Path $root 'cache\CIRCL') | Should -BeFalse
+    }
+
     It 'läuft ohne App-Ordner' {
         InModuleScope SoftwareInventory -Parameters @{ R = (Join-Path $TestDrive 'fehlt') } { Invoke-AppDataCleanup -Root $R } | Should -Be 0
     }

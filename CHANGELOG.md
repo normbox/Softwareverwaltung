@@ -18,6 +18,8 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 - **HTTP 429:** Mit `Retry-After` bis 60 Sekunden wartet das Modul einmal und wiederholt die Anfrage; sonst gilt wie bisher der veraltete Zwischenspeicher. Gilt für alle Dienste.
 - Der User-Agent nennt die Projektadresse als Kontakt.
 - `Get-RefreshEstimate` zählt CIRCL-Anfragen mit (`CirclEnabled`, `CirclRequests`).
+- **CIRCL-Bestand mit Nachladen:** Je Produkt ein verschlankter Bestand (bei Chrome etwa 2 % der Antworten), danach nur Änderungen per `since=` statt alle 24 Stunden alles neu, wie es die Zugriffsregeln von CIRCL verlangen. Vollständig nur ohne lesbaren Bestand, nach 30 Tagen oder bei „Neu prüfen ohne Cache“. `Clear-CheckCache` behält den Bestand und lädt beim nächsten Mal nach. Ein abgebrochenes Nachladen setzt das Abrufdatum nicht weiter.
+- Selbstbereinigung: Sind alle Dateien zu alt, räumt sie jetzt auch die leeren Ordner auf (vorher Abbruch beim Größenvergleich).
 - `PRIVACY.md`, `THIRD-PARTY-NOTICES.md`, `docs/EXTERNE-DIENSTE.md`, `docs/SCHWACHSTELLEN.md` und `docs/TECHNIK.md` beschreiben CIRCL (Sitz Luxemburg, CC BY 4.0, Abfragegrenzen).
 
 ### CPE-Zuordnung
