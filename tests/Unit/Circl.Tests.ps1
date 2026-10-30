@@ -309,6 +309,44 @@ Describe 'Get-CirclCve' {
     }
 }
 
+Describe 'Remove-CirclLegacyCache' {
+    BeforeEach {
+        $cache = Join-Path $TestDrive "$([guid]::NewGuid())\cache"
+        Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
+        Mock -ModuleName SoftwareInventory Write-ActionLogEntry { }
+        $circl = Join-Path $cache 'CIRCL'
+        New-Item -ItemType Directory -Path $circl -Force | Out-Null
+    }
+
+    It 'löscht nur die alten Seiten, behält Bestand und Merker und protokolliert einmal' {
+        $pages = 1..3 | ForEach-Object {
+            $name = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes("search/x/y/$_")))
+            $p = Join-Path $circl "$name.json"; Set-Content -LiteralPath $p -Value ('x' * 1000); $p
+        }
+        $store = Join-Path $circl ('store-' + ('A' * 64) + '.json'); Set-Content -LiteralPath $store -Value '{}'
+        $due = Join-Path $circl ('store-' + ('A' * 64) + '.due'); New-Item -ItemType File -Path $due | Out-Null
+
+        InModuleScope SoftwareInventory { Remove-CirclLegacyCache } | Should -Be 3
+        $pages | ForEach-Object { Test-Path -LiteralPath $_ | Should -BeFalse }
+        Test-Path -LiteralPath $store | Should -BeTrue
+        Test-Path -LiteralPath $due | Should -BeTrue
+        Should -Invoke -ModuleName SoftwareInventory Write-ActionLogEntry -Times 1 -Exactly -ParameterFilter {
+            $Phase -eq 'Completed' -and $Data.Action -eq 'CacheMigration' -and $Data.Result -eq 'Succeeded' -and
+            $Data.Message.Code -eq 'CirclLegacyCacheRemoved' -and $Data.Message.Args[0] -eq 3 -and $Data.Message.Text -match '3 Dateien'
+        }
+
+        # Beim nächsten Start: nichts mehr zu tun, kein weiterer Eintrag
+        InModuleScope SoftwareInventory { Remove-CirclLegacyCache } | Should -Be 0
+        Should -Invoke -ModuleName SoftwareInventory Write-ActionLogEntry -Times 1 -Exactly
+    }
+
+    It 'tut ohne CIRCL-Ordner nichts' {
+        Remove-Item -LiteralPath $circl -Recurse -Force
+        InModuleScope SoftwareInventory { Remove-CirclLegacyCache } | Should -Be 0
+        Should -Invoke -ModuleName SoftwareInventory Write-ActionLogEntry -Times 0 -Exactly
+    }
+}
+
 Describe 'Clear-CheckCache und der CIRCL-Bestand' {
     BeforeAll {
         function New-ZipRecord {

@@ -170,6 +170,41 @@ function ConvertTo-CirclStoreRecord {
     $slim | ConvertTo-Json -Depth 30 -Compress | ConvertFrom-Json -DateKind String
 }
 
+function Remove-CirclLegacyCache {
+    <#
+    .SYNOPSIS
+        Löscht einmalig die Seiten des alten Formats (cache\CIRCL\<Hash>.json) und protokolliert das.
+    .DESCRIPTION
+        Bis zum Bestand je Produkt lag jede Suchseite einzeln im Zwischenspeicher; diese Dateien werden
+        nicht mehr gelesen. Bestände (store-*.json), Merker (.due) und andere Dateien bleiben. Gibt es
+        keine alten Seiten mehr, passiert nichts (auch kein Protokolleintrag). Gesperrte Dateien bleiben
+        stehen und werden beim nächsten Start erneut versucht.
+    .OUTPUTS
+        Anzahl gelöschter Dateien.
+    #>
+    $directory = Join-Path (Get-CacheDirectory) 'CIRCL'
+    if (-not (Test-Path -LiteralPath $directory)) { return 0 }
+    $old = @(Get-ChildItem -LiteralPath $directory -File -Force | Where-Object Name -match '^[0-9A-Fa-f]{64}\.json$')
+    if (-not $old) { return 0 }
+    $started = [datetime]::UtcNow
+    $removed = 0
+    $bytes = [long] 0
+    foreach ($file in $old) {
+        $length = $file.Length
+        try { $file.Delete(); $removed++; $bytes += $length } catch { Write-Verbose "Nicht löschbar: $($file.FullName)" }
+    }
+    $megabytes = [math]::Round($bytes / 1MB, 1).ToString([cultureinfo]::CurrentCulture)
+    $result = [ordered]@{
+        ActionId    = [guid]::NewGuid().ToString(); Action = 'CacheMigration'; Name = 'CIRCL'
+        Method      = 'RemoveLegacyPages'
+        Result      = if ($removed -eq $old.Count) { 'Succeeded' } else { 'Failed' }
+        Message     = New-InventoryMessage CirclLegacyCacheRemoved $removed, $megabytes, ($old.Count - $removed)
+        StartedAt   = $started.ToString('o'); CompletedAt = [datetime]::UtcNow.ToString('o')
+    }
+    Write-ActionLogEntry -Phase Completed -Data $result
+    $removed
+}
+
 function Get-CirclStoreFile {
     param([string] $Vendor, [string] $Product)
     $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes("store/$Vendor/$Product")))

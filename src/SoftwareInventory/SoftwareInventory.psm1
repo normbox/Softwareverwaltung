@@ -22,3 +22,10 @@ try {
 catch {
     Write-Verbose "Bereinigung übersprungen: $_"
 }
+# Einmalig nach dem Wechsel auf den CIRCL-Bestand je Produkt: alte Seiten löschen (mit Protokolleintrag).
+try {
+    [void] (Remove-CirclLegacyCache)
+}
+catch {
+    Write-Verbose "Bereinigung übersprungen: $_"
+}

@@ -201,7 +201,9 @@ Regeln:
     ReasonStoreAgreementRequired            = 'Die Vereinbarung der Microsoft-Store-Quelle (msstore) ist noch nicht bestätigt. Ohne Zustimmung wird über diese Quelle nichts ausgeführt.'
     ReasonQueueCancelled                    = 'Abgebrochen, nicht ausgeführt (Warteschlange abgebrochen).'
     ReasonRestorePointNameQueue             = 'Softwareverwaltung: {0} Programme aktualisieren'
-    ReasonActionIncomplete                  = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
+    ReasonCirclLegacyCacheRemoved           = 'Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: {0} Dateien, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
+    ReasonCirclLegacyCacheRemovedOne        = 'Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: 1 Datei, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
+    ReasonActionIncomplete                = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
     ReasonLegacyText                        = '{0} (älterer Eintrag)'
 
     # Aktionen: Wiederherstellungspunkt (Codes kommen auch vom erhöhten Helfer)
