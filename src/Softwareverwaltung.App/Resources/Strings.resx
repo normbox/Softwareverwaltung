@@ -335,7 +335,7 @@
     <value>Protokolle und Zwischenspeicher</value>
   </data>
   <data name="SettingsLogsText" xml:space="preserve">
-    <value>Werden beim Start automatisch aufgeräumt: Älteres und alles über der Größengrenze wird gelöscht, das Älteste zuerst.</value>
+    <value>Werden beim Start automatisch aufgeräumt: Älteres wird gelöscht. Über der Größengrenze geht zuerst der Zwischenspeicher, dann das Älteste der Logs. Die CIRCL-Bestände je Produkt haben eine eigene Grenze, weil ihr Neuaufbau Minuten dauert; sie werden außerdem gelöscht, wenn das Produkt nach einem Scan nicht mehr vorkommt.</value>
   </data>
   <data name="SettingsLogsMaxDays" xml:space="preserve">
     <value>Höchstens Tage aufheben (1–3650)</value>
@@ -348,6 +348,15 @@
   </data>
   <data name="SettingsLogsMaxSizeName" xml:space="preserve">
     <value>Höchstens MB insgesamt</value>
+  </data>
+  <data name="SettingsCirclStoreMaxSize" xml:space="preserve">
+    <value>CIRCL-Bestände höchstens MB (1–102400)</value>
+  </data>
+  <data name="SettingsCirclStoreMaxSizeName" xml:space="preserve">
+    <value>CIRCL-Bestände höchstens MB</value>
+  </data>
+  <data name="SettingsCirclStoreMaxSizeTooltip" xml:space="preserve">
+    <value>Eigene Grenze für die CIRCL-Bestände je Produkt; zählt nicht zur Grenze oben. Darüber wird der älteste Bestand zuerst gelöscht.</value>
   </data>
   <data name="CommonDiscard" xml:space="preserve">
     <value>Verwerfen</value>

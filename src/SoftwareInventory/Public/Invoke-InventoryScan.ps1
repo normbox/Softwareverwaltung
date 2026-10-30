@@ -13,6 +13,8 @@ function Invoke-InventoryScan {
         Fehlt etwas, gibt es einen Hinweis (Warnung) statt eines Fehlers; nicht verbundene Laufwerke
         werden übersprungen.
         Ist der Hauptschalter aus, wird nicht gesucht und nichts gemeldet; die Suche ist freiwillig.
+        Am Ende eines vollständigen Laufs löscht es die CIRCL-Bestände von Produkten, die in keinem
+        gefundenen Programm mehr vorkommen (Remove-UnusedCirclStore). Bricht der Lauf ab, bleibt alles.
     .EXAMPLE
         Invoke-InventoryScan | Get-SecurityRating
     #>
@@ -22,7 +24,14 @@ function Invoke-InventoryScan {
 
     $installed = @(Get-SoftwareInventory)
     foreach ($record in $installed) { $record }
+    $portable = @(Get-InventoryScanPortable -Installed $installed)
+    foreach ($record in $portable) { $record }
+    [void] (Remove-UnusedCirclStore -Record (@($installed) + @($portable)))
+}
 
+function Get-InventoryScanPortable {
+    # Portable Programme nach den Einstellungen (Hauptschalter, Spuren, Dateisuche); Hinweise als Warnung.
+    param([object[]] $Installed)
     $setting = Read-InventorySetting
     if (-not $setting.PortableSearch.Enabled) { return }
     $search = Get-PortableSearchPlan $setting
@@ -33,7 +42,7 @@ function Invoke-InventoryScan {
     if ($setting.PortableSearch.TraceSearch -and -not $search.Trace) { Write-Warning (Get-LocalizedString 'PortableSearchNoTrace') }
     if ($setting.PortableSearch.FileSearch -and -not ($search.Path -or $search.Drive)) { Write-Warning (Get-LocalizedString 'PortableSearchNoLocation') }
     if ($search.Trace -or $search.Path -or $search.Drive) {
-        Get-PortableSoftware -Inventory $installed -Trace $search.Trace -Path $search.Path -Drive $search.Drive `
+        Get-PortableSoftware -Inventory $Installed -Trace $search.Trace -Path $search.Path -Drive $search.Drive `
             -IncludeTemp:$setting.FileScan.IncludeTemp -ComputeHash:$setting.FileScan.ComputeHash
     }
 }

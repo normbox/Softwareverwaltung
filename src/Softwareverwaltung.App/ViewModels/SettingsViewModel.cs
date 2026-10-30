@@ -202,6 +202,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int _logMaxSizeMB = 100;
 
+    [ObservableProperty]
+    private int _circlStoreMaxSizeMB = 200;
+
     // Haltbarkeit des Zwischenspeichers in Stunden (1–720, geprüft im Modul)
     [ObservableProperty]
     private int _cacheHoursLatestVersion = 6;
@@ -310,6 +313,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnFileSearchEnabledChanged(bool value) => UpdateDirty();
     partial void OnLogRetentionDaysChanged(int value) => UpdateDirty();
     partial void OnLogMaxSizeMBChanged(int value) => UpdateDirty();
+    partial void OnCirclStoreMaxSizeMBChanged(int value) => UpdateDirty();
     partial void OnCacheHoursLatestVersionChanged(int value) => UpdateDirty();
     partial void OnCacheHoursNvdChanged(int value) => UpdateDirty();
     partial void OnCacheHoursCirclChanged(int value) => UpdateDirty();
@@ -365,6 +369,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         FileSearch = FileSearchEnabled,
         LogRetentionDays = LogRetentionDays,
         LogMaxSizeMB = LogMaxSizeMB,
+        CirclStoreMaxSizeMB = CirclStoreMaxSizeMB,
         CacheHoursLatestVersion = CacheHoursLatestVersion,
         CacheHoursNvd = CacheHoursNvd,
         CacheHoursCircl = CacheHoursCircl,
@@ -619,6 +624,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             FileSearchEnabled = settings.FileSearch;
             LogRetentionDays = settings.LogRetentionDays;
             LogMaxSizeMB = settings.LogMaxSizeMB;
+            CirclStoreMaxSizeMB = settings.CirclStoreMaxSizeMB;
             CacheHoursLatestVersion = settings.CacheHoursLatestVersion;
             CacheHoursNvd = settings.CacheHoursNvd;
             CacheHoursCircl = settings.CacheHoursCircl;
@@ -724,6 +730,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.FileSearch == b.FileSearch
         && a.LogRetentionDays == b.LogRetentionDays
         && a.LogMaxSizeMB == b.LogMaxSizeMB
+        && a.CirclStoreMaxSizeMB == b.CirclStoreMaxSizeMB
         && a.CacheHoursLatestVersion == b.CacheHoursLatestVersion
         && a.CacheHoursNvd == b.CacheHoursNvd
         && a.CacheHoursCircl == b.CacheHoursCircl

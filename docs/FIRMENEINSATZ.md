@@ -24,7 +24,7 @@ Das Programm ist zunächst für den privaten Einsatz gedacht. Wer es in einem Un
 - **Zweckbindung:** Zweck ist IT-Sicherheit und Softwarepflege, **nicht** Leistungs- oder Verhaltenskontrolle. Das sollte schriftlich festgehalten und technisch unterstützt werden (Nutzungsspuren aus, Startzähler nicht auswerten).
 - **Informationspflicht** (Art. 13 DSGVO): Beschäftigte darüber informieren, welche Daten erhoben werden und wozu.
 - **Verzeichnis der Verarbeitungstätigkeiten** (Art. 30 DSGVO): Eintrag anlegen; die Tabellen in [PRIVACY.md](../PRIVACY.md) und [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md) helfen dabei.
-- **Löschkonzept:** Aufbewahrungsdauer festlegen. Protokolle und Zwischenspeicher räumen sich selbst auf (Standard 30 Tage und höchstens 100 MB, in den Einstellungen änderbar). Die App speichert keine Scans; mit `Save-InventorySnapshot` gespeicherte Scans bleiben, bis sie gelöscht werden.
+- **Löschkonzept:** Aufbewahrungsdauer festlegen. Protokolle und Zwischenspeicher räumen sich selbst auf (Standard 30 Tage und höchstens 100 MB, die CIRCL-Bestände eigens höchstens 200 MB, in den Einstellungen änderbar). Die App speichert keine Scans; mit `Save-InventorySnapshot` gespeicherte Scans bleiben, bis sie gelöscht werden.
 - **Technische und organisatorische Maßnahmen** (Art. 32 DSGVO): Wer darf Scans anderer Rechner sehen? Wo liegen sie? Sind sie verschlüsselt (z. B. BitLocker)?
 
 ## 2. Nutzungsspuren und Mitbestimmung

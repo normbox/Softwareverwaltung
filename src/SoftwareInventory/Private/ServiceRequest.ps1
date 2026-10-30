@@ -111,6 +111,9 @@ function Invoke-ServiceRequest {
     }
 
     $content = [string] $response.Content
+    # NVD-Antworten verschlankt speichern und auch sofort so auswerten, damit frische und
+    # zwischengespeicherte Daten gleich aussehen.
+    if ($Service -eq 'NVD') { $content = ConvertTo-NvdCacheContent $content }
     $data = $content | ConvertFrom-Json -DateKind String
     if ($cacheFile) {
         Write-ServiceCache -Path $cacheFile -Content $content

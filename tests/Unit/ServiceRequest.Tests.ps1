@@ -54,6 +54,40 @@ Describe 'Invoke-ServiceRequest' {
         $script:SeenProgressPreference | Should -Be 'SilentlyContinue'
     }
 
+    It 'speichert NVD-Antworten verschlankt und liefert sie gleich so aus' {
+        $raw = @{
+            resultsPerPage = 1; startIndex = 0; totalResults = 1; format = 'NVD_CVE'
+            vulnerabilities = @(@{ cve = @{
+                        id = 'CVE-2026-1'; published = '2026-01-10T10:00:00.000'; vulnStatus = 'Analyzed'
+                        descriptions = @(@{ lang = 'en'; value = 'Englisch' }, @{ lang = 'es'; value = 'Spanisch' })
+                        references = @(@{ url = 'https://example.org/1' }); weaknesses = @(@{ description = @(@{ value = 'CWE-79' }) })
+                        metrics = @{ cvssMetricV31 = @(@{ type = 'Primary'; source = 'nvd@nist.gov'; exploitabilityScore = 3.9; cvssData = @{ version = '3.1'; baseScore = 7.8; baseSeverity = 'HIGH'; vectorString = 'CVSS:3.1/AV:L'; attackVector = 'LOCAL' } }) }
+                        configurations = @(@{ nodes = @(@{ operator = 'OR'; negate = $false; cpeMatch = @(@{ vulnerable = $true; criteria = 'cpe:2.3:a:x:y:*:*:*:*:*:*:*:*'; versionEndExcluding = '2.0'; matchCriteriaId = 'ABC' }) }) })
+                    } })
+        } | ConvertTo-Json -Depth 12 -Compress
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest { [pscustomobject] @{ StatusCode = 200; Content = $raw } }
+        $s = New-EnabledSetting NVD
+        $fresh = InModuleScope SoftwareInventory -Parameters @{ S = $s } { Invoke-ServiceRequest -Service NVD -Uri 'https://services.nvd.nist.gov/x' -CacheKey 'cves/x' -Setting $S }
+        $cached = InModuleScope SoftwareInventory -Parameters @{ S = $s } { Invoke-ServiceRequest -Service NVD -Uri 'https://services.nvd.nist.gov/x' -CacheKey 'cves/x' -Setting $S }
+        foreach ($r in $fresh, $cached) {
+            $c = $r.vulnerabilities[0].cve
+            $c.id | Should -Be 'CVE-2026-1'
+            $c.descriptions.value | Should -Be 'Englisch'
+            $c.PSObject.Properties['references'] | Should -BeNullOrEmpty
+            $c.PSObject.Properties['weaknesses'] | Should -BeNullOrEmpty
+            $c.metrics.cvssMetricV31[0].cvssData.baseScore | Should -Be 7.8
+            $c.metrics.cvssMetricV31[0].type | Should -Be 'Primary'
+            $c.configurations[0].nodes[0].cpeMatch[0].versionEndExcluding | Should -Be '2.0'
+            $c.configurations[0].nodes[0].cpeMatch[0].PSObject.Properties['matchCriteriaId'] | Should -BeNullOrEmpty
+            $r.totalResults | Should -Be 1
+        }
+        # Gespeichert ist die verschlankte Fassung
+        $file = InModuleScope SoftwareInventory { Get-ServiceCacheFile -Service NVD -CacheKey 'cves/x' }
+        Get-Content -LiteralPath $file -Raw | Should -Not -Match 'example\.org'
+        # Antworten ohne Lücken (z. B. CPE-Suche) bleiben unverändert
+        InModuleScope SoftwareInventory { ConvertTo-NvdCacheContent '{"products":[{"cpe":{"cpeName":"a"}}]}' } | Should -Be '{"products":[{"cpe":{"cpeName":"a"}}]}'
+    }
+
     It 'liefert JSON und nutzt den Zwischenspeicher' {
         Mock -ModuleName SoftwareInventory Invoke-WebRequest { [pscustomobject] @{ StatusCode = 200; Content = '{"tag_name":"v1.2.3","published_at":"2026-10-01T10:00:00Z"}' } }
         $s = New-EnabledSetting GitHub

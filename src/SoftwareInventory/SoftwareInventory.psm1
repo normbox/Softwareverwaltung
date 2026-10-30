@@ -17,7 +17,7 @@ foreach ($folder in 'Private', 'Public') {
 # dürfen das Laden des Moduls nie verhindern.
 try {
     $maintenance = (Read-InventorySetting 3>$null).Maintenance
-    [void] (Invoke-AppDataCleanup -RetentionDays $maintenance.LogRetentionDays -MaxSizeMB $maintenance.LogMaxSizeMB)
+    [void] (Invoke-AppDataCleanup -RetentionDays $maintenance.LogRetentionDays -MaxSizeMB $maintenance.LogMaxSizeMB -CirclMaxSizeMB $maintenance.CirclStoreMaxSizeMB)
 }
 catch {
     Write-Verbose "Bereinigung übersprungen: $_"

@@ -197,6 +197,35 @@ Describe 'Invoke-AppDataCleanup' {
         Test-Path $c | Should -BeTrue
     }
 
+    It 'löscht über der Grenze zuerst den Zwischenspeicher, auch wenn Logs älter sind' {
+        $log = New-AgedFile 'logs\actions\alt.jsonl' 20 600
+        $nvd = New-AgedFile 'cache\NVD\neu.json' 1 600
+        InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 30 -MaxSizeMB 1 -Root $R } | Should -Be 1
+        Test-Path $nvd | Should -BeFalse
+        Test-Path $log | Should -BeTrue   # Aktionsprotokoll bleibt, solange der Zwischenspeicher reicht
+    }
+
+    It 'zählt CIRCL-Bestände nicht zur allgemeinen Grenze und begrenzt sie eigens' {
+        $store = New-AgedFile 'cache\CIRCL\store-ALT.json' 20 900
+        $nvd = New-AgedFile 'cache\NVD\a.json' 1 600
+        # Allgemein 1 MB: nur die NVD-Datei zählt (600 KB), der große, alte Bestand bleibt.
+        InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 30 -MaxSizeMB 1 -CirclMaxSizeMB 200 -Root $R } | Should -Be 0
+        Test-Path $store | Should -BeTrue
+        Test-Path $nvd | Should -BeTrue
+
+        # Eigene Grenze 1 MB: der ältere Bestand geht zuerst
+        $newer = New-AgedFile 'cache\CIRCL\store-NEU.json' 2 600
+        InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 30 -MaxSizeMB 100 -CirclMaxSizeMB 1 -Root $R } | Should -Be 1
+        Test-Path $store | Should -BeFalse
+        Test-Path $newer | Should -BeTrue
+    }
+
+    It 'löscht CIRCL-Bestände nach Alter' {
+        $store = New-AgedFile 'cache\CIRCL\store-ALT.json' 40 10
+        InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 30 -MaxSizeMB 100 -CirclMaxSizeMB 200 -Root $R } | Should -Be 1
+        Test-Path $store | Should -BeFalse
+    }
+
     It 'lässt gespeicherte Scans unangetastet' {
         $scan = New-AgedFile 'scans\20250101-000000-000.json' 400 2000
         InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 1 -MaxSizeMB 1 -Root $R } | Should -Be 0

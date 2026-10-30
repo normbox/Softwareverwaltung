@@ -172,7 +172,8 @@ Get-ActionLog -Result Failed, NotVerified -Last 5
 
 Beim Laden des Moduls werden `logs\` und `cache\` unter `%LOCALAPPDATA%\SoftwareInventory` bereinigt:
 - Dateien, die älter als `LogRetentionDays` sind (Standard 30), werden gelöscht.
-- Danach wird, solange die Gesamtgröße über `LogMaxSizeMB` liegt (Standard 100), das Älteste zuerst gelöscht.
+- Danach wird, solange die Gesamtgröße über `LogMaxSizeMB` liegt (Standard 100), zuerst der Zwischenspeicher und dann das Älteste der Logs gelöscht.
+- Die CIRCL-Bestände (`cache\CIRCL\`) zählen nicht dazu: eigene Grenze `CirclStoreMaxSizeMB` (Standard 200), Ältestes zuerst; außerdem löscht ein vollständiger Scan die Bestände von Produkten, die nicht mehr vorkommen.
 - Leere Ordner werden entfernt. Gesperrte Dateien werden übersprungen.
 - Gespeicherte Scans (`scans\`) sind Nutzdaten und bleiben.
 

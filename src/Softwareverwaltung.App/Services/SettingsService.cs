@@ -51,6 +51,7 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
             .AddParameter("FileSearch", settings.FileSearch)
             .AddParameter("LogRetentionDays", settings.LogRetentionDays)
             .AddParameter("LogMaxSizeMB", settings.LogMaxSizeMB)
+            .AddParameter("CirclStoreMaxSizeMB", settings.CirclStoreMaxSizeMB)
             .AddParameter("CacheHoursLatestVersion", settings.CacheHoursLatestVersion)
             .AddParameter("CacheHoursNvd", settings.CacheHoursNvd)
             .AddParameter("CacheHoursCircl", settings.CacheHoursCircl)

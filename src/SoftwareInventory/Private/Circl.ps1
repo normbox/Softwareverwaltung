@@ -217,6 +217,40 @@ function Get-CirclPageEstimate {
     [int] [Math]::Max(1, [Math]::Ceiling($file.Length / $script:CirclStoreBytesPerPage))
 }
 
+function Remove-UnusedCirclStore {
+    <#
+    .SYNOPSIS
+        Löscht nach einem vollständigen Scan die CIRCL-Bestände von Produkten, die in keinem Programm mehr vorkommen.
+    .DESCRIPTION
+        Behalten werden die Bestände aller CPEs (Katalog oder eigene Zuordnung) der gefundenen Programme;
+        dazu gehören Merker (.due) und angefangene Dateien (.part). Ohne gefundene Programme (z. B. alle
+        Quellen aus) wird nichts gelöscht.
+    .OUTPUTS
+        Anzahl gelöschter Dateien.
+    #>
+    param([object[]] $Record)
+    $directory = Join-Path (Get-CacheDirectory) 'CIRCL'
+    $records = @($Record | Where-Object { $_ })
+    if (-not $records -or -not (Test-Path -LiteralPath $directory)) { return 0 }
+    $catalog = Get-SoftwareCatalog
+    $userMap = Read-CpeMapping
+    $keep = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($r in $records) {
+        $match = Find-CatalogEntry -Record $r -Catalog $catalog
+        $cpe = Get-RecordCpe -Record $r -CatalogEntry $(if ($match) { $match.Entry }) -UserMap $userMap
+        foreach ($base in @(if ($cpe) { $cpe.Cpe })) {
+            $parts = $base -split '(?<!\\):'
+            [void] $keep.Add([System.IO.Path]::GetFileNameWithoutExtension((Get-CirclStoreFile -Vendor $parts[3] -Product $parts[4])))
+        }
+    }
+    $removed = 0
+    foreach ($file in Get-ChildItem -LiteralPath $directory -File -Filter 'store-*') {
+        if ($keep.Contains($file.Name.Split('.')[0])) { continue }
+        try { $file.Delete(); $removed++ } catch { Write-Verbose "Nicht löschbar: $($file.FullName)" }
+    }
+    $removed
+}
+
 function Get-CirclStoreFile {
     param([string] $Vendor, [string] $Product)
     $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes("store/$Vendor/$Product")))
