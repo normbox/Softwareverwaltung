@@ -4,6 +4,30 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Zweite Quelle: CIRCL Vulnerability-Lookup
+
+#### Neu
+
+- **CIRCL als zweite Quelle für Sicherheitslücken** (Dienst `CIRCL`, standardmäßig aus, nur mit zugeordneter CPE). Gesendet werden nur Hersteller und Produkt, die Versionsangaben der CVE-Datensätze (CVE 5) wertet das Modul lokal aus: strukturierte Bereiche, einfache Textformen (`< 8.9.6.1`, `>= 9.11, < 26.01`) und feste englische Muster („Fixed in X“, „before X“, „prior to X“, „X and earlier“). Nicht auswertbare Angaben fallen unter die Altersregel.
+- **Angabe je Quelle:** Jede Lücke erscheint einmal (gleiche CVE-ID) und nennt in `Sources` die Angabe von NVD und CIRCL einzeln mit Bereich, Namensnennung und Link. Die Details der App und der HTML-Bericht zeigen sie immer, auch wenn die Quellen übereinstimmen; bei CIRCL steht „Daten: CVE-Programm über CIRCL, CC BY 4.0“.
+- **Widerspruch der Quellen:** Meldet eine Quelle „betroffen“ und die andere mit Versionsdaten „nicht betroffen“, gilt „möglicherweise betroffen“ mit Grund `SourcesDisagree` (Gelb). Ein Widerspruch widerlegt nie.
+- Optionaler **CIRCL-Schlüssel** (Anmeldeinformationsverwaltung oder `CIRCL_API_KEY`), eigene Haltbarkeit `CacheHours.CIRCL` und Nutzungshinweis; in der App unter Einstellungen.
+
+#### Geändert
+
+- **HTTP 429:** Mit `Retry-After` bis 60 Sekunden wartet das Modul einmal und wiederholt die Anfrage; sonst gilt wie bisher der veraltete Zwischenspeicher. Gilt für alle Dienste.
+- Der User-Agent nennt die Projektadresse als Kontakt.
+- `Get-RefreshEstimate` zählt CIRCL mit (`CirclEnabled`, `CirclRequests`, `CirclUnknown`): alle Seiten des vollständigen Abrufs, geschätzt aus der Größe des Bestands, und den Ablauf je CPE nacheinander statt nur der längeren Wartezeit. Auf einem PC mit gut 100 Programmen mit CPE ergibt das etwa 28 statt 3 Minuten.
+- **CIRCL-Bestand mit Nachladen:** Je Produkt ein verschlankter Bestand (bei Chrome etwa 2 % der Antworten), danach nur Änderungen per `since=` statt alle 24 Stunden alles neu, wie es die Zugriffsregeln von CIRCL verlangen. Vollständig nur ohne lesbaren Bestand, nach 30 Tagen oder bei „Neu prüfen ohne Cache“. `Clear-CheckCache` behält den Bestand und lädt beim nächsten Mal nach. Ein abgebrochenes Nachladen setzt das Abrufdatum nicht weiter.
+- **Fortschritt mit aktuellem Schritt:** Unter „Prüfe Sicherheitslücken (3 von 9): Programm“ zeigt die App eine zweite Zeile, z. B. „CIRCL: erster Abruf, Seite 37 von 149, noch etwa 6 Min. (danach aus dem Zwischenspeicher)“, „CIRCL: Änderungen seit …, Seite 1“, „NVD: Versionssuche“, „NVD: Abgleich mit CIRCL, Seite 2 von 3“ oder „… aus dem Zwischenspeicher“. Wartezeiten des Anfragelimits hängen an diesem Schritt („· Warte 3 s (Anfragelimit CIRCL)“), das Warten nach einem 429 steht in eigener Zeile.
+- **Alter CIRCL-Zwischenspeicher:** Die einzelnen Suchseiten des alten Formats werden beim ersten Laden des Moduls einmalig gelöscht, mit Eintrag im Aktionsprotokoll (`CacheMigration`, Anzahl und MB). Bestände je Produkt bleiben.
+- **Commit-Kennungen als Bereichsgrenze** (z. B. `>= 9a32b86…, < 8.0` bei CIRCL) sind keine Versionen: Sie fallen weg (Bereich dann `< 8.0`, lieber ein Fehlalarm mehr) und stehen im neuen Protokoll `logs\data-notes\<Datum>.jsonl` (Code `CommitVersionBound`, CVE, Produkt, Wert), damit sich solche Datensätze später finden lassen.
+- Beschreibungen der Lücken ohne Zeilenumbrüche und Leerzeilen (NVD und CVE-Datensätze).
+- **Gründe der Ampel:** Mehrere „möglicherweise betroffen“ stehen als ein Grund („8 Lücken möglicherweise betroffen (…)“, Code `PossiblyAffectedCount`); aktiv ausgenutzte (KEV) und Widersprüche der Quellen bleiben einzeln.
+- **Rückfrage vor langem Scan ohne Cache:** auch mit NVD-Schlüssel, wenn die Schätzung über 5 Minuten liegt („Ein Scan ohne Zwischenspeicher dauert etwa 29 Minuten. Fortfahren?“); `Get-RefreshEstimate` liefert dazu `ConfirmReason` (`NvdWithoutKey`, `LongDuration`).
+- Selbstbereinigung: Sind alle Dateien zu alt, räumt sie jetzt auch die leeren Ordner auf (vorher Abbruch beim Größenvergleich).
+- `PRIVACY.md`, `THIRD-PARTY-NOTICES.md`, `docs/EXTERNE-DIENSTE.md`, `docs/SCHWACHSTELLEN.md` und `docs/TECHNIK.md` beschreiben CIRCL (Sitz Luxemburg, CC BY 4.0, Abfragegrenzen).
+
 ### CPE-Zuordnung
 
 #### Neu

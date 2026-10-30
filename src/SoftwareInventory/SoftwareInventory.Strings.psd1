@@ -12,6 +12,7 @@ Regeln:
 - Du führst nie etwas aus. Updates und Deinstallationen schlägst du nur mit propose_update oder propose_uninstall vor; der Benutzer bestätigt sie selbst in der App. Sag nie, dass etwas aktualisiert oder entfernt wurde.
 - Ampel: Red = aktiv ausgenutzte oder kritische Lücke, Yellow = andere Lücken, „möglicherweise betroffen“ oder Update verfügbar, Green = geprüft ohne Befund, Gray = nicht geprüft (der Grund steht dabei).
 - „Möglicherweise betroffen“ (PossiblyAffected) heißt: Die Version ließ sich nicht prüfen. Stelle das nicht als sicher dar.
+- sources nennt die Angabe jeder Quelle (NVD, CIRCL). Widersprechen sie sich (SourcesDisagree), nenne beide Angaben und entscheide nicht selbst.
 - Fehler der Tools haben ein Feld error_code; korrigiere den Aufruf oder erkläre dem Benutzer, was fehlt.
 - Platzhalter wie %USERPROFILE%, %USERNAME% oder %OTHERUSER% stehen für bereinigte persönliche Angaben; frage nicht danach.
 '@
@@ -69,6 +70,23 @@ Regeln:
     ProgressPlanQueueCounted                = 'Plane die Warteschlange ({0} von {1})'
     ProgressUpdateQueueCounted              = 'Aktualisiere {0} von {1}'
 
+    # Aktueller Schritt als zweite Zeile der Anzeige (Write-CheckStep)
+    StepWithWait                            = '{0} · {1}'
+    StepWaitInterval                        = 'Warte {0} s (Anfragelimit {1})'
+    StepWaitRetryAfter                      = '{0}: Warte {1} s (Dienst meldet Anfragelimit)'
+    StepCached                              = '{0}: aus dem Zwischenspeicher'
+    StepRemainingMinutes                    = 'noch etwa {0} Min.'
+    StepRemainingUnderMinute                = 'noch unter 1 Min.'
+    StepNvdVersionSearch                    = 'NVD: Versionssuche'
+    StepNvdVersionSearchCounted             = 'NVD: Versionssuche, Seite {0} von {1}'
+    StepNvdCompare                          = 'NVD: Abgleich mit CIRCL'
+    StepNvdCompareCounted                   = 'NVD: Abgleich mit CIRCL, Seite {0} von {1}'
+    StepCirclFirst                          = 'CIRCL: erster Abruf, bei Produkten mit vielen Lücken einige Minuten, danach aus dem Zwischenspeicher'
+    StepCirclFirstCounted                   = 'CIRCL: erster Abruf, Seite {0} von {1}, {2} (danach aus dem Zwischenspeicher)'
+    StepCirclFull                           = 'CIRCL: vollständiger Abruf'
+    StepCirclFullCounted                    = 'CIRCL: vollständiger Abruf, Seite {0} von {1}, {2}'
+    StepCirclSince                          = 'CIRCL: Änderungen seit {0}, Seite {1}'
+
     # Suche nach portablen Programmen (Invoke-InventoryScan)
     PortableSearchNoLocation                = 'Dateisuche: Keine Option „Wo suchen“ gewählt oder die gewählte Option hat keinen Eintrag, daher wurden keine Dateien durchsucht.'
     PortableSearchNoTrace                   = 'Nutzungsspuren sind eingeschaltet, aber keine der Spuren ist gewählt.'
@@ -80,10 +98,20 @@ Regeln:
     # Ampel
     ReasonKevAffected                       = 'Aktiv ausgenutzte Lücke {0} (CISA KEV)'
     ReasonCriticalCvss                      = 'Kritische Lücke {0} (CVSS {1})'
-    ReasonKnownVulnerabilities              = '{0} bekannte Lücke(n)'
-    ReasonKnownVulnerabilitiesMaxCvss       = '{0} bekannte Lücke(n), höchster CVSS {1}'
+    # Einzahl über den Zusatz One (erstes Argument = 1); Args: Anzahl, höchster CVSS, bei einer Lücke deren CVE
+    ReasonKnownVulnerabilities              = '{0} bekannte Lücken'
+    ReasonKnownVulnerabilitiesOne           = 'Bekannte Lücke {1}'
+    ReasonKnownVulnerabilitiesMaxCvss       = '{0} bekannte Lücken, höchster CVSS {1}'
+    ReasonKnownVulnerabilitiesMaxCvssOne    = 'Bekannte Lücke {2} (CVSS {1})'
+    # Neben roten Gründen (KEV, kritisch): die übrigen Lücken als „weitere“, damit die Zahl nicht wie die Gesamtzahl wirkt
+    ReasonOtherVulnerabilities              = '{0} weitere Lücken'
+    ReasonOtherVulnerabilitiesOne           = 'Weitere Lücke {1}'
+    ReasonOtherVulnerabilitiesMaxCvss       = '{0} weitere Lücken, höchster CVSS {1}'
+    ReasonOtherVulnerabilitiesMaxCvssOne    = 'Weitere Lücke {2} (CVSS {1})'
     ReasonPossiblyAffected                  = 'Möglicherweise betroffen: {0} ({1})'
-    ReasonPossiblyAffectedKev               = 'Möglicherweise betroffen: {0} (aktiv ausgenutzt, {1})'
+    ReasonPossiblyAffectedCount             = '{0} Lücken möglicherweise betroffen ({1})'
+    ReasonPossiblyAffectedMixedNotes        = 'verschiedene Gründe, siehe Lücken'
+    ReasonPossiblyAffectedKev             = 'Möglicherweise betroffen: {0} (aktiv ausgenutzt, {1})'
     ReasonUpdateAvailable                   = 'Update verfügbar: {0} → {1} (Quelle {2})'
     ReasonUpdateAvailableUnconfirmed        = 'Update verfügbar: {0} → {1} (Quelle {2}, unbestätigt)'
     ReasonNoFindings                        = 'Sicherheitsprüfung ohne Befund'
@@ -110,6 +138,12 @@ Regeln:
     ReasonVersionUnreadable                 = 'Version ''{0}'' nicht lesbar'
     ReasonNvdNoVersionRange                 = 'Versionsbereich in der NVD nicht angegeben'
     ReasonNvdLegacyData                     = 'Altdaten ohne Versionsangabe in der NVD (älter als {0} Jahre); ohne Ampelwirkung'
+    ReasonNvdNoProductData                  = 'Die NVD führt zu dieser CVE keine Angaben für dieses Produkt'
+    ReasonCirclNoVersionRange               = 'Versionsbereich im CVE-Datensatz (CIRCL) nicht auswertbar'
+    ReasonCirclLegacyData                   = 'Altdaten ohne auswertbare Versionsangabe bei CIRCL (älter als {0} Jahre); ohne Ampelwirkung'
+    ReasonSourcesDisagree                   = 'Quellen widersprechen sich bei {0}: eine meldet betroffen, die andere nicht betroffen'
+    ReasonAttributionNVD                    = 'Daten: National Vulnerability Database (NIST)'
+    ReasonAttributionCIRCL                  = 'Daten: CVE-Programm über CIRCL, CC BY 4.0'
     ReasonKevNvdNoVersionData               = 'Version nicht prüfbar (NVD ohne Versionsdaten)'
     ReasonKevNvdUnavailable                 = 'Version nicht prüfbar (NVD nicht abrufbar)'
     ReasonKevNvdDisabled                    = 'Version nicht prüfbar (Dienst NVD nicht aktiviert)'
@@ -169,7 +203,10 @@ Regeln:
     ReasonStoreAgreementRequired            = 'Die Vereinbarung der Microsoft-Store-Quelle (msstore) ist noch nicht bestätigt. Ohne Zustimmung wird über diese Quelle nichts ausgeführt.'
     ReasonQueueCancelled                    = 'Abgebrochen, nicht ausgeführt (Warteschlange abgebrochen).'
     ReasonRestorePointNameQueue             = 'Softwareverwaltung: {0} Programme aktualisieren'
-    ReasonActionIncomplete                  = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
+    DataNoteCommitVersionBound              = 'Commit-Kennung statt Version als Bereichsgrenze ({0}) in {1}; Grenze nicht ausgewertet'
+    ReasonCirclLegacyCacheRemoved           ='Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: {0} Dateien, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
+    ReasonCirclLegacyCacheRemovedOne        = 'Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: 1 Datei, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
+    ReasonActionIncomplete                = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
     ReasonLegacyText                        = '{0} (älterer Eintrag)'
 
     # Aktionen: Wiederherstellungspunkt (Codes kommen auch vom erhöhten Helfer)
@@ -302,7 +339,8 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     # Warnungen, Fehler und Bestätigungen (Get-LocalizedString)
     WarningActionLogLocked                  = 'Protokoll ist gesperrt; Eintrag wird trotzdem geschrieben.'
     WarningActionLogUnreadable              = 'Protokolldatei nicht lesbar: {0}'
-    WarningActionLogBadLines                = '{0} beschädigte Protokollzeile(n) übersprungen.'
+    WarningActionLogBadLines                = '{0} beschädigte Protokollzeilen übersprungen.'
+    WarningActionLogBadLinesOne             = 'Eine beschädigte Protokollzeile übersprungen.'
     WarningInstallerLogCompress             = 'Installer-Log konnte nicht komprimiert werden: {0}'
     WarningCatalogEntrySkipped              = 'Katalogeintrag {0} übersprungen: {1}'
     WarningCpeMappingUnreadable             = 'CPE-Zuordnungen nicht lesbar ({0}): {1}'
@@ -346,6 +384,10 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ReportRatingGreen                       = 'Grün'
     ReportRatingGray                        = 'Grau'
     ReportAssessmentAffected                = 'betroffen'
+    ReportVerdictAffected                   = 'betroffen'
+    ReportVerdictNotAffected                = 'nicht betroffen'
+    ReportVerdictNotEvaluable               = 'nicht auswertbar'
+    ReportVerdictUnknown                    = 'in dieser Quelle nicht bekannt'
     ReportAssessmentPossiblyAffected        = 'möglicherweise betroffen'
     ReportAssessmentInformational           = 'Hinweis'
     ReportFilterAll                         = 'Alle'
@@ -364,7 +406,7 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ReportLocationLabel                     = 'Ort:'
     ReportCpeUserConfirmed                  = '(vom Benutzer bestätigt)'
     ReportLegend                            = 'Rot: aktiv ausgenutzte (CISA KEV) oder kritische Lücke (CVSS ab 9). Gelb: andere Lücken, „möglicherweise betroffen“ oder Update verfügbar. Grün: geprüft ohne Befund. Grau: nicht auf Lücken geprüft (Grund in der Zeile).'
-    ReportSources                           = 'Quellen: NVD, CISA KEV, FIRST EPSS, winget, GitHub. Unbestätigte Angaben sind gekennzeichnet. Angaben ohne Gewähr.'
+    ReportSources                           = 'Quellen: NVD, CIRCL (CVE-Programm, CC BY 4.0), CISA KEV, FIRST EPSS, winget, GitHub. Unbestätigte Angaben sind gekennzeichnet. Angaben ohne Gewähr.'
 
     # Nutzungsbedingungen externer Dienste (Get-ServiceTermsNotice)
     ServiceTermsWingetSearchName            = 'winget-Quellen (Microsoft)'
@@ -375,6 +417,8 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ServiceTermsGitHubCompany               = 'Verwenden Sie in der Firma nur ein Token, das Ihre Richtlinien erlauben, am besten ohne Rechte (nur Lesen öffentlicher Daten).'
     ServiceTermsNVDName                     = 'National Vulnerability Database (NIST)'
     ServiceTermsNVDTerms                    = 'Kostenlos, auch kommerziell. Die NVD bittet um den Hinweis: „This product uses the NVD API but is not endorsed or certified by the NVD.“ Ohne API-Schlüssel gelten strengere Abfragegrenzen.'
+    ServiceTermsCIRCLName                   = 'Vulnerability-Lookup (CIRCL, Luxemburg)'
+    ServiceTermsCIRCLTerms                  = 'Kostenloser Dienst des Computer Incident Response Center Luxembourg. Genutzt werden die CVE-Datensätze des CVE-Programms (CC BY 4.0). Ohne Schlüssel 20 Anfragen pro Minute, mit Schlüssel aus einem Benutzerkonto bei CIRCL 40. Das Programm wartet zwischen zwei Anfragen und nennt sich mit einer Kontaktadresse.'
     ServiceTermsKEVName                     = 'Known Exploited Vulnerabilities (CISA)'
     ServiceTermsKEVTerms                    = 'Gemeinfrei (CC0 1.0), auch kommerziell nutzbar. Logo und Siegel der CISA dürfen nicht verwendet werden.'
     ServiceTermsEPSSName                    = 'Exploit Prediction Scoring System (FIRST)'

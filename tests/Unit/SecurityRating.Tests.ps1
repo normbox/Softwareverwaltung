@@ -41,6 +41,47 @@ Describe 'Ampelregeln' {
         ($r.Reasons | Where-Object Code -EQ 'KnownVulnerabilitiesMaxCvss').Args | Should -Be @(2, 7.5)
     }
 
+    It 'nennt <Case> in Ein- oder Mehrzahl' -ForEach @(
+        @{ Case = 'eine Lücke mit CVE'; Scores = @(7.5); Code = 'KnownVulnerabilitiesMaxCvss'; Text = 'Bekannte Lücke CVE-2026-0101 (CVSS 7.5)' }
+        @{ Case = 'mehrere Lücken'; Scores = @(7.5, 4.0); Code = 'KnownVulnerabilitiesMaxCvss'; Text = '2 bekannte Lücken, höchster CVSS 7.5' }
+        @{ Case = 'eine weitere Lücke neben einer kritischen'; Scores = @(9.8, 8.7); Code = 'OtherVulnerabilitiesMaxCvss'; Text = 'Weitere Lücke CVE-2026-0102 (CVSS 8.7)' }
+        @{ Case = 'mehrere weitere Lücken neben einer kritischen'; Scores = @(9.8, 8.7, 5.0); Code = 'OtherVulnerabilitiesMaxCvss'; Text = '2 weitere Lücken, höchster CVSS 8.7' }
+    ) {
+        $i = 100
+        $vulns = foreach ($s in $Scores) { $i++; New-Vuln -Id "CVE-2026-0$i" -Score $s }
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($vulns))
+        $reason = $r.Reasons | Where-Object Code -EQ $Code
+        $reason.Text | Should -Be $Text
+        $reason.Args[0] | Should -Be @($Scores | Where-Object { $_ -lt 9 }).Count
+    }
+
+    It 'nennt eine Lücke ohne CVSS mit ihrer CVE' {
+        $v = New-Vuln -Id 'CVE-2026-0200'
+        $v.Score = $null
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($v))
+        ($r.Reasons | Where-Object Code -EQ 'KnownVulnerabilities').Text | Should -Be 'Bekannte Lücke CVE-2026-0200'
+    }
+
+    It 'fasst mehrere „möglicherweise betroffen“ zu einem Grund zusammen, KEV bleibt einzeln' {
+        $note = New-Msg CirclNoVersionRange
+        $vulns = @(
+            (New-Vuln 'CVE-2026-0301' -Assessment PossiblyAffected -Note $note)
+            (New-Vuln 'CVE-2026-0302' -Assessment PossiblyAffected -Note $note)
+            (New-Vuln 'CVE-2026-0303' -Assessment PossiblyAffected -Note $note)
+            (New-Vuln 'CVE-2026-0304' -Assessment PossiblyAffected -Kev -Note (New-Msg KevNvdNoVersionData))
+        )
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns $vulns)
+        $r.Reasons.Code | Should -Be @('PossiblyAffectedKev', 'PossiblyAffectedCount')
+        $count = $r.Reasons | Where-Object Code -EQ 'PossiblyAffectedCount'
+        $count.Args[0] | Should -Be 3
+        $count.Text | Should -Be "3 Lücken möglicherweise betroffen ($($note.Text))"
+
+        # Verschiedene Gründe: allgemeiner Hinweis; eine einzelne bleibt wie bisher mit CVE
+        $mixed = @((New-Vuln 'CVE-2026-0305' -Assessment PossiblyAffected -Note $note), (New-Vuln 'CVE-2026-0306' -Assessment PossiblyAffected -Note (New-Msg NvdNoVersionRange)))
+        (Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns $mixed)).Reasons[0].Text | Should -Be '2 Lücken möglicherweise betroffen (verschiedene Gründe, siehe Lücken)'
+        (Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($mixed[0]))).Reasons[0].Code | Should -Be 'PossiblyAffected'
+    }
+
     It 'Gelb (nicht Rot) bei KEV-Eintrag, dessen Version nicht prüfbar ist' {
         $possible = New-Vuln -Assessment PossiblyAffected -Kev -Score 9.8 -Note (New-Msg KevNvdNoVersionData)
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($possible))
@@ -148,6 +189,21 @@ Describe 'Export-SecurityReport' {
         $file.Name | Should -Be 'bericht.html'
         $html | Should -Match '<!DOCTYPE html>'
         $html | Should -Not -Match '<script src=|<link '
+    }
+
+    It 'nennt im Bericht die Angabe jeder Quelle mit Namensnennung' {
+        $vuln = New-Vuln -Id 'CVE-2026-0002'
+        $sources = InModuleScope SoftwareInventory {
+            @((New-SourceStatement -Source NVD -Verdict Affected -CveId 'CVE-2026-0002' -Range '< 2.0'),
+                (New-SourceStatement -Source CIRCL -Verdict NotAffected -CveId 'CVE-2026-0002' -Range '< 1.0'))
+        }
+        $vuln | Add-Member Sources $sources
+        $r = $rating.PSObject.Copy()
+        $r.VulnerabilityStatus = New-VulnStatus -Vulns @($vuln)
+        $f = $r | Export-SecurityReport -Path (Join-Path $TestDrive 'quellen.html')
+        $text = Get-Content $f.FullName -Raw
+        $text | Should -Match 'NVD: betroffen \(&lt; 2\.0\)'
+        $text | Should -Match 'CIRCL: nicht betroffen \(&lt; 1\.0\) · Daten: CVE-Programm (über|&#252;ber) CIRCL, CC BY 4\.0'
     }
 
     It 'maskiert Werte als HTML' {

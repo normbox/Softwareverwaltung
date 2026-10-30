@@ -28,12 +28,27 @@ function Get-RatingFromResult {
     }
     $other = @($affected | Where-Object { -not $_.Kev -and -not ($null -ne $_.Score -and $_.Score -ge $script:CriticalCvss) })
     if ($other) {
+        # Neben roten Gründen heißen die übrigen „weitere“; bei einer Lücke steht ihre CVE im Text.
+        $code = if ($red.Count) { 'OtherVulnerabilities' } else { 'KnownVulnerabilities' }
         $max = ($other | ForEach-Object { [double] $_.Score } | Measure-Object -Maximum).Maximum
-        $yellow.Add($(if ($max) { New-InventoryMessage KnownVulnerabilitiesMaxCvss $other.Count, $max } else { New-InventoryMessage KnownVulnerabilities $other.Count }))
+        $single = if ($other.Count -eq 1) { $other[0].CveId }
+        $yellow.Add($(if ($max) { New-InventoryMessage "${code}MaxCvss" (@($other.Count, $max) + @($single | Where-Object { $_ })) }
+                else { New-InventoryMessage $code (@($other.Count) + @($single | Where-Object { $_ })) }))
     }
+    $plain = [System.Collections.Generic.List[object]]::new()
     foreach ($v in $possible) {
-        $code = if ($v.Kev) { 'PossiblyAffectedKev' } else { 'PossiblyAffected' }
-        $yellow.Add((New-InventoryMessage $code $v.CveId, $v.Note))
+        # Widersprechen sich die Quellen, ist der Treffer nicht widerlegt, sondern Gelb mit eigenem Grund.
+        if ($v.PSObject.Properties['SourcesDisagree'] -and $v.SourcesDisagree) { $yellow.Add((New-InventoryMessage SourcesDisagree $v.CveId)); continue }
+        # Aktiv ausgenutzte bleiben einzeln sichtbar.
+        if ($v.Kev) { $yellow.Add((New-InventoryMessage PossiblyAffectedKev $v.CveId, $v.Note)); continue }
+        $plain.Add($v)
+    }
+    if ($plain.Count -eq 1) { $yellow.Add((New-InventoryMessage PossiblyAffected $plain[0].CveId, $plain[0].Note)) }
+    elseif ($plain.Count -gt 1) {
+        # Mehrere zu einem Grund zusammenfassen; die einzelnen CVEs stehen in den Details.
+        $codes = @($plain | ForEach-Object { if ($_.Note) { $_.Note.Code } } | Select-Object -Unique)
+        $note = if ($codes.Count -eq 1 -and @($plain | Where-Object { -not $_.Note }).Count -eq 0) { $plain[0].Note } else { New-InventoryMessage PossiblyAffectedMixedNotes }
+        $yellow.Add((New-InventoryMessage PossiblyAffectedCount $plain.Count, $note))
     }
     if ($UpdateStatus -and $UpdateStatus.Status -eq 'Outdated') {
         $code = if ($UpdateStatus.Confirmed) { 'UpdateAvailable' } else { 'UpdateAvailableUnconfirmed' }

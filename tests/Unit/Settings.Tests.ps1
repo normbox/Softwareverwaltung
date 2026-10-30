@@ -13,9 +13,10 @@ Describe 'Einstellungen' {
             $sections = (New-DefaultSetting).PSObject.Properties.Name | Where-Object { $_ -ne 'PSTypeName' }
             $sections | Where-Object { $_ -notin $script:SettingSections } | Should -BeNullOrEmpty -Because 'jeder Bereich muss gespeichert werden'
         }
-        Set-InventorySetting -CacheHoursNvd 48 -CacheHoursLatestVersion 2 -StoreAgreementAccepted $true -Confirm:$false
+        Set-InventorySetting -CacheHoursNvd 48 -CacheHoursCircl 12 -CacheHoursLatestVersion 2 -StoreAgreementAccepted $true -Confirm:$false
         $s = InModuleScope SoftwareInventory { Read-InventorySetting }
         $s.CacheHours.NVD | Should -Be 48
+        $s.CacheHours.CIRCL | Should -Be 12
         $s.CacheHours.LatestVersion | Should -Be 2
         $s.Agreements.MsStore | Should -Not -BeNullOrEmpty
         Set-InventorySetting -StoreAgreementAccepted $false -Confirm:$false
@@ -120,6 +121,7 @@ Describe 'Einstellungen' {
         $s = Set-InventorySetting -Enable GitHub
         $s.Services.GitHub | Should -BeTrue
         $s.Services.NVD | Should -BeFalse
+        $s.Services.CIRCL | Should -BeFalse
         (Get-InventorySetting).Services.GitHub | Should -BeTrue
         (Set-InventorySetting -Disable GitHub).Services.GitHub | Should -BeFalse
     }
@@ -231,6 +233,7 @@ Describe 'Einstellungen' {
         @(Get-ServiceTermsNotice -Usage Company | Where-Object UsageHint).Count | Should -BeGreaterThan 0
         @(Get-ServiceTermsNotice -Usage Private | Where-Object UsageHint).Count | Should -Be 0
         (Get-ServiceTermsNotice -Usage Private | Where-Object Service -eq NVD).Terms | Should -Match 'not endorsed or certified by the NVD'
+        (Get-ServiceTermsNotice -Usage Private | Where-Object Service -eq CIRCL).Terms | Should -Match 'CC BY 4\.0'
         Test-Path $settingsFile | Should -BeFalse
     }
 
@@ -242,7 +245,7 @@ Describe 'Einstellungen' {
         Test-Path $settingsFile | Should -BeFalse
         $quick.Enable | Should -Contain 'Winget'
         $quick.Enable | Should -Contain 'UserAssist'
-        foreach ($name in 'WingetSearch', 'GitHub', 'NVD', 'KEV', 'EPSS', 'RestorePoint') {
+        foreach ($name in 'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'RestorePoint') {
             $quick.Enable + $thorough.Enable | Should -Not -Contain $name
         }
         $quick.FileScan.Paths | Should -Be @('%USERPROFILE%')

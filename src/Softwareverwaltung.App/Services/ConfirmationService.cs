@@ -71,9 +71,21 @@ public sealed class ConfirmationService : IConfirmationService
 
     public async Task<bool> ConfirmRefreshAsync(RefreshEstimate estimate)
     {
-        var duration = estimate.Seconds < 120
-            ? AppText.Format("RefreshDurationSeconds", estimate.Seconds)
-            : AppText.Format("RefreshDurationMinutes", (int)Math.Ceiling(estimate.Seconds / 60.0));
+        if (estimate.ConfirmReason == RefreshEstimate.ReasonLongDuration)
+        {
+            // Lange Dauer trotz Schlüssel: nur die Schätzung nennen und nachfragen.
+            var longBox = new Wpf.Ui.Controls.MessageBox
+            {
+                Title = AppText.Get("RefreshConfirmTitle"),
+                Content = AppText.Format("RefreshLongText", estimate.DurationText),
+                PrimaryButtonText = AppText.Get("RefreshLongStart"),
+                CloseButtonText = AppText.Get("CommonCancel"),
+                Owner = Application.Current?.MainWindow,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            };
+            return await longBox.ShowDialogAsync() == Wpf.Ui.Controls.MessageBoxResult.Primary;
+        }
+        var duration = estimate.DurationText;
         var box = new Wpf.Ui.Controls.MessageBox
         {
             Title = AppText.Get("RefreshConfirmTitle"),

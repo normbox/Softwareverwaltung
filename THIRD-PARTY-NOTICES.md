@@ -54,13 +54,14 @@ Die App fragt diese Quellen ab oder lädt deren Daten, nur wenn der Dienst einge
 | Quelle | Lizenz / Bedingungen | Pflicht für dieses Projekt |
 | --- | --- | --- |
 | NVD (NIST) CVE- und CPE-API 2.0 | NVD Terms of Use; Daten gemeinfrei (US-Regierung) | Hinweistext anzeigen (siehe unten); API-Schlüssel nicht weitergeben; Abfragegrenzen einhalten |
+| CIRCL Vulnerability-Lookup (Luxemburg) | Dienst frei nutzbar, Abfragegrenzen laut API-Richtlinie (20/min ohne, 40/min mit Schlüssel); Software AGPLv3 (wird nicht mitgeliefert, nur über HTTP genutzt); Datenlizenz je Feed: genutzt werden die CVE-Datensätze des CVE-Programms (CC BY 4.0) | Namensnennung bei jedem Treffer und im Bericht („Daten: CVE-Programm über CIRCL, CC BY 4.0“); User-Agent mit Kontaktadresse; nicht spiegeln |
 | CISA Known Exploited Vulnerabilities | CC0 1.0 | keine; Quellenangabe freiwillig; Logo und Siegel der CISA nicht verwenden |
 | EPSS (FIRST.org) | frei nutzbar laut EPSS Usage Agreement | Quellenangabe |
 | GitHub REST API (Releases) | GitHub Terms of Service, API-Nutzungsregeln | Abfragegrenzen einhalten, eigenes Token des Nutzers |
 | winget-Community-Quelle (microsoft/winget-pkgs) | Manifeste MIT; installierte Pakete unter ihrer eigenen Lizenz | Bei Übernahme von Manifestdaten in den Produktkatalog: Copyright-Hinweis |
 | Microsoft-Store-Quelle (`msstore`) | eigene Quellvereinbarung von Microsoft | Die winget-Suche nutzt nur die Quelle `winget`. Updates und Deinstallationen laufen über die Quelle, aus der das Paket stammt; bei Store-Paketen ist das `msstore`, Die Store-Vereinbarung wird vor dem ersten Store-Update einmal angezeigt; erst nach Zustimmung des Benutzers enthält der Befehl `--accept-source-agreements`. |
 
-Geplante weitere Quellen (z. B. CIRCL Vulnerability-Lookup, Cloud-KI als Erweiterung) werden hier eingetragen, sobald sie umgesetzt sind.
+Geplante weitere Quellen (z. B. Cloud-KI als Erweiterung) werden hier eingetragen, sobald sie umgesetzt sind. Andere Feeds von CIRCL (z. B. NVD über FKIE, GitHub Advisories CC BY 4.0, OSV Ubuntu CC BY-SA 4.0) nutzt die App derzeit nicht; kämen sie dazu, gilt deren Lizenz und wird hier eingetragen.
 
 ## 5. Pflicht-Hinweise
 
@@ -71,6 +72,10 @@ In der App stehen bei den Hinweisen zu den Nutzungsbedingungen der Dienste (Eins
 > Daten zu aktiv ausgenutzten Schwachstellen: CISA Known Exploited Vulnerabilities Catalog (CC0).
 
 > Ausnutzungswahrscheinlichkeiten: EPSS, FIRST.org, https://www.first.org/epss
+
+> Daten: CVE-Programm über CIRCL Vulnerability-Lookup (https://vulnerability.circl.lu), CVE-Datensätze © The MITRE Corporation, lizenziert unter CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Die App wertet die Versionsangaben aus; das ist eine Bearbeitung, die Daten selbst werden nicht verändert weitergegeben.
+
+In den Details eines Treffers steht bei jeder Quelle die Namensnennung („Daten: CVE-Programm über CIRCL, CC BY 4.0“), ebenso im HTML-Bericht.
 
 ## 6. Lizenzverträglichkeit mit GPLv3 (Kurzfassung)
 

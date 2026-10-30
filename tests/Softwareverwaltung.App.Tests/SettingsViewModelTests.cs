@@ -9,7 +9,7 @@ public sealed class SettingsViewModelTests
 {
     private static readonly string[] AllSwitches =
         ["RegistryMachine", "RegistryUser", "Winget", "Appx", "UserAssist", "Process", "Autostart", "ScheduledTask",
-         "WingetSearch", "GitHub", "NVD", "KEV", "EPSS", "RestorePoint"];
+         "WingetSearch", "GitHub", "NVD", "CIRCL", "KEV", "EPSS", "RestorePoint"];
 
     private static AppSettings Off(params string[] on) => new()
     {

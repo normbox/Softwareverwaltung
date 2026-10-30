@@ -4,11 +4,14 @@
 # Mindestabstand zwischen zwei Anfragen je Dienst (Sekunden): ohne / mit Schlüssel.
 $script:ServiceInterval = @{
     NVD    = @{ Anonymous = 6.0; WithKey = 0.6 }   # NVD: 5 bzw. 50 Anfragen pro 30 s
+    CIRCL  = @{ Anonymous = 3.0; WithKey = 1.5 }   # CIRCL: 20 bzw. 40 Anfragen pro Minute
     GitHub = @{ Anonymous = 0.0; WithKey = 0.0 }
     KEV    = @{ Anonymous = 0.0; WithKey = 0.0 }
     EPSS   = @{ Anonymous = 0.0; WithKey = 0.0 }
 }
 $script:LastServiceCall = @{}
+# Bei 429 mit Retry-After bis zu dieser Wartezeit (Sekunden) einmal warten und wiederholen; sonst Zwischenspeicher.
+$script:MaxRetryAfterSeconds = 60
 
 # Zwischenspeicher-Steuerung je Lauf (siehe CacheTrace.ps1):
 #   CacheRefresh – $null: Cache normal nutzen; sonst Menge der in diesem Lauf schon frisch geholten Dateien
@@ -17,7 +20,7 @@ $script:LastServiceCall = @{}
 $script:CacheRefresh = $null
 $script:CheckTrace = $null
 # Dienst → Schlüssel in den Einstellungen (CacheHours)
-$script:CacheHoursKey = @{ GitHub = 'LatestVersion'; WingetSearch = 'LatestVersion'; NVD = 'NVD'; EPSS = 'EPSS'; KEV = 'KEV' }
+$script:CacheHoursKey = @{ GitHub = 'LatestVersion'; WingetSearch = 'LatestVersion'; NVD = 'NVD'; CIRCL = 'CIRCL'; EPSS = 'EPSS'; KEV = 'KEV' }
 
 function Get-CacheDirectory {
     Join-Path $env:LOCALAPPDATA 'SoftwareInventory\cache'
@@ -33,12 +36,13 @@ function Invoke-ServiceRequest {
         -MaxAge wiederverwendet (Standard: Haltbarkeit des Dienstes aus den Einstellungen, CacheHours).
         Bei Neu prüfen (CacheRefresh) wird jede Antwort pro Lauf einmal frisch geholt. Ist der Dienst
         nicht erreichbar oder am Anfragelimit, wird ein abgelaufener Eintrag verwendet und im Mitschrieb
-        als veraltet gekennzeichnet. Fehler werden als ServiceRequestException mit Grund
+        als veraltet gekennzeichnet. Antwortet ein Dienst mit 429 und Retry-After bis 60 Sekunden, wird
+        einmal so lange gewartet und die Anfrage wiederholt. Fehler werden als ServiceRequestException mit Grund
         (Disabled, RateLimit, NotFound, Http, Network) geworfen; Schlüssel sind entfernt.
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)] [ValidateSet('GitHub', 'NVD', 'KEV', 'EPSS', 'WingetSearch')] [string] $Service,
+        [Parameter(Mandatory)] [ValidateSet('GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetSearch')] [string] $Service,
         [Parameter(Mandatory)] [uri] $Uri,
         [string] $CacheKey,
         # Ohne Angabe: Haltbarkeit des Dienstes aus den Einstellungen
@@ -58,38 +62,52 @@ function Invoke-ServiceRequest {
         $entry = Read-ServiceCacheEntry -Path $cacheFile
         if ($entry -and -not (Test-CacheRefresh $cacheFile) -and ([datetime]::UtcNow - $entry.FetchedAt) -le $MaxAge) {
             Write-Verbose "$Service aus Zwischenspeicher: $CacheKey"
+            Write-CheckStep -Key StepCached -Arguments $Service
             Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
             return $entry.Data
         }
     }
 
-    $secret = if ($Service -in 'NVD', 'GitHub') { Get-ServiceSecret -Service $Service }
-    $headers = @{ 'User-Agent' = "SoftwareInventory/$((Get-Module SoftwareInventory).Version)" }
+    $secret = if ($Service -in 'NVD', 'CIRCL', 'GitHub') { Get-ServiceSecret -Service $Service }
+    # Mit Kontakt-URL, wie CIRCL es für automatische Abfragen erwartet
+    $module = Get-Module SoftwareInventory
+    $headers = @{ 'User-Agent' = "SoftwareInventory/$($module.Version) (+$($module.PrivateData.PSData.ProjectUri))" }
     switch ($Service) {
         'GitHub' {
             $headers.Accept = 'application/vnd.github+json'
             if ($secret) { $headers.Authorization = "Bearer $secret" }
         }
         'NVD' { if ($secret) { $headers.apiKey = $secret } }
+        'CIRCL' { if ($secret) { $headers['X-API-KEY'] = $secret } }
     }
 
-    Wait-ServiceInterval -Service $Service -HasKey ([bool] $secret)
     # Die englischen Fortschrittsmeldungen von Invoke-WebRequest nicht anzeigen; den Fortschritt
     # melden die Prüfungen selbst (Write-CheckProgress).
     $ProgressPreference = 'SilentlyContinue'
     Write-Verbose "$Service-Anfrage: $($Uri.GetLeftPart([UriPartial]::Path))"
-    try {
-        $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec 60 -ErrorAction Stop
-    }
-    catch {
-        $failure = ConvertTo-ServiceRequestException -Service $Service -ErrorRecord $_
-        # Offline oder Anfragelimit: lieber alte Daten, als veraltet gekennzeichnet, als gar keine.
-        if ($entry -and $failure.Data['Reason'] -in 'Network', 'RateLimit', 'Http') {
-            Write-Verbose "$Service nicht erreichbar, verwende Zwischenspeicher vom $($entry.FetchedAt.ToString('o'))"
-            Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
-            return $entry.Data
+    $response = $null
+    for ($attempt = 1; -not $response; $attempt++) {
+        Wait-ServiceInterval -Service $Service -HasKey ([bool] $secret)
+        try {
+            $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec 60 -ErrorAction Stop
         }
-        throw $failure
+        catch {
+            $failure = ConvertTo-ServiceRequestException -Service $Service -ErrorRecord $_
+            $retryAfter = $failure.Data['RetryAfter']
+            if ($attempt -eq 1 -and $null -ne $retryAfter -and $retryAfter -le $script:MaxRetryAfterSeconds) {
+                Write-Verbose "$Service am Anfragelimit, warte $retryAfter s und wiederhole einmal"
+                Write-CheckStep -Key StepWaitRetryAfter -Arguments $Service, ([Math]::Max(1, $retryAfter))
+                Start-Sleep -Seconds ([Math]::Max(1, $retryAfter))
+                continue
+            }
+            # Offline oder Anfragelimit: lieber alte Daten, als veraltet gekennzeichnet, als gar keine.
+            if ($entry -and $failure.Data['Reason'] -in 'Network', 'RateLimit', 'Http') {
+                Write-Verbose "$Service nicht erreichbar, verwende Zwischenspeicher vom $($entry.FetchedAt.ToString('o'))"
+                Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
+                return $entry.Data
+            }
+            throw $failure
+        }
     }
 
     $content = [string] $response.Content
@@ -124,7 +142,11 @@ function Wait-ServiceInterval {
     $last = $script:LastServiceCall[$Service]
     if ($last) {
         $wait = $interval - ([datetime]::UtcNow - $last).TotalSeconds
-        if ($wait -gt 0) { Start-Sleep -Milliseconds ([int] ($wait * 1000)) }
+        if ($wait -gt 0) {
+            # Kurze Pausen nicht anzeigen, längere an den aktuellen Schritt hängen
+            if ($wait -ge 1) { Write-CheckStep -Key StepWaitInterval -Arguments ([int] [Math]::Ceiling($wait)), $Service -Wait }
+            Start-Sleep -Milliseconds ([int] ($wait * 1000))
+        }
     }
     $script:LastServiceCall[$Service] = [datetime]::UtcNow
 }
@@ -180,12 +202,24 @@ function ConvertTo-ServiceRequestException {
     $values = $null
     if ($response.Headers.TryGetValues('X-RateLimit-Remaining', [ref] $values)) { $remaining = @($values)[0] }
     if ($status -eq 429 -or ($status -eq 403 -and $remaining -eq '0')) {
-        return New-ServiceRequestException -Service $Service -Reason RateLimit -Message (Get-LocalizedString 'ServiceErrorRateLimit' $Service, $status)
+        $exception = New-ServiceRequestException -Service $Service -Reason RateLimit -Message (Get-LocalizedString 'ServiceErrorRateLimit' $Service, $status)
+        if ($status -eq 429) { $exception.Data['RetryAfter'] = Get-RetryAfterSecond $response }
+        return $exception
     }
     if ($status -eq 404) {
         return New-ServiceRequestException -Service $Service -Reason NotFound -Message (Get-LocalizedString 'ServiceErrorNotFound' $Service)
     }
     New-ServiceRequestException -Service $Service -Reason Http -Message (Get-LocalizedString 'ServiceErrorHttp' $Service, $status)
+}
+
+function Get-RetryAfterSecond {
+    # Wartezeit aus Retry-After in ganzen Sekunden (Angabe in Sekunden oder als HTTP-Datum), sonst $null.
+    param($Response)
+    $retry = $Response.Headers.RetryAfter
+    if (-not $retry) { return $null }
+    if ($null -ne $retry.Delta) { return [int] [Math]::Ceiling($retry.Delta.TotalSeconds) }
+    if ($null -ne $retry.Date) { return [int] [Math]::Max(0, [Math]::Ceiling(($retry.Date - [datetimeoffset]::UtcNow).TotalSeconds)) }
+    $null
 }
 
 function Get-ServiceErrorReason {

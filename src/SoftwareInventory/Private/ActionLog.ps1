@@ -179,7 +179,9 @@ function Invoke-AppDataCleanup {
     }
 
     $limit = [long] $MaxSizeMB * 1MB
-    $total = ($remaining | Measure-Object Length -Sum).Sum
+    # Nicht Measure-Object: ohne verbliebene Dateien fehlt dort Sum (StrictMode).
+    $total = [long] 0
+    foreach ($f in $remaining) { $total += $f.Length }
     foreach ($f in $remaining) {
         if ($total -le $limit) { break }
         $length = $f.Length   # nach Delete() ist Length nicht mehr abrufbar

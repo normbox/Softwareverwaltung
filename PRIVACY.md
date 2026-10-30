@@ -40,7 +40,7 @@ Nur wenn Online-Funktionen eingeschaltet sind. Alle sind nach der Installation a
 Kurz:
 
 - **winget-Daten und Updates** (Microsoft): winget liest seine Paketkataloge. Bei einem Update lädt winget das Installationsprogramm. Die winget-Suche nach neuen Versionen sendet Paket-IDs oder Programmnamen an die winget-Quellen.
-- **Versions- und Sicherheitsabgleich** (GitHub, NVD, CISA KEV, FIRST EPSS): Je nach Dienst werden Repository-Namen, Produktkennungen (CPE) mit Version oder CVE-Nummern abgefragt, bei KEV nur die Gesamtliste. Keine Benutzer- oder Rechnernamen, keine Pfade.
+- **Versions- und Sicherheitsabgleich** (GitHub, NVD, CIRCL, CISA KEV, FIRST EPSS): Je nach Dienst werden Repository-Namen, Produktkennungen (CPE) mit Version oder CVE-Nummern abgefragt, bei KEV nur die Gesamtliste. An CIRCL gehen nur Hersteller und Produkt aus der CPE, ohne Version; ausgewertet wird auf dem eigenen Rechner. Keine Benutzer- oder Rechnernamen, keine Pfade.
 - **KI-Berater** (geplant, Etappe 4b/4c): vorerst nur mit lokalen Modellservern (Ollama, LM Studio, Unsloth Studio oder eine eigene Adresse). Auf dem eigenen Rechner verlässt nichts den Rechner. Bei einer eigenen Adresse im Netz gehen die Daten an diesen Server. Benutzername, Rechnername und Benutzerpfade werden immer vorher ersetzt, auch für lokale Modelle. Cloud-Anbieter (z. B. die Claude API) kommen erst später als Erweiterung dazu und werden dann hier ergänzt.
 - **„Vorschlag melden“**: Wer eine selbst bestätigte CPE-Zuordnung als Verbesserung für den Katalog melden möchte, bekommt ein vorbereitetes GitHub-Issue im Browser. Es enthält Programmname, Hersteller, winget-ID, installierte Version und CPE, keine Pfade; Benutzername, Rechnername und Benutzerpfade werden vorher ersetzt. Die App zeigt den Inhalt vorher an und öffnet den Link erst nach Bestätigung. Die Angaben stehen im Link und gehen beim Öffnen an GitHub; veröffentlicht wird das Issue erst, wenn der Nutzer es dort selbst abschickt, und es ist dann öffentlich.
 - **„CPE zuordnen“**: Die Vorschläge kommen aus dem CPE-Wörterbuch der NVD (Dienst NVD muss eingeschaltet sein). Gesendet wird der Programmname ohne Version bzw. der Produktteil der winget-ID als Suchbegriff.
@@ -49,7 +49,7 @@ Kurz:
 
 **Telemetrie von PowerShell:** Die App setzt `POWERSHELL_TELEMETRY_OPTOUT=1` für die eingebettete PowerShell und für den erhöhten Helfer. Der Helfer läuft unter Windows PowerShell 5.1; dieses kennt die Variable nicht, seine Diagnosedaten folgen den Windows-Diagnoseeinstellungen. Die Telemetrie von winget folgt ebenfalls den Windows-Diagnoseeinstellungen und lässt sich in `winget settings` abschalten.
 
-Alle derzeit angebundenen Empfänger sitzen in den USA (Microsoft, GitHub, NIST, CISA, FIRST). Bei jeder Verbindung erhält der Anbieter die IP-Adresse.
+Die derzeit angebundenen Empfänger sitzen in den USA (Microsoft, GitHub, NIST, CISA, FIRST) und in Luxemburg (CIRCL, Computer Incident Response Center Luxembourg, nur wenn der Dienst CIRCL eingeschaltet ist). Bei jeder Verbindung erhält der Anbieter die IP-Adresse; mit einem eigenen CIRCL-Schlüssel ordnet CIRCL die Anfragen diesem Schlüssel zu.
 
 ## 4. Einordnung nach DSGVO
 

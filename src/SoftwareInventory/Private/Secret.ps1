@@ -4,6 +4,7 @@
 
 $script:SecretVariable = @{
     NVD     = 'NVD_API_KEY'
+    CIRCL   = 'CIRCL_API_KEY'   # optional, verdoppelt das Anfragelimit von CIRCL Vulnerability-Lookup
     GitHub  = 'GITHUB_TOKEN'
     Advisor = 'SOFTWAREINVENTORY_ADVISOR_KEY'   # optional, für lokale KI-Server mit Schlüssel (z. B. Unsloth Studio)
 }
@@ -142,7 +143,7 @@ function Read-EnvironmentSecret {
 
 function Get-ServiceSecret {
     # Liefert den Schlüssel oder $null. Der Rückgabewert darf nur in Request-Header wandern.
-    param([Parameter(Mandatory)] [ValidateSet('NVD', 'GitHub', 'Advisor')] [string] $Service)
+    param([Parameter(Mandatory)] [ValidateSet('NVD', 'CIRCL', 'GitHub', 'Advisor')] [string] $Service)
     $stored = Read-StoredSecret -Service $Service
     if ($stored) { return $stored }
     Read-EnvironmentSecret -Service $Service

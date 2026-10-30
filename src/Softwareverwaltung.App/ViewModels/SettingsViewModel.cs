@@ -98,6 +98,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             new("WingetSearch", AppText.Get("SettingsServiceWingetSearch"), AppText.Get("SettingsServiceWingetSearchText")),
             new("GitHub", AppText.Get("SettingsServiceGitHub"), AppText.Get("SettingsServiceGitHubText")),
             new("NVD", AppText.Get("SettingsServiceNVD"), AppText.Get("SettingsServiceNVDText")),
+            new("CIRCL", AppText.Get("SettingsServiceCIRCL"), AppText.Get("SettingsServiceCIRCLText")),
             new("KEV", AppText.Get("SettingsServiceKEV"), AppText.Get("SettingsServiceKEVText")),
             new("EPSS", AppText.Get("SettingsServiceEPSS"), AppText.Get("SettingsServiceEPSSText")),
         ];
@@ -108,6 +109,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Credentials =
         [
             new("NVD", AppText.Get("SettingsCredentialNVD"), AppText.Get("SettingsCredentialNVDText")),
+            new("CIRCL", AppText.Get("SettingsCredentialCIRCL"), AppText.Get("SettingsCredentialCIRCLText")),
             new("GitHub", AppText.Get("SettingsCredentialGitHub"), AppText.Get("SettingsCredentialGitHubText")),
         ];
         foreach (var item in AllSwitches)
@@ -206,6 +208,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private int _cacheHoursNvd = 24;
+
+    [ObservableProperty]
+    private int _cacheHoursCircl = 24;
 
     [ObservableProperty]
     private int _cacheHoursEpss = 24;
@@ -307,6 +312,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnLogMaxSizeMBChanged(int value) => UpdateDirty();
     partial void OnCacheHoursLatestVersionChanged(int value) => UpdateDirty();
     partial void OnCacheHoursNvdChanged(int value) => UpdateDirty();
+    partial void OnCacheHoursCirclChanged(int value) => UpdateDirty();
     partial void OnCacheHoursEpssChanged(int value) => UpdateDirty();
     partial void OnCacheHoursKevChanged(int value) => UpdateDirty();
 
@@ -361,6 +367,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         LogMaxSizeMB = LogMaxSizeMB,
         CacheHoursLatestVersion = CacheHoursLatestVersion,
         CacheHoursNvd = CacheHoursNvd,
+        CacheHoursCircl = CacheHoursCircl,
         CacheHoursEpss = CacheHoursEpss,
         CacheHoursKev = CacheHoursKev,
     };
@@ -614,6 +621,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             LogMaxSizeMB = settings.LogMaxSizeMB;
             CacheHoursLatestVersion = settings.CacheHoursLatestVersion;
             CacheHoursNvd = settings.CacheHoursNvd;
+            CacheHoursCircl = settings.CacheHoursCircl;
             CacheHoursEpss = settings.CacheHoursEpss;
             CacheHoursKev = settings.CacheHoursKev;
         }
@@ -718,6 +726,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.LogMaxSizeMB == b.LogMaxSizeMB
         && a.CacheHoursLatestVersion == b.CacheHoursLatestVersion
         && a.CacheHoursNvd == b.CacheHoursNvd
+        && a.CacheHoursCircl == b.CacheHoursCircl
         && a.CacheHoursEpss == b.CacheHoursEpss
         && a.CacheHoursKev == b.CacheHoursKev;
 

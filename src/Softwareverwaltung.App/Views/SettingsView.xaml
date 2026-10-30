@@ -334,6 +334,11 @@
                                     AutomationProperties.Name="{loc:Text SettingsCacheNvd}" />
                     </StackPanel>
                     <StackPanel Margin="0,0,24,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCacheCircl}" />
+                        <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding CacheHoursCircl, UpdateSourceTrigger=PropertyChanged}"
+                                    AutomationProperties.Name="{loc:Text SettingsCacheCircl}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,24,8">
                         <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsCacheEpss}" />
                         <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding CacheHoursEpss, UpdateSourceTrigger=PropertyChanged}"
                                     AutomationProperties.Name="{loc:Text SettingsCacheEpss}" />

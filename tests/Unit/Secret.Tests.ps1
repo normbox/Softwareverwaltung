@@ -4,7 +4,7 @@ BeforeAll {
 
 Describe 'API-Schlüssel' {
     BeforeEach {
-        $saved = @{ NVD = $env:NVD_API_KEY; GitHub = $env:GITHUB_TOKEN }
+        $saved = @{ NVD = $env:NVD_API_KEY; CIRCL = $env:CIRCL_API_KEY; GitHub = $env:GITHUB_TOKEN }
         # Eigener Präfix, damit echte Einträge des Entwicklers unberührt bleiben.
         $prefix = "SoftwareInventory-Test-$([guid]::NewGuid())"
         InModuleScope SoftwareInventory -Parameters @{ Prefix = $prefix } {
@@ -14,7 +14,7 @@ Describe 'API-Schlüssel' {
         }
     }
     AfterEach {
-        foreach ($service in 'NVD', 'GitHub', 'Advisor') {
+        foreach ($service in 'NVD', 'CIRCL', 'GitHub', 'Advisor') {
             InModuleScope SoftwareInventory -Parameters @{ Service = $service } {
                 param($Service)
                 Initialize-CredentialInterop
@@ -23,6 +23,7 @@ Describe 'API-Schlüssel' {
         }
         InModuleScope SoftwareInventory { $script:CredentialPrefix = $script:SavedCredentialPrefix }
         $env:NVD_API_KEY = $saved.NVD
+        $env:CIRCL_API_KEY = $saved.CIRCL
         $env:GITHUB_TOKEN = $saved.GitHub
     }
 
@@ -31,6 +32,16 @@ Describe 'API-Schlüssel' {
         $env:GITHUB_TOKEN = $null
         InModuleScope SoftwareInventory { Get-ServiceSecret -Service NVD } | Should -Be 'nvd-test-123'
         InModuleScope SoftwareInventory { Get-ServiceSecret -Service GitHub } | Should -BeNullOrEmpty
+    }
+
+    It 'kennt den optionalen CIRCL-Schlüssel aus Variable und Anmeldeinformationsverwaltung' {
+        $env:CIRCL_API_KEY = 'circl-aus-variable'
+        InModuleScope SoftwareInventory { Get-ServiceSecret -Service CIRCL } | Should -Be 'circl-aus-variable'
+        Set-ServiceCredential -Service CIRCL -Secret (ConvertTo-SecureString 'circl-gespeichert' -AsPlainText -Force) | Out-Null
+        InModuleScope SoftwareInventory { Get-ServiceSecret -Service CIRCL } | Should -Be 'circl-gespeichert'
+        (Get-ServiceCredentialStatus -Service CIRCL).Source | Should -Be 'CredentialManager'
+        InModuleScope SoftwareInventory { Protect-SecretText 'Fehler mit circl-gespeichert' } | Should -Be 'Fehler mit ***'
+        @(Get-ServiceCredentialStatus).Service | Should -Contain 'CIRCL'
     }
 
     It 'speichert, liest und löscht Schlüssel in der Anmeldeinformationsverwaltung' {
