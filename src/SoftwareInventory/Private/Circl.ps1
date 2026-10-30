@@ -10,6 +10,8 @@ $script:CirclPageSize = 100
 $script:CirclVersion = 'v?\d[\w.+-]*'
 # Bestand je Produkt: nach so vielen Tagen wieder vollständig laden, dazwischen nur Änderungen (since).
 $script:CirclFullDays = 30
+# Für Get-RefreshEstimate: Größe des verschlankten Bestands je Suchseite (gemessen an Chrome)
+$script:CirclStoreBytesPerPage = 34KB
 # Schutz vor Endlosschleifen beim Blättern
 $script:CirclMaxPages = 1000
 
@@ -203,6 +205,16 @@ function Remove-CirclLegacyCache {
     }
     Write-ActionLogEntry -Phase Completed -Data $result
     $removed
+}
+
+function Get-CirclPageEstimate {
+    # Geschätzte Seitenzahl eines vollständigen Abrufs aus der Größe des Bestands (ohne ihn einzulesen);
+    # $null ohne Bestand. Gemessen: etwa 34 KB verschlankter Bestand je Suchseite (Chrome: 4,8 MB, rund 150 Seiten).
+    param([string] $CpeBase)
+    $parts = $CpeBase -split '(?<!\\):'
+    $file = Get-Item -LiteralPath (Get-CirclStoreFile -Vendor $parts[3] -Product $parts[4]) -ErrorAction SilentlyContinue
+    if (-not $file) { return $null }
+    [int] [Math]::Max(1, [Math]::Ceiling($file.Length / $script:CirclStoreBytesPerPage))
 }
 
 function Get-CirclStoreFile {

@@ -6,9 +6,12 @@ function Get-RefreshEstimate {
         Zählt die NVD-Anfragen (je Programm mit CPE-Zuordnung und lesbarer Version eine je CPE) und
         rechnet mit dem Mindestabstand der NVD: ohne Schlüssel 6 Sekunden, mit Schlüssel 0,6 Sekunden.
         Weitere Seiten und KEV-Nachfragen kommen hinzu; die Schätzung ist eine Untergrenze.
-        Ist CIRCL eingeschaltet, kommt je CPE eine CIRCL-Anfrage hinzu (3 bzw. 1,5 Sekunden Abstand),
-        mit NVD zusätzlich je CPE eine NVD-Sammelabfrage für den Abgleich der beiden Quellen.
-        Beide Dienste warten nur auf ihren eigenen Abstand, daher zählt die längere der beiden Zeiten.
+        Ist CIRCL eingeschaltet, lädt eine Prüfung ohne Zwischenspeicher den Bestand je CPE vollständig neu:
+        alle Seiten (3 bzw. 1,5 Sekunden Abstand). Die Seitenzahl kommt aus der Größe des vorhandenen
+        Bestands (etwa 34 KB je Seite); ohne Bestand zählt eine Seite, CirclUnknown nennt, für wie viele
+        CPEs das gilt (dort kann es deutlich länger dauern). Mit NVD kommt je CPE eine NVD-Sammelabfrage
+        für den Abgleich hinzu. Je CPE läuft es nacheinander: NVD-Versionssuche, CIRCL-Seiten, NVD-Abgleich;
+        der Abstand der NVD überlappt dabei nur mit der Zeit der CIRCL-Seiten.
         NeedsConfirmation ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist: Dann fragt
         die App vor einem Scan ohne Zwischenspeicher nach.
     .EXAMPLE
@@ -29,6 +32,8 @@ function Get-RefreshEstimate {
         $userMap = Read-CpeMapping
         $programs = 0
         $requests = 0
+        $cpePages = [System.Collections.Generic.List[int]]::new()   # CIRCL-Seiten je CPE (geschätzt)
+        $circlUnknown = 0
     }
     process {
         foreach ($item in $InputObject) {
@@ -40,7 +45,13 @@ function Get-RefreshEstimate {
             $cpe = Get-RecordCpe -Record $record -CatalogEntry $entry -UserMap $userMap
             if (-not $cpe) { continue }
             $version = ConvertTo-CpeVersion $record.Version -Pattern $(if ($entry) { Get-CatalogValue $entry 'CpeVersionPattern' })
-            if ($version) { $requests += @($cpe.Cpe).Count }
+            if (-not $version) { continue }
+            foreach ($base in @($cpe.Cpe)) {
+                $requests++
+                $pages = Get-CirclPageEstimate $base
+                if (-not $pages) { $circlUnknown++; $pages = 1 }
+                $cpePages.Add($pages)
+            }
         }
     }
     end {
@@ -50,8 +61,16 @@ function Get-RefreshEstimate {
         $circl = Test-ServiceEnabled -Name CIRCL -Setting $setting
         $circlInterval = if ($circl -and (Get-ServiceSecret -Service CIRCL)) { $script:ServiceInterval.CIRCL.WithKey } else { $script:ServiceInterval.CIRCL.Anonymous }
         $nvdRequests = if ($nvd -and $circl) { 2 * $requests } elseif ($nvd) { $requests } else { 0 }
-        $nvdSeconds = $nvdRequests * $interval
-        $circlSeconds = if ($circl) { $requests * $circlInterval } else { 0 }
+        $seconds = 0.0
+        $circlPages = 0
+        foreach ($pages in $cpePages) {
+            $circlPages += $pages
+            $circlSeconds = if ($circl) { $pages * $circlInterval } else { 0 }
+            $add = if ($nvd -and $circl) { $interval + [Math]::Max($circlSeconds, $interval) }
+                elseif ($nvd) { $interval }
+                else { $circlSeconds }
+            $seconds += $add
+        }
         [pscustomobject] [ordered]@{
             PSTypeName        = 'SoftwareInventory.RefreshEstimate'
             Programs          = $programs
@@ -59,8 +78,9 @@ function Get-RefreshEstimate {
             NvdRequests       = $nvdRequests
             HasNvdKey         = $hasKey
             CirclEnabled      = $circl
-            CirclRequests     = if ($circl) { $requests } else { 0 }
-            Seconds           = [int] [Math]::Ceiling([Math]::Max($nvdSeconds, $circlSeconds))
+            CirclRequests     = if ($circl) { $circlPages } else { 0 }
+            CirclUnknown      = if ($circl) { $circlUnknown } else { 0 }
+            Seconds           = [int] [Math]::Ceiling($seconds)
             NeedsConfirmation = $nvd -and -not $hasKey
         }
     }

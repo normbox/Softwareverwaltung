@@ -25,6 +25,8 @@ Describe 'Invoke-ServiceRequest' {
         $cache = Join-Path $TestDrive "cache-$([guid]::NewGuid())"
         Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
         Mock -ModuleName SoftwareInventory Start-Sleep { }
+        # Nicht von Schlüsseln in der echten Anmeldeinformationsverwaltung abhängen
+        Mock -ModuleName SoftwareInventory Read-StoredSecret { $null }
     }
     AfterEach {
         $env:NVD_API_KEY = $saved.NVD

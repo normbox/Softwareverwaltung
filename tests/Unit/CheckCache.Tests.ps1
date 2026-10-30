@@ -191,6 +191,42 @@ Describe 'Get-RefreshEstimate' {
         $both.Seconds | Should -Be 36
     }
 
+    It 'schätzt die CIRCL-Seiten aus dem Bestand und rechnet je CPE nacheinander' {
+        $cache = Join-Path $TestDrive "$([guid]::NewGuid())\cache"
+        Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
+        Mock -ModuleName SoftwareInventory Get-ServiceSecret { $null }
+        # Bestand von 340 KB, also etwa 10 Seiten
+        $store = InModuleScope SoftwareInventory { Get-CirclStoreFile -Vendor 'contoso' -Product 'tool' }
+        New-Item -ItemType Directory -Path (Split-Path $store) -Force | Out-Null
+        [System.IO.File]::WriteAllBytes($store, [byte[]]::new(340KB))
+
+        Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting CIRCL }
+        $e = New-TestRecord | Get-RefreshEstimate
+        $e.CirclRequests | Should -Be 10
+        $e.CirclUnknown | Should -Be 0
+        $e.Seconds | Should -Be 30
+
+        # Mit NVD: Versionssuche (6 s), dann 10 CIRCL-Seiten (30 s), der Abgleich wartet nicht mehr extra
+        Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting NVD, CIRCL }
+        $both = New-TestRecord | Get-RefreshEstimate
+        $both.NvdRequests | Should -Be 2
+        $both.Seconds | Should -Be 36
+    }
+
+    It 'nennt CPEs ohne Bestand, für die die Seitenzahl unbekannt ist' {
+        $cache = Join-Path $TestDrive "$([guid]::NewGuid())\cache"
+        Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
+        Mock -ModuleName SoftwareInventory Get-ServiceSecret { $null }
+        Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting CIRCL }
+        $e = 1..2 | ForEach-Object { New-TestRecord -Name "Tool $_" } | Get-RefreshEstimate
+        $e.CirclUnknown | Should -Be 2
+        $e.CirclRequests | Should -Be 2
+
+        $empty = Get-RefreshEstimate -InputObject @()
+        $empty.Seconds | Should -Be 0
+        $empty.CirclRequests | Should -Be 0
+    }
+
     It 'fragt mit Schlüssel oder ohne aktivierte NVD nicht nach' {
         Mock -ModuleName SoftwareInventory Get-ServiceSecret { 'nvd-test-123' }
         Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting NVD }
