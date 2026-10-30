@@ -6,6 +6,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ### Korrekturen
 
+- **winget-Update meldete „Nicht (mehr) installiert“** (z. B. FFmpeg, `Gyan.FFmpeg`): winget findet manche Pakete mit `--id … --exact` nur über die lokale Kennung des installierten Eintrags (`ARP\User\X64\<Schlüssel>`), nicht über die angezeigte Katalog-ID. Der Plan prüft das jetzt nur lesend und nimmt dann die lokale Kennung, weiterhin mit `--exact`. Findet winget das Paket gar nicht genau, wird nichts ausgeführt und die Herstellerseite genannt. Meldet winget nach dem Start „nicht gefunden“, obwohl das Programm noch da ist, heißt das Ergebnis nicht mehr „nicht mehr installiert“.
 - **Portable Programme verschwanden nach einer Einzelprüfung** („Das Programm ist nicht mehr installiert.“), z. B. nach „CPE zuordnen“, „Neu prüfen (ohne Cache)“ oder einer Aktion: `Find-InstalledSoftware` suchte nur im Inventar (Registry, winget, Store). Jetzt wird bei portablen Programmen die Datei neu gelesen; Nutzungsspuren bleiben. Fehlt die Datei, gilt das Programm als entfernt; ist ihr Laufwerk nicht verbunden, bleibt der bisherige Datensatz.
 
 ### Zwischenspeicher

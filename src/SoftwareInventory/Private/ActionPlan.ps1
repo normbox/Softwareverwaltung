@@ -32,7 +32,8 @@ function Resolve-UninstallKeyLocation {
     .SYNOPSIS
         Prüft, ob ein Registry-Pfad ein Uninstall-Schlüssel ist, und liefert dessen Bereich.
     .OUTPUTS
-        @{ Path; Scope } oder $null, wenn der Pfad nicht unter einem bekannten Uninstall-Zweig liegt.
+        @{ Path; Scope; KeyName; Architecture } oder $null, wenn der Pfad nicht unter einem bekannten
+        Uninstall-Zweig liegt. Architecture: X86 für WOW6432Node, sonst die des Systems (z. B. X64).
     #>
     param([string] $RegistryKey)
     if (-not $RegistryKey) { return $null }
@@ -41,9 +42,24 @@ function Resolve-UninstallKeyLocation {
         if (-not $RegistryKey.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { continue }
         $name = $RegistryKey.Substring($prefix.Length)
         if (-not $name -or $name.Contains('\')) { return $null }
-        return @{ Path = $prefix + $name; Scope = $loc.Scope; KeyName = $name }
+        $architecture = if ($loc.Architecture) { $loc.Architecture } else { [string] [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture }
+        return @{ Path = $prefix + $name; Scope = $loc.Scope; KeyName = $name; Architecture = $architecture }
     }
     $null
+}
+
+function Get-WingetLocalId {
+    <#
+    .SYNOPSIS
+        Lokale Kennung, unter der winget einen Registry-Eintrag führt: ARP\<User|Machine>\<Architektur>\<Schlüssel>.
+    .DESCRIPTION
+        winget vergleicht „--id … --exact“ mit dieser Kennung, nicht mit der angezeigten Katalog-ID. Bei
+        portablen winget-Paketen (z. B. Gyan.FFmpeg) unterscheiden sich beide; dann findet nur sie das Paket.
+    #>
+    param($Record)
+    $location = Resolve-UninstallKeyLocation (Get-RecordValue $Record 'RegistryKey')
+    if (-not $location) { return $null }
+    "ARP\$($location.Scope)\$($location.Architecture)\$($location.KeyName)"
 }
 
 function Get-AppxPackageByFamily {
@@ -256,8 +272,20 @@ function New-ActionPlan {
             if ($plan.WingetSource -eq 'msstore' -and -not $storeAccepted) {
                 return & $finish 'StoreAgreementRequired' (New-InventoryMessage StoreAgreementRequired)
             }
+            # Findet winget das Paket mit „--exact“ nur über die lokale Kennung, wird diese verwendet;
+            # findet es das Paket gar nicht genau, wird nichts ausgeführt (nie ohne „--exact“).
+            $target = Resolve-WingetTargetId -Record $Record -Id $plan.WingetId -Source $plan.WingetSource
+            if (-not $target) {
+                if ($Action -eq 'Update') {
+                    $plan.Method = 'VendorLink'
+                    $plan.VendorUrl = Get-VendorUrl -Record $Record -State $state
+                    $message = if ($plan.VendorUrl) { New-InventoryMessage PlanWingetExactNotFoundLink $plan.WingetId, $plan.VendorUrl } else { New-InventoryMessage PlanWingetExactNotFound $plan.WingetId }
+                    return & $finish 'ManualUpdateRequired' $message
+                }
+                return & $finish 'Unsupported' (New-InventoryMessage PlanWingetExactNotFoundUninstall $plan.WingetId)
+            }
             $plan.FilePath = $winget
-            $plan.Arguments = Get-WingetArgument -Action $Action -Id $plan.WingetId -Source $plan.WingetSource -Scope $state.Scope -StoreAgreementAccepted:$storeAccepted
+            $plan.Arguments = Get-WingetArgument -Action $Action -Id $target.Id -Source $plan.WingetSource -Scope $state.Scope -StoreAgreementAccepted:$storeAccepted
             # Unbekannter Bereich: keine eigene Erhöhung, winget fordert sie bei Bedarf selbst an.
             $plan.Elevated = $state.Scope -eq 'Machine'
         }

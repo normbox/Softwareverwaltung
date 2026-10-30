@@ -43,6 +43,8 @@ Describe 'Update-Software und Uninstall-Software' {
         }
         Mock -ModuleName SoftwareInventory Get-WingetExecutable { 'C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1_x64__8wekyb3d8bbwe\winget.exe' }
         Mock -ModuleName SoftwareInventory Get-WingetInstalledVersion { $null }
+        # Lesende winget-Prüfung der ID: Katalog-ID gefunden (Standardfall)
+        Mock -ModuleName SoftwareInventory Invoke-WingetCli { @{ ExitCode = 0; Lines = @() } }
         Mock -ModuleName SoftwareInventory Get-AppxPackageByFamily { $null }
         Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
         Mock -ModuleName SoftwareInventory Invoke-AppxRemoval { }
@@ -161,6 +163,14 @@ Describe 'Update-Software und Uninstall-Software' {
         ) {
             Set-HelperResult @{ ExitCode = $Code }
             ($msiRecord | Uninstall-Software -Confirm:$false).Result | Should -Be $Result
+        }
+
+        It 'meldet nicht „nicht mehr installiert“, wenn winget das Paket nicht findet, es aber noch da ist' {
+            Set-HelperResult @{ ExitCode = -1978335212 }   # 0x8A150014
+            $r = $wingetRecord | Uninstall-Software -Confirm:$false
+            $r.Result | Should -Be 'Failed'
+            $r.PresentAfter | Should -BeTrue
+            $r.Message.Args[0].Code | Should -Be 'WingetExactNotFoundAfterRun'
         }
 
         It 'meldet ElevationDenied, wenn die UAC-Abfrage abgelehnt wird' {
