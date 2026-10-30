@@ -344,13 +344,13 @@
     <value>Höchstens Tage aufheben</value>
   </data>
   <data name="SettingsLogsMaxSize" xml:space="preserve">
-    <value>Höchstens MB insgesamt (1–102400)</value>
+    <value>Logs und Zwischenspeicher höchstens MB, ohne CIRCL-Bestände (1–102400)</value>
   </data>
   <data name="SettingsLogsMaxSizeName" xml:space="preserve">
-    <value>Höchstens MB insgesamt</value>
+    <value>Logs und Zwischenspeicher höchstens MB, ohne CIRCL-Bestände</value>
   </data>
   <data name="SettingsCirclStoreMaxSize" xml:space="preserve">
-    <value>CIRCL-Bestände höchstens MB (1–102400)</value>
+    <value>CIRCL-Bestände höchstens MB, eigene Grenze (1–102400)</value>
   </data>
   <data name="SettingsCirclStoreMaxSizeName" xml:space="preserve">
     <value>CIRCL-Bestände höchstens MB</value>
