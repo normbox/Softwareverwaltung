@@ -35,11 +35,20 @@ function Get-RatingFromResult {
         $yellow.Add($(if ($max) { New-InventoryMessage "${code}MaxCvss" (@($other.Count, $max) + @($single | Where-Object { $_ })) }
                 else { New-InventoryMessage $code (@($other.Count) + @($single | Where-Object { $_ })) }))
     }
+    $plain = [System.Collections.Generic.List[object]]::new()
     foreach ($v in $possible) {
         # Widersprechen sich die Quellen, ist der Treffer nicht widerlegt, sondern Gelb mit eigenem Grund.
         if ($v.PSObject.Properties['SourcesDisagree'] -and $v.SourcesDisagree) { $yellow.Add((New-InventoryMessage SourcesDisagree $v.CveId)); continue }
-        $code = if ($v.Kev) { 'PossiblyAffectedKev' } else { 'PossiblyAffected' }
-        $yellow.Add((New-InventoryMessage $code $v.CveId, $v.Note))
+        # Aktiv ausgenutzte bleiben einzeln sichtbar.
+        if ($v.Kev) { $yellow.Add((New-InventoryMessage PossiblyAffectedKev $v.CveId, $v.Note)); continue }
+        $plain.Add($v)
+    }
+    if ($plain.Count -eq 1) { $yellow.Add((New-InventoryMessage PossiblyAffected $plain[0].CveId, $plain[0].Note)) }
+    elseif ($plain.Count -gt 1) {
+        # Mehrere zu einem Grund zusammenfassen; die einzelnen CVEs stehen in den Details.
+        $codes = @($plain | ForEach-Object { if ($_.Note) { $_.Note.Code } } | Select-Object -Unique)
+        $note = if ($codes.Count -eq 1 -and @($plain | Where-Object { -not $_.Note }).Count -eq 0) { $plain[0].Note } else { New-InventoryMessage PossiblyAffectedMixedNotes }
+        $yellow.Add((New-InventoryMessage PossiblyAffectedCount $plain.Count, $note))
     }
     if ($UpdateStatus -and $UpdateStatus.Status -eq 'Outdated') {
         $code = if ($UpdateStatus.Confirmed) { 'UpdateAvailable' } else { 'UpdateAvailableUnconfirmed' }

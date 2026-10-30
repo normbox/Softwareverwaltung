@@ -112,6 +112,33 @@ Describe 'Get-CirclAssessment' {
         $result.Range | Should -Be '<= 3.0.20'
     }
 
+    It 'lässt Commit-Kennungen als Grenze weg und vermerkt sie im Protokoll' {
+        $root = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        Mock -ModuleName SoftwareInventory Get-AppDataDirectory { $root }
+        $record = New-Cve5 'CVE-2025-59732' -Affected @(New-Block -Vendor 'FFmpeg' -Product 'FFmpeg' -Versions @(
+                @{ version = '9a32b863074ed4140141e0d3613905c6f1fe61c5'; status = 'affected'; lessThan = '8.0'; versionType = 'custom' }
+                @{ version = 'abcdef1'; status = 'affected' }
+            ))
+        $result = InModuleScope SoftwareInventory -Parameters @{ R = $record } { Get-CirclAssessment -Record $R -CpeBase 'cpe:2.3:a:ffmpeg:ffmpeg' -Version '7.1.1' }
+        $result.Verdict | Should -Be 'Affected'
+        $result.Range | Should -Be '< 8.0'
+        $notes = @(Get-ChildItem (Join-Path $root 'logs\data-notes') -Filter '*.jsonl' | Get-Content | ConvertFrom-Json)
+        $notes.Count | Should -Be 1
+        $notes[0].Code | Should -Be 'CommitVersionBound'
+        $notes[0].CveId | Should -Be 'CVE-2025-59732'
+        $notes[0].Value | Should -Be @('9a32b863074ed4140141e0d3613905c6f1fe61c5', 'abcdef1')
+        $notes[0].Text | Should -Match 'Commit-Kennung statt Version'
+
+        # Derselbe Fall im selben Lauf nur einmal
+        InModuleScope SoftwareInventory -Parameters @{ R = $record } { Get-CirclAssessment -Record $R -CpeBase 'cpe:2.3:a:ffmpeg:ffmpeg' -Version '7.1.1' } | Out-Null
+        @(Get-ChildItem (Join-Path $root 'logs\data-notes') -Filter '*.jsonl' | Get-Content).Count | Should -Be 1
+    }
+
+    It 'fasst Zeilenumbrüche in der Beschreibung zusammen' {
+        $record = ConvertTo-TestObject ([ordered]@{ cveMetadata = @{ cveId = 'CVE-2026-8461' }; containers = @{ cna = @{ descriptions = @(@{ lang = 'en'; value = "Out-of-bounds write.`n`n This issue affects FFmpeg.`r`n" }) } } })
+        (InModuleScope SoftwareInventory -Parameters @{ R = $record } { Get-Cve5Info $R }).Description | Should -Be 'Out-of-bounds write. This issue affects FFmpeg.'
+    }
+
     It 'ist nicht auswertbar, wenn kein Eintrag zum Produkt passt' {
         $record = New-Cve5 'CVE-2026-0003' -Affected @(New-Block -Vendor 'Other' -Product 'Tool' -Versions @(@{ version = '< 99'; status = 'affected' }))
         (InModuleScope SoftwareInventory -Parameters @{ R = $record; B = $script:Zip } { Get-CirclAssessment -Record $R -CpeBase $B -Version '24.8' }).Verdict | Should -Be 'NotEvaluable'

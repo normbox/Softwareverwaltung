@@ -299,8 +299,20 @@ function ConvertFrom-CveVersionText {
     $null
 }
 
+function Test-CommitLikeVersion {
+    # Sieht der Wert wie eine Commit-Kennung aus (7–40 Hex-Zeichen mit Buchstaben, ohne Punkte)?
+    param([string] $Value)
+    $Value -match '^[0-9a-fA-F]{7,40}$' -and $Value -match '[a-fA-F]'
+}
+
 function ConvertFrom-CveVersionEntry {
-    # Bereich aus einem Eintrag affected[].versions[] (status = affected); $null, wenn nicht auswertbar.
+    <#
+    .SYNOPSIS
+        Bereich aus einem Eintrag affected[].versions[] (status = affected); $null, wenn nicht auswertbar.
+    .DESCRIPTION
+        Grenzen, die wie Commit-Kennungen aussehen (z. B. „>= 9a32b86…, < 8.0“), sind keine Versionen:
+        Sie fallen weg (lieber ein Fehlalarm mehr) und stehen in Dropped, damit der Aufrufer sie protokolliert.
+    #>
     param($Entry)
     if ($Entry.PSObject.Properties['status']?.Value -ne 'affected') { return $null }
     $type = $Entry.PSObject.Properties['versionType']?.Value
@@ -308,13 +320,17 @@ function ConvertFrom-CveVersionEntry {
     $version = [string] $Entry.PSObject.Properties['version']?.Value
     $lessThan = [string] $Entry.PSObject.Properties['lessThan']?.Value
     $lessOrEqual = [string] $Entry.PSObject.Properties['lessThanOrEqual']?.Value
+    $dropped = [System.Collections.Generic.List[string]]::new()
     if ($lessThan -or $lessOrEqual) {
         $start = if ($version -and $version -notin '0', '*', 'n/a', 'unspecified') { $version }
         $end = if ($lessOrEqual) { $lessOrEqual } else { $lessThan }
         if ($end -eq '*') { $end = $null }
-        if (-not $start -and -not $end) { return $null }
-        return [pscustomobject] @{ Start = $start; StartIncluding = $true; End = $end; EndIncluding = [bool] $lessOrEqual; Exact = $null }
+        if ($start -and (Test-CommitLikeVersion $start)) { $dropped.Add($start); $start = $null }
+        if ($end -and (Test-CommitLikeVersion $end)) { $dropped.Add($end); $end = $null }
+        if (-not $start -and -not $end) { return $(if ($dropped.Count) { [pscustomobject] @{ Unusable = $true; Dropped = @($dropped) } }) }
+        return [pscustomobject] @{ Start = $start; StartIncluding = $true; End = $end; EndIncluding = [bool] $lessOrEqual; Exact = $null; Dropped = @($dropped) }
     }
+    if (Test-CommitLikeVersion $version) { return [pscustomobject] @{ Unusable = $true; Dropped = @($version) } }
     ConvertFrom-CveVersionText $version
 }
 
@@ -397,9 +413,13 @@ function Get-CirclAssessment {
         betroffen, neuere nicht betroffen, ältere nicht auswertbar (lieber ein Fehlalarm mehr).
     #>
     param($Record, [string[]] $CpeBase, [string] $Version)
-    $ranges = @(foreach ($block in Get-CirclAffectedBlock -Record $Record -CpeBase $CpeBase) {
+    $parsed = @(foreach ($block in Get-CirclAffectedBlock -Record $Record -CpeBase $CpeBase) {
             foreach ($entry in @($block.PSObject.Properties['versions']?.Value)) { if ($entry) { ConvertFrom-CveVersionEntry $entry } }
         }) | Where-Object { $_ }
+    # Weggelassene Commit-Grenzen festhalten, damit sich solche Datensätze später finden lassen.
+    $dropped = @($parsed | ForEach-Object { $_.PSObject.Properties['Dropped']?.Value } | Where-Object { $_ } | Select-Object -Unique)
+    if ($dropped) { Write-DataNote -Code CommitVersionBound -Source CIRCL -CveId ([string] $Record.cveMetadata.cveId) -Product ($CpeBase -join ' ') -Value $dropped }
+    $ranges = @($parsed | Where-Object { -not $_.PSObject.Properties['Unusable'] })
     $text = (@($ranges | ForEach-Object { Format-VersionRange $_ }) | Select-Object -Unique) -join '; '
     if (-not $ranges) { return [pscustomobject] @{ Verdict = 'NotEvaluable'; Range = $null } }
     $results = @(foreach ($range in $ranges) { Test-VersionInRange -Version $Version -Range $range })
@@ -419,7 +439,8 @@ function Get-Cve5Info {
     $cna = $Record.containers.cna
     $text = @($cna.PSObject.Properties['descriptions']?.Value) | Where-Object { $_ -and $_.lang -like 'en*' } | Select-Object -First 1 | ForEach-Object value
     if ($text) {
-        $text = $text.Trim()
+        # Zeilenumbrüche und Leerzeilen der CNA-Texte auf ein Leerzeichen zusammenfassen
+        $text = ($text -replace '\s+', ' ').Trim()
         if ($text.Length -gt $MaxLength) { $text = $text.Substring(0, $MaxLength - 1) + '…' }
     }
     $metrics = @($cna.PSObject.Properties['metrics']?.Value) +

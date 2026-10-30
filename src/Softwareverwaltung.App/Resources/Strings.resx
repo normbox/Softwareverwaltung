@@ -819,6 +819,12 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
   <data name="RefreshConfirmGetKey" xml:space="preserve">
     <value>Schlüssel beantragen</value>
   </data>
+  <data name="RefreshLongText" xml:space="preserve">
+    <value>Ein Scan ohne Zwischenspeicher dauert {0}. Fortfahren?</value>
+  </data>
+  <data name="RefreshLongStart" xml:space="preserve">
+    <value>Fortfahren</value>
+  </data>
   <data name="SettingsCacheTitle" xml:space="preserve">
     <value>Zwischenspeicher für Online-Abfragen</value>
   </data>

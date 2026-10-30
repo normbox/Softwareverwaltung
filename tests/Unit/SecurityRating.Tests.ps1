@@ -62,6 +62,26 @@ Describe 'Ampelregeln' {
         ($r.Reasons | Where-Object Code -EQ 'KnownVulnerabilities').Text | Should -Be 'Bekannte Lücke CVE-2026-0200'
     }
 
+    It 'fasst mehrere „möglicherweise betroffen“ zu einem Grund zusammen, KEV bleibt einzeln' {
+        $note = New-Msg CirclNoVersionRange
+        $vulns = @(
+            (New-Vuln 'CVE-2026-0301' -Assessment PossiblyAffected -Note $note)
+            (New-Vuln 'CVE-2026-0302' -Assessment PossiblyAffected -Note $note)
+            (New-Vuln 'CVE-2026-0303' -Assessment PossiblyAffected -Note $note)
+            (New-Vuln 'CVE-2026-0304' -Assessment PossiblyAffected -Kev -Note (New-Msg KevNvdNoVersionData))
+        )
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns $vulns)
+        $r.Reasons.Code | Should -Be @('PossiblyAffectedKev', 'PossiblyAffectedCount')
+        $count = $r.Reasons | Where-Object Code -EQ 'PossiblyAffectedCount'
+        $count.Args[0] | Should -Be 3
+        $count.Text | Should -Be "3 Lücken möglicherweise betroffen ($($note.Text))"
+
+        # Verschiedene Gründe: allgemeiner Hinweis; eine einzelne bleibt wie bisher mit CVE
+        $mixed = @((New-Vuln 'CVE-2026-0305' -Assessment PossiblyAffected -Note $note), (New-Vuln 'CVE-2026-0306' -Assessment PossiblyAffected -Note (New-Msg NvdNoVersionRange)))
+        (Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns $mixed)).Reasons[0].Text | Should -Be '2 Lücken möglicherweise betroffen (verschiedene Gründe, siehe Lücken)'
+        (Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($mixed[0]))).Reasons[0].Code | Should -Be 'PossiblyAffected'
+    }
+
     It 'Gelb (nicht Rot) bei KEV-Eintrag, dessen Version nicht prüfbar ist' {
         $possible = New-Vuln -Assessment PossiblyAffected -Kev -Score 9.8 -Note (New-Msg KevNvdNoVersionData)
         $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @($possible))

@@ -1,3 +1,6 @@
+# Ab dieser geschätzten Dauer fragt die App vor einem Scan ohne Zwischenspeicher nach (Sekunden).
+$script:LongRefreshSeconds = 300
+
 function Get-RefreshEstimate {
     <#
     .SYNOPSIS
@@ -12,8 +15,9 @@ function Get-RefreshEstimate {
         CPEs das gilt (dort kann es deutlich länger dauern). Mit NVD kommt je CPE eine NVD-Sammelabfrage
         für den Abgleich hinzu. Je CPE läuft es nacheinander: NVD-Versionssuche, CIRCL-Seiten, NVD-Abgleich;
         der Abstand der NVD überlappt dabei nur mit der Zeit der CIRCL-Seiten.
-        NeedsConfirmation ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist: Dann fragt
-        die App vor einem Scan ohne Zwischenspeicher nach.
+        NeedsConfirmation ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist
+        (ConfirmReason NvdWithoutKey) oder die Schätzung über 5 Minuten liegt (LongDuration): Dann fragt
+        die App vor einem Scan ohne Zwischenspeicher nach und nennt die geschätzte Dauer.
     .EXAMPLE
         Get-SoftwareInventory | Get-RefreshEstimate
     #>
@@ -71,6 +75,7 @@ function Get-RefreshEstimate {
                 else { $circlSeconds }
             $seconds += $add
         }
+        $confirmReason = if ($nvd -and -not $hasKey) { 'NvdWithoutKey' } elseif ($seconds -gt $script:LongRefreshSeconds) { 'LongDuration' } else { $null }
         [pscustomobject] [ordered]@{
             PSTypeName        = 'SoftwareInventory.RefreshEstimate'
             Programs          = $programs
@@ -81,7 +86,8 @@ function Get-RefreshEstimate {
             CirclRequests     = if ($circl) { $circlPages } else { 0 }
             CirclUnknown      = if ($circl) { $circlUnknown } else { 0 }
             Seconds           = [int] [Math]::Ceiling($seconds)
-            NeedsConfirmation = $nvd -and -not $hasKey
+            NeedsConfirmation = [bool] $confirmReason
+            ConfirmReason     = $confirmReason   # NvdWithoutKey, LongDuration oder $null
         }
     }
 }

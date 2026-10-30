@@ -211,6 +211,23 @@ Describe 'Get-RefreshEstimate' {
         $both = New-TestRecord | Get-RefreshEstimate
         $both.NvdRequests | Should -Be 2
         $both.Seconds | Should -Be 36
+        $both.NeedsConfirmation | Should -BeTrue
+        $both.ConfirmReason | Should -Be 'NvdWithoutKey'
+    }
+
+    It 'fragt auch mit Schlüssel nach, wenn es länger als 5 Minuten dauert' {
+        $cache = Join-Path $TestDrive "$([guid]::NewGuid())\cache"
+        Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
+        Mock -ModuleName SoftwareInventory Get-ServiceSecret { 'test-schluessel' }
+        Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting NVD, CIRCL }
+        # 250 Seiten mit 1,5 s Abstand (Schlüssel auch für CIRCL): gut 6 Minuten
+        $store = InModuleScope SoftwareInventory { Get-CirclStoreFile -Vendor 'contoso' -Product 'tool' }
+        New-Item -ItemType Directory -Path (Split-Path $store) -Force | Out-Null
+        [System.IO.File]::WriteAllBytes($store, [byte[]]::new(250 * 34KB))
+        $e = New-TestRecord | Get-RefreshEstimate
+        $e.Seconds | Should -BeGreaterThan 300
+        $e.NeedsConfirmation | Should -BeTrue
+        $e.ConfirmReason | Should -Be 'LongDuration'
     }
 
     It 'nennt CPEs ohne Bestand, für die die Seitenzahl unbekannt ist' {

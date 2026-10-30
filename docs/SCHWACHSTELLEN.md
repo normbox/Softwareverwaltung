@@ -26,7 +26,7 @@ Die Funktion nimmt Datensätze aus `Get-SoftwareInventory` und `Get-PortableSoft
 - **Offline oder am Anfragelimit:** Dann gilt ein abgelaufener Eintrag weiter. `CheckStale` ist dann wahr, die App kennzeichnet „Geprüft“ dezent als veraltet.
 - **Prüfzeitpunkt:** `CheckedAt` an `UpdateStatus`, `VulnerabilityStatus` und `SecurityRating` ist der älteste benutzte Abruf (UTC). In der Ampel ist es das Ältere beider Prüfungen, `UpdateCheckedAt` und `VulnerabilityCheckedAt` nennen beide einzeln. Wurde nichts online geprüft, bleibt `CheckedAt` leer.
 - **Gezielt verwerfen:** Ein Index je Programm und Version (`cache\index`) merkt sich die benutzten Einträge. `Clear-CheckCache` verwirft die Einträge eines Programms, der gemeinsame KEV-Katalog bleibt erhalten. Der CIRCL-Bestand bleibt ebenfalls (er gilt für alle Versionen), wird aber bei der nächsten Prüfung per `since` nachgeladen; die neue Version wird dabei neu bewertet. Nach einer Deinstallation räumt ihn die normale Bereinigung auf. Die App ruft das nach jeder Aktion auf.
-- **Dauer schätzen:** `Get-RefreshEstimate` schätzt die Dauer einer Prüfung ohne Cache: NVD-Anfragen mit 6 Sekunden Abstand ohne Schlüssel bzw. 0,6 Sekunden mit Schlüssel. Mit CIRCL zählt der vollständige Abruf aller Seiten je CPE (3 bzw. 1,5 Sekunden je Seite); die Seitenzahl kommt aus der Größe des vorhandenen Bestands (etwa 34 KB je Seite), ohne Bestand zählt eine Seite (`CirclUnknown`). Je CPE läuft es nacheinander: NVD-Versionssuche, CIRCL-Seiten, NVD-Abgleich. `NeedsConfirmation` ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist. Dann fragt die App vor „Ohne Cache scannen“ nach.
+- **Dauer schätzen:** `Get-RefreshEstimate` schätzt die Dauer einer Prüfung ohne Cache: NVD-Anfragen mit 6 Sekunden Abstand ohne Schlüssel bzw. 0,6 Sekunden mit Schlüssel. Mit CIRCL zählt der vollständige Abruf aller Seiten je CPE (3 bzw. 1,5 Sekunden je Seite); die Seitenzahl kommt aus der Größe des vorhandenen Bestands (etwa 34 KB je Seite), ohne Bestand zählt eine Seite (`CirclUnknown`). Je CPE läuft es nacheinander: NVD-Versionssuche, CIRCL-Seiten, NVD-Abgleich. `NeedsConfirmation` ist wahr, wenn NVD aktiviert ist und kein Schlüssel hinterlegt ist (`ConfirmReason` `NvdWithoutKey`) oder die Schätzung über 5 Minuten liegt (`LongDuration`). Dann fragt die App vor „Ohne Cache scannen“ nach und nennt die geschätzte Dauer.
 
 Alle Dienste sind standardmäßig aus und werden einzeln aktiviert. Gesendet werden nur CPE-Namen mit Version (z. B. `cpe:2.3:a:7-zip:7-zip:24.8:*:*:*:*:*:*:*`), an CIRCL nur Hersteller und Produkt ohne Version, und CVE-IDs – keine Pfade, keine Benutzer- oder Rechnernamen.
 
@@ -63,7 +63,8 @@ CIRCL liefert die Datensätze des CVE-Programms im Format CVE 5. Ausgewertet wer
 | „Fixed in X“, „before X“, „prior to X“ | `Fixed in 3.0.7` | < X |
 | „X and earlier“ | `3.0.20 and earlier` | <= X |
 | nur eine Version | `26.01` | gleiche Version betroffen, neuere nicht betroffen, ältere nicht auswertbar (oft ist nur die getestete Version genannt) |
-| anderes | `n/a`, `unspecified`, Git-Commits | nicht auswertbar |
+| Commit-Kennung als Grenze | `version: 9a32b86…, lessThan: 8.0` | Grenze fällt weg (hier < 8.0, lieber ein Fehlalarm mehr); vermerkt in `logs\data-notes\<Datum>.jsonl` (Code `CommitVersionBound`) |
+| anderes | `n/a`, `unspecified`, `versionType: git` | nicht auswertbar |
 
 Nicht auswertbar gilt wie bei der NVD ohne Versionsgrenze: CVE jünger als 5 Jahre `PossiblyAffected` („Versionsbereich im CVE-Datensatz (CIRCL) nicht auswertbar“), älter `Informational`. Hat die NVD geprüft, entfallen alte CIRCL-Einträge ohne Versionsangabe ganz, weil die NVD zu ihnen entschieden hat.
 

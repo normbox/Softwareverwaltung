@@ -79,6 +79,7 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | --- | --- | --- | --- |
 | Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` | eingeschaltete Quellen, Dienste und Nutzungsspuren, Dateisuche, Haltbarkeit des Zwischenspeichers, Aufbewahrung der Logs, KI-Server | vorhanden |
 | Eigene CPE-Zuordnungen | `%APPDATA%\SoftwareInventory\cpe-map.json` | vom Benutzer bestätigte Zuordnungen Programm → CPE | vorhanden |
+| Hinweise zu Fremddaten | `%LOCALAPPDATA%\SoftwareInventory\logs\data-notes\<yyyy-MM-dd>.jsonl` | Auffälligkeiten in Datensätzen der Quellen mit Code (z. B. `CommitVersionBound`: Commit-Kennung statt Version), CVE, Produkt und Wert; je Lauf jeder Fall einmal; räumt sich mit `logs\` auf | vorhanden |
 | Zwischenspeicher der Online-Abfragen | `%LOCALAPPDATA%\SoftwareInventory\cache\<Dienst>\`, Index je Programm in `cache\index\` | Antworten von NVD, KEV, EPSS, GitHub und winget-Suche mit Abrufzeit; bei CIRCL ein verschlankter Bestand je Produkt (`store-<Hash>.json`, mit Datum des letzten vollständigen und des letzten Abrufs) und ggf. ein Merker `.due` zum Nachladen | vorhanden |
 | Aktionsprotokoll | `%LOCALAPPDATA%\SoftwareInventory\logs\actions\<Datum>.jsonl` | Zeitpunkt, Benutzer, Aktion, Programm, Befehl, Ergebnis | vorhanden |
 | Installer-Logs | `%LOCALAPPDATA%\SoftwareInventory\logs\installer\` | nur nach Fehlern, komprimiert | vorhanden |
