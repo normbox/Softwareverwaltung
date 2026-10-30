@@ -179,9 +179,10 @@ public sealed class SoftwareItemTests
         Assert.Equal("möglich", vuln.AssessmentShort);
         Assert.Equal("CVSS 9.3", vuln.ScoreText);
         Assert.Equal(["NVD –", "CIRCL ?"], vuln.Sources.Select(s => s.ShortText));
-        // Namensnennung in der aufgeklappten Zeile nur bei CIRCL
-        Assert.Null(vuln.Sources[0].InlineAttribution);
-        Assert.Equal("Daten: CVE-Programm über CIRCL, CC BY 4.0", vuln.Sources[1].InlineAttribution);
+        // Aufgeklappt nur, was die Kopfzeile nicht zeigt: EPSS
+        Assert.Null(vuln.EpssText);
+        Assert.Equal("Ausnutzungswahrscheinlichkeit (EPSS): 67 %",
+            VulnerabilityItem.FromPs(Ps(("CveId", "CVE-4"), ("Assessment", "Affected"), ("Epss", 0.67))).EpssText);
         Assert.Equal("betroffen", VulnerabilityItem.FromPs(Ps(("CveId", "CVE-3"), ("Assessment", "Affected"))).AssessmentShort);
         Assert.Equal("✓", new SourceStatementItem("NVD", "Affected", null, null, null, null).Symbol);
         Assert.Equal("✗", new SourceStatementItem("NVD", "NotAffected", null, null, null, null).Symbol);

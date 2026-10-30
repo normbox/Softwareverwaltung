@@ -631,6 +631,9 @@
   <data name="AssessmentShortPossiblyAffected" xml:space="preserve">
     <value>möglich</value>
   </data>
+  <data name="VulnerabilityEpss" xml:space="preserve">
+    <value>Ausnutzungswahrscheinlichkeit (EPSS): {0}</value>
+  </data>
   <data name="VulnerabilityKevShort" xml:space="preserve">
     <value>KEV</value>
   </data>

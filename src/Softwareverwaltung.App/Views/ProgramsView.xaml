@@ -155,13 +155,12 @@
                                     </Grid>
                                 </Expander.Header>
                                 <StackPanel>
-                                    <WrapPanel>
-                                        <ui:HyperlinkButton Content="{Binding CveId}" NavigateUri="{Binding Url}" Padding="0" />
-                                        <TextBlock Text="{Binding Summary}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                    </WrapPanel>
+                                    <!-- Nur, was die Kopfzeile nicht schon zeigt: EPSS, Hinweis, Angaben der Quellen mit Link, Beschreibung -->
+                                    <TextBlock Text="{Binding EpssText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Visibility="{Binding EpssText, Converter={StaticResource NullToVisibility}}" />
                                     <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
                                                Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
-                                    <!-- Angabe jeder Quelle einzeln; bei CIRCL mit Namensnennung (CC BY 4.0) -->
+                                    <!-- Angabe jeder Quelle einzeln; die Namensnennung steht einmal unter der Liste -->
                                     <ItemsControl ItemsSource="{Binding Sources}" Margin="0,2,0,2">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type models:SourceStatementItem}">
@@ -174,9 +173,6 @@
                                                     </WrapPanel>
                                                     <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
                                                                Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
-                                                    <TextBlock Text="{Binding InlineAttribution}" TextWrapping="Wrap" FontSize="11"
-                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                               Visibility="{Binding InlineAttribution, Converter={StaticResource NullToVisibility}}" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -561,7 +557,9 @@
 
             <!-- Detailfeld: liegt rechts über der Liste, die Liste behält ihre volle Breite.
                  Breite am linken Rand verschiebbar (Anteil gemerkt in app-ui.json, mindestens 360 px). -->
+            <!-- TextElement.Foreground: außerhalb des DataGrid erbt der Text sonst Schwarz statt der Textfarbe des Designs -->
             <Border x:Name="DetailsPanel" HorizontalAlignment="Right" CornerRadius="8,0,0,8"
+                    TextElement.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                     Background="{DynamicResource ApplicationBackgroundBrush}"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
                     Visibility="{Binding IsDetailsOpen, Converter={StaticResource BoolToVisibility}}"
