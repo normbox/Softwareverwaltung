@@ -139,11 +139,14 @@ Describe 'Einstellungen' {
         $s = Get-InventorySetting
         $s.Maintenance.LogRetentionDays | Should -Be 30
         $s.Maintenance.LogMaxSizeMB | Should -Be 100
-        Set-InventorySetting -LogRetentionDays 7 -LogMaxSizeMB 20 | Out-Null
+        $s.Maintenance.CirclStoreMaxSizeMB | Should -Be 200
+        Set-InventorySetting -LogRetentionDays 7 -LogMaxSizeMB 20 -CirclStoreMaxSizeMB 50 | Out-Null
         $s = Get-InventorySetting
         $s.Maintenance.LogRetentionDays | Should -Be 7
         $s.Maintenance.LogMaxSizeMB | Should -Be 20
+        $s.Maintenance.CirclStoreMaxSizeMB | Should -Be 50
         { Set-InventorySetting -LogRetentionDays 0 } | Should -Throw
+        { Set-InventorySetting -CirclStoreMaxSizeMB 0 } | Should -Throw
     }
 
     It 'ignoriert ungültige Grenzen in der Datei' {

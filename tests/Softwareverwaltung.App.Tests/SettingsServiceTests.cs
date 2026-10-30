@@ -66,6 +66,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             ScanMode = "Drives",
             LogRetentionDays = 7,
             LogMaxSizeMB = 50,
+            CirclStoreMaxSizeMB = 300,
             CacheHoursCircl = 12,
         });
 
@@ -86,6 +87,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             Assert.Equal("Drives", settings.ScanMode);
             Assert.Equal(7, settings.LogRetentionDays);
             Assert.Equal(50, settings.LogMaxSizeMB);
+            Assert.Equal(300, settings.CirclStoreMaxSizeMB);
             Assert.Equal(12, settings.CacheHoursCircl);
         }
 

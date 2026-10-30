@@ -6,7 +6,9 @@
 #
 # Installer-Logs: logs\installer\<ActionId>.log; nach Erfolg gelöscht, bei Fehlern als .zip aufgehoben.
 # Bereinigung beim Laden des Moduls: logs\ und cache\ höchstens LogRetentionDays alt und zusammen
-# höchstens LogMaxSizeMB groß, Ältestes zuerst. Gespeicherte Scans (scans\) sind Nutzdaten und bleiben.
+# höchstens LogMaxSizeMB groß; über der Grenze geht zuerst der Zwischenspeicher (Ältestes zuerst), dann
+# die Logs. Die CIRCL-Bestände (cache\CIRCL\) haben eine eigene Grenze (CirclStoreMaxSizeMB), weil ihr
+# Neuaufbau Minuten dauert. Gespeicherte Scans (scans\) sind Nutzdaten und bleiben.
 
 $script:ActionLogSchemaVersion = 1
 $script:ActionLogMutexName = 'Local\SoftwareInventory.ActionLog'
@@ -152,15 +154,20 @@ function Complete-InstallerLog {
 function Invoke-AppDataCleanup {
     <#
     .SYNOPSIS
-        Löscht alte Logs und Zwischenspeicher: zuerst nach Alter, dann nach Gesamtgröße (Ältestes zuerst).
+        Löscht alte Logs und Zwischenspeicher: zuerst nach Alter, dann nach Größe.
     .DESCRIPTION
-        Betrifft nur logs\ und cache\ im App-Ordner. Gesperrte Dateien werden übersprungen.
+        Betrifft nur logs\ und cache\ im App-Ordner. Nach Alter gilt RetentionDays für alles. Nach Größe:
+        logs\ und cache\ ohne CIRCL-Bestände höchstens MaxSizeMB, dabei zuerst der Zwischenspeicher (leicht
+        neu abrufbar, Ältestes zuerst), erst dann die Logs (Aktionsprotokoll). Die CIRCL-Bestände
+        (cache\CIRCL\) zählen nicht dazu und haben die eigene Grenze CirclMaxSizeMB, Ältestes zuerst.
+        Gesperrte Dateien werden übersprungen.
     .OUTPUTS
         Anzahl gelöschter Dateien.
     #>
     param(
         [int] $RetentionDays = $script:DefaultLogRetentionDays,
         [int] $MaxSizeMB = $script:DefaultLogMaxSizeMB,
+        [int] $CirclMaxSizeMB = $script:DefaultCirclStoreMaxSizeMB,
         [string] $Root = (Get-AppDataDirectory)
     )
 
@@ -178,21 +185,37 @@ function Invoke-AppDataCleanup {
         if ($f.LastWriteTimeUtc -lt $cutoff -and (Remove-CleanupFile $f)) { $deleted++ } else { $remaining.Add($f) }
     }
 
-    $limit = [long] $MaxSizeMB * 1MB
-    # Nicht Measure-Object: ohne verbliebene Dateien fehlt dort Sum (StrictMode).
-    $total = [long] 0
-    foreach ($f in $remaining) { $total += $f.Length }
-    foreach ($f in $remaining) {
-        if ($total -le $limit) { break }
-        $length = $f.Length   # nach Delete() ist Length nicht mehr abrufbar
-        if (Remove-CleanupFile $f) { $deleted++; $total -= $length }
-    }
+    # Nach Größe: CIRCL-Bestände getrennt; im Rest zuerst Zwischenspeicher, dann Logs, je Ältestes zuerst.
+    $circlDir = (Join-Path $Root 'cache\CIRCL').TrimEnd('\') + '\'
+    $cacheDir = (Join-Path $Root 'cache').TrimEnd('\') + '\'
+    $circl = @($remaining | Where-Object { $_.FullName.StartsWith($circlDir, [StringComparison]::OrdinalIgnoreCase) })
+    $general = @(
+        @($remaining | Where-Object { $_.FullName.StartsWith($cacheDir, [StringComparison]::OrdinalIgnoreCase) -and -not $_.FullName.StartsWith($circlDir, [StringComparison]::OrdinalIgnoreCase) })
+        @($remaining | Where-Object { -not $_.FullName.StartsWith($cacheDir, [StringComparison]::OrdinalIgnoreCase) })
+    )
+    $deleted += Remove-CleanupOverLimit -File $general -Limit ([long] $MaxSizeMB * 1MB)
+    $deleted += Remove-CleanupOverLimit -File $circl -Limit ([long] $CirclMaxSizeMB * 1MB)
 
     foreach ($folder in $folders) {
         Get-ChildItem -LiteralPath $folder -Directory -Recurse -Force -ErrorAction SilentlyContinue |
             Sort-Object { $_.FullName.Length } -Descending |
             Where-Object { -not (Get-ChildItem -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue) } |
             Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+    $deleted
+}
+
+function Remove-CleanupOverLimit {
+    # Löscht Dateien in der gegebenen Reihenfolge, bis ihre Summe höchstens Limit ist; Anzahl gelöschter Dateien.
+    param([System.IO.FileInfo[]] $File, [long] $Limit)
+    # Nicht Measure-Object: ohne Dateien fehlt dort Sum (StrictMode).
+    $total = [long] 0
+    foreach ($f in $File) { $total += $f.Length }
+    $deleted = 0
+    foreach ($f in $File) {
+        if ($total -le $Limit) { break }
+        $length = $f.Length   # nach Delete() ist Length nicht mehr abrufbar
+        if (Remove-CleanupFile $f) { $deleted++; $total -= $length }
     }
     $deleted
 }

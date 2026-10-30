@@ -45,7 +45,12 @@ function Set-InventorySetting {
     .PARAMETER LogRetentionDays
         Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
     .PARAMETER LogMaxSizeMB
-        Obergrenze für Logs und Zwischenspeicher zusammen; darüber wird das Älteste zuerst gelöscht. Standard: 100.
+        Obergrenze für Logs und Zwischenspeicher zusammen; darüber wird zuerst der Zwischenspeicher, dann
+        das Älteste der Logs gelöscht. Die CIRCL-Bestände zählen nicht dazu. Standard: 100.
+    .PARAMETER CirclStoreMaxSizeMB
+        Eigene Obergrenze für die CIRCL-Bestände je Produkt (cache\CIRCL\); darüber wird der älteste Bestand
+        zuerst gelöscht. Sonst werden Bestände nur nach Alter (LogRetentionDays) oder nach einem Scan gelöscht,
+        in dem das Produkt nicht mehr vorkommt. Standard: 200.
     .PARAMETER PortableSearch
         Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
         Standard: aus. Aus = keine Suche; Nutzungsspuren, Ordner und Laufwerke bleiben gespeichert.
@@ -131,6 +136,9 @@ function Set-InventorySetting {
         [ValidateRange(1, 102400)]
         [int] $LogMaxSizeMB,
 
+        [ValidateRange(1, 102400)]
+        [int] $CirclStoreMaxSizeMB,
+
         [ValidateSet('Private', 'Company')]
         [string] $Usage,
 
@@ -192,6 +200,7 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('CacheHoursKev')) { $setting.CacheHours.KEV = $CacheHoursKev }
     if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }
     if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
+    if ($PSBoundParameters.ContainsKey('CirclStoreMaxSizeMB')) { $setting.Maintenance.CirclStoreMaxSizeMB = $CirclStoreMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('Usage')) { $setting.Usage = $Usage }
     if ($PSBoundParameters.ContainsKey('StoreAgreementAccepted')) {
         $setting.Agreements.MsStore = if ($StoreAgreementAccepted) { [datetime]::UtcNow.ToString('o') } else { $null }

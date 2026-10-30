@@ -88,7 +88,7 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | API-Schlüssel | Windows-Anmeldeinformationsverwaltung oder Umgebungsvariable; **nie** in Einstellungsdateien oder im Repository | NVD, CIRCL, GitHub, KI-Server | vorhanden |
 | Richtlinien (Firma) | `HKLM\SOFTWARE\Policies\Softwareverwaltung` (Vorschlag) | vom Administrator festgelegte und gesperrte Einstellungen | geplant (Etappe 6) |
 
-Logs und Zwischenspeicher räumen sich beim Start selbst auf: höchstens 30 Tage alt und höchstens 100 MB insgesamt, beides einstellbar, Ältestes zuerst. Scans sind davon ausgenommen. Alle Dateien liegen unverschlüsselt im Benutzerprofil und sind nur für den Benutzer (und Administratoren) lesbar. Scans und Protokolle können Benutzerpfade und damit den Benutzernamen enthalten.
+Logs und Zwischenspeicher räumen sich beim Start selbst auf: höchstens 30 Tage alt und höchstens 100 MB insgesamt, beides einstellbar, Ältestes zuerst; über der Grenze geht der Zwischenspeicher vor den Logs. Die CIRCL-Bestände haben eine eigene Grenze (200 MB) und werden außerdem gelöscht, wenn das Produkt nach einem Scan nicht mehr vorkommt. NVD-Antworten werden verschlankt gespeichert (etwa 30 % der Größe). Scans sind davon ausgenommen. Alle Dateien liegen unverschlüsselt im Benutzerprofil und sind nur für den Benutzer (und Administratoren) lesbar. Scans und Protokolle können Benutzerpfade und damit den Benutzernamen enthalten.
 
 Deinstallation des Programms: Die Ordner `%LOCALAPPDATA%\SoftwareInventory` und `%APPDATA%\SoftwareInventory` löschen und die Einträge des Programms in der Anmeldeinformationsverwaltung entfernen.
 
