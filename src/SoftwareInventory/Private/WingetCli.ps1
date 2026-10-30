@@ -52,6 +52,62 @@ function ConvertTo-ArgumentString {
     $parts -join ' '
 }
 
+# winget: „Kein installiertes Paket gefunden, das den Eingabekriterien entspricht“ (0x8A150014)
+$script:WingetNoPackageFound = -1978335212
+
+function Invoke-WingetCli {
+    # Ruft winget.exe nur lesend auf (z. B. „list“); liefert ExitCode und Ausgabezeilen.
+    param([Parameter(Mandatory)] [string[]] $Argument)
+    $winget = Get-WingetExecutable
+    if (-not $winget) { return @{ ExitCode = $null; Lines = @() } }
+    try {
+        $lines = @(& $winget @Argument 2>&1 | ForEach-Object { "$_" })
+        @{ ExitCode = $LASTEXITCODE; Lines = $lines }
+    }
+    catch {
+        Write-Verbose "winget nicht aufrufbar: $($_.Exception.Message)"
+        @{ ExitCode = $null; Lines = @() }
+    }
+}
+
+function Get-WingetListRow {
+    # Datenzeilen einer winget-Tabelle (nach der Trennlinie aus Bindestrichen), ohne Fortschrittsreste.
+    param([string[]] $Line)
+    $separator = [array]::FindIndex([string[]] @($Line), [Predicate[string]] { param($l) $l -match '^\s*-{5,}\s*$' })
+    if ($separator -lt 0) { return @() }
+    @($Line | Select-Object -Skip ($separator + 1) | Where-Object { $_.Trim() })
+}
+
+function Resolve-WingetTargetId {
+    <#
+    .SYNOPSIS
+        Welche ID winget für upgrade/uninstall mit „--exact“ braucht; $null, wenn winget das Paket so nicht findet.
+    .DESCRIPTION
+        Nur lesend über „winget list --id … --exact --source …“. Findet winget die Katalog-ID, bleibt sie.
+        Meldet winget „nicht gefunden“, wird die lokale Kennung aus dem Registry-Eintrag versucht
+        (Get-WingetLocalId); sie gilt nur, wenn winget damit genau einen Eintrag liefert, dessen angezeigte
+        ID ohne Rücksicht auf Groß-/Kleinschreibung genau der Katalog-ID entspricht. Ohne „--exact“ wird
+        nie gesucht. Store-Pakete (msstore) werden nicht geprüft, weil die Abfrage sonst der
+        Store-Vereinbarung zustimmen würde. Andere Fehler von winget ändern nichts (Katalog-ID bleibt).
+    .OUTPUTS
+        @{ Id; Local } oder $null.
+    #>
+    param([Parameter(Mandatory)] $Record, [Parameter(Mandatory)] [string] $Id, [Parameter(Mandatory)] [string] $Source)
+    if ($Source -eq 'msstore') { return @{ Id = $Id; Local = $false } }
+    $common = @('--exact', '--source', $Source, '--accept-source-agreements', '--disable-interactivity')
+    $direct = Invoke-WingetCli -Argument (@('list', '--id', $Id) + $common)
+    if ($direct.ExitCode -ne $script:WingetNoPackageFound) { return @{ Id = $Id; Local = $false } }
+
+    $local = Get-WingetLocalId $Record
+    if (-not $local) { return $null }
+    $byLocal = Invoke-WingetCli -Argument (@('list', '--id', $local) + $common)
+    if ($byLocal.ExitCode -ne 0) { return $null }
+    $rows = @(Get-WingetListRow $byLocal.Lines)
+    $same = @($rows | Where-Object { @($_ -split '\s+') -contains $Id })   # -contains vergleicht ohne Groß/Klein
+    if ($rows.Count -eq 1 -and $same.Count -eq 1) { return @{ Id = $local; Local = $true } }
+    $null
+}
+
 function Get-WingetArgument {
     <#
     .SYNOPSIS

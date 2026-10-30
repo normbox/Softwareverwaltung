@@ -43,6 +43,8 @@ Describe 'New-ActionPlan' {
         }
         Mock -ModuleName SoftwareInventory Get-WingetExecutable { 'C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1_x64__8wekyb3d8bbwe\winget.exe' }
         Mock -ModuleName SoftwareInventory Get-WingetInstalledVersion { $null }
+        # Lesende winget-Prüfung der ID: Katalog-ID gefunden (Standardfall)
+        Mock -ModuleName SoftwareInventory Invoke-WingetCli { @{ ExitCode = 0; Lines = @() } }
         Mock -ModuleName SoftwareInventory Get-AppxPackageByFamily { $null }
         Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
 
@@ -197,6 +199,51 @@ Describe 'New-ActionPlan' {
             New-UninstallKey $Machine '7-Zip' @{ DisplayName = '7-Zip 24.08 (x64)'; DisplayVersion = '24.08'; Publisher = 'Igor Pavlov' }
             $plan = Get-Plan (New-TestRecord @{ Name = '7-Zip 24.08 (x64)'; Publisher = 'Igor Pavlov'; RegistryKey = "$Machine\7-Zip" }) -Action Update
             $plan.VendorUrl | Should -Be 'https://github.com/ip7z/7zip/releases'
+        }
+
+        It 'nimmt die lokale Kennung, wenn winget die Katalog-ID nicht genau findet (z. B. Gyan.FFmpeg)' {
+            $key = 'Contoso.Tool_Microsoft.Winget.Source_8wekyb3d8bbwe'
+            New-UninstallKey $User $key @{ DisplayName = 'Contoso Tool'; DisplayVersion = '7.1.1' }
+            $script:Arch = [string] [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+            Mock -ModuleName SoftwareInventory Invoke-WingetCli {
+                if (@($Argument) -contains 'Contoso.Tool') { return @{ ExitCode = -1978335212; Lines = @('Kein installiertes Paket gefunden') } }
+                @{ ExitCode = 0; Lines = @('Name         ID           Version Verfügbar', '-----------------------------------------', 'Contoso Tool contoso.tool 7.1.1   9.0.2') }
+            }
+            $plan = Get-Plan (New-TestRecord @{ RegistryKey = "$User\$key"; WingetId = 'Contoso.Tool'; WingetSource = 'winget' }) -Action Update
+            $plan.Result | Should -BeNullOrEmpty
+            $plan.Arguments | Should -Be "upgrade --id ARP\User\$script:Arch\$key --exact --source winget --silent --accept-source-agreements --disable-interactivity --accept-package-agreements"
+            # nur lesend und nie ohne --exact gefragt
+            Should -Invoke -ModuleName SoftwareInventory Invoke-WingetCli -Times 2 -Exactly -ParameterFilter { $Argument[0] -eq 'list' -and @($Argument) -contains '--exact' }
+        }
+
+        It 'führt nichts aus und nennt die Herstellerseite, wenn winget das Paket gar nicht genau findet' {
+            New-UninstallKey $User 'Contoso.Tool_x' @{ DisplayName = 'Contoso Tool'; DisplayVersion = '7.1.1'; URLUpdateInfo = 'https://contoso.example/download' }
+            Mock -ModuleName SoftwareInventory Invoke-WingetCli { @{ ExitCode = -1978335212; Lines = @() } }
+            $plan = Get-Plan (New-TestRecord @{ RegistryKey = "$User\Contoso.Tool_x"; WingetId = 'Contoso.Tool'; WingetSource = 'winget' }) -Action Update
+            $plan.Result | Should -Be 'ManualUpdateRequired'
+            $plan.Method | Should -Be 'VendorLink'
+            $plan.VendorUrl | Should -Be 'https://contoso.example/download'
+            $plan.Message.Code | Should -Be 'PlanWingetExactNotFoundLink'
+            $plan.FilePath | Should -BeNullOrEmpty
+        }
+
+        It 'nimmt die lokale Kennung nicht, wenn winget dort ein anderes Paket oder mehrere zeigt' -ForEach @(
+            @{ Case = 'anderes Paket'; Rows = @('Other Other.Tool 1.0') }
+            @{ Case = 'mehrere'; Rows = @('A Contoso.Tool 1.0', 'B Contoso.Tool 2.0') }
+        ) {
+            New-UninstallKey $User 'Contoso.Tool_y' @{ DisplayName = 'Contoso Tool'; DisplayVersion = '7.1.1' }
+            $script:Rows = $Rows
+            Mock -ModuleName SoftwareInventory Invoke-WingetCli {
+                if (@($Argument) -contains 'Contoso.Tool') { return @{ ExitCode = -1978335212; Lines = @() } }
+                @{ ExitCode = 0; Lines = @('Name ID Version', '---------------') + @($script:Rows) }
+            }
+            (Get-Plan (New-TestRecord @{ RegistryKey = "$User\Contoso.Tool_y"; WingetId = 'Contoso.Tool'; WingetSource = 'winget' }) -Action Update).Result | Should -Be 'ManualUpdateRequired'
+        }
+
+        It 'prüft Store-Pakete nicht, damit keiner Store-Vereinbarung zugestimmt wird' {
+            Mock -ModuleName SoftwareInventory Test-StoreAgreementAccepted { $true }
+            Get-Plan (New-TestRecord @{ RegistryKey = "$Machine\$guid"; WingetId = '9NBLGGH4NNS1'; WingetSource = 'msstore' }) -Action Update | Out-Null
+            Should -Invoke -ModuleName SoftwareInventory Invoke-WingetCli -Times 0 -Exactly
         }
 
         It 'lehnt andere Methoden als winget ab' {

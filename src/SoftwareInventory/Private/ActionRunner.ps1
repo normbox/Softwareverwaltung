@@ -209,7 +209,13 @@ function Complete-ActionResult {
             }
             'SuccessReboot' { $result.Result = 'SucceededRebootRequired'; $result.Message = $outcome.Message }
             'Cancelled' { $result.Result = 'Cancelled'; $result.Message = $outcome.Message }
-            'NotInstalled' { $result.Result = 'NotInstalled'; $result.Message = $outcome.Message }
+            'NotInstalled' {
+                # winget findet das Paket nicht, das Programm ist laut Zustand aber noch da: kein „nicht mehr installiert“.
+                if ($Plan.Method -eq 'Winget' -and $after.Present) {
+                    $result.Result = 'Failed'; $result.Message = New-InventoryMessage WingetExactNotFoundAfterRun $Plan.WingetId
+                }
+                else { $result.Result = 'NotInstalled'; $result.Message = $outcome.Message }
+            }
             'NoUpdate' { $result.Result = 'NoUpdateAvailable'; $result.Message = $outcome.Message }
             default { $result.Result = 'Failed'; $result.Message = $outcome.Message }
         }
