@@ -16,6 +16,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IConfirmationService? _confirmation;
     private readonly IShellService? _shell;
     private readonly ICpeService? _cpe;
+    private readonly IAppUiStore _ui;
     private readonly TimeProvider _time;
     // Installationsordner je Programm, für die Sitzung gemerkt (ermittelt erst beim Aufklappen).
     private readonly Dictionary<string, InstallLocationInfo> _locations = [];
@@ -25,7 +26,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _ready;
     private Notice? _wingetNotice;
 
-    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null, IShellService? shell = null, ICpeService? cpe = null)
+    public MainViewModel(IInventoryService inventory, IActionService? actions = null, IConfirmationService? confirmation = null, TimeProvider? time = null, IShellService? shell = null, ICpeService? cpe = null, IAppUiStore? ui = null)
     {
         _inventory = inventory;
         _actions = actions;
@@ -33,6 +34,8 @@ public sealed partial class MainViewModel : ObservableObject
         _shell = shell;
         _cpe = cpe;
         _time = time ?? TimeProvider.System;
+        _ui = ui ?? new MemoryAppUiStore();
+        _detailsWidthFraction = AppUiSettings.ClampFraction(_ui.Load().DetailsWidthFraction);
         ItemsView = new ListCollectionView(Items) { Filter = Matches };
         Items.CollectionChanged += (_, e) =>
         {
@@ -57,9 +60,20 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isBusy;
 
-    /// <summary>Angeklicktes Programm; seine früheren Aktionen stehen in <see cref="History"/>.</summary>
+    /// <summary>Ausgewähltes Programm; bei offenem Detailfeld stehen seine früheren Aktionen in <see cref="History"/>.</summary>
     [ObservableProperty]
     private SoftwareItem? _selectedItem;
+
+    /// <summary>
+    /// Detailfeld rechts über der Liste offen. Öffnet per Klick oder Eingabe, schließt mit ✕ oder Esc;
+    /// die Auswahl bleibt dabei, damit der Fokus in der Liste weitergeht (↑/↓ wechseln den Inhalt).
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDetailsOpen;
+
+    /// <summary>Breite des Detailfelds als Anteil der Listenbreite, gemerkt in app-ui.json.</summary>
+    [ObservableProperty]
+    private double _detailsWidthFraction = AppUiSettings.DefaultDetailsWidthFraction;
 
     public ObservableCollection<ActionHistoryEntry> History { get; } = [];
 
@@ -398,9 +412,28 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnSelectedItemChanged(SoftwareItem? value)
     {
-        _ = LoadHistoryAsync(value);
-        _ = LoadLocationAsync(value);
+        // Verlauf und Ordner nur für das offene Detailfeld laden; ↑/↓ bei geschlossenem Feld fragt nichts ab.
+        if (value is null)
+        {
+            IsDetailsOpen = false;
+        }
+        if (IsDetailsOpen)
+        {
+            _ = LoadHistoryAsync(value);
+            _ = LoadLocationAsync(value);
+        }
     }
+
+    partial void OnIsDetailsOpenChanged(bool value)
+    {
+        if (value)
+        {
+            _ = LoadHistoryAsync(SelectedItem);
+            _ = LoadLocationAsync(SelectedItem);
+        }
+    }
+
+    partial void OnDetailsWidthFractionChanged(double value) => _ui.Save(new AppUiSettings { DetailsWidthFraction = value });
 
     private void OnQueueSelectionChanged()
     {
@@ -585,9 +618,13 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    /// <summary>Klappt die Details zu (Button „Schließen“, Esc, zweiter Klick auf die Zeile).</summary>
+    /// <summary>Öffnet das Detailfeld für das ausgewählte Programm (Klick auf eine Zeile, Eingabe).</summary>
     [RelayCommand]
-    private void CloseDetails() => SelectedItem = null;
+    private void OpenDetails() => IsDetailsOpen = SelectedItem is not null;
+
+    /// <summary>Schließt das Detailfeld (✕, Esc); die Auswahl in der Liste bleibt.</summary>
+    [RelayCommand]
+    private void CloseDetails() => IsDetailsOpen = false;
 
     [RelayCommand(CanExecute = nameof(CanOpenFolder))]
     private void OpenFolder() => _shell?.OpenFolder(SelectedLocation!.Path!);

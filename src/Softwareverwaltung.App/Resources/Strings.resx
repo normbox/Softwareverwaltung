@@ -631,6 +631,9 @@
   <data name="AssessmentShortPossiblyAffected" xml:space="preserve">
     <value>möglich</value>
   </data>
+  <data name="VulnerabilityEpss" xml:space="preserve">
+    <value>Ausnutzungswahrscheinlichkeit (EPSS): {0}</value>
+  </data>
   <data name="VulnerabilityKevShort" xml:space="preserve">
     <value>KEV</value>
   </data>
@@ -785,7 +788,16 @@
     <value>Pfad kopieren</value>
   </data>
   <data name="DetailsCloseTooltip" xml:space="preserve">
-    <value>Details zuklappen (auch mit Esc oder einem zweiten Klick auf die Zeile)</value>
+    <value>Detailfeld schließen (auch mit Esc)</value>
+  </data>
+  <data name="DetailsPanelName" xml:space="preserve">
+    <value>Details zum ausgewählten Programm</value>
+  </data>
+  <data name="DetailsResizeTooltip" xml:space="preserve">
+    <value>Ziehen, um die Breite zu ändern</value>
+  </data>
+  <data name="DetailsProgramTitle" xml:space="preserve">
+    <value>Programm</value>
   </data>
   <data name="StatusPathCopied" xml:space="preserve">
     <value>Pfad kopiert.</value>

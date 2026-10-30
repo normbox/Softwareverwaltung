@@ -276,6 +276,9 @@ public sealed record VulnerabilityItem(string CveId, string? Assessment, string?
 
     public string? ScoreText => Score is { } s ? $"CVSS {s.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}" : null;
 
+    /// <summary>Für die aufgeklappte Zeile: Ausnutzungswahrscheinlichkeit, die die Kopfzeile nicht zeigt.</summary>
+    public string? EpssText => Epss is { } e ? AppText.Format("VulnerabilityEpss", e.ToString("P0", System.Globalization.CultureInfo.CurrentCulture)) : null;
+
     /// <summary>Name für Screenreader: CVE und Kurzinfo, da die kompakte Zeile aus mehreren Feldern besteht.</summary>
     public string AccessibleName => $"{CveId} {Summary}";
 
@@ -344,12 +347,6 @@ public sealed record SourceStatementItem(string Source, string Verdict, string? 
 
     /// <summary>z. B. „CIRCL ✓“; die ausführliche Angabe steht im Tooltip (Line).</summary>
     public string ShortText => $"{Source} {Symbol}";
-
-    /// <summary>
-    /// Namensnennung in der aufgeklappten Zeile: nur bei CIRCL (CC BY 4.0 verlangt sie beim Treffer);
-    /// alle Quellen werden zusätzlich einmal unter der Liste genannt.
-    /// </summary>
-    public string? InlineAttribution => Source == "CIRCL" ? Attribution : null;
 
     public static SourceStatementItem FromPs(PSObject obj) => new(
         obj.Properties["Source"]?.Value?.ToString() ?? "",

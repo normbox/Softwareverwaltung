@@ -151,6 +151,7 @@ public sealed class MainViewModelTests
         await vm.InitializeAsync();
 
         vm.SelectedItem = tool;
+        vm.OpenDetailsCommand.Execute(null);
         await Task.Yield();
         Assert.Equal(@"C:\Program Files\Contoso", vm.SelectedLocation?.Path);
         Assert.True(vm.OpenFolderCommand.CanExecute(null));
@@ -159,14 +160,57 @@ public sealed class MainViewModelTests
         Assert.Equal([@"C:\Program Files\Contoso"], shell.Opened);
         Assert.Equal([@"C:\Program Files\Contoso"], shell.Copied);
 
-        // Zuklappen und wieder aufklappen: für die Sitzung gemerkt, nicht neu ermittelt.
+        // Schließen und wieder öffnen: für die Sitzung gemerkt, nicht neu ermittelt.
         vm.CloseDetailsCommand.Execute(null);
-        Assert.Null(vm.SelectedItem);
-        Assert.Null(vm.SelectedLocation);
-        vm.SelectedItem = tool;
+        Assert.False(vm.IsDetailsOpen);
+        Assert.Same(tool, vm.SelectedItem);   // Auswahl bleibt, der Fokus geht in der Liste weiter
+        vm.OpenDetailsCommand.Execute(null);
         await Task.Yield();
         Assert.NotNull(vm.SelectedLocation);
         Assert.Equal(1, inventory.ResolveCalls);
+    });
+
+    [Fact]
+    public void DetailsPanelFollowsTheSelectionOnlyWhileOpen() => RunOnDispatcher(async () =>
+    {
+        var a = new SoftwareItem { Name = "Alpha", Source = new System.Management.Automation.PSObject() };
+        var b = new SoftwareItem { Name = "Beta", Source = new System.Management.Automation.PSObject() };
+        var inventory = new FakeInventory { Items = [a, b], Location = new InstallLocationInfo(@"C:\Tools", null, null, CanOpen: true) };
+        var vm = new MainViewModel(inventory);
+        await vm.InitializeAsync();
+
+        // Ohne Auswahl öffnet nichts; ↑/↓ bei geschlossenem Feld fragt nichts ab.
+        vm.OpenDetailsCommand.Execute(null);
+        Assert.False(vm.IsDetailsOpen);
+        vm.SelectedItem = a;
+        await Task.Yield();
+        Assert.Equal(0, inventory.ResolveCalls);
+
+        // Offen: eine andere Zeile wechselt den Inhalt.
+        vm.OpenDetailsCommand.Execute(null);
+        await Task.Yield();
+        vm.SelectedItem = b;
+        await Task.Yield();
+        Assert.True(vm.IsDetailsOpen);
+        Assert.Equal(2, inventory.ResolveCalls);
+
+        // Verschwindet die Auswahl (z. B. nach einem Scan), schließt das Feld.
+        vm.SelectedItem = null;
+        Assert.False(vm.IsDetailsOpen);
+    });
+
+    [Fact]
+    public void RemembersTheDetailsWidth() => RunOnDispatcher(async () =>
+    {
+        var store = new MemoryAppUiStore();
+        store.Save(new AppUiSettings { DetailsWidthFraction = 0.55 });
+        var vm = new MainViewModel(new FakeInventory(), ui: store);
+        await vm.InitializeAsync();
+
+        Assert.Equal(0.55, vm.DetailsWidthFraction);
+        vm.DetailsWidthFraction = 0.3;
+        Assert.Equal(0.3, store.Current.DetailsWidthFraction);
+        Assert.Equal(AppUiSettings.DefaultDetailsWidthFraction, new MainViewModel(new FakeInventory()).DetailsWidthFraction);
     });
 
     [Fact]
@@ -178,6 +222,7 @@ public sealed class MainViewModelTests
         await vm.InitializeAsync();
 
         vm.SelectedItem = app;
+        vm.OpenDetailsCommand.Execute(null);
         await Task.Yield();
         Assert.False(vm.OpenFolderCommand.CanExecute(null));
         Assert.True(vm.CopyPathCommand.CanExecute(null));

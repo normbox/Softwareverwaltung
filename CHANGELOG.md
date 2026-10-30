@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Ansicht der Details
+
+- **Detailfeld über der Liste:** Ein Klick auf ein Programm (oder Eingabe) öffnet rechts ein Feld, das über der Liste liegt; die Liste behält ihre volle Breite. Ein Klick auf ein anderes Programm oder ↑/↓ wechseln den Inhalt, der Fokus bleibt in der Liste. Schließen mit ✕ oder Esc. Die Breite lässt sich am linken Rand ziehen (Start 40 %, mindestens 360 px) und wird in `%APPDATA%\SoftwareInventory\app-ui.json` gemerkt. Die aufgeklappte Zeile in der Liste entfällt.
+- **Kompakte Lückenliste:** eine aufklappbare Zeile je CVE mit Bewertung, KEV, CVSS und einem Zeichen je Quelle (✓ betroffen, ✗ nicht betroffen, ? nicht auswertbar, – nicht bekannt); aufgeklappt EPSS, jede Quelle mit Bereich und Link, Beschreibung. Zeichenerklärung und Namensnennung (NVD; CVE-Programm über CIRCL, CC BY 4.0) einmal unter der Liste. Höchstens drei Gründe sichtbar, der Rest zum Aufklappen. Reihenfolge: Aktionen, Gründe, Lücken, Programm, widerlegte Treffer, Verlauf.
+- **Kein Scan mehr beim Start:** Ein Scan fragt externe Dienste ab und startet nur auf „Scannen“.
+
 ### Korrekturen
 
 - **winget-Update meldete „Nicht (mehr) installiert“** (z. B. FFmpeg, `Gyan.FFmpeg`): winget findet manche Pakete mit `--id … --exact` nur über die lokale Kennung des installierten Eintrags (`ARP\User\X64\<Schlüssel>`), nicht über die angezeigte Katalog-ID. Der Plan prüft das jetzt nur lesend und nimmt dann die lokale Kennung, weiterhin mit `--exact`. Findet winget das Paket gar nicht genau, wird nichts ausgeführt und die Herstellerseite genannt. Meldet winget nach dem Start „nicht gefunden“, obwohl das Programm noch da ist, heißt das Ergebnis nicht mehr „nicht mehr installiert“.

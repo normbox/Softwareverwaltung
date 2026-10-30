@@ -161,6 +161,7 @@ public sealed class MainViewModelActionTests
         var (vm, _, _) = await CreateAsync(actions);
 
         vm.SelectedItem = Tool;
+        vm.OpenDetailsCommand.Execute(null);
         await Task.Delay(50);
 
         Assert.Contains("Aktualisieren über Winget · Erfolgreich", Assert.Single(vm.History).Text);
