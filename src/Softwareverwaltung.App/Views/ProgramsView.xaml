@@ -9,6 +9,10 @@
              xmlns:models="clr-namespace:Softwareverwaltung.App.Models"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    <!-- Esc schließt das Detailfeld, auch wenn der Fokus darin liegt -->
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseDetailsCommand}" />
+    </UserControl.InputBindings>
     <UserControl.Resources>
         <!-- Textspalten: voller Text als Tooltip, wenn die Spalte ihn abschneidet -->
         <Style x:Key="TextCellWithTooltip" TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
@@ -66,6 +70,219 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Inhalt des Detailfelds rechts über der Liste -->
+        <DataTemplate x:Key="ProgramDetailsTemplate" DataType="{x:Type models:SoftwareItem}">
+            <StackPanel Margin="0,0,0,12">
+                <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                <!-- Aktionen: erst Bestätigungsdialog mit genauem Befehl, dann Ausführung -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left"
+                            Visibility="{Binding DataContext.ActionsAvailable, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}">
+                    <ui:Button Content="{loc:Text ActionUpdate}" Appearance="Primary" Icon="{ui:SymbolIcon ArrowUpload24}" Margin="0,0,8,0"
+                               Command="{Binding DataContext.UpdateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               CommandParameter="{Binding}"
+                               Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}" />
+                    <ui:Button Content="{loc:Text ActionUninstall}" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0"
+                               Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               CommandParameter="{Binding}" />
+                    <ui:Button Content="{loc:Text DetailsRecheckWithoutCache}" Icon="{ui:SymbolIcon ArrowSync24}"
+                               ToolTip="{loc:Text DetailsRecheckWithoutCacheTooltip}"
+                               Command="{Binding DataContext.RecheckWithoutCacheCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               CommandParameter="{Binding}" />
+                </StackPanel>
+                </DockPanel>
+
+                <!-- Gründe: höchstens drei sichtbar, der Rest zum Aufklappen -->
+                <TextBlock Text="{loc:Text DetailsReasonsTitle}" FontWeight="SemiBold" />
+                <ItemsControl ItemsSource="{Binding ReasonsShown}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Expander Style="{StaticResource CompactExpander}" Header="{Binding ReasonsMoreText}"
+                          AutomationProperties.Name="{Binding ReasonsMoreText}"
+                          Visibility="{Binding ReasonsMoreText, Converter={StaticResource NullToVisibility}}">
+                    <ItemsControl ItemsSource="{Binding ReasonsMore}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+
+                <!-- Lücken: eine Zeile je CVE, aufklappbar für Quellen, Links und Beschreibung -->
+                <TextBlock Text="{loc:Text DetailsVulnerabilitiesTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
+                           Visibility="{Binding VulnerabilityText, Converter={StaticResource NullToVisibility}}" />
+                <ItemsControl ItemsSource="{Binding Vulnerabilities}" Grid.IsSharedSizeScope="True">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:VulnerabilityItem}">
+                            <Expander Style="{StaticResource CompactExpander}"
+                                      AutomationProperties.Name="{Binding AccessibleName}"
+                                      ToolTip="{loc:Text VulnerabilityExpandTooltip}">
+                                <Expander.Header>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="Cve" />
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="Assessment" />
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="Kev" />
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="Score" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding CveId}" FontWeight="SemiBold" Margin="0,0,16,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding AssessmentShort}" Margin="0,0,12,0" />
+                                        <TextBlock Grid.Column="2" Text="{loc:Text VulnerabilityKevShort}" Margin="0,0,12,0" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                   ToolTip="{loc:Text VulnerabilityKevShortTooltip}"
+                                                   Visibility="{Binding Kev, Converter={StaticResource BoolToVisibility}}" />
+                                        <TextBlock Grid.Column="3" Text="{Binding ScoreText}" Margin="0,0,16,0"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        <ItemsControl Grid.Column="4" ItemsSource="{Binding Sources}" Focusable="False">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:SourceStatementItem}">
+                                                    <TextBlock Text="{Binding ShortText}" ToolTip="{Binding Line}" Margin="0,0,12,0"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Expander.Header>
+                                <StackPanel>
+                                    <WrapPanel>
+                                        <ui:HyperlinkButton Content="{Binding CveId}" NavigateUri="{Binding Url}" Padding="0" />
+                                        <TextBlock Text="{Binding Summary}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
+                                               Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                    <!-- Angabe jeder Quelle einzeln; bei CIRCL mit Namensnennung (CC BY 4.0) -->
+                                    <ItemsControl ItemsSource="{Binding Sources}" Margin="0,2,0,2">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:SourceStatementItem}">
+                                                <StackPanel Margin="0,1,0,1">
+                                                    <WrapPanel>
+                                                        <TextBlock Text="{Binding Line}" VerticalAlignment="Center" />
+                                                        <ui:HyperlinkButton Content="{loc:Text SourceOpen}" NavigateUri="{Binding Url}" Padding="0" Margin="8,0,0,0"
+                                                                            Visibility="{Binding Url, Converter={StaticResource NullToVisibility}}"
+                                                                            AutomationProperties.Name="{Binding Line}" />
+                                                    </WrapPanel>
+                                                    <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
+                                                               Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                                    <TextBlock Text="{Binding InlineAttribution}" TextWrapping="Wrap" FontSize="11"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                               Visibility="{Binding InlineAttribution, Converter={StaticResource NullToVisibility}}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Visibility="{Binding Description, Converter={StaticResource NullToVisibility}}" />
+                                </StackPanel>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <!-- Zeichenerklärung und Namensnennung einmal unter der Liste -->
+                <StackPanel Margin="18,4,0,0" Visibility="{Binding Vulnerabilities.Count, Converter={StaticResource CountToVisibility}}">
+                    <TextBlock Text="{loc:Text DetailsSourceLegend}" TextWrapping="Wrap" FontSize="11"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <ItemsControl ItemsSource="{Binding Attributions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="11"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <TextBlock Text="{loc:Text DetailsProgramTitle}" FontWeight="SemiBold" Margin="0,12,0,4" />
+                <!-- Programmangaben als kleine Tabelle: Beschriftung links, Wert rechts -->
+                <Grid Margin="0,0,0,2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="{loc:Text DetailsInstallLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InstallInfo}" TextWrapping="Wrap" Margin="0,0,0,2"
+                               Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}" />
+                    <TextBlock Grid.Row="1" Text="{loc:Text DetailsWingetIdLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WingetId}" TextWrapping="Wrap" Margin="0,0,0,2"
+                               Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}" />
+                    <TextBlock Grid.Row="2" Text="{loc:Text DetailsCpeLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CpeText}" TextWrapping="Wrap" Margin="0,0,0,2"
+                               Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}" />
+                </Grid>
+                <!-- CPE: ohne Zuordnung „CPE zuordnen“; bei eigener Zuordnung ändern und „Vorschlag melden“ -->
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,8"
+                            Visibility="{Binding CanMapCpe, Converter={StaticResource BoolToVisibility}}">
+                    <ui:Button Content="{loc:Text DetailsMapCpe}" Icon="{ui:SymbolIcon Tag24}" Margin="0,0,8,0"
+                               ToolTip="{loc:Text DetailsMapCpeTooltip}"
+                               Command="{Binding DataContext.MapCpeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               CommandParameter="{Binding}" />
+                    <ui:Button Content="{loc:Text DetailsReportCpe}" Icon="{ui:SymbolIcon Share24}"
+                               ToolTip="{loc:Text DetailsReportCpeTooltip}"
+                               Command="{Binding DataContext.ReportCpeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               CommandParameter="{Binding}"
+                               Visibility="{Binding HasUserCpe, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
+
+                <!-- Installationsordner: ermittelt das Modul erst beim Aufklappen, mit Herkunft oder Grund -->
+                <StackPanel Margin="0,0,0,8" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding SelectedLocation.IsKnown, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                        <Run Text="{loc:Text DetailsFolderLabel}" /><Run Text="{Binding SelectedLocation.Path, Mode=OneWay}" />
+                        <Run Text="{Binding SelectedLocation.Note, Mode=OneWay, StringFormat='({0})'}" />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding SelectedLocation.Reason, Converter={StaticResource NullToVisibility}, FallbackValue=Collapsed}">
+                        <Run Text="{loc:Text DetailsFolderUnknown}" /><Run Text="{Binding SelectedLocation.Reason, Mode=OneWay}" />
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
+                                Visibility="{Binding SelectedLocation.IsKnown, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                        <ui:Button Content="{loc:Text DetailsOpenFolder}" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0"
+                                   Command="{Binding OpenFolderCommand}"
+                                   Visibility="{Binding SelectedLocation.CanOpen, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}" />
+                        <ui:Button Content="{loc:Text DetailsCopyPath}" Icon="{ui:SymbolIcon Copy24}" Command="{Binding CopyPathCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding Refuted}" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding StringFormat='✓ {0}'}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Versionsverlauf: bisherige Aktionen zu diesem Programm aus dem Aktionsprotokoll -->
+                <TextBlock Text="{loc:Text DetailsHistoryTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
+                           Visibility="{Binding DataContext.History.Count, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource CountToVisibility}}" />
+                <ItemsControl ItemsSource="{Binding DataContext.History, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:ActionHistoryEntry}">
+                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" ToolTip="{Binding Message}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -251,22 +468,18 @@
         </StackPanel>
 
         <!-- Hauptliste -->
-        <Grid Grid.Row="2" Margin="16,0,16,8">
+        <Grid x:Name="ListHost" Grid.Row="2" Margin="16,0,16,8" SizeChanged="OnListHostSizeChanged">
             <DataGrid ItemsSource="{Binding ItemsView}"
                       SelectedItem="{Binding SelectedItem}"
                       AutoGenerateColumns="False" IsReadOnly="True"
                       SelectionMode="Single" HeadersVisibility="Column"
                       CanUserReorderColumns="False"
-                      RowDetailsVisibilityMode="VisibleWhenSelected"
                       EnableRowVirtualization="True"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       AutomationProperties.Name="{loc:Text ProgramsListName}"
-                      PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown">
-                <!-- Esc klappt die Details zu -->
-                <DataGrid.InputBindings>
-                    <KeyBinding Key="Escape" Command="{Binding CloseDetailsCommand}" />
-                </DataGrid.InputBindings>
+                      PreviewMouseLeftButtonDown="OnGridPreviewMouseLeftButtonDown"
+                      PreviewKeyDown="OnGridPreviewKeyDown">
                 <DataGrid.Columns>
                     <!-- Häkchen für die Update-Warteschlange, nur bei verfügbarem Update -->
                     <DataGridTemplateColumn Width="56" MinWidth="56" CanUserSort="False" CanUserResize="False">
@@ -335,223 +548,6 @@
                     <DataGridTextColumn Header="{loc:Text ColumnSource}" Binding="{Binding Sources}" Width="140" ElementStyle="{StaticResource TextCellWithTooltip}" />
                 </DataGrid.Columns>
 
-                <!-- Angeklickte Zeile: alle Gründe, Lücken und widerlegte Treffer -->
-                <DataGrid.RowDetailsTemplate>
-                    <DataTemplate DataType="{x:Type models:SoftwareItem}">
-                        <StackPanel Margin="32,6,16,12">
-                            <DockPanel Margin="0,0,0,8" LastChildFill="False">
-                            <!-- Schließen klappt die Details zu, ebenso Esc und ein zweiter Klick auf die Zeile -->
-                            <ui:Button DockPanel.Dock="Right" Content="{loc:Text CommonClose}" Icon="{ui:SymbolIcon ChevronUp24}"
-                                       ToolTip="{loc:Text DetailsCloseTooltip}"
-                                       Command="{Binding DataContext.CloseDetailsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
-                            <!-- Aktionen: erst Bestätigungsdialog mit genauem Befehl, dann Ausführung -->
-                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left"
-                                        Visibility="{Binding DataContext.ActionsAvailable, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BoolToVisibility}}">
-                                <ui:Button Content="{loc:Text ActionUpdate}" Appearance="Primary" Icon="{ui:SymbolIcon ArrowUpload24}" Margin="0,0,8,0"
-                                           Command="{Binding DataContext.UpdateCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                           CommandParameter="{Binding}"
-                                           Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}" />
-                                <ui:Button Content="{loc:Text ActionUninstall}" Icon="{ui:SymbolIcon Delete24}" Margin="0,0,8,0"
-                                           Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                           CommandParameter="{Binding}" />
-                                <ui:Button Content="{loc:Text DetailsRecheckWithoutCache}" Icon="{ui:SymbolIcon ArrowSync24}"
-                                           ToolTip="{loc:Text DetailsRecheckWithoutCacheTooltip}"
-                                           Command="{Binding DataContext.RecheckWithoutCacheCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                           CommandParameter="{Binding}" />
-                            </StackPanel>
-                            </DockPanel>
-
-                            <!-- Programmangaben als kleine Tabelle: Beschriftung links, Wert rechts -->
-                            <Grid Margin="0,0,0,2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="{loc:Text DetailsInstallLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InstallInfo}" TextWrapping="Wrap" Margin="0,0,0,2"
-                                           Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}" />
-                                <TextBlock Grid.Row="1" Text="{loc:Text DetailsWingetIdLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WingetId}" TextWrapping="Wrap" Margin="0,0,0,2"
-                                           Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}" />
-                                <TextBlock Grid.Row="2" Text="{loc:Text DetailsCpeLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CpeText}" TextWrapping="Wrap" Margin="0,0,0,2"
-                                           Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}" />
-                            </Grid>
-                            <!-- CPE: ohne Zuordnung „CPE zuordnen“; bei eigener Zuordnung ändern und „Vorschlag melden“ -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,8"
-                                        Visibility="{Binding CanMapCpe, Converter={StaticResource BoolToVisibility}}">
-                                <ui:Button Content="{loc:Text DetailsMapCpe}" Icon="{ui:SymbolIcon Tag24}" Margin="0,0,8,0"
-                                           ToolTip="{loc:Text DetailsMapCpeTooltip}"
-                                           Command="{Binding DataContext.MapCpeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                           CommandParameter="{Binding}" />
-                                <ui:Button Content="{loc:Text DetailsReportCpe}" Icon="{ui:SymbolIcon Share24}"
-                                           ToolTip="{loc:Text DetailsReportCpeTooltip}"
-                                           Command="{Binding DataContext.ReportCpeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                           CommandParameter="{Binding}"
-                                           Visibility="{Binding HasUserCpe, Converter={StaticResource BoolToVisibility}}" />
-                            </StackPanel>
-
-                            <!-- Installationsordner: ermittelt das Modul erst beim Aufklappen, mit Herkunft oder Grund -->
-                            <StackPanel Margin="0,0,0,8" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}">
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Visibility="{Binding SelectedLocation.IsKnown, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
-                                    <Run Text="{loc:Text DetailsFolderLabel}" /><Run Text="{Binding SelectedLocation.Path, Mode=OneWay}" />
-                                    <Run Text="{Binding SelectedLocation.Note, Mode=OneWay, StringFormat='({0})'}" />
-                                </TextBlock>
-                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                           Visibility="{Binding SelectedLocation.Reason, Converter={StaticResource NullToVisibility}, FallbackValue=Collapsed}">
-                                    <Run Text="{loc:Text DetailsFolderUnknown}" /><Run Text="{Binding SelectedLocation.Reason, Mode=OneWay}" />
-                                </TextBlock>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0"
-                                            Visibility="{Binding SelectedLocation.IsKnown, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
-                                    <ui:Button Content="{loc:Text DetailsOpenFolder}" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0"
-                                               Command="{Binding OpenFolderCommand}"
-                                               Visibility="{Binding SelectedLocation.CanOpen, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}" />
-                                    <ui:Button Content="{loc:Text DetailsCopyPath}" Icon="{ui:SymbolIcon Copy24}" Command="{Binding CopyPathCommand}" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Gründe: höchstens drei sichtbar, der Rest zum Aufklappen -->
-                            <TextBlock Text="{loc:Text DetailsReasonsTitle}" FontWeight="SemiBold" />
-                            <ItemsControl ItemsSource="{Binding ReasonsShown}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Expander Style="{StaticResource CompactExpander}" Header="{Binding ReasonsMoreText}"
-                                      AutomationProperties.Name="{Binding ReasonsMoreText}"
-                                      Visibility="{Binding ReasonsMoreText, Converter={StaticResource NullToVisibility}}">
-                                <ItemsControl ItemsSource="{Binding ReasonsMore}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Expander>
-
-                            <!-- Lücken: eine Zeile je CVE, aufklappbar für Quellen, Links und Beschreibung -->
-                            <TextBlock Text="{loc:Text DetailsVulnerabilitiesTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
-                                       Visibility="{Binding VulnerabilityText, Converter={StaticResource NullToVisibility}}" />
-                            <ItemsControl ItemsSource="{Binding Vulnerabilities}" Grid.IsSharedSizeScope="True">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type models:VulnerabilityItem}">
-                                        <Expander Style="{StaticResource CompactExpander}"
-                                                  AutomationProperties.Name="{Binding AccessibleName}"
-                                                  ToolTip="{loc:Text VulnerabilityExpandTooltip}">
-                                            <Expander.Header>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Cve" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Assessment" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Kev" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Score" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding CveId}" FontWeight="SemiBold" Margin="0,0,16,0" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding AssessmentShort}" Margin="0,0,12,0" />
-                                                    <TextBlock Grid.Column="2" Text="{loc:Text VulnerabilityKevShort}" Margin="0,0,12,0" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                                                               ToolTip="{loc:Text VulnerabilityKevShortTooltip}"
-                                                               Visibility="{Binding Kev, Converter={StaticResource BoolToVisibility}}" />
-                                                    <TextBlock Grid.Column="3" Text="{Binding ScoreText}" Margin="0,0,16,0"
-                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                                    <ItemsControl Grid.Column="4" ItemsSource="{Binding Sources}" Focusable="False">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <StackPanel Orientation="Horizontal" />
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate DataType="{x:Type models:SourceStatementItem}">
-                                                                <TextBlock Text="{Binding ShortText}" ToolTip="{Binding Line}" Margin="0,0,12,0"
-                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </Grid>
-                                            </Expander.Header>
-                                            <StackPanel>
-                                                <WrapPanel>
-                                                    <ui:HyperlinkButton Content="{Binding CveId}" NavigateUri="{Binding Url}" Padding="0" />
-                                                    <TextBlock Text="{Binding Summary}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                                </WrapPanel>
-                                                <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
-                                                           Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
-                                                <!-- Angabe jeder Quelle einzeln; bei CIRCL mit Namensnennung (CC BY 4.0) -->
-                                                <ItemsControl ItemsSource="{Binding Sources}" Margin="0,2,0,2">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="{x:Type models:SourceStatementItem}">
-                                                            <StackPanel Margin="0,1,0,1">
-                                                                <WrapPanel>
-                                                                    <TextBlock Text="{Binding Line}" VerticalAlignment="Center" />
-                                                                    <ui:HyperlinkButton Content="{loc:Text SourceOpen}" NavigateUri="{Binding Url}" Padding="0" Margin="8,0,0,0"
-                                                                                        Visibility="{Binding Url, Converter={StaticResource NullToVisibility}}"
-                                                                                        AutomationProperties.Name="{Binding Line}" />
-                                                                </WrapPanel>
-                                                                <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
-                                                                           Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
-                                                                <TextBlock Text="{Binding InlineAttribution}" TextWrapping="Wrap" FontSize="11"
-                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                           Visibility="{Binding InlineAttribution, Converter={StaticResource NullToVisibility}}" />
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                           Visibility="{Binding Description, Converter={StaticResource NullToVisibility}}" />
-                                            </StackPanel>
-                                        </Expander>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <!-- Zeichenerklärung und Namensnennung einmal unter der Liste -->
-                            <StackPanel Margin="18,4,0,0" Visibility="{Binding Vulnerabilities.Count, Converter={StaticResource CountToVisibility}}">
-                                <TextBlock Text="{loc:Text DetailsSourceLegend}" TextWrapping="Wrap" FontSize="11"
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                <ItemsControl ItemsSource="{Binding Attributions}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="11"
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-
-                            <ItemsControl ItemsSource="{Binding Refuted}" Margin="0,8,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding StringFormat='✓ {0}'}" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                            <!-- Versionsverlauf: bisherige Aktionen zu diesem Programm aus dem Aktionsprotokoll -->
-                            <TextBlock Text="{loc:Text DetailsHistoryTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
-                                       Visibility="{Binding DataContext.History.Count, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource CountToVisibility}}" />
-                            <ItemsControl ItemsSource="{Binding DataContext.History, RelativeSource={RelativeSource AncestorType=DataGrid}}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type models:ActionHistoryEntry}">
-                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" ToolTip="{Binding Message}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </DataTemplate>
-                </DataGrid.RowDetailsTemplate>
             </DataGrid>
 
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460"
@@ -562,6 +558,47 @@
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Visibility="{Binding ShowNotScannedState, Converter={StaticResource BoolToVisibility}}"
                        Text="{loc:Text ProgramsNotScanned}" />
+
+            <!-- Detailfeld: liegt rechts über der Liste, die Liste behält ihre volle Breite.
+                 Breite am linken Rand verschiebbar (Anteil gemerkt in app-ui.json, mindestens 360 px). -->
+            <Border x:Name="DetailsPanel" HorizontalAlignment="Right" CornerRadius="8,0,0,8"
+                    Background="{DynamicResource ApplicationBackgroundBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                    Visibility="{Binding IsDetailsOpen, Converter={StaticResource BoolToVisibility}}"
+                    AutomationProperties.Name="{loc:Text DetailsPanelName}">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="2" Direction="180" Opacity="0.25" />
+                </Border.Effect>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Thumb Grid.Column="0" Cursor="SizeWE" Background="Transparent" ToolTip="{loc:Text DetailsResizeTooltip}"
+                           DragDelta="OnDetailsResizeDelta" DragCompleted="OnDetailsResizeCompleted">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb">
+                                <Border Background="Transparent" />
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+                    <DockPanel Grid.Column="1" Margin="10,10,4,0">
+                        <!-- Kopf: Programm und Schließen -->
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,8,8">
+                            <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon Dismiss24}" Appearance="Transparent" Padding="6"
+                                       ToolTip="{loc:Text DetailsCloseTooltip}" AutomationProperties.Name="{loc:Text CommonClose}"
+                                       Command="{Binding CloseDetailsCommand}" />
+                            <TextBlock VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis">
+                                <Run Text="{Binding SelectedItem.Name, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding SelectedItem.InstalledVersion, Mode=OneWay}"
+                                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontWeight="Normal" />
+                            </TextBlock>
+                        </DockPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
+                            <ContentControl Content="{Binding SelectedItem}" ContentTemplate="{StaticResource ProgramDetailsTemplate}" Focusable="False" />
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- Statuszeile -->
