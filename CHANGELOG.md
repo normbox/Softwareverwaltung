@@ -4,6 +4,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Korrekturen
+
+- **Portable Programme verschwanden nach einer Einzelprüfung** („Das Programm ist nicht mehr installiert.“), z. B. nach „CPE zuordnen“, „Neu prüfen (ohne Cache)“ oder einer Aktion: `Find-InstalledSoftware` suchte nur im Inventar (Registry, winget, Store). Jetzt wird bei portablen Programmen die Datei neu gelesen; Nutzungsspuren bleiben. Fehlt die Datei, gilt das Programm als entfernt; ist ihr Laufwerk nicht verbunden, bleibt der bisherige Datensatz.
+
 ### Zwischenspeicher
 
 - **NVD-Antworten verschlankt gespeichert:** nur ID, Datum, englische Beschreibung, CVSS und `configurations` (vollständig); gemessen 86 MB → 26 MB. Antworten ohne Lücken (CPE-Suche) bleiben unverändert.
