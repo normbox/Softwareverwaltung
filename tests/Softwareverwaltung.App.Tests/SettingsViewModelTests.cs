@@ -467,7 +467,7 @@ public sealed class SettingsViewModelTests
     private static SettingSwitch Switch(SettingsViewModel vm, string name) =>
         vm.Sources.Concat(vm.Traces).Concat(vm.Services).Concat(vm.Actions).Single(s => s.Name == name);
 
-    private sealed class FakeSettings : ISettingsService
+    internal sealed class FakeSettings : ISettingsService
     {
         private readonly HashSet<string> _stored = [];
 

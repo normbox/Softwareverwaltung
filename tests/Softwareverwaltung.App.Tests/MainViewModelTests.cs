@@ -13,6 +13,26 @@ public sealed class MainViewModelTests
     private static readonly SoftwareItem Unchecked = new() { Name = "Unchecked", Rating = Rating.Gray };
 
     [Fact]
+    public void AppStartDoesNotScanUntilTheUserStartsIt() => RunOnDispatcher(async () =>
+    {
+        var inventory = new FakeInventory { Items = [Firefox, SevenZip] };
+        var vm = new MainViewModel(inventory);
+        var shell = new ShellViewModel(vm, new SettingsViewModel(new SettingsViewModelTests.FakeSettings()));
+
+        await shell.InitializeAsync();
+
+        // Kein Scan von selbst: externe Dienste erst nach „Scannen“
+        Assert.Empty(inventory.Scans);
+        Assert.True(vm.ShowNotScannedState);
+        Assert.False(vm.ShowEmptyState);
+
+        await vm.ScanCommand.ExecuteAsync(null);
+        Assert.Single(inventory.Scans);
+        Assert.False(vm.ShowNotScannedState);
+        Assert.Equal(2, vm.Items.Count);
+    });
+
+    [Fact]
     public void ScansOnStartAndSortsByRatingThenName() => RunOnDispatcher(async () =>
     {
         var vm = new MainViewModel(new FakeInventory { Items = [Firefox, Unchecked, SevenZip, OldTool] });

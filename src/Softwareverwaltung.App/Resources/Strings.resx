@@ -271,8 +271,20 @@
   <data name="DetailsVulnerabilitiesTitle" xml:space="preserve">
     <value>Lücken</value>
   </data>
+  <data name="DetailsMoreReasons" xml:space="preserve">
+    <value>{0} weitere Gründe</value>
+  </data>
+  <data name="DetailsMoreReasonsOne" xml:space="preserve">
+    <value>1 weiterer Grund</value>
+  </data>
+  <data name="DetailsSourceLegend" xml:space="preserve">
+    <value>✓ betroffen · ✗ nicht betroffen · ? nicht auswertbar · – in der Quelle nicht bekannt</value>
+  </data>
   <data name="DetailsHistoryTitle" xml:space="preserve">
     <value>Bisherige Aktionen</value>
+  </data>
+  <data name="ProgramsNotScanned" xml:space="preserve">
+    <value>Noch nicht gescannt. Mit „Scannen“ starten Sie die Prüfung; erst dann fragt die App die eingeschalteten Dienste ab.</value>
   </data>
   <data name="ProgramsEmpty" xml:space="preserve">
     <value>Keine Programme gefunden. Die Hinweise oben nennen den Grund, zum Beispiel wenn noch keine Quelle aktiviert ist.</value>
@@ -606,6 +618,18 @@
   </data>
   <data name="AssessmentInformational" xml:space="preserve">
     <value>Hinweis</value>
+  </data>
+  <data name="AssessmentShortPossiblyAffected" xml:space="preserve">
+    <value>möglich</value>
+  </data>
+  <data name="VulnerabilityKevShort" xml:space="preserve">
+    <value>KEV</value>
+  </data>
+  <data name="VulnerabilityKevShortTooltip" xml:space="preserve">
+    <value>Aktiv ausgenutzt (CISA KEV)</value>
+  </data>
+  <data name="VulnerabilityExpandTooltip" xml:space="preserve">
+    <value>Aufklappen für Angaben der Quellen, Links und Beschreibung</value>
   </data>
   <data name="SourceVerdictAffected" xml:space="preserve">
     <value>betroffen</value>
