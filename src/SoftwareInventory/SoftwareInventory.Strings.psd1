@@ -70,6 +70,23 @@ Regeln:
     ProgressPlanQueueCounted                = 'Plane die Warteschlange ({0} von {1})'
     ProgressUpdateQueueCounted              = 'Aktualisiere {0} von {1}'
 
+    # Aktueller Schritt als zweite Zeile der Anzeige (Write-CheckStep)
+    StepWithWait                            = '{0} · {1}'
+    StepWaitInterval                        = 'Warte {0} s (Anfragelimit {1})'
+    StepWaitRetryAfter                      = '{0}: Warte {1} s (Dienst meldet Anfragelimit)'
+    StepCached                              = '{0}: aus dem Zwischenspeicher'
+    StepRemainingMinutes                    = 'noch etwa {0} Min.'
+    StepRemainingUnderMinute                = 'noch unter 1 Min.'
+    StepNvdVersionSearch                    = 'NVD: Versionssuche'
+    StepNvdVersionSearchCounted             = 'NVD: Versionssuche, Seite {0} von {1}'
+    StepNvdCompare                          = 'NVD: Abgleich mit CIRCL'
+    StepNvdCompareCounted                   = 'NVD: Abgleich mit CIRCL, Seite {0} von {1}'
+    StepCirclFirst                          = 'CIRCL: erster Abruf, bei Produkten mit vielen Lücken einige Minuten, danach aus dem Zwischenspeicher'
+    StepCirclFirstCounted                   = 'CIRCL: erster Abruf, Seite {0} von {1}, {2} (danach aus dem Zwischenspeicher)'
+    StepCirclFull                           = 'CIRCL: vollständiger Abruf'
+    StepCirclFullCounted                    = 'CIRCL: vollständiger Abruf, Seite {0} von {1}, {2}'
+    StepCirclSince                          = 'CIRCL: Änderungen seit {0}, Seite {1}'
+
     # Suche nach portablen Programmen (Invoke-InventoryScan)
     PortableSearchNoLocation                = 'Dateisuche: Keine Option „Wo suchen“ gewählt oder die gewählte Option hat keinen Eintrag, daher wurden keine Dateien durchsucht.'
     PortableSearchNoTrace                   = 'Nutzungsspuren sind eingeschaltet, aber keine der Spuren ist gewählt.'

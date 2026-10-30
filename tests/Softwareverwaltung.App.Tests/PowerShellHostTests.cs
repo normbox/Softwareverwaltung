@@ -150,6 +150,24 @@ public sealed class PowerShellHostTests : IAsyncLifetime
         Assert.Contains("Suche: C:\\Programme", messages);
     }
 
+    [Fact]
+    public async Task ForwardsCurrentOperationAsSecondLine()
+    {
+        var messages = new List<string>();
+        var progress = new SynchronousProgress<string>(messages.Add);
+
+        await _host.InvokeAsync(new PSCommand().AddScript("Write-Progress -Activity 'Prüfe Sicherheitslücken (3 von 9)' -Status 'Google Chrome' -CurrentOperation 'CIRCL: Seite 37 von 149'"), progress);
+
+        Assert.Contains($"Prüfe Sicherheitslücken (3 von 9): Google Chrome{Environment.NewLine}CIRCL: Seite 37 von 149", messages);
+    }
+
+    [Fact]
+    public void FormatsProgressWithoutStatusOrOperation()
+    {
+        Assert.Equal("Suche", PowerShellHost.FormatProgress(new ProgressRecord(1, "Suche", " ")));
+        Assert.Equal($"Suche{Environment.NewLine}Schritt", PowerShellHost.FormatProgress(new ProgressRecord(1, "Suche", " ") { CurrentOperation = "Schritt" }));
+    }
+
     private sealed class SynchronousProgress<T>(Action<T> handler) : IProgress<T>
     {
         public void Report(T value) => handler(value);

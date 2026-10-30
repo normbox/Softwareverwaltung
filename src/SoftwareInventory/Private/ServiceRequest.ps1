@@ -62,6 +62,7 @@ function Invoke-ServiceRequest {
         $entry = Read-ServiceCacheEntry -Path $cacheFile
         if ($entry -and -not (Test-CacheRefresh $cacheFile) -and ([datetime]::UtcNow - $entry.FetchedAt) -le $MaxAge) {
             Write-Verbose "$Service aus Zwischenspeicher: $CacheKey"
+            Write-CheckStep -Key StepCached -Arguments $Service
             Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
             return $entry.Data
         }
@@ -95,6 +96,7 @@ function Invoke-ServiceRequest {
             $retryAfter = $failure.Data['RetryAfter']
             if ($attempt -eq 1 -and $null -ne $retryAfter -and $retryAfter -le $script:MaxRetryAfterSeconds) {
                 Write-Verbose "$Service am Anfragelimit, warte $retryAfter s und wiederhole einmal"
+                Write-CheckStep -Key StepWaitRetryAfter -Arguments $Service, ([Math]::Max(1, $retryAfter))
                 Start-Sleep -Seconds ([Math]::Max(1, $retryAfter))
                 continue
             }
@@ -140,7 +142,11 @@ function Wait-ServiceInterval {
     $last = $script:LastServiceCall[$Service]
     if ($last) {
         $wait = $interval - ([datetime]::UtcNow - $last).TotalSeconds
-        if ($wait -gt 0) { Start-Sleep -Milliseconds ([int] ($wait * 1000)) }
+        if ($wait -gt 0) {
+            # Kurze Pausen nicht anzeigen, längere an den aktuellen Schritt hängen
+            if ($wait -ge 1) { Write-CheckStep -Key StepWaitInterval -Arguments ([int] [Math]::Ceiling($wait)), $Service -Wait }
+            Start-Sleep -Milliseconds ([int] ($wait * 1000))
+        }
     }
     $script:LastServiceCall[$Service] = [datetime]::UtcNow
 }

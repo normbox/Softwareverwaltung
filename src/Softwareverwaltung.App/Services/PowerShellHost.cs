@@ -111,7 +111,7 @@ public sealed class PowerShellHost : IPowerShellHost
                     var record = ps.Streams.Progress[e.Index];
                     if (record.RecordType != ProgressRecordType.Completed)
                     {
-                        progress.Report(string.IsNullOrWhiteSpace(record.StatusDescription) ? record.Activity : $"{record.Activity}: {record.StatusDescription}");
+                        progress.Report(FormatProgress(record));
                     }
                 };
             }
@@ -167,6 +167,16 @@ public sealed class PowerShellHost : IPowerShellHost
     {
         var windowsModules = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "Modules");
         return string.Join(Path.PathSeparator, modulesDirectory, windowsModules);
+    }
+
+    /// <summary>
+    /// Text einer Fortschrittsmeldung: „Tätigkeit: Programm“, darunter der aktuelle Schritt
+    /// (CurrentOperation, z. B. „CIRCL: Seite 37 von 149“) als zweite Zeile.
+    /// </summary>
+    public static string FormatProgress(ProgressRecord record)
+    {
+        var text = string.IsNullOrWhiteSpace(record.StatusDescription) ? record.Activity : $"{record.Activity}: {record.StatusDescription}";
+        return string.IsNullOrWhiteSpace(record.CurrentOperation) ? text : text + Environment.NewLine + record.CurrentOperation;
     }
 
     /// <summary>

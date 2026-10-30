@@ -37,6 +37,7 @@ function Get-CirclCve {
         $full = -not $store -or $refresh -or ([datetime]::UtcNow - $store.FullAt).TotalDays -gt $script:CirclFullDays
         if (-not $full -and -not $due -and ([datetime]::UtcNow - $store.FetchedAt) -le $maxAge) {
             Write-Verbose "CIRCL aus Zwischenspeicher: $($parts[3])/$($parts[4])"
+            Write-CheckStep -Key StepCached -Arguments 'CIRCL'
             Add-CheckTrace -Service CIRCL -File $file -FetchedAt $store.FetchedAt -MaxAge $maxAge
             foreach ($id in $store.Records.Keys) { if (-not $all.ContainsKey($id)) { $all[$id] = $store.Records[$id] } }
             continue
@@ -57,7 +58,7 @@ function Get-CirclCve {
             }
             if ($full) {
                 $records = @{}
-                $loaded = Get-CirclPage -Vendor $parts[3] -Product $parts[4] -Setting $Setting
+                $loaded = Get-CirclPage -Vendor $parts[3] -Product $parts[4] -Setting $Setting -First:(-not $store)
                 foreach ($id in $loaded.Keys) { if ($loaded[$id]) { $records[$id] = $loaded[$id] } }
                 $store = @{ FullAt = $started; FetchedAt = $started; Records = $records }
             }
@@ -87,12 +88,24 @@ function Get-CirclPage {
         entfernen). Mit -Since nur seit diesem Tag (UTC, einschließlich) geänderte Datensätze; diese
         Antwort hat kein total_count, geblättert wird bis zu einer nicht vollen Seite. Liefert eine
         volle Seite dabei keine neuen Datensätze, ist das Blättern unzuverlässig: Ergebnis $null.
+        Fortschritt: je Seite ein Schritt, beim vollständigen Abruf ab Seite 2 mit Seitenzahl und grober
+        Restzeit (-First: erster Abruf ohne Bestand, mit Hinweis auf den Zwischenspeicher).
     #>
-    param([string] $Vendor, [string] $Product, [Nullable[datetime]] $Since, $Setting)
+    param([string] $Vendor, [string] $Product, [Nullable[datetime]] $Since, $Setting, [switch] $First)
     $path = "$script:CirclBase/vulnerability/search/$([uri]::EscapeDataString($Vendor))/$([uri]::EscapeDataString($Product))"
     $sinceText = if ($null -ne $Since) { '&since=' + $Since.ToUniversalTime().ToString('yyyy-MM-dd', [cultureinfo]::InvariantCulture) }
+    $stepKey = if ($First) { 'StepCirclFirst' } else { 'StepCirclFull' }
+    $started = [datetime]::UtcNow
+    $pages = 0
     $all = @{}
     for ($page = 1; $page -le $script:CirclMaxPages; $page++) {
+        if ($null -ne $Since) { Write-CheckStep -Key StepCirclSince -Arguments $Since.ToLocalTime().ToString('d'), $page }
+        elseif ($pages -gt 1) {
+            # Restzeit aus der bisherigen Dauer je Seite (Wartezeit eingeschlossen)
+            $perPage = ([datetime]::UtcNow - $started).TotalSeconds / ($page - 1)
+            Write-CheckStep -Key "${stepKey}Counted" -Arguments $page, $pages, (Format-RemainingTime ($perPage * ($pages - $page + 1)))
+        }
+        else { Write-CheckStep -Key $stepKey }
         $r = Invoke-ServiceRequest -Service CIRCL -Uri "$path`?per_page=$script:CirclPageSize&page=$page$sinceText" -Setting $Setting
         # Ohne since stehen die Quellen unter results, mit since direkt in der Antwort.
         $feeds = if ($r -and $r.PSObject.Properties['results']) { $r.results } else { $r }
@@ -120,6 +133,7 @@ function Get-CirclPage {
         else {
             # Nicht nach neuen IDs abbrechen: nvd- und cvelistv5-Zeile derselben CVE liegen oft auf verschiedenen Seiten.
             $total = if ($r -and $r.PSObject.Properties['total_count']) { [int] $r.total_count } else { 0 }
+            $pages = [int] [math]::Ceiling($total / $script:CirclPageSize)
             if ($rows -eq 0 -or $page * $script:CirclPageSize -ge $total) { return $all }
         }
     }

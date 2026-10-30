@@ -19,6 +19,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 - Der User-Agent nennt die Projektadresse als Kontakt.
 - `Get-RefreshEstimate` zählt CIRCL-Anfragen mit (`CirclEnabled`, `CirclRequests`).
 - **CIRCL-Bestand mit Nachladen:** Je Produkt ein verschlankter Bestand (bei Chrome etwa 2 % der Antworten), danach nur Änderungen per `since=` statt alle 24 Stunden alles neu, wie es die Zugriffsregeln von CIRCL verlangen. Vollständig nur ohne lesbaren Bestand, nach 30 Tagen oder bei „Neu prüfen ohne Cache“. `Clear-CheckCache` behält den Bestand und lädt beim nächsten Mal nach. Ein abgebrochenes Nachladen setzt das Abrufdatum nicht weiter.
+- **Fortschritt mit aktuellem Schritt:** Unter „Prüfe Sicherheitslücken (3 von 9): Programm“ zeigt die App eine zweite Zeile, z. B. „CIRCL: erster Abruf, Seite 37 von 149, noch etwa 6 Min. (danach aus dem Zwischenspeicher)“, „CIRCL: Änderungen seit …, Seite 1“, „NVD: Versionssuche“, „NVD: Abgleich mit CIRCL, Seite 2 von 3“ oder „… aus dem Zwischenspeicher“. Wartezeiten des Anfragelimits hängen an diesem Schritt („· Warte 3 s (Anfragelimit CIRCL)“), das Warten nach einem 429 steht in eigener Zeile.
 - Selbstbereinigung: Sind alle Dateien zu alt, räumt sie jetzt auch die leeren Ordner auf (vorher Abbruch beim Größenvergleich).
 - `PRIVACY.md`, `THIRD-PARTY-NOTICES.md`, `docs/EXTERNE-DIENSTE.md`, `docs/SCHWACHSTELLEN.md` und `docs/TECHNIK.md` beschreiben CIRCL (Sitz Luxemburg, CC BY 4.0, Abfragegrenzen).
 
