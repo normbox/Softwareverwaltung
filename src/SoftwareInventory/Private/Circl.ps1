@@ -4,6 +4,8 @@
 # Ergebnisse des Spikes: PR „CIRCL Vulnerability-Lookup as second vulnerability source“.
 
 $script:CirclBase = 'https://vulnerability.circl.lu/api'
+# Der Server begrenzt per_page stillschweigend auf 100 Zeilen (getestet am 30.10.2026 mit 500 und 1000).
+# Nicht erhöhen: Beim Nachladen mit since endet das Blättern an der ersten Seite mit weniger Zeilen.
 $script:CirclPageSize = 100
 $script:CirclVersion = 'v?\d[\w.+-]*'
 # Bestand je Produkt: nach so vielen Tagen wieder vollständig laden, dazwischen nur Änderungen (since).
@@ -116,8 +118,9 @@ function Get-CirclPage {
             if ($new -eq 0) { return $null }
         }
         else {
+            # Nicht nach neuen IDs abbrechen: nvd- und cvelistv5-Zeile derselben CVE liegen oft auf verschiedenen Seiten.
             $total = if ($r -and $r.PSObject.Properties['total_count']) { [int] $r.total_count } else { 0 }
-            if ($new -eq 0 -or $page * $script:CirclPageSize -ge $total) { return $all }
+            if ($rows -eq 0 -or $page * $script:CirclPageSize -ge $total) { return $all }
         }
     }
     if ($null -ne $Since) { return $null }

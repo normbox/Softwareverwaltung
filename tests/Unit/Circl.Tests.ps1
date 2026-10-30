@@ -189,6 +189,18 @@ Describe 'Get-CirclCve' {
         }
     }
 
+    It 'blättert weiter, auch wenn eine Seite nur schon bekannte CVEs enthält' {
+        # Wie bei Chrome: nvd- und cvelistv5-Zeile derselben CVE auf verschiedenen Seiten
+        Mock -ModuleName SoftwareInventory Invoke-ServiceRequest {
+            $page = [int] ([regex]::Match("$Uri", '&page=(\d+)').Groups[1].Value)
+            $ids = switch ($page) { 1 { 1..100 } 2 { 1..100 } default { 101..120 } }
+            $rows = @($ids | ForEach-Object { , @("cve-2026-$_", @{ cveMetadata = @{ cveId = "CVE-2026-$_" }; containers = @{ cna = @{} } }) })
+            @{ results = @{ cvelistv5 = $rows }; total_count = 220 } | ConvertTo-Json -Depth 8 | ConvertFrom-Json -DateKind String
+        }
+        (Invoke-Circl).Count | Should -Be 120
+        Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 3 -Exactly
+    }
+
     It 'speichert nur die ausgewerteten Felder und fragt bei frischem Bestand nicht neu' {
         $first = Invoke-Circl
         $first.Keys | Sort-Object | Should -Be @('CVE-2026-0001', 'CVE-2026-0002')
