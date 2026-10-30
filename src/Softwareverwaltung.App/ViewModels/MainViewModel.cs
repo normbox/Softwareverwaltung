@@ -119,12 +119,26 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsEmpty => Items.Count == 0;
 
-    public bool ShowEmptyState => IsEmpty && !IsBusy;
+    /// <summary>Nach einem Scan ohne Programme: Hinweis auf die Gründe.</summary>
+    public bool ShowEmptyState => IsEmpty && !IsBusy && LastScan is not null;
+
+    /// <summary>Vor dem ersten Scan: Hinweis, dass der Benutzer den Scan selbst startet.</summary>
+    public bool ShowNotScannedState => IsEmpty && !IsBusy && LastScan is null && _ready;
+
+    partial void OnLastScanChanged(DateTimeOffset? value)
+    {
+        OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(ShowNotScannedState));
+    }
 
     public string CountText => Items.Count == 0 ? "" :
         VisibleCount == Items.Count ? AppText.Format("CountAll", Items.Count) : AppText.Format("CountFiltered", VisibleCount, Items.Count);
 
-    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(ShowEmptyState));
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowEmptyState));
+        OnPropertyChanged(nameof(ShowNotScannedState));
+    }
 
     partial void OnSearchTextChanged(string value) => RefreshView();
 

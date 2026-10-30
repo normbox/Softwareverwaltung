@@ -109,7 +109,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         Credentials =
         [
             new("NVD", AppText.Get("SettingsCredentialNVD"), AppText.Get("SettingsCredentialNVDText")),
-            new("CIRCL", AppText.Get("SettingsCredentialCIRCL"), AppText.Get("SettingsCredentialCIRCLText")),
             new("GitHub", AppText.Get("SettingsCredentialGitHub"), AppText.Get("SettingsCredentialGitHubText")),
         ];
         foreach (var item in AllSwitches)

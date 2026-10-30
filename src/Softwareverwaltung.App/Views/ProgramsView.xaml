@@ -20,6 +20,52 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Schlanke Aufklappzeile (▸/▾) statt der Kartenoptik von WPF-UI, damit viele Lücken ruhig untereinander stehen -->
+        <Style x:Key="CompactExpander" TargetType="Expander">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <!-- HeaderSite: unter diesem Namen bindet WPF den Kopf an die Barrierefreiheit (Aufklappen per Screenreader) -->
+                            <ToggleButton x:Name="HeaderSite" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                          AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}"
+                                          ToolTip="{TemplateBinding ToolTip}" Cursor="Hand" Focusable="True">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Row" Background="Transparent" CornerRadius="4" Padding="2,3,6,3">
+                                            <DockPanel>
+                                                <TextBlock x:Name="Chevron" Text="▸" Width="16" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                <ContentPresenter VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Chevron" Property="Text" Value="▾" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="Body" Visibility="Collapsed" Margin="18,2,0,8" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -315,18 +361,30 @@
                             </StackPanel>
                             </DockPanel>
 
-                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                       Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}">
-                                <Run Text="{loc:Text DetailsInstallLabel}" /><Run Text="{Binding InstallInfo, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                       Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}">
-                                <Run Text="{loc:Text DetailsWingetIdLabel}" /><Run Text="{Binding WingetId, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                       Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}">
-                                <Run Text="{loc:Text DetailsCpeLabel}" /><Run Text="{Binding CpeText, Mode=OneWay}" />
-                            </TextBlock>
+                            <!-- Programmangaben als kleine Tabelle: Beschriftung links, Wert rechts -->
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="{loc:Text DetailsInstallLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InstallInfo}" TextWrapping="Wrap" Margin="0,0,0,2"
+                                           Visibility="{Binding InstallInfo, Converter={StaticResource NullToVisibility}}" />
+                                <TextBlock Grid.Row="1" Text="{loc:Text DetailsWingetIdLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WingetId}" TextWrapping="Wrap" Margin="0,0,0,2"
+                                           Visibility="{Binding WingetId, Converter={StaticResource NullToVisibility}}" />
+                                <TextBlock Grid.Row="2" Text="{loc:Text DetailsCpeLabel}" Margin="0,0,12,2" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CpeText}" TextWrapping="Wrap" Margin="0,0,0,2"
+                                           Visibility="{Binding CpeText, Converter={StaticResource NullToVisibility}}" />
+                            </Grid>
                             <!-- CPE: ohne Zuordnung „CPE zuordnen“; bei eigener Zuordnung ändern und „Vorschlag melden“ -->
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,8"
                                         Visibility="{Binding CanMapCpe, Converter={StaticResource BoolToVisibility}}">
@@ -361,54 +419,116 @@
                                 </StackPanel>
                             </StackPanel>
 
+                            <!-- Gründe: höchstens drei sichtbar, der Rest zum Aufklappen -->
                             <TextBlock Text="{loc:Text DetailsReasonsTitle}" FontWeight="SemiBold" />
-                            <ItemsControl ItemsSource="{Binding Reasons}">
+                            <ItemsControl ItemsSource="{Binding ReasonsShown}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <Expander Style="{StaticResource CompactExpander}" Header="{Binding ReasonsMoreText}"
+                                      AutomationProperties.Name="{Binding ReasonsMoreText}"
+                                      Visibility="{Binding ReasonsMoreText, Converter={StaticResource NullToVisibility}}">
+                                <ItemsControl ItemsSource="{Binding ReasonsMore}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
 
+                            <!-- Lücken: eine Zeile je CVE, aufklappbar für Quellen, Links und Beschreibung -->
                             <TextBlock Text="{loc:Text DetailsVulnerabilitiesTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
                                        Visibility="{Binding VulnerabilityText, Converter={StaticResource NullToVisibility}}" />
-                            <ItemsControl ItemsSource="{Binding Vulnerabilities}">
+                            <ItemsControl ItemsSource="{Binding Vulnerabilities}" Grid.IsSharedSizeScope="True">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type models:VulnerabilityItem}">
-                                        <StackPanel Margin="0,4,0,0">
-                                            <WrapPanel>
-                                                <ui:HyperlinkButton Content="{Binding CveId}" NavigateUri="{Binding Url}" Padding="0" />
-                                                <TextBlock Text="{Binding Summary}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                            </WrapPanel>
-                                            <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
-                                                       Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
-                                            <!-- Angabe jeder Quelle einzeln, mit Namensnennung (CC BY 4.0 bei CIRCL) -->
-                                            <ItemsControl ItemsSource="{Binding Sources}" Margin="12,2,0,2">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type models:SourceStatementItem}">
-                                                        <StackPanel Margin="0,1,0,1">
-                                                            <WrapPanel>
-                                                                <TextBlock Text="{Binding Line}" VerticalAlignment="Center" />
-                                                                <ui:HyperlinkButton Content="{loc:Text SourceOpen}" NavigateUri="{Binding Url}" Padding="0" Margin="8,0,0,0"
-                                                                                    Visibility="{Binding Url, Converter={StaticResource NullToVisibility}}"
-                                                                                    AutomationProperties.Name="{Binding Line}" />
-                                                            </WrapPanel>
-                                                            <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
-                                                                       Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
-                                                            <TextBlock Text="{Binding Attribution}" TextWrapping="Wrap" FontSize="11"
-                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                                       Visibility="{Binding Attribution, Converter={StaticResource NullToVisibility}}" />
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                       Visibility="{Binding Description, Converter={StaticResource NullToVisibility}}" />
-                                        </StackPanel>
+                                        <Expander Style="{StaticResource CompactExpander}"
+                                                  AutomationProperties.Name="{Binding AccessibleName}"
+                                                  ToolTip="{loc:Text VulnerabilityExpandTooltip}">
+                                            <Expander.Header>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Cve" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Assessment" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Kev" />
+                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="Score" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding CveId}" FontWeight="SemiBold" Margin="0,0,16,0" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding AssessmentShort}" Margin="0,0,12,0" />
+                                                    <TextBlock Grid.Column="2" Text="{loc:Text VulnerabilityKevShort}" Margin="0,0,12,0" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                               ToolTip="{loc:Text VulnerabilityKevShortTooltip}"
+                                                               Visibility="{Binding Kev, Converter={StaticResource BoolToVisibility}}" />
+                                                    <TextBlock Grid.Column="3" Text="{Binding ScoreText}" Margin="0,0,16,0"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                    <ItemsControl Grid.Column="4" ItemsSource="{Binding Sources}" Focusable="False">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="{x:Type models:SourceStatementItem}">
+                                                                <TextBlock Text="{Binding ShortText}" ToolTip="{Binding Line}" Margin="0,0,12,0"
+                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Grid>
+                                            </Expander.Header>
+                                            <StackPanel>
+                                                <WrapPanel>
+                                                    <ui:HyperlinkButton Content="{Binding CveId}" NavigateUri="{Binding Url}" Padding="0" />
+                                                    <TextBlock Text="{Binding Summary}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                </WrapPanel>
+                                                <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
+                                                           Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                                <!-- Angabe jeder Quelle einzeln; bei CIRCL mit Namensnennung (CC BY 4.0) -->
+                                                <ItemsControl ItemsSource="{Binding Sources}" Margin="0,2,0,2">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type models:SourceStatementItem}">
+                                                            <StackPanel Margin="0,1,0,1">
+                                                                <WrapPanel>
+                                                                    <TextBlock Text="{Binding Line}" VerticalAlignment="Center" />
+                                                                    <ui:HyperlinkButton Content="{loc:Text SourceOpen}" NavigateUri="{Binding Url}" Padding="0" Margin="8,0,0,0"
+                                                                                        Visibility="{Binding Url, Converter={StaticResource NullToVisibility}}"
+                                                                                        AutomationProperties.Name="{Binding Line}" />
+                                                                </WrapPanel>
+                                                                <TextBlock Text="{Binding Note}" TextWrapping="Wrap" FontStyle="Italic"
+                                                                           Visibility="{Binding Note, Converter={StaticResource NullToVisibility}}" />
+                                                                <TextBlock Text="{Binding InlineAttribution}" TextWrapping="Wrap" FontSize="11"
+                                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                                           Visibility="{Binding InlineAttribution, Converter={StaticResource NullToVisibility}}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                           Visibility="{Binding Description, Converter={StaticResource NullToVisibility}}" />
+                                            </StackPanel>
+                                        </Expander>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <!-- Zeichenerklärung und Namensnennung einmal unter der Liste -->
+                            <StackPanel Margin="18,4,0,0" Visibility="{Binding Vulnerabilities.Count, Converter={StaticResource CountToVisibility}}">
+                                <TextBlock Text="{loc:Text DetailsSourceLegend}" TextWrapping="Wrap" FontSize="11"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <ItemsControl ItemsSource="{Binding Attributions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="11"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
 
                             <ItemsControl ItemsSource="{Binding Refuted}" Margin="0,8,0,0">
                                 <ItemsControl.ItemTemplate>
@@ -438,6 +558,10 @@
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVisibility}}"
                        Text="{loc:Text ProgramsEmpty}" />
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="460"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Visibility="{Binding ShowNotScannedState, Converter={StaticResource BoolToVisibility}}"
+                       Text="{loc:Text ProgramsNotScanned}" />
         </Grid>
 
         <!-- Statuszeile -->

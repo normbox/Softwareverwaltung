@@ -108,6 +108,29 @@ public sealed record SoftwareItem
 
     public string ReasonText => string.Join(Environment.NewLine, Reasons);
 
+    /// <summary>In den Details sichtbare Gründe; der Rest steht hinter „weitere anzeigen“.</summary>
+    public const int VisibleReasonCount = 3;
+
+    public IReadOnlyList<string> ReasonsShown => Reasons.Take(VisibleReasonCount).ToList();
+
+    public IReadOnlyList<string> ReasonsMore => Reasons.Skip(VisibleReasonCount).ToList();
+
+    /// <summary>Beschriftung zum Aufklappen der übrigen Gründe, z. B. „2 weitere Gründe“; null, wenn es keine gibt.</summary>
+    public string? ReasonsMoreText => ReasonsMore.Count switch
+    {
+        0 => null,
+        1 => AppText.Get("DetailsMoreReasonsOne"),
+        var n => AppText.Format("DetailsMoreReasons", n),
+    };
+
+    /// <summary>Namensnennung der Quellen einmal unter der Lückenliste (z. B. CC BY 4.0 bei CIRCL).</summary>
+    public IReadOnlyList<string> Attributions => Vulnerabilities
+        .SelectMany(v => v.Sources)
+        .Select(s => s.Attribution)
+        .OfType<string>()
+        .Distinct()
+        .ToList();
+
     /// <summary>Erster Grund für die Spalte „Grund“; alle Gründe stehen im Tooltip und in den Details.</summary>
     public string ReasonSummary => Reasons.Count switch
     {
@@ -248,6 +271,14 @@ public sealed record VulnerabilityItem(string CveId, string? Assessment, string?
 
     public string AssessmentText => Assessment is null ? "" : AppText.Find("Assessment" + Assessment) ?? Assessment;
 
+    /// <summary>Kurze Bewertung für die kompakte Zeile, z. B. „möglich“ statt „möglicherweise betroffen“.</summary>
+    public string AssessmentShort => Assessment is null ? "" : AppText.Find("AssessmentShort" + Assessment) ?? AssessmentText;
+
+    public string? ScoreText => Score is { } s ? $"CVSS {s.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}" : null;
+
+    /// <summary>Name für Screenreader: CVE und Kurzinfo, da die kompakte Zeile aus mehreren Feldern besteht.</summary>
+    public string AccessibleName => $"{CveId} {Summary}";
+
     /// <summary>Kurzinfo hinter der CVE-Nummer, z. B. „betroffen · aktiv ausgenutzt (KEV) · CVSS 7.0 · EPSS 67 %“.</summary>
     public string Summary => string.Join(" · ", new[]
     {
@@ -301,6 +332,24 @@ public sealed record SourceStatementItem(string Source, string Verdict, string? 
                 : AppText.Format("SourceStatementLineRange", Source, verdict, Range);
         }
     }
+
+    /// <summary>Zeichen für die kompakte Zeile: ✓ betroffen, ✗ nicht betroffen, ? nicht auswertbar, – nicht bekannt.</summary>
+    public string Symbol => Verdict switch
+    {
+        "Affected" => "✓",
+        "NotAffected" => "✗",
+        "NotEvaluable" => "?",
+        _ => "–",
+    };
+
+    /// <summary>z. B. „CIRCL ✓“; die ausführliche Angabe steht im Tooltip (Line).</summary>
+    public string ShortText => $"{Source} {Symbol}";
+
+    /// <summary>
+    /// Namensnennung in der aufgeklappten Zeile: nur bei CIRCL (CC BY 4.0 verlangt sie beim Treffer);
+    /// alle Quellen werden zusätzlich einmal unter der Liste genannt.
+    /// </summary>
+    public string? InlineAttribution => Source == "CIRCL" ? Attribution : null;
 
     public static SourceStatementItem FromPs(PSObject obj) => new(
         obj.Properties["Source"]?.Value?.ToString() ?? "",

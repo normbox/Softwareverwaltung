@@ -7,7 +7,10 @@ public sealed class ShellViewModel(MainViewModel programs, SettingsViewModel set
 
     public SettingsViewModel Settings { get; } = settings;
 
-    /// <summary>Module laden, dann Einstellungen (für die Frage Privat/Firma), dann erster Scan.</summary>
+    /// <summary>
+    /// Module laden, dann Einstellungen (für die Frage Privat/Firma). Gescannt wird erst, wenn der
+    /// Benutzer „Scannen“ wählt: Ein Scan fragt externe Dienste ab und soll nie von selbst starten.
+    /// </summary>
     public async Task InitializeAsync()
     {
         if (!await Programs.LoadModulesAsync())
@@ -15,6 +18,5 @@ public sealed class ShellViewModel(MainViewModel programs, SettingsViewModel set
             return;
         }
         await Settings.LoadAsync();
-        await Programs.ScanCommand.ExecuteAsync(null);
     }
 }

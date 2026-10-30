@@ -164,4 +164,51 @@ public sealed class SoftwareItemTests
         Assert.Equal("CIRCL: in dieser Quelle nicht bekannt", vuln.Sources[2].Line);
         Assert.Null(vuln.Sources[2].Url);   // nur https
     }
+
+    [Fact]
+    public void CompactLineShowsShortAssessmentAndOneSymbolPerSource()
+    {
+        var vuln = VulnerabilityItem.FromPs(Ps(
+            ("CveId", "CVE-2026-1002"), ("Assessment", "PossiblyAffected"), ("Score", 9.3),
+            ("Sources", new object[]
+            {
+                Ps(("Source", "NVD"), ("Verdict", "Unknown"), ("Attribution", "Daten: National Vulnerability Database (NIST)")),
+                Ps(("Source", "CIRCL"), ("Verdict", "NotEvaluable"), ("Attribution", "Daten: CVE-Programm über CIRCL, CC BY 4.0")),
+            })));
+
+        Assert.Equal("möglich", vuln.AssessmentShort);
+        Assert.Equal("CVSS 9.3", vuln.ScoreText);
+        Assert.Equal(["NVD –", "CIRCL ?"], vuln.Sources.Select(s => s.ShortText));
+        // Namensnennung in der aufgeklappten Zeile nur bei CIRCL
+        Assert.Null(vuln.Sources[0].InlineAttribution);
+        Assert.Equal("Daten: CVE-Programm über CIRCL, CC BY 4.0", vuln.Sources[1].InlineAttribution);
+        Assert.Equal("betroffen", VulnerabilityItem.FromPs(Ps(("CveId", "CVE-3"), ("Assessment", "Affected"))).AssessmentShort);
+        Assert.Equal("✓", new SourceStatementItem("NVD", "Affected", null, null, null, null).Symbol);
+        Assert.Equal("✗", new SourceStatementItem("NVD", "NotAffected", null, null, null, null).Symbol);
+    }
+
+    [Fact]
+    public void DetailsShowThreeReasonsAndNameEachSourceOnceBelowTheList()
+    {
+        var source = (string name, string text) => Ps(("Source", name), ("Verdict", "Affected"), ("Attribution", text));
+        var rating = Ps(
+            ("Name", "FFmpeg"),
+            ("Reasons", new object[] { "Grund 1", "Grund 2", "Grund 3", "Grund 4", "Grund 5" }),
+            ("VulnerabilityStatus", Ps(("Status", "Checked"), ("Vulnerabilities", new object[]
+            {
+                Ps(("CveId", "CVE-1"), ("Assessment", "Affected"), ("Sources", new object[] { source("NVD", "Daten: NVD"), source("CIRCL", "Daten: CIRCL") })),
+                Ps(("CveId", "CVE-2"), ("Assessment", "Affected"), ("Sources", new object[] { source("CIRCL", "Daten: CIRCL") })),
+            }))));
+
+        var item = SoftwareItem.FromRating(rating);
+
+        Assert.Equal(["Grund 1", "Grund 2", "Grund 3"], item.ReasonsShown);
+        Assert.Equal(["Grund 4", "Grund 5"], item.ReasonsMore);
+        Assert.Equal("2 weitere Gründe", item.ReasonsMoreText);
+        Assert.Equal(["Daten: NVD", "Daten: CIRCL"], item.Attributions);
+
+        var four = SoftwareItem.FromRating(Ps(("Name", "X"), ("Reasons", new object[] { "a", "b", "c", "d" })));
+        Assert.Equal("1 weiterer Grund", four.ReasonsMoreText);
+        Assert.Null(SoftwareItem.FromRating(Ps(("Name", "Y"), ("Reasons", new object[] { "a" }))).ReasonsMoreText);
+    }
 }
