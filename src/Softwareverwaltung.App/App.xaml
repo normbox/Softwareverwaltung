@@ -13,7 +13,6 @@
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-            <conv:RatingToBrushConverter x:Key="RatingToBrush" />
             <conv:RatingToTextConverter x:Key="RatingToText" />
             <conv:NullToVisibilityConverter x:Key="NullToVisibility" />
             <conv:CountToVisibilityConverter x:Key="CountToVisibility" />

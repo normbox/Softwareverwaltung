@@ -27,12 +27,15 @@
 
         <!-- Schlanke Aufklappzeile (▸/▾) statt der Kartenoptik von WPF-UI, damit viele Lücken ruhig untereinander stehen -->
         <Style x:Key="CompactExpander" TargetType="Expander">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
                         <StackPanel>
                             <!-- HeaderSite: unter diesem Namen bindet WPF den Kopf an die Barrierefreiheit (Aufklappen per Screenreader) -->
+                            <!-- Foreground ausdrücklich: der ToggleButton-Stil von WPF-UI setzt sonst eine eigene, im dunklen Design fast schwarze Farbe -->
                             <ToggleButton x:Name="HeaderSite" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                           Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
                                           AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}"
                                           ToolTip="{TemplateBinding ToolTip}" Cursor="Hand" Focusable="True">
@@ -491,7 +494,25 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate DataType="{x:Type models:SoftwareItem}">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding ReasonText}">
-                                    <Ellipse Width="12" Height="12" Fill="{Binding Rating, Converter={StaticResource RatingToBrush}}" />
+                                    <!-- Ampelfarben aus dem Design (hell/dunkel), keine festen Werte; daneben steht immer der Text -->
+                                    <Ellipse Width="12" Height="12">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{DynamicResource SystemFillColorNeutralBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Rating}" Value="{x:Static models:Rating.Red}">
+                                                        <Setter Property="Fill" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Rating}" Value="{x:Static models:Rating.Yellow}">
+                                                        <Setter Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Rating}" Value="{x:Static models:Rating.Green}">
+                                                        <Setter Property="Fill" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
                                     <TextBlock Margin="6,0,0,0" Text="{Binding Rating, Converter={StaticResource RatingToText}}" />
                                 </StackPanel>
                             </DataTemplate>
