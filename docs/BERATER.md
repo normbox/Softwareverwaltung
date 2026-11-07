@@ -36,7 +36,7 @@ Wie viel das Modell sieht, legt die Freigabestufe fest (Tabelle in [EXTERNE-DIEN
 
 - **Je Anbieterart eine Stufe** in `Advisor.ShareLevel`: `Local` (Voreinstellung 3, höchstens 4) und `External` für spätere Plugins (Voreinstellung 1, höchstens 3; Stufe 4 nie extern). Gesetzt mit `Set-InventorySetting -AdvisorShareLevelLocal` bzw. `-AdvisorShareLevelExternal`.
 - `Invoke-AdvisorTool -ProviderKind Local|External` (Voreinstellung `Local`) bestimmt die Stufe selbst aus Einstellung und Höchststufe (`Get-AdvisorShareLimit`); der Aufrufer kann sie nicht erhöhen. Eine Richtlinie für Firmen, die die Höchststufe senkt, kommt mit Etappe 6.
-- **Ältere Einstellungen** ohne Stufe bekommen lokal Stufe 2 und `ShareLevelNoticePending`; die App weist einmal darauf hin. Höher stellt nur der Benutzer.
+- **Ältere Einstellungen** ohne Stufe bekommen lokal Stufe 2 und `ShareLevelNoticePending`; die App weist einmal darauf hin (in den Einstellungen immer, im Hauptfenster nur bei eingeschaltetem Berater), bis der Benutzer „Verstanden“ klickt oder eine Stufe speichert. Höher stellt nur der Benutzer; neue Einstellungen beginnen mit Stufe 3.
 - **Stufe 0:** Es gibt nur `get_inventory`, ohne Parameter (sonst ließen sich Namen über `filter` einzeln abfragen). Antwort: Anzahl Programme, Ampelverteilung, verfügbare Updates, Anzahl Lücken, KEV-Lücken und CVE-Nummern ohne Programmzuordnung (höchstens 200). Die anderen Tools melden `ShareLevelTooLow`, `Get-AdvisorTool` beschreibt nur dieses eine.
 - **Stufe 1:** Liste und Details mit Name, Hersteller, Versionen, Ampel, Gründen und Lücken; keine Installationsdetails, keine portablen Programme.
 - **Stufe 2:** zusätzlich `sources`, `install_type`, `scope`, `architecture`, `winget_id`, `winget_source` und bei installierten Programmen `install_location` mit Platzhaltern (`%PROGRAMFILES%\7-Zip`, Benutzerpfade über die Bereinigung).
@@ -58,8 +58,8 @@ Wie viel das Modell sieht, legt die Freigabestufe fest (Tabelle in [EXTERNE-DIEN
 | `propose_uninstall` | Proposal | Schlägt eine Deinstallation vor |
 
 - Die `id` (`p-` plus 12 Hex-Zeichen) ist ein Hash des stabilen Schlüssels eines Programms. Sie enthält keine Pfade und keine Namen.
-- Die Tools arbeiten mit den Daten des letzten Scans. Die App übergibt sie mit `Set-AdvisorContext`. Ohne diesen Aufruf liest das Modul beim ersten Tool-Aufruf einmal selbst ein.
-- Fehler kommen als `Ok = $false` mit festem Code (`Code`, im JSON `error_code`) und einer Meldung in der Sprache der Oberfläche zurück, damit das Modell sich korrigieren kann. Codes: `UnknownTool`, `InvalidArguments`, `InvalidId`, `UnknownId`, `InvalidLimit`, `InvalidRating`, `ReasonMissing`, `NoUpdateKnown`, `ShareLevelTooLow`, `ToolFailed`; Vorschläge melden `ProposalCreated`.
+- Die Tools arbeiten mit den Daten des letzten Scans. Die App übergibt sie nach jedem Scan mit `Set-AdvisorContext`. Das Modul liest **nie selbst ein**, weil ein Scan externe Dienste abfragt und nur auf Wunsch des Benutzers startet: Ohne Daten aus einem Scan antwortet jedes Tool mit `NoScanData`, und die Vorschau meldet `HasScanData = $false`. Ein Scan ohne Programme zählt als Scan.
+- Fehler kommen als `Ok = $false` mit festem Code (`Code`, im JSON `error_code`) und einer Meldung in der Sprache der Oberfläche zurück, damit das Modell sich korrigieren kann. Codes: `UnknownTool`, `InvalidArguments`, `InvalidId`, `UnknownId`, `InvalidLimit`, `InvalidRating`, `ReasonMissing`, `NoUpdateKnown`, `ShareLevelTooLow`, `NoScanData`, `ToolFailed`; Vorschläge melden `ProposalCreated`.
 - Vorschläge führen nichts aus. `Proposal` enthält Aktion, Programm, Begründung und die Bewertung für die Oberfläche. Das Modell bekommt nur die Vorschlags-ID und den Hinweis, dass der Benutzer selbst entscheidet. Bestätigt und ausgeführt wird wie bei den Buttons, also mit Bestätigungsdialog und genau dem bestätigten Befehl (siehe [AKTIONEN.md](AKTIONEN.md)).
 - `Get-AdvisorTool -SystemPrompt` liefert die Systemanweisung: auf Deutsch antworten, nur auf Tool-Ergebnisse stützen, nur vorschlagen, „möglicherweise betroffen“ nicht als sicher darstellen.
 - Gründe, Hinweise und widerlegte Treffer bekommt das Modell als `code`, `args` und `text`. So hängt auch dort die Logik am Code, und der Text ist in der Sprache der Oberfläche.
@@ -76,8 +76,21 @@ Die Gesprächsschleife liegt in der App (`src/Softwareverwaltung.App/Advisor`), 
 - **`AdvisorConversation`**: Systemanweisung und Tools aus `Get-AdvisorTool -ProviderKind …`; die Frage des Benutzers läuft vor dem Senden durch `Protect-AdvisorText`. Tool-Aufrufe führt `Invoke-AdvisorTool -ProviderKind …` aus, bis das Modell antwortet, höchstens 8 Runden (`AdvisorToolRoundLimit`). Bei einem Fehler bleibt das Gespräch wie vor der Frage. Vorschläge werden gesammelt (Karten in Etappe 4c), ausgeführt wird nichts.
 - Läuft gerade ein Scan, warten Tool-Aufrufe an der Sperre der eingebetteten PowerShell. Dienste werden also nie parallel zu einem Scan abgefragt.
 - Nach jedem Scan übergibt die App die Bewertungen mit `Set-AdvisorContext`.
-- **Verbindung testen** (`AdvisorService.TestConnectionAsync`, Oberfläche in 4b-3): Adresse prüfen (mit Hinweis „unverschlüsselt“), Modelle abrufen, gewähltes Modell vorhanden, dann eine Anfrage mit festen Testtexten und nur `get_inventory`. Der Tool-Aufruf wird nicht ausgeführt, es gehen keine Inventardaten an das Modell. Ruft das Modell kein Tool auf oder scheitert nur diese Anfrage, ist das eine Warnung; speichern geht trotzdem.
+- **Verbindung testen** (`AdvisorService.TestConnectionAsync`, Knopf auf der Einstellungsseite): Adresse prüfen (mit Hinweis „unverschlüsselt“), Modelle abrufen, gewähltes Modell vorhanden, dann eine Anfrage mit festen Testtexten und nur `get_inventory`. Der Tool-Aufruf wird nicht ausgeführt, es gehen keine Inventardaten an das Modell. Ruft das Modell kein Tool auf oder scheitert nur diese Anfrage, ist das eine Warnung; speichern geht trotzdem.
 - Fehler der App haben feste Codes mit Texten in `Strings.resx`: `AdvisorEndpointInvalid`, `AdvisorEndpointNotLocal`, `AdvisorEndpointUnresolvable`, `AdvisorServerUnreachable`, `AdvisorTimeout`, `AdvisorRedirectRefused`, `AdvisorUnauthorized`, `AdvisorHttpError`, `AdvisorInvalidResponse`, `AdvisorResponseTooLarge`, `AdvisorNoModel`, `AdvisorDisabled`, `AdvisorToolRoundLimit`. Sie nennen höchstens den HTTP-Status, nie den Antworttext des Servers.
+
+## Einstellungsseite
+
+Abschnitt „KI-Berater“ in den Einstellungen der App:
+
+- **Einschalten** (standardmäßig aus) geht nur mit Adresse und Modell; sonst lehnt `Set-InventorySetting` mit `AdvisorIncomplete` ab. Geprüft wird das nur, wenn sich Beraterwerte ändern.
+- **Server** wählt eine Vorgabe und belegt die Adresse vor; bei „Eigene Adresse“ bleibt sie. Unter der Adresse steht der Hinweis „unverschlüsselt“, sobald ein Test oder „Modelle laden“ ihn meldet.
+- **Modell:** Das Feld ist anfangs leer, es gibt kein Standardmodell. „Modelle laden“ füllt nur die Auswahlliste, das Feld bleibt frei editierbar.
+- **API-Schlüssel** des KI-Servers wie die anderen Schlüssel (Anmeldeinformationsverwaltung); Hinweis, wenn die Vorgabe einen verlangt.
+- **Verbindung testen** und **Modelle laden** nutzen die ungespeicherten Werte der Seite mit dem gespeicherten Schlüssel und laufen nur auf Klick.
+- **Freigabestufe** als Auswahl 0 bis 4 mit je einem Satz, was dazukommt; bei Stufe 4 ein Hinweis zu den Nutzungsspuren. Die Stufe für externe Anbieter bleibt ausgeblendet, bis es das erste Plugin gibt.
+- **Vorschau** (aufklappbar): `Get-AdvisorDataPreview` für die gerade gewählte Stufe, eingerückt; vor dem ersten Scan nur ein Hinweis.
+- Gespeichert wird mit dem gemeinsamen „Speichern“. Beraterwerte gehen nur mit, wenn sie sich geändert haben; eine gespeicherte Adresse wird also nicht bei jedem Speichern neu aufgelöst, und eine unveränderte Stufe löscht den einmaligen Hinweis nicht.
 
 ## Bereinigung
 

@@ -46,7 +46,7 @@ Regeln für Beiträge: Ein neuer Dienst braucht einen Hinweis zu den Bedingungen
 
 ## Was die KI sehen darf: Freigabestufen
 
-Im Modul umgesetzt (Etappe 4b-1); die Einstellungsseite der App folgt mit 4b-3. Einzelheiten zu den Feldern: [BERATER.md](BERATER.md#freigabestufen).
+Im Modul umgesetzt (Etappe 4b-1), einstellbar auf der Einstellungsseite der App mit Vorschau der übertragenen Daten (4b-3). Einzelheiten zu den Feldern: [BERATER.md](BERATER.md#freigabestufen).
 
 Unabhängig vom Anbieter lässt sich festlegen, wie tief der KI-Berater in die Daten schauen darf. Die Grenze setzt das Modul selbst: Die Werkzeuge (`get_inventory` usw.) geben nur die Felder der eingestellten Stufe zurück. Was nicht freigegeben ist, erreicht das Modell gar nicht; eine Anweisung im Prompt allein würde nicht genügen.
 

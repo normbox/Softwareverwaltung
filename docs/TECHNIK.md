@@ -28,7 +28,7 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 | Sicherheitsprüfung | NVD CVE-API 2.0, CIRCL Vulnerability-Lookup, CISA KEV, EPSS; Ampel und HTML-Bericht | vorhanden |
 | Aktionen | Aktualisieren und Deinstallieren über winget, MSI, Deinstallationsbefehl, Store-App; Update-Warteschlange | vorhanden |
 | Desktop-App | .NET 10 WPF, Fluent-Design über WPF-UI, PowerShell eingebettet über `Microsoft.PowerShell.SDK` | vorhanden |
-| KI-Berater | Werkzeuge, Bereinigung und Freigabestufen im Modul (4a, 4b-1); Anbieter-Schnittstelle und Gesprächsschleife in der App für lokale Server mit OpenAI-kompatibler Schnittstelle (4b-2); Einstellungsseite (4b-3) und Chat (4c) folgen; Cloud-Anbieter später als Erweiterung | teilweise, geplant |
+| KI-Berater | Werkzeuge, Bereinigung und Freigabestufen im Modul (4a, 4b-1); Anbieter-Schnittstelle und Gesprächsschleife in der App für lokale Server mit OpenAI-kompatibler Schnittstelle (4b-2), Einstellungsseite mit Verbindungstest und Vorschau (4b-3); Chat (4c) folgt; Cloud-Anbieter später als Erweiterung | teilweise, geplant |
 | MCP-Server | optionaler Zugang für andere KI-Programme | geplant (Etappe 5) |
 
 Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
@@ -104,7 +104,7 @@ Eine vollständige Liste mit Datenschutzbewertung steht in [EXTERNE-DIENSTE.md](
 | CIRCL | `vulnerability.circl.lu` | CVE-Datensätze je Hersteller und Produkt | vorhanden |
 | CISA KEV | `www.cisa.gov` | Laden der KEV-Liste | vorhanden |
 | EPSS | `api.first.org` | Ausnutzungswahrscheinlichkeit für gefundene CVEs | vorhanden |
-| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse, nur Loopback und private Netze | nur wenn der KI-Berater eingerichtet ist | Anbindung vorhanden, Bedienung folgt (4b-3, 4c) |
+| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse, nur Loopback und private Netze | nur wenn der KI-Berater eingerichtet ist, Test und Modellliste nur auf Klick | Einstellungen vorhanden, Chat folgt (4c) |
 
 Alle Abfragen an externe Dienste nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt den User-Agent `SoftwareInventory/<Version>`. Ausnahme ist der KI-Server: Die App verbindet sich ohne Proxy und ohne Weiterleitungen direkt mit der geprüften lokalen Adresse (siehe [BERATER.md](BERATER.md#anbieter-schnittstelle-der-app)).
 
