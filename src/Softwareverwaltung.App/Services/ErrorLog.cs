@@ -7,7 +7,7 @@ namespace Softwareverwaltung.App.Services;
 public static class ErrorLog
 {
     public static string Directory { get; set; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SoftwareInventory", "logs");
+        Path.Combine(AppFolders.Local, "logs");
 
     /// <summary>Liefert den Pfad der Logdatei oder null, wenn nicht geschrieben werden konnte. Wirft nie.</summary>
     public static string? Write(string origin, Exception? exception)

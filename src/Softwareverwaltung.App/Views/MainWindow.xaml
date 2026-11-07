@@ -82,7 +82,13 @@
         </Border>
         </StackPanel>
 
-        <TabControl Grid.Row="2" Margin="8,0,8,0">
+        <!-- Inhalt links, rechts die Seitenleiste des KI-Beraters (ein- und ausblendbar, Breite gemerkt). -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+        <TabControl Grid.Column="0" Margin="8,0,8,0" SelectedIndex="{Binding SelectedTab}">
             <TabItem>
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
@@ -102,5 +108,14 @@
                 <views:SettingsView DataContext="{Binding Settings}" />
             </TabItem>
         </TabControl>
+            <!-- Knopf rechts neben den Seitenreitern -->
+            <ui:Button Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,16,0"
+                       Content="{loc:Text AdvisorPanelToggle}" Icon="{ui:SymbolIcon Chat24}"
+                       ToolTip="{loc:Text AdvisorPanelToggleTooltip}"
+                       Command="{Binding Advisor.ToggleCommand}"
+                       Visibility="{Binding Advisor, Converter={StaticResource NullToVisibility}}" />
+            <views:AdvisorPanel Grid.Column="1" DataContext="{Binding Advisor}"
+                                Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}" />
+        </Grid>
     </Grid>
 </ui:FluentWindow>

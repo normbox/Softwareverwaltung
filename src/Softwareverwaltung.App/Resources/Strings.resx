@@ -1266,4 +1266,103 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
   <data name="SettingsAdvisorEndpointPlaceholder" xml:space="preserve">
     <value>http://localhost:11434/v1</value>
   </data>
+  <data name="AdvisorPanelToggle" xml:space="preserve">
+    <value>KI-Berater</value>
+  </data>
+  <data name="AdvisorPanelToggleTooltip" xml:space="preserve">
+    <value>Seitenleiste des KI-Beraters ein- oder ausblenden</value>
+  </data>
+  <data name="AdvisorPanelTitle" xml:space="preserve">
+    <value>KI-Berater</value>
+  </data>
+  <data name="AdvisorPanelName" xml:space="preserve">
+    <value>Seitenleiste KI-Berater</value>
+  </data>
+  <data name="AdvisorPanelResizeTooltip" xml:space="preserve">
+    <value>Ziehen, um die Breite der Seitenleiste zu ändern</value>
+  </data>
+  <data name="AdvisorChatNew" xml:space="preserve">
+    <value>Neues Gespräch</value>
+  </data>
+  <data name="AdvisorChatNewTooltip" xml:space="preserve">
+    <value>Gespräch verwerfen und neu beginnen. Es wird nichts gespeichert.</value>
+  </data>
+  <data name="AdvisorChatDisabled" xml:space="preserve">
+    <value>Der KI-Berater ist ausgeschaltet. Eingerichtet und eingeschaltet wird er in den Einstellungen im Abschnitt „KI-Berater“.</value>
+  </data>
+  <data name="AdvisorChatOpenSettings" xml:space="preserve">
+    <value>Einstellungen öffnen</value>
+  </data>
+  <data name="AdvisorChatNoScan" xml:space="preserve">
+    <value>Der Berater arbeitet mit den Daten des letzten Scans. Bitte zuerst auf der Seite „Programme“ scannen.</value>
+  </data>
+  <data name="AdvisorChatEmpty" xml:space="preserve">
+    <value>Fragen Sie zum Beispiel: „Welche Programme sollte ich zuerst aktualisieren?“ oder „Warum ist ein Programm gelb markiert?“</value>
+  </data>
+  <data name="AdvisorChatPrivacy" xml:space="preserve">
+    <value>Vor dem Senden werden Benutzername, Rechnername und Benutzerpfade entfernt. Welche Daten das Modell abfragen darf, legt die Freigabestufe fest. Das Gespräch wird nicht gespeichert. Antworten des Modells können Fehler enthalten; der Berater schlägt nur vor und führt nichts aus.</value>
+  </data>
+  <data name="AdvisorChatInputName" xml:space="preserve">
+    <value>Frage an den KI-Berater</value>
+  </data>
+  <data name="AdvisorChatInputPlaceholder" xml:space="preserve">
+    <value>Frage eingeben (Eingabetaste sendet, Umschalt+Eingabetaste für eine neue Zeile)</value>
+  </data>
+  <data name="AdvisorChatSend" xml:space="preserve">
+    <value>Senden</value>
+  </data>
+  <data name="AdvisorChatCancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="AdvisorChatLabelUser" xml:space="preserve">
+    <value>Frage</value>
+  </data>
+  <data name="AdvisorChatLabelAssistant" xml:space="preserve">
+    <value>KI-Berater</value>
+  </data>
+  <data name="AdvisorChatAnswering" xml:space="preserve">
+    <value>Der Berater antwortet … Scan und Aktionen sind so lange gesperrt.</value>
+  </data>
+  <data name="AdvisorChatWaitForWork" xml:space="preserve">
+    <value>Ein Scan oder eine Aktion läuft. Danach kann wieder gefragt werden.</value>
+  </data>
+  <data name="AdvisorChatCancelled" xml:space="preserve">
+    <value>Antwort abgebrochen. Die Frage steht wieder im Eingabefeld.</value>
+  </data>
+  <data name="AdvisorChatFailed" xml:space="preserve">
+    <value>Die Frage konnte nicht beantwortet werden: {0}</value>
+  </data>
+  <data name="AdvisorChatEmptyAnswer" xml:space="preserve">
+    <value>Das Modell hat ohne Text geantwortet.</value>
+  </data>
+  <data name="AdvisorChatSettingsChanged" xml:space="preserve">
+    <value>Die Einstellungen des KI-Beraters wurden geändert. Es beginnt ein neues Gespräch.</value>
+  </data>
+  <data name="AdvisorChatNoTools" xml:space="preserve">
+    <value>Ohne Datenabfrage beantwortet.</value>
+  </data>
+  <data name="AdvisorChatTools" xml:space="preserve">
+    <value>Abgefragt: {0}</value>
+  </data>
+  <data name="AdvisorChatToolCount" xml:space="preserve">
+    <value>{0} ({1}×)</value>
+  </data>
+  <data name="AdvisorChatTool_get_inventory" xml:space="preserve">
+    <value>Programmliste</value>
+  </data>
+  <data name="AdvisorChatTool_get_program_details" xml:space="preserve">
+    <value>Programmdetails</value>
+  </data>
+  <data name="AdvisorChatTool_check_latest_version" xml:space="preserve">
+    <value>neueste Version (online geprüft)</value>
+  </data>
+  <data name="AdvisorChatTool_search_vulnerabilities" xml:space="preserve">
+    <value>Lückensuche (online)</value>
+  </data>
+  <data name="AdvisorChatTool_propose_update" xml:space="preserve">
+    <value>Vorschlag Update</value>
+  </data>
+  <data name="AdvisorChatTool_propose_uninstall" xml:space="preserve">
+    <value>Vorschlag Deinstallation</value>
+  </data>
 </root>

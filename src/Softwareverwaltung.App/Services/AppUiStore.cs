@@ -3,11 +3,21 @@ using System.Text.Json;
 
 namespace Softwareverwaltung.App.Services;
 
-/// <summary>Einstellungen nur der Oberfläche, z. B. die Breite des Detailfelds.</summary>
+/// <summary>Einstellungen nur der Oberfläche, z. B. die Breite des Detailfelds und der Berater-Seitenleiste.</summary>
 public sealed record AppUiSettings
 {
     /// <summary>Breite des Detailfelds als Anteil der Listenbreite (Start 40 %).</summary>
     public double DetailsWidthFraction { get; init; } = DefaultDetailsWidthFraction;
+
+    /// <summary>Seitenleiste des KI-Beraters offen (Start: zu).</summary>
+    public bool AdvisorPanelOpen { get; init; }
+
+    /// <summary>Breite der Seitenleiste in Pixeln.</summary>
+    public double AdvisorPanelWidth { get; init; } = DefaultAdvisorPanelWidth;
+
+    public const double DefaultAdvisorPanelWidth = 380;
+    public const double MinAdvisorPanelWidth = 300;
+    public const double MaxAdvisorPanelWidth = 900;
 
     public const double DefaultDetailsWidthFraction = 0.4;
     public const double MinDetailsWidthFraction = 0.15;
@@ -18,6 +28,17 @@ public sealed record AppUiSettings
     /// <summary>Anteil auf den erlaubten Bereich begrenzt; ungültige Werte ergeben den Startwert.</summary>
     public static double ClampFraction(double value) =>
         double.IsFinite(value) ? Math.Clamp(value, MinDetailsWidthFraction, MaxDetailsWidthFraction) : DefaultDetailsWidthFraction;
+
+    /// <summary>Breite der Seitenleiste auf den erlaubten Bereich begrenzt; ungültige Werte ergeben den Startwert.</summary>
+    public static double ClampAdvisorWidth(double value) =>
+        double.IsFinite(value) ? Math.Clamp(value, MinAdvisorPanelWidth, MaxAdvisorPanelWidth) : DefaultAdvisorPanelWidth;
+
+    /// <summary>Alle Werte auf ihren erlaubten Bereich begrenzt.</summary>
+    public AppUiSettings Clamped() => this with
+    {
+        DetailsWidthFraction = ClampFraction(DetailsWidthFraction),
+        AdvisorPanelWidth = ClampAdvisorWidth(AdvisorPanelWidth),
+    };
 }
 
 public interface IAppUiStore
@@ -33,8 +54,7 @@ public interface IAppUiStore
 /// </summary>
 public sealed class AppUiStore(string? path = null) : IAppUiStore
 {
-    private readonly string _path = path ?? Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SoftwareInventory", "app-ui.json");
+    private readonly string _path = path ?? Path.Combine(AppFolders.Roaming, "app-ui.json");
 
     public AppUiSettings Load()
     {
@@ -45,7 +65,7 @@ public sealed class AppUiStore(string? path = null) : IAppUiStore
                 return new AppUiSettings();
             }
             var loaded = JsonSerializer.Deserialize<AppUiSettings>(File.ReadAllText(_path)) ?? new AppUiSettings();
-            return loaded with { DetailsWidthFraction = AppUiSettings.ClampFraction(loaded.DetailsWidthFraction) };
+            return loaded.Clamped();
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
@@ -58,7 +78,7 @@ public sealed class AppUiStore(string? path = null) : IAppUiStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            File.WriteAllText(_path, JsonSerializer.Serialize(settings with { DetailsWidthFraction = AppUiSettings.ClampFraction(settings.DetailsWidthFraction) }));
+            File.WriteAllText(_path, JsonSerializer.Serialize(settings.Clamped()));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

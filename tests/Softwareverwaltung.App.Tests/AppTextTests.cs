@@ -41,6 +41,7 @@ public sealed partial class AppTextTests
 
     [Theory]
     [InlineData("Action", "Update,Uninstall,InstallWinget")]
+    [InlineData("AdvisorChatTool_", "get_inventory,get_program_details,check_latest_version,search_vulnerabilities,propose_update,propose_uninstall")]
     [InlineData("ActionResult", "Planned,Succeeded,SucceededRebootRequired,NotVerified,Cancelled,ElevationDenied,NotInstalled,NoUpdateAvailable,ManualUpdateRequired,Unsupported,Timeout,Failed")]
     [InlineData("RestorePoint", "Planned,Created,Skipped,NotAvailable,NotAvailableWithMessage,Failed,FailedWithMessage,None")]
     [InlineData("Assessment", "Affected,PossiblyAffected,Informational")]

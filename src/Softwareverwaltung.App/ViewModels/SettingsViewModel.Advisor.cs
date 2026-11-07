@@ -99,6 +99,15 @@ public sealed partial class SettingsViewModel
     /// <summary>Im Hauptfenster nur, wenn der Berater eingeschaltet ist; sonst nur hier in den Einstellungen.</summary>
     public bool ShowShareLevelNoticeInMain => ShowShareLevelNotice && _saved.AdvisorEnabled;
 
+    /// <summary>Gespeichert eingeschaltet: Die Seitenleiste darf fragen (Adresse und Modell prüft das Modul beim Speichern).</summary>
+    public bool IsAdvisorActive => _saved.AdvisorEnabled;
+
+    /// <summary>
+    /// Gespeicherte Werte, von denen ein laufendes Gespräch abhängt (Anbieter, Modell, Freigabestufe). Ändert sich
+    /// der Wert, beginnt die Seitenleiste ein neues Gespräch.
+    /// </summary>
+    public string AdvisorSessionKey => string.Join('|', _saved.AdvisorEnabled, _saved.AdvisorPreset, _saved.AdvisorEndpoint, _saved.AdvisorModel, _saved.AdvisorShareLevelLocal);
+
     private AdvisorDraft Draft => new(AdvisorPreset, AdvisorEndpoint, AdvisorModel);
 
     private void InitializeAdvisor()
@@ -176,6 +185,8 @@ public sealed partial class SettingsViewModel
         AdvisorShareLevelLocal = settings.AdvisorShareLevelLocal;
         ShowShareLevelNotice = settings.AdvisorShareLevelNoticePending;
         OnPropertyChanged(nameof(ShowShareLevelNoticeInMain));
+        OnPropertyChanged(nameof(IsAdvisorActive));
+        OnPropertyChanged(nameof(AdvisorSessionKey));
     }
 
     private static bool SameAdvisor(AppSettings a, AppSettings b) =>

@@ -60,6 +60,17 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isBusy;
 
+    /// <summary>
+    /// Der KI-Berater beantwortet gerade eine Frage. Solange sind Scan und Aktionen gesperrt, weil seine Tools
+    /// NVD und CIRCL abfragen können und Dienste nie parallel zu einem Scan laufen sollen.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
+    private bool _isAdvisorBusy;
+
+    /// <summary>Scan, Aktion oder Berater laufen: keine weitere Arbeit starten.</summary>
+    private bool IsBlocked => IsBusy || IsAdvisorBusy;
+
     /// <summary>Ausgewähltes Programm; bei offenem Detailfeld stehen seine früheren Aktionen in <see cref="History"/>.</summary>
     [ObservableProperty]
     private SoftwareItem? _selectedItem;
@@ -299,7 +310,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanScan() => !IsBusy && _ready;
+    private bool CanScan() => !IsBlocked && _ready;
 
     /// <summary>Details: dieses Programm ohne Zwischenspeicher neu prüfen (auch den KEV-Katalog).</summary>
     [RelayCommand(CanExecute = nameof(CanRunAction))]
@@ -319,7 +330,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanRunAction(SoftwareItem? item) => !IsBusy && _ready && ActionsAvailable && item?.Source is not null;
+    private bool CanRunAction(SoftwareItem? item) => !IsBlocked && _ready && ActionsAvailable && item?.Source is not null;
 
     [RelayCommand(CanExecute = nameof(CanRunAction))]
     private Task UpdateAsync(SoftwareItem? item) => RunActionAsync(SoftwareActionKind.Update, item, "Auto");
@@ -331,17 +342,17 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRetry))]
     private Task RetryWithNextMethodAsync() => RunActionAsync(SoftwareActionKind.Uninstall, _lastOutcomeItem, LastOutcome!.NextMethod!);
 
-    private bool CanRetry() => !IsBusy && CanRetryWithNextMethod;
+    private bool CanRetry() => !IsBlocked && CanRetryWithNextMethod;
 
     [RelayCommand(CanExecute = nameof(CanInstallWinget))]
     private Task InstallWingetAsync() => RunActionAsync(SoftwareActionKind.InstallWinget, null, "Auto");
 
-    private bool CanInstallWinget() => !IsBusy && ActionsAvailable;
+    private bool CanInstallWinget() => !IsBlocked && ActionsAvailable;
 
     [RelayCommand]
     private void DismissOutcome() => LastOutcome = null;
 
-    private bool CanMapCpe(SoftwareItem? item) => !IsBusy && _ready && _cpe is not null && _confirmation is not null && item?.Source is not null && item.CanMapCpe;
+    private bool CanMapCpe(SoftwareItem? item) => !IsBlocked && _ready && _cpe is not null && _confirmation is not null && item?.Source is not null && item.CanMapCpe;
 
     /// <summary>
     /// Details: „CPE zuordnen“. Vorschläge sind unbestätigt; gespeichert wird nur, was der Benutzer
@@ -386,7 +397,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanReportCpe(SoftwareItem? item) => !IsBusy && _ready && _cpe is not null && _confirmation is not null && _shell is not null && item?.Source is not null && item.HasUserCpe;
+    private bool CanReportCpe(SoftwareItem? item) => !IsBlocked && _ready && _cpe is not null && _confirmation is not null && _shell is not null && item?.Source is not null && item.HasUserCpe;
 
     /// <summary>
     /// „Vorschlag melden“: zeigt den Inhalt des vorbereiteten GitHub-Issues und öffnet es erst nach
@@ -433,7 +444,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    partial void OnDetailsWidthFractionChanged(double value) => _ui.Save(new AppUiSettings { DetailsWidthFraction = value });
+    partial void OnDetailsWidthFractionChanged(double value) => _ui.Save(_ui.Load() with { DetailsWidthFraction = value });
 
     private void OnQueueSelectionChanged()
     {
@@ -461,7 +472,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private bool CanUpdateSelected() => !IsBusy && _ready && ActionsAvailable && QueueSelectedCount > 0;
+    private bool CanUpdateSelected() => !IsBlocked && _ready && ActionsAvailable && QueueSelectedCount > 0;
 
     /// <summary>
     /// Update-Warteschlange (nur Updates; Deinstallieren bleibt einzeln): planen, gemeinsam bestätigen,
