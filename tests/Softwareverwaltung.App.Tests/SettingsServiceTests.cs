@@ -2,6 +2,7 @@ using System.Management.Automation;
 using System.Security;
 using Softwareverwaltung.App.Models;
 using Softwareverwaltung.App.Services;
+using Softwareverwaltung.App.ViewModels;
 
 namespace Softwareverwaltung.App.Tests;
 
@@ -18,10 +19,16 @@ public sealed class SettingsServiceTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await _host.InitializeAsync();
         Directory.CreateDirectory(_directory);
-        // Nur in dieser Runspace: Funktion und Variable im Modulbereich ersetzen.
-        var result = await _host.InvokeAsync(new PSCommand().AddScript("""
+        await RedirectAsync(_host);
+        _service = new SettingsService(_host);
+    }
+
+    /// <summary>Nur in dieser Runspace: Einstellungsdatei und Präfix der Anmeldeinformationen auf Testwerte umlenken.</summary>
+    private async Task RedirectAsync(PowerShellHost host)
+    {
+        await host.InitializeAsync();
+        var result = await host.InvokeAsync(new PSCommand().AddScript("""
             param($File, $Prefix)
             & (Get-Module SoftwareInventory) {
                 param($File, $Prefix)
@@ -31,7 +38,32 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             } $File $Prefix
             """).AddParameter("File", Path.Combine(_directory, "settings.json")).AddParameter("Prefix", _prefix));
         Assert.Empty(result.Errors);
-        _service = new SettingsService(_host);
+    }
+
+    [Fact]
+    public async Task ClosedShareLevelNoticeStaysGoneAfterRestart()
+    {
+        // Übernommene ältere Einstellungen ohne Freigabestufe: lokal Stufe 2 mit einmaligem Hinweis
+        File.WriteAllText(Path.Combine(_directory, "settings.json"),
+            """{"Usage":"Private","Advisor":{"Enabled":true,"Preset":"Ollama","Endpoint":"http://localhost:11434/v1","Model":"m"}}""");
+        var vm = new SettingsViewModel(_service);
+        await vm.LoadAsync();
+        Assert.True(vm.ShowShareLevelNotice);
+        Assert.True(vm.ShowShareLevelNoticeInMain);
+        Assert.True(vm.DismissShareLevelNoticeCommand.CanExecute(null));
+
+        await vm.DismissShareLevelNoticeCommand.ExecuteAsync(null);
+        Assert.False(vm.ShowShareLevelNotice);
+        Assert.False(vm.ShowShareLevelNoticeInMain);
+
+        // Neustart: neue Engine, neues ViewModel, dieselbe Einstellungsdatei
+        using var restarted = new PowerShellHost();
+        await RedirectAsync(restarted);
+        var again = new SettingsViewModel(new SettingsService(restarted));
+        await again.LoadAsync();
+        Assert.False(again.ShowShareLevelNotice);
+        Assert.False(again.ShowShareLevelNoticeInMain);
+        Assert.Equal(2, again.AdvisorShareLevelLocal);
     }
 
     public async Task DisposeAsync()

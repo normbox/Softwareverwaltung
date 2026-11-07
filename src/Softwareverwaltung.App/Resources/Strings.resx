@@ -1260,8 +1260,8 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
   <data name="SettingsAdvisorNoticeMain" xml:space="preserve">
     <value>Für die bestehenden Einstellungen gilt jetzt Stufe 2. Ändern lässt sie sich unter Einstellungen → KI-Berater.</value>
   </data>
-  <data name="SettingsAdvisorNoticeConfirm" xml:space="preserve">
-    <value>Verstanden</value>
+  <data name="SettingsAdvisorNoticeClose" xml:space="preserve">
+    <value>Hinweis schließen</value>
   </data>
   <data name="SettingsAdvisorEndpointPlaceholder" xml:space="preserve">
     <value>http://localhost:11434/v1</value>

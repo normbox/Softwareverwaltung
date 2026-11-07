@@ -198,6 +198,24 @@ public sealed class SettingsAdvisorTests
     }
 
     [Fact]
+    public async Task NoticeCloseButtonIsUsableRightAfterLoading()
+    {
+        // Fehler aus der Praxis: IsLoaded wurde gesetzt, solange IsBusy noch wahr war; danach blieb der Knopf grau.
+        var settings = new FakeSettings { Saved = Saved(s => s with { AdvisorShareLevelLocal = 2, AdvisorShareLevelNoticePending = true }) };
+        var vm = new SettingsViewModel(settings, advisor: new FakeAdvisor());
+        // WPF fragt CanExecute nur bei CanExecuteChanged ab und merkt sich das Ergebnis; maßgeblich ist also
+        // der Zustand beim letzten Ereignis, nicht eine spätere direkte Abfrage.
+        var seen = new List<bool>();
+        vm.DismissShareLevelNoticeCommand.CanExecuteChanged += (_, _) => seen.Add(vm.DismissShareLevelNoticeCommand.CanExecute(null));
+
+        await vm.LoadAsync();
+
+        Assert.True(vm.ShowShareLevelNotice);
+        Assert.NotEmpty(seen);
+        Assert.True(seen[^1]);
+    }
+
+    [Fact]
     public async Task AdvisorKeyStatusIsLoadedWithTheOthers()
     {
         var (vm, _, _) = await LoadAsync();
