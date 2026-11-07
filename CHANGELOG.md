@@ -4,6 +4,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### KI-Berater: Anbieter-Schnittstelle (Etappe 4b-2)
+
+- **Anbieter-Schnittstelle in der App** (`IAdvisorProvider`) mit eigenen Typen für Nachrichten und Tools, damit externe Anbieter später als Plugin dazukommen. Erster Anbieter: `OpenAiCompatibleProvider` für lokale Server (`/models`, `/chat/completions` mit `tools`, ohne Streaming), ohne neue Pakete.
+- **Prüfung beim Verbinden:** Die App löst den Namen selbst auf, verbindet nur zu geprüften lokalen Adressen und prüft die verbundene Gegenstelle; TLS prüft weiter gegen den Hostnamen. Kein Proxy, keine Weiterleitungen, Antworten höchstens 8 MB. Modul und App prüfen gegen dieselbe Tabelle mit Testfällen.
+- **Gesprächsschleife** mit Tool-Aufrufen über das Modul, höchstens 8 Runden; die Freigabestufe folgt der Anbieterart. Fragen des Benutzers werden vor dem Senden bereinigt (`Protect-AdvisorText`).
+- **Verbindungstest** (Adresse, Modelle, Tool-Aufruf ohne Inventardaten); fehlt nur der Tool-Aufruf, gibt es eine Warnung, speichern bleibt möglich. Bedienung folgt mit der Einstellungsseite (4b-3).
+- **Neu im Modul:** `Get-AdvisorConnection` (Adresse, Modell, Schlüssel als `SecureString`) und `Protect-AdvisorText`. Nach jedem Scan übergibt die App die Bewertungen mit `Set-AdvisorContext`.
+
 ### KI-Berater: Freigabestufen (Etappe 4b-1)
 
 - **Freigabestufen 0 bis 4 im Modul:** Die Tools geben nur die Felder der eingestellten Stufe zurück (Übersicht, Programmliste, Installationsdetails, portable Programme aus der Dateisuche, vergröberte Nutzungsspuren). Die Stufe bestimmt das Modul aus Anbieterart (`Invoke-AdvisorTool -ProviderKind Local|External`) und Einstellung `Advisor.ShareLevel`: lokal Voreinstellung 3, höchstens 4; extern (spätere Plugins) Voreinstellung 1, höchstens 3. Auf Stufe 0 gibt es nur eine Übersicht ohne Parameter (`ShareLevelTooLow` für alles andere).
