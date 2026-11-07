@@ -84,6 +84,16 @@ Gleiche CVE-ID heißt gleiche Lücke; sie erscheint einmal, auch wenn die Quelle
 
 Ein Widerspruch widerlegt nie. Grün gibt es nur, wenn keine Quelle „betroffen“ meldet. Für CIRCL-Treffer, die die NVD-Suche nicht geliefert hat, fragt das Modul die NVD einmal je Produkt nach allen CVEs mit Daten zu diesem Produkt (`virtualMatchString` mit der CPE ohne Version, bis 2000 je Seite). Steht die CVE darin, gilt die Angabe der NVD für die installierte Version, sonst „in dieser Quelle nicht bekannt“. Einzelabrufe je CVE gibt es dafür nicht, sie wären ohne Schlüssel 6 Sekunden je CVE. Fällt eine Quelle aus, gilt das Programm als geprüft, solange die andere lief; der Ausfall steht in `Notes`.
 
+## Plattformfilter
+
+Unter derselben CPE führen die Quellen oft Lücken, die nur andere Betriebssysteme betreffen (z. B. Chrome oder Firefox für macOS, iOS oder Android). Sie zählen unter Windows nicht als Treffer. Ausgeschlossen wird nur, was eindeutig einer bekannten anderen Plattform zugeordnet ist: Android, iOS, iPadOS, macOS, Linux (auch Distributionen wie `ubuntu_linux`), ChromeOS. Alles Unbekannte zählt weiter (lieber ein Fehlalarm mehr).
+
+- **NVD:** Ein Eintrag des Produkts zählt nicht, wenn sein `target_sw` eine andere Plattform nennt (`…:*:android:*:*`) oder seine Konfiguration UND-verknüpft ist und die Umgebung (Einträge mit `vulnerable: false`) nur aus Betriebssystemen anderer Plattformen besteht. Steht in der Umgebung Windows, eine Anwendung oder ein unbekanntes Betriebssystem, oder ist ein Knoten negiert, wird nicht gefiltert. Bleibt kein Eintrag übrig, meldet die NVD „nicht betroffen“ mit Hinweis `OtherPlatformOnly` (Args: Plattformen).
+- **CIRCL (CVE 5):** Ein Eintrag in `affected` zählt nicht, wenn alle Angaben in `platforms` andere Plattformen sind („unknown“ oder „x64-based systems“ zählen als unbekannt), wenn alle passenden CPEs des Eintrags eine andere Plattform als `target_sw` nennen, oder wenn der Produktname sie in fester Form nennt („Firefox for Android“, „… on iOS“, „… for Mac“). Der Name zählt nur, wenn der Eintrag über einen ähnlichen Namen passt; bei genau gleichem Produkt (z. B. CPE `mozilla:firefox_for_android`) oder passender CPE im Eintrag schließt der Name nichts aus.
+- **Widerspruch:** Meldet eine Quelle „nur andere Plattform“ und die andere „betroffen“, gilt wie bei Versionsdaten `PossiblyAffected` mit `SourcesDisagree` (Gelb).
+- **KEV:** Ein KEV-Treffer ist widerlegt (`Refuted`, Hinweis `KevRefutedPlatform`), wenn alle Konfigurationen der NVD zum Produkt eindeutig nur andere Plattformen betreffen. Gilt eine Konfiguration auch für Windows oder ist sie unklar, bleibt der Treffer.
+- **Anzeige:** Lücken, die laut den Quellen nur andere Plattformen betreffen und nicht trotzdem als Lücke zählen, stehen in `OtherPlatform` (je CVE `CveId`, `Platforms`, `Note` mit Code `OtherPlatformCve`), dazu `OtherPlatformNote` (`OtherPlatformHidden`, „2 Lücken betreffen nur andere Plattformen“). Sie wirken nicht auf die Ampel. Die App zeigt den Hinweis in den Details mit der Liste zum Aufklappen, der Bericht unter den Angaben zum Programm, der KI-Berater bekommt sie als `otherPlatform`.
+
 ## Ergebnis (`SoftwareInventory.VulnerabilityStatus`)
 
 | Feld | Bedeutung |
@@ -95,8 +105,10 @@ Ein Widerspruch widerlegt nie. Grün gibt es nur, wenn keine Quelle „betroffen
 | `Reason` | bei `Unknown` immer gesetzt, als Meldung mit Code: `ServiceDisabled` („Dienst NVD nicht aktiviert“), `NoCpe`, `VersionUnreadable`, `RateLimit`, `ServiceUnavailable` … |
 | `Notes` | Hinweise als Meldungen, z. B. `ServiceDisabled` mit Args `KEV` |
 | `Vulnerabilities` | Liste, KEV zuerst, dann nach CVSS absteigend; Hinweise (`Informational`) am Ende |
+| `Refuted` | KEV-Treffer, die für diese Version widerlegt sind (NVD-Versionsdaten, Plattform oder Katalog) |
+| `OtherPlatform`, `OtherPlatformNote` | Lücken nur für andere Plattformen, ohne Ampelwirkung (siehe Plattformfilter) |
 
-Je Schwachstelle (`SoftwareInventory.Vulnerability`): `CveId`, `Assessment` (`Affected`, `PossiblyAffected` oder `Informational`), `Note` (Meldung, z. B. `KevNvdNoVersionData`), `Sources` (Angabe je Quelle: `Source`, `Verdict`, `Range`, `Note`, `Attribution`, `Url`), `SourcesDisagree`, `Score`, `Severity`, `CvssVersion` (höchste vorhandene: 4.0 vor 3.1, 3.0, 2.0; bevorzugt die Bewertung der NVD, sonst aus dem CVE-Datensatz), `Published`, `Description` (englisch, gekürzt), `Kev`, `KevDateAdded`, `KevRansomware`, `Epss`, `EpssPercentile`, `Url`.
+Je Schwachstelle (`SoftwareInventory.Vulnerability`): `CveId`, `Assessment` (`Affected`, `PossiblyAffected` oder `Informational`), `Note` (Meldung, z. B. `KevNvdNoVersionData`), `Sources` (Angabe je Quelle: `Source`, `Verdict`, `Range`, `Note`, `OtherPlatform`, `Attribution`, `Url`), `SourcesDisagree`, `Score`, `Severity`, `CvssVersion` (höchste vorhandene: 4.0 vor 3.1, 3.0, 2.0; bevorzugt die Bewertung der NVD, sonst aus dem CVE-Datensatz), `Published`, `Description` (englisch, gekürzt), `Kev`, `KevDateAdded`, `KevRansomware`, `Epss`, `EpssPercentile`, `Url`.
 
 ## CPE für Programme ohne Katalogeintrag
 
