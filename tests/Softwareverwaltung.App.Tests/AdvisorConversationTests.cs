@@ -25,11 +25,54 @@ public sealed class AdvisorConversationTests
         Assert.Equal(2, reply.ToolRounds);
         Assert.Single(reply.Proposals);
         Assert.Equal(["get_inventory", "propose_update", "get_program_details"], module.Invoked.Select(i => i.Name));
+        Assert.Equal(["get_inventory", "propose_update", "get_program_details"], reply.ToolNames);
         Assert.All(module.Invoked, i => Assert.Equal(AdvisorProviderKind.Local, i.Kind));
         var roles = conversation.Messages.Select(m => m.Role).ToList();
         Assert.Equal([AdvisorRole.System, AdvisorRole.User, AdvisorRole.Assistant, AdvisorRole.Tool, AdvisorRole.Assistant, AdvisorRole.Tool, AdvisorRole.Tool, AdvisorRole.Assistant], roles);
         Assert.Equal(["c2", "c3"], conversation.Messages.Where(m => m.Role == AdvisorRole.Tool).Skip(1).Select(m => m.ToolCallId));
         Assert.Equal("result:get_inventory", conversation.Messages[3].Content);
+    }
+
+    [Fact]
+    public async Task OldestRoundsFallAwayAfterTheQuestionLimit()
+    {
+        var max = AdvisorConversation.MaxQuestions;
+        var script = Enumerable.Range(0, max + 1)
+            .SelectMany(i => i == 0
+                ? new[] { Calls(("c0", "get_inventory", "{}")), new AdvisorCompletion("a0", []) }
+                : [new AdvisorCompletion("a" + i, [])])
+            .ToArray();
+        var conversation = new AdvisorConversation(new ScriptedProvider(script), new FakeModule());
+
+        for (var i = 0; i <= max; i++)
+        {
+            await conversation.AskAsync("q" + i);
+        }
+
+        var questions = conversation.Messages.Where(m => m.Role == AdvisorRole.User).Select(m => m.Content).ToList();
+        Assert.Equal(max, questions.Count);
+        Assert.Equal("[geschützt] q1", questions[0]);
+        Assert.Equal(AdvisorRole.System, conversation.Messages[0].Role);
+        // Die erste Runde samt Tool-Aufruf und Tool-Ergebnis ist ganz weg, keine verwaisten Tool-Nachrichten.
+        Assert.DoesNotContain(conversation.Messages, m => m.Role == AdvisorRole.Tool);
+        Assert.Equal(AdvisorRole.User, conversation.Messages[1].Role);
+    }
+
+    [Fact]
+    public async Task FailedQuestionAfterTrimmingRestoresTheOldRounds()
+    {
+        var max = AdvisorConversation.MaxQuestions;
+        var script = Enumerable.Range(0, max).Select(i => new AdvisorCompletion("a" + i, [])).ToArray();
+        var conversation = new AdvisorConversation(new ScriptedProvider(script) { FailAfter = max }, new FakeModule());
+        for (var i = 0; i < max; i++)
+        {
+            await conversation.AskAsync("q" + i);
+        }
+        var before = conversation.Messages.ToList();
+
+        await Assert.ThrowsAsync<AdvisorException>(() => conversation.AskAsync("q-new"));
+        // Die neue Frage hätte die älteste Runde verdrängt; nach dem Fehler ist sie wieder da.
+        Assert.Equal(before, conversation.Messages);
     }
 
     [Fact]
