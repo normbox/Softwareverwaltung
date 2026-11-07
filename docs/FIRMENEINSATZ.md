@@ -1,6 +1,6 @@
 # Einsatz in Unternehmen
 
-Stand: 28.10.2026
+Stand: 07.11.2026
 
 Das Programm ist zunächst für den privaten Einsatz gedacht. Wer es in einem Unternehmen, einer Behörde oder einem Verein nutzen will, findet hier die Punkte, die vorher zu klären sind. Die Liste richtet sich an IT-Verantwortliche, Datenschutzbeauftragte und Betriebsräte.
 
@@ -76,6 +76,16 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 - **Ausführungsrichtlinien:** Für AppLocker/WDAC sind signierte Releases und signierte Skripte vorgesehen (Etappe 6). Bis dahin: Hash-Regel oder Ausnahme für das Installationsverzeichnis.
 - **Telemetrie Dritter:** winget-Telemetrie per Richtlinie bzw. `winget settings` abschalten; `POWERSHELL_TELEMETRY_OPTOUT=1` setzt die App selbst (siehe [TECHNIK.md](TECHNIK.md#telemetrie)); für Windows PowerShell 5.1 gelten die Windows-Diagnoseeinstellungen.
 - **Updates der App:** keine Selbstaktualisierung im Hintergrund; neue Versionen über die eigene Softwareverteilung.
+
+### Zentraler Lückenabzug für Firmen
+
+Geplant, noch nicht umgesetzt; Zusatz zum lokalen Lückenabzug ([KONZEPT.md](KONZEPT.md#lokaler-lückenabzug-offline-modus)), standardmäßig aus.
+
+- **Warum:** Alle PCs hinter einer öffentlichen IP teilen sich die Anfragelimits (CIRCL 20 Anfragen je Minute, NVD ohne Schlüssel 5 je 30 Sekunden); viele PCs bremsen sich gegenseitig aus. Mit dem zentralen Abzug senden die PCs keine Anfragen je Programm nach außen, und alle bekommen dasselbe Ergebnis.
+- **Ablauf:** Ein Rechner mit Internet (der Lader) lädt cvelistV5 und die NVD-Feeds, prüft sie gegen die Originalquelle und legt die Dateien in einer Freigabe ab (UNC-Pfad, z. B. `\\server\luecken\`). Die PCs stellen diese Freigabe als Quelladresse ein und laden nur ganze Dateien. Die Datenbank öffnet jeder PC nur lesend bzw. als eigene Kopie; gleichzeitiges Schreiben über das Netz ist bei SQLite ausdrücklich nicht empfohlen.
+- **Jeder PC prüft selbst**, nicht nur der Lader: über die SHA-256 der Originalquelle, wenn der PC sie erreicht.
+- **Abgeschottetes Netz ohne Zugang zum Original (Vorschlag, endgültig beim Bau):** Der Lader prüft die Dateien gegen das Original und legt eine Prüfliste daneben, signiert mit einem Firmenzertifikat (z. B. Authenticode-signierte Katalogdatei). Die PCs vertrauen nur dem eingetragenen **Fingerabdruck** des Zertifikats; das funktioniert mit eigener Firmen-CA oder selbst erstelltem Zertifikat, ein fremdes, auch öffentlich gültiges Zertifikat reicht nicht. Der private Schlüssel liegt nur auf dem Lader, möglichst nicht exportierbar. Kein gemeinsames Passwort. Ohne gültige Prüfung wird nichts eingespielt.
+- **Ohne Echtheitsprüfung** (Schalter, standardmäßig aus) gelten die Daten als unbestätigt; für den Firmeneinsatz nicht empfohlen.
 
 ## 7. Checkliste vor dem Start
 
