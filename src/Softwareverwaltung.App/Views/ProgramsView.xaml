@@ -270,6 +270,20 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <!-- Lücken nur für andere Plattformen: ohne Ampelwirkung, Liste zum Aufklappen -->
+                <Expander Style="{StaticResource CompactExpander}" Header="{Binding OtherPlatformText}" Margin="0,4,0,0"
+                          AutomationProperties.Name="{Binding OtherPlatformText}"
+                          Visibility="{Binding OtherPlatformText, Converter={StaticResource NullToVisibility}}">
+                    <ItemsControl ItemsSource="{Binding OtherPlatform}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+
                 <!-- Versionsverlauf: bisherige Aktionen zu diesem Programm aus dem Aktionsprotokoll -->
                 <TextBlock Text="{loc:Text DetailsHistoryTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
                            Visibility="{Binding DataContext.History.Count, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource CountToVisibility}}" />

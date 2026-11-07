@@ -111,6 +111,8 @@ function ConvertTo-AdvisorDetail {
             }
         })
     $detail.refuted = @(if ($v -and $v.PSObject.Properties['Refuted']) { ConvertTo-MessageData @($v.Refuted | ForEach-Object Note) })
+    # Lücken nur für andere Plattformen (zählen unter Windows nicht)
+    $detail.otherPlatform = @(if ($v -and $v.PSObject.Properties['OtherPlatform']) { ConvertTo-MessageData @($v.OtherPlatform | ForEach-Object Note) })
     $detail
 }
 

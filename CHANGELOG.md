@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Plattformfilter
+
+- **Lücken nur für andere Plattformen zählen unter Windows nicht:** Die NVD führt unter derselben CPE oft Lücken nur für macOS, iOS, Android oder Linux (UND-Konfiguration mit einem anderen Betriebssystem oder `target_sw` wie `android`), CIRCL ebenso (`platforms`, Produktnamen wie „Firefox for Android“). Solche Einträge zählen nicht mehr als Treffer; die Quelle meldet dann „nicht betroffen“ mit dem Grund „Nur für macOS, nicht für Windows“. Ausgeschlossen wird nur, was eindeutig einer bekannten anderen Plattform zugeordnet ist; Unbekanntes zählt weiter. Bei genau passendem CPE-Produkt schließt der Name nichts aus.
+- **Widerspruch bleibt Gelb:** Meldet eine Quelle „nur andere Plattform“ und die andere „betroffen“, gilt „möglicherweise betroffen“ (`SourcesDisagree`).
+- **KEV-Treffer nur für andere Plattformen widerlegt**, wenn alle NVD-Konfigurationen des Produkts eindeutig andere Plattformen betreffen (`KevRefutedPlatform`); sonst bleibt der Treffer.
+- **Hinweis in den Details:** „2 Lücken betreffen nur andere Plattformen“ mit der Liste zum Aufklappen (CVE und Plattformen), ohne Wirkung auf die Ampel; ebenso im Bericht und für den KI-Berater (`otherPlatform`).
+
 ### Ansicht der Details
 
 - **Detailfeld über der Liste:** Ein Klick auf ein Programm (oder Eingabe) öffnet rechts ein Feld, das über der Liste liegt; die Liste behält ihre volle Breite. Ein Klick auf ein anderes Programm oder ↑/↓ wechseln den Inhalt, der Fokus bleibt in der Liste. Schließen mit ✕ oder Esc. Die Breite lässt sich am linken Rand ziehen (Start 40 %, mindestens 360 px) und wird in `%APPDATA%\SoftwareInventory\app-ui.json` gemerkt. Die aufgeklappte Zeile in der Liste entfällt.

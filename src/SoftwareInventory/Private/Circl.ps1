@@ -442,18 +442,30 @@ function Get-CveProductKey {
 }
 
 function Get-CirclAffectedBlock {
+    # Einträge affected[] zum Produkt, ohne Einträge nur für andere Plattformen (siehe Get-CirclAffectedSelection).
+    param($Record, [string[]] $CpeBase)
+    (Get-CirclAffectedSelection -Record $Record -CpeBase $CpeBase).Blocks
+}
+
+function Get-CirclAffectedSelection {
     <#
     .SYNOPSIS
-        Einträge affected[] aus CNA und ADP (CISA), die zum Produkt gehören.
+        Einträge affected[] aus CNA und ADP (CISA), die zum Produkt gehören, und die anderen Plattformen der übersprungenen.
     .DESCRIPTION
         Passt, wenn eine CPE des Eintrags mit der CPE beginnt oder der Produktname übereinstimmt
         (gleich, oder enthalten bei passendem Hersteller). Einträge „n/a“ zählen nur, wenn kein
         Eintrag passt. Passt nichts, ist die CVE für dieses Produkt nicht auswertbar.
+        Einträge nur für andere Plattformen (Get-Cve5BlockOtherPlatform) zählen nicht; der Produktname
+        wird dabei nur geprüft, wenn der Eintrag über einen ähnlichen Namen passt, nicht bei genau
+        gleichem Produkt oder passender CPE. Bleibt so nichts übrig, nennt OtherPlatform die Plattformen.
+    .OUTPUTS
+        Blocks (Einträge) und OtherPlatform (Namen, nur wenn Blocks leer ist).
     #>
     param($Record, [string[]] $CpeBase)
     $blocks = @($Record.containers.cna.PSObject.Properties['affected']?.Value) +
         @(@($Record.containers.PSObject.Properties['adp']?.Value) | Where-Object { $_ } | ForEach-Object { @($_.PSObject.Properties['affected']?.Value) }) |
         Where-Object { $_ }
+    $other = [System.Collections.Generic.List[string]]::new()
     $named = foreach ($block in $blocks) {
         $cpes = @($block.PSObject.Properties['cpes']?.Value) | Where-Object { $_ }
         $product = Get-CveProductKey ([string] $block.PSObject.Properties['product']?.Value)
@@ -462,14 +474,26 @@ function Get-CirclAffectedBlock {
             $parts = $base -split '(?<!\\):'
             $cpeVendor = Get-CveProductKey $parts[3]
             $cpeProduct = Get-CveProductKey $parts[4]
-            $byCpe = $cpes | Where-Object { ([string] $_).StartsWith("${base}:", [StringComparison]::OrdinalIgnoreCase) }
+            $byCpe = @($cpes | Where-Object { ([string] $_).StartsWith("${base}:", [StringComparison]::OrdinalIgnoreCase) })
             $sameVendor = $vendor -and ($vendor.Contains($cpeVendor) -or $cpeVendor.Contains($vendor))
-            $byName = $product -and ($product -eq $cpeProduct -or ($sameVendor -and ($product.Contains($cpeProduct) -or $cpeProduct.Contains($product))))
-            if ($byCpe -or $byName) { $block; break }
+            $exactName = $product -and $product -eq $cpeProduct
+            $byName = $exactName -or ($product -and $sameVendor -and ($product.Contains($cpeProduct) -or $cpeProduct.Contains($product)))
+            if (-not $byCpe -and -not $byName) { continue }
+            $platforms = @(Get-Cve5BlockOtherPlatform -Block $block -MatchedCpe $byCpe -NameOnly:(-not $byCpe -and -not $exactName))
+            if ($platforms) { foreach ($p in $platforms) { $other.Add($p) } } else { $block }
+            break
         }
     }
-    if ($named) { return @($named) }
-    @($blocks | Where-Object { (Get-CveProductKey ([string] $_.PSObject.Properties['product']?.Value)) -in '', 'na' })
+    if ($named) { return [pscustomobject] @{ Blocks = @($named); OtherPlatform = @() } }
+    if ($other.Count) { return [pscustomobject] @{ Blocks = @(); OtherPlatform = @($other | Select-Object -Unique) } }
+    # Einträge „n/a“: nur die Angabe „platforms“ zählt, nicht der Name
+    $unnamed = @($blocks | Where-Object { (Get-CveProductKey ([string] $_.PSObject.Properties['product']?.Value)) -in '', 'na' })
+    $kept = @($unnamed | Where-Object { -not (Get-Cve5BlockOtherPlatform -Block $_) })
+    if ($unnamed -and -not $kept) {
+        $platforms = @($unnamed | ForEach-Object { Get-Cve5BlockOtherPlatform -Block $_ } | Select-Object -Unique)
+        return [pscustomobject] @{ Blocks = @(); OtherPlatform = $platforms }
+    }
+    [pscustomobject] @{ Blocks = $kept; OtherPlatform = @() }
 }
 
 function Get-CirclAssessment {
@@ -477,13 +501,18 @@ function Get-CirclAssessment {
     .SYNOPSIS
         Ist die Version laut CVE-Datensatz von CIRCL betroffen?
     .OUTPUTS
-        Verdict: Affected, NotAffected oder NotEvaluable; Range: ausgewertete Bereiche als Text.
+        Verdict: Affected, NotAffected oder NotEvaluable; Range: ausgewertete Bereiche als Text;
+        OtherPlatform: nur gesetzt, wenn der Datensatz das Produkt nur für andere Plattformen führt (NotAffected).
     .DESCRIPTION
         Werden nur einzelne Versionen genannt (oft nur die getestete), gilt: gleiche Version
         betroffen, neuere nicht betroffen, ältere nicht auswertbar (lieber ein Fehlalarm mehr).
     #>
     param($Record, [string[]] $CpeBase, [string] $Version)
-    $parsed = @(foreach ($block in Get-CirclAffectedBlock -Record $Record -CpeBase $CpeBase) {
+    $selection = Get-CirclAffectedSelection -Record $Record -CpeBase $CpeBase
+    if (-not $selection.Blocks -and $selection.OtherPlatform) {
+        return [pscustomobject] @{ Verdict = 'NotAffected'; Range = $null; OtherPlatform = @($selection.OtherPlatform) }
+    }
+    $parsed = @(foreach ($block in $selection.Blocks) {
             foreach ($entry in @($block.PSObject.Properties['versions']?.Value)) { if ($entry) { ConvertFrom-CveVersionEntry $entry } }
         }) | Where-Object { $_ }
     # Weggelassene Commit-Grenzen festhalten, damit sich solche Datensätze später finden lassen.
