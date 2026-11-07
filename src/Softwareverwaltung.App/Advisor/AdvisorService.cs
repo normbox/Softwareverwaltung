@@ -21,11 +21,18 @@ public interface IAdvisorService
     Task<AdvisorDataPreview> GetPreviewAsync(int level, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Was die Chat-Seitenleiste vom Berater braucht: ein neues Gespräch mit den gespeicherten Einstellungen.</summary>
+public interface IAdvisorChatService
+{
+    /// <summary>Wirft AdvisorException mit AdvisorDisabled, wenn der Berater ausgeschaltet ist.</summary>
+    Task<IAdvisorChatSession> StartSessionAsync(CancellationToken cancellationToken = default);
+}
+
 /// <summary>Modelle des Servers; EndpointNote ist z. B. der Hinweis „unverschlüsselt“.</summary>
 public sealed record AdvisorModelList(IReadOnlyList<string> Models, string? EndpointNote);
 
 /// <summary>Einstieg für die Oberfläche: Anbieter aus den Einstellungen, Gespräch, Verbindungstest.</summary>
-public sealed class AdvisorService(IAdvisorModule module, Func<AdvisorConnection, IAdvisorProvider>? createProvider = null) : IAdvisorService
+public sealed class AdvisorService(IAdvisorModule module, Func<AdvisorConnection, IAdvisorProvider>? createProvider = null) : IAdvisorService, IAdvisorChatService
 {
     private readonly Func<AdvisorConnection, IAdvisorProvider> _createProvider = createProvider ?? CreateProvider;
 
@@ -70,6 +77,9 @@ public sealed class AdvisorService(IAdvisorModule module, Func<AdvisorConnection
         }
         return new AdvisorConversation(_createProvider(connection), module);
     }
+
+    async Task<IAdvisorChatSession> IAdvisorChatService.StartSessionAsync(CancellationToken cancellationToken) =>
+        await StartConversationAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Prüft Adresse, Erreichbarkeit, Modelle und einen echten Tool-Aufruf. Der Tool-Aufruf wird nicht ausgeführt,

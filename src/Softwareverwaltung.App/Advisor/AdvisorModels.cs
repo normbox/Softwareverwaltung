@@ -71,8 +71,11 @@ public sealed record AdvisorDataPreview(int Level, bool HasScanData, string Inve
 /// <summary>Ungespeicherte Werte der Einstellungsseite für Modellliste und Verbindungstest.</summary>
 public sealed record AdvisorDraft(string? Preset, string? Endpoint, string? Model);
 
-/// <summary>Antwort auf eine Frage: Text des Modells und die Vorschläge für die Karten (Etappe 4c).</summary>
-public sealed record AdvisorReply(string Text, IReadOnlyList<PSObject> Proposals, int ToolRounds);
+/// <summary>
+/// Antwort auf eine Frage: Text des Modells, die Vorschläge für die Karten und die Namen der aufgerufenen Tools
+/// in Reihenfolge (für die Zeile „Abgefragt: …“ unter der Antwort).
+/// </summary>
+public sealed record AdvisorReply(string Text, IReadOnlyList<PSObject> Proposals, int ToolRounds, IReadOnlyList<string> ToolNames);
 
 /// <summary>
 /// Fehler des Beraters mit festem Code (z. B. AdvisorEndpointNotLocal, gleichnamiger Text in Strings.resx). Der Text enthält

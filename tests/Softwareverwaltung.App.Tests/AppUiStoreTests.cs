@@ -18,6 +18,16 @@ public sealed class AppUiStoreTests : IDisposable
     }
 
     [Fact]
+    public void AppFoldersFollowTheEnvironmentLikeTheModule()
+    {
+        // Umgelenktes APPDATA (Tests, Sichtprüfung) gilt auch für die App, nicht nur für das Modul.
+        Assert.Equal(_dir, AppFolders.Resolve(_dir, Environment.SpecialFolder.ApplicationData));
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        Assert.Equal(windows, AppFolders.Resolve(null, Environment.SpecialFolder.ApplicationData));
+        Assert.Equal(windows, AppFolders.Resolve("relativ", Environment.SpecialFolder.ApplicationData));
+    }
+
+    [Fact]
     public void StartsWithFortyPercentWithoutFile()
     {
         Assert.Equal(0.4, new AppUiStore(FilePath).Load().DetailsWidthFraction);

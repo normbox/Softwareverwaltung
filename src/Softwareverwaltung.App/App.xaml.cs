@@ -21,9 +21,11 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (_, args) => ErrorLog.Write("Task", args.Exception);
 
         _host = new PowerShellHost();
-        var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService(), shell: new ShellService(), cpe: new CpeService(_host), ui: new AppUiStore());
-        var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker(), new AdvisorService(new AdvisorModule(_host)));
-        var viewModel = new ShellViewModel(programs, settings);
+        var ui = new AppUiStore();
+        var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService(), shell: new ShellService(), cpe: new CpeService(_host), ui: ui);
+        var advisor = new AdvisorService(new AdvisorModule(_host));
+        var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker(), advisor);
+        var viewModel = new ShellViewModel(programs, settings, new AdvisorChatViewModel(advisor, programs, settings, ui));
         var window = new MainWindow { DataContext = viewModel };
         // Laufwerke und USB-Sticks live: die Liste in den Einstellungen folgt ohne Neustart.
         var drives = new DriveChangeWatcher();

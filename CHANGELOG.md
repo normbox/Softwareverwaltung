@@ -4,6 +4,18 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### KI-Berater: Chat-Seitenleiste (Etappe 4c-1)
+
+- **Seitenleiste „KI-Berater“** rechts im Hauptfenster, ein- und ausblendbar und in der Breite ziehbar (gemerkt in `app-ui.json`). Fragen mit Eingabetaste, „Abbrechen“, „Neues Gespräch“; Hinweise, wenn der Berater aus ist (mit „Einstellungen öffnen“) oder noch nicht gescannt wurde.
+- **Antworten als reiner Text** ohne Markdown und ohne klickbare Links, darunter die Zeile „Abgefragt: …“ mit den aufgerufenen Tools.
+- **Gegenseitige Sperre:** kein Fragen während Scan oder Aktion, kein Scan und keine Aktion während einer Antwort.
+- **Gespräch nur im Speicher**, ab 20 Fragen fallen die ältesten Runden weg; es endet mit „Neues Gespräch“, beim Beenden und wenn sich gespeicherte Beraterwerte ändern.
+
+### Korrekturen (4c-1)
+
+- Die App schrieb `app-ui.json` und ihr Fehlerprotokoll immer in die Windows-Ordner, auch wenn `APPDATA`/`LOCALAPPDATA` umgelenkt waren (das Modul folgt den Umgebungsvariablen). Jetzt nutzen beide dieselben Ordner.
+- Das Speichern der Detailfeld-Breite überschrieb andere Werte in `app-ui.json`.
+
 ### KI-Berater: Einstellungsseite (Etappe 4b-3)
 
 - **Abschnitt „KI-Berater“** in den Einstellungen: einschalten (nur mit Adresse und Modell, `AdvisorIncomplete`), Server-Vorgabe, Adresse mit Hinweis „unverschlüsselt“, Modell (anfangs leer, kein Standardmodell) mit „Modelle laden“, API-Schlüssel, „Verbindung testen“.
