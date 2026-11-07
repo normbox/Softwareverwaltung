@@ -9,13 +9,18 @@ function Invoke-AdvisorTool {
         error_code) und einer Meldung in der Sprache der Oberfläche, damit das Modell sich korrigieren
         kann; es wird nie eine Ausnahme geworfen.
         Codes: UnknownTool, InvalidArguments, InvalidId, UnknownId, InvalidLimit, InvalidRating,
-        ReasonMissing, NoUpdateKnown, ToolFailed; bei Vorschlägen ProposalCreated.
+        ReasonMissing, NoUpdateKnown, ShareLevelTooLow, ToolFailed; bei Vorschlägen ProposalCreated.
+        Freigabestufe: Das Modul bestimmt sie aus -ProviderKind und den Einstellungen (Advisor.ShareLevel),
+        höchstens bis zur Grenze der Anbieterart (Get-AdvisorShareLimit). Was die Stufe nicht zeigt,
+        steht nicht im Ergebnis; auf Stufe 0 gibt es nur die Übersicht über get_inventory.
         propose_update und propose_uninstall führen nichts aus: Proposal enthält den Vorschlag
         (mit der Bewertung als Rating) für die Oberfläche, die den Benutzer bestätigen lässt.
     .PARAMETER Name
         Name des Tools (siehe Get-AdvisorTool).
     .PARAMETER ArgumentsJson
         Argumente als JSON-Objekt, wie sie das Modell liefert.
+    .PARAMETER ProviderKind
+        Local (lokaler Server, Voreinstellung) oder External (spätere Plugins); bestimmt die Freigabestufe.
     .EXAMPLE
         (Invoke-AdvisorTool -Name get_inventory -ArgumentsJson '{"rating":"Red"}').Content
     #>
@@ -26,9 +31,19 @@ function Invoke-AdvisorTool {
         [string] $Name,
 
         [AllowEmptyString()]
-        [string] $ArgumentsJson = '{}'
+        [string] $ArgumentsJson = '{}',
+
+        [ValidateSet('Local', 'External')]
+        [string] $ProviderKind = 'Local'
     )
 
+    $level = Get-AdvisorShareLevel -ProviderKind $ProviderKind
+    Invoke-AdvisorToolAtLevel -Name $Name -ArgumentsJson $ArgumentsJson -Level $level
+}
+
+function Invoke-AdvisorToolAtLevel {
+    # Rumpf von Invoke-AdvisorTool mit fester Freigabestufe (auch für Get-AdvisorDataPreview); nicht exportiert.
+    param([string] $Name, [string] $ArgumentsJson, [ValidateRange(0, 4)] [int] $Level)
     if (-not $script:AdvisorTools.Contains($Name)) {
         return New-AdvisorToolError $Name UnknownTool @($Name, ($script:AdvisorTools.Keys -join ', '))
     }
@@ -39,13 +54,18 @@ function Invoke-AdvisorTool {
     catch {
         return New-AdvisorToolError $Name InvalidArguments
     }
+    # Stufe 0: nur die Übersicht, ohne Parameter (sonst ließen sich Namen über filter einzeln abfragen)
+    if ($Level -eq 0) {
+        if ($Name -ne 'get_inventory' -or $arguments.Count) { return New-AdvisorToolError $Name ShareLevelTooLow @($Level) }
+        return New-AdvisorToolResult -Name $Name -Ok $true -Data (ConvertTo-AdvisorOverview @(Get-AdvisorVisibleRating -Level 0))
+    }
 
     # Programm über die id aus get_inventory
     $rating = $null
     if ($script:AdvisorTools[$Name].Required -contains 'id') {
         $id = [string] $arguments['id']
         if ($id -notmatch '^p-[0-9a-f]{12}$') { return New-AdvisorToolError $Name InvalidId @($id) }
-        $rating = Find-AdvisorRating $id
+        $rating = Find-AdvisorRating $id -Level $Level
         if (-not $rating) { return New-AdvisorToolError $Name UnknownId @($id) }
     }
 
@@ -60,7 +80,7 @@ function Invoke-AdvisorTool {
                 $ratingFilter = [string] $arguments['rating']
                 if ($ratingFilter -and $ratingFilter -notin 'Red', 'Yellow', 'Gray', 'Green') { return New-AdvisorToolError $Name InvalidRating }
                 $filter = [string] $arguments['filter']
-                $all = @(Get-AdvisorContextRating)
+                $all = @(Get-AdvisorVisibleRating -Level $Level)
                 $matching = @($all | Where-Object {
                         (-not $ratingFilter -or $_.Rating -eq $ratingFilter) -and
                         (-not $arguments['updates_only'] -or ($_.UpdateStatus -and $_.UpdateStatus.Status -eq 'Outdated')) -and
@@ -68,10 +88,10 @@ function Invoke-AdvisorTool {
                     })
                 $order = @{ Red = 0; Yellow = 1; Gray = 2; Green = 3 }
                 $programs = @($matching | Sort-Object @{ Expression = { $order[$_.Rating] } }, Name | Select-Object -First $limit | ForEach-Object { ConvertTo-AdvisorSummary $_ })
-                New-AdvisorToolResult -Name $Name -Ok $true -Data ([ordered]@{ programs_in_scan = $all.Count; matching = $matching.Count; returned = $programs.Count; programs = $programs })
+                New-AdvisorToolResult -Name $Name -Ok $true -Data ([ordered]@{ share_level = $Level; programs_in_scan = $all.Count; matching = $matching.Count; returned = $programs.Count; programs = $programs })
             }
             'get_program_details' {
-                New-AdvisorToolResult -Name $Name -Ok $true -Data (ConvertTo-AdvisorDetail $rating)
+                New-AdvisorToolResult -Name $Name -Ok $true -Data (ConvertTo-AdvisorDetail $rating -Level $Level)
             }
             'check_latest_version' {
                 $u = Test-SoftwareUpdate -InputObject $rating.Record

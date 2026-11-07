@@ -149,6 +149,8 @@ Describe 'KI-Berater: Tools' {
             Flags = [string[]] @('PathUnreachable')
         } -VulnStatus Unknown -Reasons @((New-Msg PathUnreachable))
         Set-AdvisorContext -Rating @($usb)
+        # Nur über Nutzungsspuren gefunden: erst auf Freigabestufe 4 sichtbar, auch dort ohne Spurdetails
+        Mock -ModuleName SoftwareInventory Get-AdvisorShareLevel { 4 }
         $id = InModuleScope SoftwareInventory -Parameters @{ R = $usb.Record } { Get-AdvisorProgramId $R }
 
         $all = (Invoke-Tool get_inventory).Content + (Invoke-Tool get_program_details "{`"id`":`"$id`"}").Content

@@ -46,7 +46,7 @@ Regeln für Beiträge: Ein neuer Dienst braucht einen Hinweis zu den Bedingungen
 
 ## Was die KI sehen darf: Freigabestufen
 
-Geplant für Etappe 4b. Bis dahin geben die Werkzeuge des Beraters gar keine Nutzungsspuren weiter; ein Test sichert das ab.
+Im Modul umgesetzt (Etappe 4b-1); die Einstellungsseite der App folgt mit 4b-3. Einzelheiten zu den Feldern: [BERATER.md](BERATER.md#freigabestufen).
 
 Unabhängig vom Anbieter lässt sich festlegen, wie tief der KI-Berater in die Daten schauen darf. Die Grenze setzt das Modul selbst: Die Werkzeuge (`get_inventory` usw.) geben nur die Felder der eingestellten Stufe zurück. Was nicht freigegeben ist, erreicht das Modell gar nicht; eine Anweisung im Prompt allein würde nicht genügen.
 
@@ -54,17 +54,18 @@ Unabhängig vom Anbieter lässt sich festlegen, wie tief der KI-Berater in die D
 | --- | --- | --- |
 | **0 Übersicht** | Anzahl Programme, Anzahl Updates, Ampelverteilung, CVE-Nummern ohne Programmzuordnung | Programmnamen |
 | **1 Programmliste** | Name, Hersteller, installierte und neueste Version, Ampel, CVEs, KEV/EPSS | Pfade, Installationsdetails, portable Programme |
-| **2 Installationsdetails** | zusätzlich Installationsart, Bereich (Rechner/Benutzer), winget-ID, bereinigte Pfade | portable Programme, Nutzungsspuren |
-| **3 Portable Programme** | zusätzlich gefundene portable Programme mit Version, Signaturstatus und Fundort-Art (z. B. „Downloads“) | Nutzungsspuren |
-| **4 Nutzungsspuren, vergröbert** | zusätzlich „zuletzt genutzt“ in groben Klassen (unter 1 Monat, 1 bis 6 Monate, länger, nie) und „läuft im Autostart“ | genaue Zeitstempel, Startzähler, Benutzerzuordnung |
+| **2 Installationsdetails** | zusätzlich Installationsart, Bereich (Rechner/Benutzer), Architektur, winget-ID, bereinigter Installationsordner | portable Programme, Nutzungsspuren, Installationsdatum |
+| **3 Portable Programme** | zusätzlich portable Programme aus der Dateisuche mit Version, Signaturstatus und Fundort-Art (z. B. „Downloads“) | Pfad portabler Programme, Funde nur über Nutzungsspuren, Nutzungsspuren |
+| **4 Nutzungsspuren, vergröbert** | zusätzlich portable Programme, die nur über Nutzungsspuren gefunden wurden, „zuletzt genutzt“ in groben Klassen (unter 1 Monat, 1 bis 6 Monate, länger, unbekannt) und „läuft im Autostart“ | genaue Zeitstempel, Startzähler, Art der Spur, Benutzerzuordnung |
 
-Genaue Zeitstempel, Startzähler und die Zuordnung zu einzelnen Benutzern gibt es für keine KI, auch nicht lokal.
+Genaue Zeitstempel, Startzähler und die Zuordnung zu einzelnen Benutzern gibt es für keine KI, auch nicht lokal. „Unbekannt“ statt „nie“: Fehlende Spuren beweisen nicht, dass ein Programm nie gestartet wurde. Anzahlen (Stufe 0) beziehen sich auf die Programme, die die Stufe zeigt.
 
 Weitere Einschränkungen:
 
-- **Vorerst nur lokale Anbieter**, Voreinstellung Stufe 3, mit einer Vorschau der übertragenen Daten. Für spätere externe Anbieter gelten eigene Stufen (Vorschlag: höchstens Stufe 1).
+- **Vorerst nur lokale Anbieter**, Voreinstellung Stufe 3 (höchstens 4), mit einer Vorschau der übertragenen Daten. Ältere Einstellungen ohne Stufe bekommen Stufe 2 und einen einmaligen Hinweis; höher stellt nur der Benutzer. Für spätere externe Anbieter: Voreinstellung Stufe 1, höchstens Stufe 3, Stufe 4 nie.
+- **Lokal heißt:** Die aufgelöste Adresse des Servers ist Loopback oder liegt in einem privaten Netz (auch Link-Local). Öffentliche oder nicht auflösbare Adressen werden abgelehnt; http im privaten Netz geht mit dem Hinweis „unverschlüsselt“.
 - **Ausschlussliste (geplant):** Einzelne Programme, Hersteller oder Ordner lassen sich ganz vor der KI verbergen (z. B. interne Firmenprogramme).
-- **Firmen (geplant):** Ein Administrator kann per Richtlinie die höchste erlaubte Stufe je Anbieter festlegen; Nutzer können sie dann nur senken.
+- **Firmen (geplant, Etappe 6):** Ein Administrator kann per Richtlinie die höchste erlaubte Stufe je Anbieter festlegen; Nutzer können sie dann nur senken. Das Modul fragt die Grenze schon heute an einer Stelle ab (`Get-AdvisorShareLimit`).
 - Die Bereinigung von Benutzer- und Rechnernamen gilt zusätzlich auf jeder Stufe.
 
 ## Übersicht

@@ -26,6 +26,8 @@
         'Get-SettingPreset'
         'Get-ServiceTermsNotice'
         'Get-AdvisorEndpointPreset'
+        'Get-AdvisorEndpointCheck'
+        'Get-AdvisorDataPreview'
         'Get-AdvisorTool'
         'Invoke-AdvisorTool'
         'Set-AdvisorContext'

@@ -19,6 +19,13 @@ $script:AdvisorPresets = [ordered]@{
     Unsloth  = @{ Label = 'Unsloth Studio'; Endpoint = 'http://localhost:8888/v1'; RequiresApiKey = $true }
     Custom   = @{ Label = $null; Endpoint = $null; RequiresApiKey = $false }
 }
+# Freigabestufen des KI-Beraters (docs/EXTERNE-DIENSTE.md): Voreinstellung und Höchststufe je Anbieterart.
+# Die Höchststufe liefert Get-AdvisorShareLimit; ab Etappe 6 kann eine Richtlinie sie nur senken.
+$script:AdvisorShareLevelDefault = [ordered]@{ Local = 3; External = 1 }
+$script:AdvisorShareLevelMax = [ordered]@{ Local = 4; External = 3 }
+# Einstellungen aus der Zeit vor den Freigabestufen: lokal Stufe 2 und ein einmaliger Hinweis in der App;
+# höher stellt nur der Benutzer.
+$script:AdvisorShareLevelMigrated = 2
 # Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
 $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
@@ -66,6 +73,10 @@ function New-DefaultSetting {
             Preset   = $null    # Ollama, LMStudio, Unsloth oder Custom
             Endpoint = $null    # Basisadresse der OpenAI-kompatiblen Schnittstelle, z. B. http://localhost:11434/v1
             Model    = $null    # vom Benutzer aus den installierten Modellen gewählt; kein Standard
+            # Freigabestufe je Anbieterart (0–4); was das Modell sieht, begrenzt das Modul in den Tools.
+            ShareLevel = [pscustomobject] ([ordered]@{} + $script:AdvisorShareLevelDefault)
+            # Einmaliger Hinweis in der App nach der Übernahme älterer Einstellungen (Stufe 2)
+            ShareLevelNoticePending = $false
         }
         # Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
         # Aus = keine Suche; Nutzungsspuren und FileScan bleiben gespeichert. Keine Vorlage schaltet ihn ein.
@@ -137,6 +148,19 @@ function Read-InventorySetting {
         if ($a.PSObject.Properties['Preset'] -and $a.Preset -in $script:AdvisorPresets.Keys) { $setting.Advisor.Preset = [string] $a.Preset }
         if ($a.PSObject.Properties['Endpoint'] -and (Test-AdvisorEndpoint ([string] $a.Endpoint))) { $setting.Advisor.Endpoint = ([string] $a.Endpoint).TrimEnd('/') }
         if ($a.PSObject.Properties['Model'] -and $a.Model) { $setting.Advisor.Model = [string] $a.Model }
+        if ($a.PSObject.Properties['ShareLevel'] -and $a.ShareLevel) {
+            foreach ($kind in @($script:AdvisorShareLevelMax.Keys)) {
+                $value = $a.ShareLevel.PSObject.Properties[$kind]
+                $level = if ($value) { $value.Value -as [int] }
+                if ($null -ne $level -and $level -ge 0 -and $level -le $script:AdvisorShareLevelMax[$kind]) { $setting.Advisor.ShareLevel.$kind = $level }
+            }
+            if ($a.PSObject.Properties['ShareLevelNoticePending']) { $setting.Advisor.ShareLevelNoticePending = [bool] $a.ShareLevelNoticePending }
+        }
+        else {
+            # Ältere Einstellungen ohne Freigabestufe: lokal Stufe 2, Hinweis einmal anzeigen
+            $setting.Advisor.ShareLevel.Local = $script:AdvisorShareLevelMigrated
+            $setting.Advisor.ShareLevelNoticePending = $true
+        }
     }
     if ($data.PSObject.Properties['FileScan']) {
         $fs = $data.FileScan

@@ -69,6 +69,13 @@ function Set-InventorySetting {
         Basisadresse der OpenAI-kompatiblen Schnittstelle, z. B. http://localhost:11434/v1. Leer löscht sie.
     .PARAMETER AdvisorModel
         Modellname, wie ihn der Server unter /v1/models nennt. Es gibt keinen Standard. Leer löscht ihn.
+    .PARAMETER AdvisorShareLevelLocal
+        Freigabestufe für lokale KI-Server, 0 bis 4 (Voreinstellung 3). Was die Stufe zeigt, steht in
+        docs/EXTERNE-DIENSTE.md; die Grenze setzen die Tools selbst. Löscht den Hinweis ShareLevelNoticePending.
+    .PARAMETER AdvisorShareLevelExternal
+        Freigabestufe für spätere externe Anbieter (Plugins), 0 bis 3 (Voreinstellung 1); Stufe 4 nie extern.
+    .PARAMETER AdvisorShareLevelNoticePending
+        Merker für den einmaligen Hinweis nach der Übernahme älterer Einstellungen; die App setzt ihn auf $false.
     .PARAMETER Reset
         Setzt alles auf den Ausgangszustand zurück: aus, keine eigenen Ausschlüsse,
         SmartExclusions an (Usage bleibt erhalten).
@@ -161,6 +168,14 @@ function Set-InventorySetting {
         [AllowEmptyString()]
         [string] $AdvisorModel,
 
+        [ValidateRange(0, 4)]
+        [int] $AdvisorShareLevelLocal,
+
+        [ValidateRange(0, 3)]
+        [int] $AdvisorShareLevelExternal,
+
+        [bool] $AdvisorShareLevelNoticePending,
+
         [switch] $Reset
     )
 
@@ -221,9 +236,32 @@ function Set-InventorySetting {
             $exception.Data['Code'] = 'InvalidAdvisorEndpoint'
             throw $exception
         }
+        # Nur lokale Server: Name auflösen, jede Adresse muss Loopback oder privat sein.
+        if ($AdvisorEndpoint) {
+            $check = Get-AdvisorEndpointCheck -Endpoint $AdvisorEndpoint
+            if (-not $check.Ok) {
+                $exception = [System.ArgumentException]::new($check.Message.Text, 'AdvisorEndpoint')
+                $exception.Data['Code'] = $check.Message.Code
+                throw $exception
+            }
+        }
         $setting.Advisor.Endpoint = if ($AdvisorEndpoint) { $AdvisorEndpoint.TrimEnd('/') } else { $null }
     }
     if ($PSBoundParameters.ContainsKey('AdvisorModel')) { $setting.Advisor.Model = if ($AdvisorModel) { $AdvisorModel } else { $null } }
+    foreach ($kind in 'Local', 'External') {
+        if (-not $PSBoundParameters.ContainsKey("AdvisorShareLevel$kind")) { continue }
+        $level = $PSBoundParameters["AdvisorShareLevel$kind"]
+        $limit = Get-AdvisorShareLimit -ProviderKind $kind
+        if ($level -gt $limit) {
+            $exception = [System.ArgumentException]::new((Get-LocalizedString 'SettingsErrorShareLevelAboveLimit' @($level, $limit)), "AdvisorShareLevel$kind")
+            $exception.Data['Code'] = 'ShareLevelAboveLimit'
+            throw $exception
+        }
+        $setting.Advisor.ShareLevel.$kind = $level
+        # Von Hand gewählt: der Hinweis nach der Übernahme ist erledigt
+        $setting.Advisor.ShareLevelNoticePending = $false
+    }
+    if ($PSBoundParameters.ContainsKey('AdvisorShareLevelNoticePending')) { $setting.Advisor.ShareLevelNoticePending = $AdvisorShareLevelNoticePending }
 
     if ($PSCmdlet.ShouldProcess((Get-SettingsPath), (Get-LocalizedString 'ConfirmSaveSettings'))) {
         Write-InventorySetting -Setting $setting
