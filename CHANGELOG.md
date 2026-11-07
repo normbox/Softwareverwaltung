@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### KI-Berater: Schutz gegen Endlosschleifen beim Denken (vor 4c-2)
+
+- **`max_tokens` in jeder Anfrage**, einstellbar (`Advisor.MaxTokens`, Vorgabe 8192), und **Zeitgrenze je Anfrage einstellbar** (`Advisor.TimeoutSeconds`, Vorgabe 300 s, bisher fest). Beides auf der Einstellungsseite unter „KI-Berater“.
+- **`finish_reason: "length"`** ergibt die eigene Meldung `AdvisorResponseTruncated` („Das Modell hat keine Antwort abgeschlossen …“, mit dem Tipp, Thinking auszuschalten oder die Presence Penalty zu erhöhen). Angefangene Tool-Aufrufe werden nicht ausgeführt, das Gespräch bleibt wie vor der Frage. Presence Penalty sendet die App nicht mit.
+- Testfall aus der Praxis (07.11.): zwei Tool-Runden in Ordnung, danach Schleife beim Denken; bisher Abbruch erst nach 300 s mit `AdvisorTimeout`.
+
 ### Korrekturen (Hinweis zur Freigabestufe)
 
 - Der einmalige Hinweis zur übernommenen Freigabestufe ließ sich nicht schließen: Der Knopf blieb nach dem Laden der Einstellungen grau, weil sein Befehl nach dem Ende des Ladens nicht neu bewertet wurde. Jetzt schließt ein ✕ rechts oben („Hinweis schließen“) den Hinweis in den Einstellungen und im Hauptfenster, ohne weiteres Zutun nur für diese Sitzung. Mit dem Haken „Nicht mehr anzeigen“ wird das Schließen sofort gespeichert und gilt auch nach einem Neustart.

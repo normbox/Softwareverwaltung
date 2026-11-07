@@ -1368,4 +1368,16 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
   <data name="AdvisorChatTool_propose_uninstall" xml:space="preserve">
     <value>Vorschlag Deinstallation</value>
   </data>
+  <data name="SettingsAdvisorMaxTokens" xml:space="preserve">
+    <value>Höchstzahl Tokens je Antwort (512–32768)</value>
+  </data>
+  <data name="SettingsAdvisorTimeout" xml:space="preserve">
+    <value>Zeitgrenze je Anfrage in Sekunden (30–1800)</value>
+  </data>
+  <data name="SettingsAdvisorLimitsText" xml:space="preserve">
+    <value>Schutz gegen Endlosschleifen, wenn ein Modell beim Nachdenken nicht zum Ende kommt. Die Token-Grenze greift nur, wenn das Modell sie vor der Zeitgrenze erreicht: Bei langsamen Rechnern (z. B. 10 Tokens je Sekunde) die Token-Grenze niedriger oder die Zeitgrenze höher wählen.</value>
+  </data>
+  <data name="AdvisorResponseTruncated" xml:space="preserve">
+    <value>Das Modell hat keine Antwort abgeschlossen (Grenze von {0} Tokens erreicht). Tipp: Thinking ausschalten oder Presence Penalty erhöhen; bei langen Antworten die Grenze in den Einstellungen anheben.</value>
+  </data>
 </root>

@@ -45,6 +45,10 @@ public sealed record AppSettings
     public int AdvisorShareLevelLocal { get; init; } = 3;
     /// <summary>Einmaliger Hinweis nach der Übernahme älterer Einstellungen; kein Teil der Änderungserkennung.</summary>
     public bool AdvisorShareLevelNoticePending { get; init; }
+    /// <summary>max_tokens je Antwort (Schutz gegen Endlosschleifen beim Denken).</summary>
+    public int AdvisorMaxTokens { get; init; } = 8192;
+    /// <summary>Zeitgrenze je Anfrage an den KI-Server in Sekunden.</summary>
+    public int AdvisorTimeoutSeconds { get; init; } = 300;
 
     public static AppSettings FromPs(PSObject obj)
     {
@@ -93,6 +97,8 @@ public sealed record AppSettings
             AdvisorModel = Text(advisor, "Model"),
             AdvisorShareLevelLocal = Convert.ToInt32(shareLevel?.Properties["Local"]?.Value ?? 3),
             AdvisorShareLevelNoticePending = advisor?.Properties["ShareLevelNoticePending"]?.Value is true,
+            AdvisorMaxTokens = Convert.ToInt32(advisor?.Properties["MaxTokens"]?.Value ?? 8192),
+            AdvisorTimeoutSeconds = Convert.ToInt32(advisor?.Properties["TimeoutSeconds"]?.Value ?? 300),
         };
     }
 

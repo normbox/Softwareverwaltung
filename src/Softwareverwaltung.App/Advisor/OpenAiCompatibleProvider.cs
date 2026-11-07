@@ -17,12 +17,13 @@ public sealed class OpenAiCompatibleProvider : IAdvisorProvider
 {
     public const int MaxResponseBytes = 8 * 1024 * 1024;
 
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
     private readonly HttpClient _client;
+    private readonly int _maxTokens;
     private readonly Uri _base;
     private readonly SecureString? _apiKey;
 
     /// <param name="handler">Nur für Tests; sonst <see cref="LocalOnlyHttp.CreateHandler"/>.</param>
+    /// <param name="timeout">Nur für Tests; sonst TimeoutSeconds der Verbindung.</param>
     public OpenAiCompatibleProvider(AdvisorConnection connection, HttpMessageHandler? handler = null, TimeSpan? timeout = null)
     {
         if (!Uri.TryCreate(connection.Endpoint, UriKind.Absolute, out var uri)
@@ -32,7 +33,8 @@ public sealed class OpenAiCompatibleProvider : IAdvisorProvider
             throw new AdvisorException("AdvisorEndpointInvalid", connection.Endpoint ?? "");
         }
         _base = new Uri(uri.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/");
-        _client = new HttpClient(handler ?? LocalOnlyHttp.CreateHandler(), disposeHandler: true) { Timeout = timeout ?? DefaultTimeout };
+        _client = new HttpClient(handler ?? LocalOnlyHttp.CreateHandler(), disposeHandler: true) { Timeout = timeout ?? TimeSpan.FromSeconds(connection.TimeoutSeconds) };
+        _maxTokens = connection.MaxTokens;
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SoftwareInventory", typeof(OpenAiCompatibleProvider).Assembly.GetName().Version?.ToString(3) ?? "0"));
         Model = string.IsNullOrWhiteSpace(connection.Model) ? null : connection.Model.Trim();
         _apiKey = connection.ApiKey;
@@ -68,14 +70,20 @@ public sealed class OpenAiCompatibleProvider : IAdvisorProvider
         {
             throw new AdvisorException("AdvisorNoModel");
         }
-        using var doc = await SendAsync(HttpMethod.Post, "chat/completions", BuildRequest(Model, messages, tools), cancellationToken).ConfigureAwait(false);
-        return ParseCompletion(doc.RootElement);
+        using var doc = await SendAsync(HttpMethod.Post, "chat/completions", BuildRequest(Model, messages, tools, _maxTokens), cancellationToken).ConfigureAwait(false);
+        var completion = ParseCompletion(doc.RootElement);
+        // Grenze erreicht (z. B. Endlosschleife beim Denken): keine halbe Antwort, keine angefangenen Tool-Aufrufe.
+        if (string.Equals(completion.FinishReason, "length", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AdvisorException("AdvisorResponseTruncated", _maxTokens);
+        }
+        return completion;
     }
 
     public void Dispose() => _client.Dispose();
 
-    /// <summary>Anfrage im OpenAI-Format; öffentlich für Tests.</summary>
-    public static string BuildRequest(string model, IReadOnlyList<AdvisorMessage> messages, IReadOnlyList<AdvisorToolDefinition> tools)
+    /// <summary>Anfrage im OpenAI-Format; öffentlich für Tests. Presence Penalty o. Ä. sendet die App bewusst nicht.</summary>
+    public static string BuildRequest(string model, IReadOnlyList<AdvisorMessage> messages, IReadOnlyList<AdvisorToolDefinition> tools, int? maxTokens = null)
     {
         using var buffer = new MemoryStream();
         using (var w = new Utf8JsonWriter(buffer))
@@ -83,6 +91,10 @@ public sealed class OpenAiCompatibleProvider : IAdvisorProvider
             w.WriteStartObject();
             w.WriteString("model", model);
             w.WriteBoolean("stream", false);
+            if (maxTokens is > 0)
+            {
+                w.WriteNumber("max_tokens", maxTokens.Value);
+            }
             w.WriteStartArray("messages");
             foreach (var m in messages)
             {
@@ -149,7 +161,8 @@ public sealed class OpenAiCompatibleProvider : IAdvisorProvider
                 calls.Add(new AdvisorToolCall(id, name.GetString()!, arguments));
             }
         }
-        return new AdvisorCompletion(content, calls);
+        var finish = choices[0].TryGetProperty("finish_reason", out var f) && f.ValueKind == JsonValueKind.String ? f.GetString() : null;
+        return new AdvisorCompletion(content, calls, finish);
     }
 
     private static void WriteMessage(Utf8JsonWriter w, AdvisorMessage m)

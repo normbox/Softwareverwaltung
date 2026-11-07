@@ -1,5 +1,6 @@
 using System.Management.Automation;
 using System.Security;
+using Softwareverwaltung.App.Advisor;
 using Softwareverwaltung.App.Models;
 using Softwareverwaltung.App.Services;
 using Softwareverwaltung.App.ViewModels;
@@ -98,6 +99,24 @@ public sealed class SettingsServiceTests : IAsyncLifetime
             Assert.Equal(1, settings.AdvisorShareLevelLocal);
         }
         Assert.Contains(await _service.GetAdvisorPresetsAsync(), p => p.Name == "Unsloth" && p.RequiresApiKey && p.Endpoint is not null);
+    }
+
+    [Fact]
+    public async Task AdvisorLimitsHaveDefaultsAndRoundTripToTheConnection()
+    {
+        var initial = await _service.LoadAsync();
+        Assert.Equal(8192, initial.AdvisorMaxTokens);
+        Assert.Equal(300, initial.AdvisorTimeoutSeconds);
+
+        var saved = await _service.SaveAsync(initial with { AdvisorMaxTokens = 2048, AdvisorTimeoutSeconds = 600 }, initial);
+        Assert.Equal(2048, saved.AdvisorMaxTokens);
+        Assert.Equal(600, saved.AdvisorTimeoutSeconds);
+
+        var connection = await new AdvisorModule(_host).GetConnectionAsync();
+        Assert.Equal(2048, connection.MaxTokens);
+        Assert.Equal(600, connection.TimeoutSeconds);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveAsync(saved with { AdvisorMaxTokens = 100 }, saved));
     }
 
     [Fact]

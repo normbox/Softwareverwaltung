@@ -384,6 +384,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         AdvisorEndpoint = string.IsNullOrWhiteSpace(AdvisorEndpoint) ? null : AdvisorEndpoint.Trim(),
         AdvisorModel = string.IsNullOrWhiteSpace(AdvisorModel) ? null : AdvisorModel.Trim(),
         AdvisorShareLevelLocal = AdvisorShareLevelLocal,
+        AdvisorMaxTokens = AdvisorMaxTokens,
+        AdvisorTimeoutSeconds = AdvisorTimeoutSeconds,
         AdvisorShareLevelNoticePending = _saved.AdvisorShareLevelNoticePending,
     };
 

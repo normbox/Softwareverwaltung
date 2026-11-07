@@ -105,6 +105,14 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
         {
             command.AddParameter("AdvisorShareLevelLocal", settings.AdvisorShareLevelLocal);
         }
+        if (previous is null || settings.AdvisorMaxTokens != previous.AdvisorMaxTokens)
+        {
+            command.AddParameter("AdvisorMaxTokens", settings.AdvisorMaxTokens);
+        }
+        if (previous is null || settings.AdvisorTimeoutSeconds != previous.AdvisorTimeoutSeconds)
+        {
+            command.AddParameter("AdvisorTimeoutSeconds", settings.AdvisorTimeoutSeconds);
+        }
     }
 
     public async Task<AppSettings> SaveUsageAsync(string usage, CancellationToken cancellationToken = default) =>

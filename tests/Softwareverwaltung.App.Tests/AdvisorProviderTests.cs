@@ -293,6 +293,57 @@ public sealed class AdvisorProviderTests
     }
 
     [Fact]
+    public async Task CompletionSendsMaxTokensAndReportsAnUnfinishedAnswer()
+    {
+        // Endlosschleife beim Denken: Der Server bricht an der Grenze ab und meldet finish_reason „length“,
+        // dabei teils schon mit angefangenen Tool-Aufrufen. Davon wird nichts übernommen.
+        var handler = new FakeHandler(_ => Json(HttpStatusCode.OK, """
+            {"choices":[{"finish_reason":"length","message":{"content":"Ich denke … ich denke …",
+              "tool_calls":[{"id":"a","type":"function","function":{"name":"get_inventory","arguments":"{\"lim"}}]}}]}
+            """));
+        using var provider = new OpenAiCompatibleProvider(Connection("http://localhost:11434/v1") with { MaxTokens = 4000 }, handler);
+
+        var ex = await Assert.ThrowsAsync<AdvisorException>(() => provider.CompleteAsync([AdvisorMessage.User("hi")], []));
+
+        Assert.Equal("AdvisorResponseTruncated", ex.Code);
+        Assert.Contains("4000", ex.Message);
+        Assert.Contains("Thinking", ex.Message);
+        Assert.Contains("Presence Penalty", ex.Message);
+        using var sent = JsonDocument.Parse(handler.Requests.Single().Body);
+        Assert.Equal(4000, sent.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.False(sent.RootElement.TryGetProperty("presence_penalty", out _));
+    }
+
+    [Fact]
+    public async Task CompletionReadsTheFinishReason()
+    {
+        var handler = new FakeHandler(_ => Json(HttpStatusCode.OK, """{"choices":[{"finish_reason":"stop","message":{"content":"Fertig"}}]}"""));
+        using var provider = new OpenAiCompatibleProvider(Connection("http://localhost:11434/v1"), handler);
+
+        var completion = await provider.CompleteAsync([AdvisorMessage.User("hi")], []);
+
+        Assert.Equal("stop", completion.FinishReason);
+        using var sent = JsonDocument.Parse(handler.Requests.Single().Body);
+        Assert.Equal(AdvisorConnection.DefaultMaxTokens, sent.RootElement.GetProperty("max_tokens").GetInt32());
+    }
+
+    [Fact]
+    public async Task TheTimeoutComesFromTheConnection()
+    {
+        var handler = new FakeHandler(async (_, token) =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), token);
+            return Json(HttpStatusCode.OK, "{}");
+        });
+        using var provider = new OpenAiCompatibleProvider(Connection("http://localhost:11434/v1") with { TimeoutSeconds = 1 }, handler);
+
+        var ex = await Assert.ThrowsAsync<AdvisorException>(() => provider.ListModelsAsync());
+
+        Assert.Equal("AdvisorTimeout", ex.Code);
+        Assert.Contains("1", ex.Message);
+    }
+
+    [Fact]
     public async Task CompletionWithoutModelIsRefusedBeforeSending()
     {
         var handler = new FakeHandler(_ => Json(HttpStatusCode.OK, "{}"));

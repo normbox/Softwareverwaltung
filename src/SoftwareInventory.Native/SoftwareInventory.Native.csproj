@@ -19,9 +19,14 @@
     <SatelliteResourceLanguages>de</SatelliteResourceLanguages>
   </PropertyGroup>
 
-  <!-- Für Pester und Probeläufe direkt aus src: DLL neben das Modul legen (lib\ ist nicht im Repository). -->
+  <!--
+    Für Pester und Probeläufe direkt aus src: DLL neben das Modul legen (lib\ ist nicht im Repository).
+    Hat eine offene PowerShell das Modul geladen, ist die Datei gesperrt; dann nur warnen, die App nimmt
+    ihre Kopie ohnehin aus der Ausgabe dieses Projekts.
+  -->
   <Target Name="CopyToModuleLib" AfterTargets="Build">
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildThisFileDirectory)..\SoftwareInventory\lib" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildThisFileDirectory)..\SoftwareInventory\lib" SkipUnchangedFiles="true"
+          Retries="0" ContinueOnError="WarnAndContinue" />
   </Target>
 
 </Project>
