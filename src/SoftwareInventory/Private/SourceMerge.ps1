@@ -14,7 +14,9 @@ function New-SourceStatement {
         [string] $CveId,
         [string] $Range,
         $Note,   # SoftwareInventory.Message oder $null
-        [string] $Weight
+        [string] $Weight,
+        # Bei NotAffected: Die Quelle führt die Lücke nur für diese anderen Plattformen (Plattformfilter).
+        [string[]] $OtherPlatform = @()
     )
     if (-not $Weight -and $Verdict -eq 'Affected') { $Weight = 'Affected' }
     [pscustomobject] @{
@@ -24,6 +26,7 @@ function New-SourceStatement {
         Range       = if ($Range) { $Range } else { $null }
         Note        = $Note
         Weight      = if ($Weight) { $Weight } else { $null }
+        OtherPlatform = [string[]] @($OtherPlatform | Where-Object { $_ })
         # Namensnennung (CC BY 4.0 bei den CVE-Datensätzen über CIRCL)
         Attribution = New-InventoryMessage "Attribution$Source"
         Url         = if ($CveId) { $script:SourceUrl[$Source] -f $CveId } else { $null }
@@ -58,6 +61,9 @@ function Get-NvdStatement {
     if ($null -eq $check.Affected) {
         return New-SourceStatement -Source NVD -Verdict NotEvaluable -CveId $Cve.id -Note (New-InventoryMessage NvdNoProductData)
     }
+    if ($check.PSObject.Properties['OtherPlatform']?.Value) {
+        return New-SourceStatement -Source NVD -Verdict NotAffected -CveId $Cve.id -OtherPlatform $check.OtherPlatform -Note (New-InventoryMessage OtherPlatformOnly ($check.OtherPlatform -join ', '))
+    }
     if (-not $check.Affected) { return New-SourceStatement -Source NVD -Verdict NotAffected -CveId $Cve.id -Range $range }
     if ($check.Unbounded) {
         $kind = Get-UnboundedAssessment -Cve $Cve
@@ -71,6 +77,9 @@ function Get-CirclStatement {
     param($Record, [string[]] $CpeBase, [string] $Version)
     $id = [string] $Record.cveMetadata.cveId
     $check = Get-CirclAssessment -Record $Record -CpeBase $CpeBase -Version $Version
+    if ($check.PSObject.Properties['OtherPlatform']?.Value) {
+        return New-SourceStatement -Source CIRCL -Verdict NotAffected -CveId $id -OtherPlatform $check.OtherPlatform -Note (New-InventoryMessage OtherPlatformOnly ($check.OtherPlatform -join ', '))
+    }
     if ($check.Verdict -ne 'NotEvaluable') { return New-SourceStatement -Source CIRCL -Verdict $check.Verdict -CveId $id -Range $check.Range }
     $kind = Get-UnboundedAssessment -Cve ([pscustomobject] @{ published = $Record.cveMetadata.PSObject.Properties['datePublished']?.Value })
     $note = if ($kind.Assessment -eq 'Informational') { New-InventoryMessage CirclLegacyData $script:UnboundedMaxAgeYears } else { New-InventoryMessage CirclNoVersionRange }

@@ -44,7 +44,8 @@ function ConvertTo-SecurityReportHtml {
             $published = if ($x.Published) { ([string] $x.Published).Substring(0, [Math]::Min(10, ([string] $x.Published).Length)) } else { '–' }
             # Angabe jeder Quelle mit Namensnennung (CC BY 4.0 bei CIRCL)
             $sources = @(if ($x.PSObject.Properties['Sources']) { $x.Sources }) | Where-Object { $_ } | ForEach-Object {
-                $line = (& $t "Verdict$($_.Verdict)") + $(if ($_.Range) { " ($(& $e $_.Range))" })
+                $line = (& $t "Verdict$($_.Verdict)") + $(if ($_.Range) { " ($(& $e $_.Range))" }) +
+                    $(if ($_.PSObject.Properties['OtherPlatform'] -and $_.OtherPlatform) { " ($(& $e (ConvertTo-MessageText $_.Note)))" })
                 "<br><span class='muted'>$(& $e $_.Source): $line · $(& $e (ConvertTo-MessageText $_.Attribution))</span>"
             }
             "<tr class='$(if ($x.Assessment -eq 'Informational') { 'info' })'><td><a href='$(& $e $x.Url)'>$(& $e $x.CveId)</a> $kev</td>" +
@@ -57,6 +58,9 @@ function ConvertTo-SecurityReportHtml {
             "<p><b>$(& $t SourceLabel)</b> $(& $e ($r.Record.Sources -join ', '))" + $(if ($location) { " · <b>$(& $t LocationLabel)</b> $(& $e $location)" }) + '</p>'
             if ($v -and $v.Cpe) { "<p><b>CPE:</b> $(& $e ($v.Cpe -join ', '))" + $(if ($v.CpeSource -eq 'User') { " $(& $t CpeUserConfirmed)" }) + '</p>' }
             if ($v -and $v.Notes) { "<p class='muted'>$(& $e (ConvertTo-MessageText @($v.Notes)))</p>" }
+            if ($v -and $v.PSObject.Properties['OtherPlatformNote'] -and $v.OtherPlatformNote) {
+                "<p class='muted'>$(& $e (ConvertTo-MessageText $v.OtherPlatformNote)): $(& $e (@($v.OtherPlatform | ForEach-Object { ConvertTo-MessageText $_.Note }) -join '; '))</p>"
+            }
             if ($vulnRows) {
                 "<table class='cves'><thead><tr><th>CVE</th><th>$(& $t ColumnAssessment)</th><th>CVSS</th><th>EPSS</th><th>$(& $t ColumnPublished)</th><th>$(& $t ColumnNote)</th></tr></thead><tbody>$($vulnRows -join '')</tbody></table>"
             }

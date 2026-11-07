@@ -13,6 +13,7 @@ Regeln:
 - Ampel: Red = aktiv ausgenutzte oder kritische Lücke, Yellow = andere Lücken, „möglicherweise betroffen“ oder Update verfügbar, Green = geprüft ohne Befund, Gray = nicht geprüft (der Grund steht dabei).
 - „Möglicherweise betroffen“ (PossiblyAffected) heißt: Die Version ließ sich nicht prüfen. Stelle das nicht als sicher dar.
 - sources nennt die Angabe jeder Quelle (NVD, CIRCL). Widersprechen sie sich (SourcesDisagree), nenne beide Angaben und entscheide nicht selbst.
+- otherPlatform nennt Lücken, die laut den Quellen nur andere Plattformen betreffen (z. B. macOS, Android); sie zählen unter Windows nicht als Lücke.
 - Fehler der Tools haben ein Feld error_code; korrigiere den Aufruf oder erkläre dem Benutzer, was fehlt.
 - Platzhalter wie %USERPROFILE%, %USERNAME% oder %OTHERUSER% stehen für bereinigte persönliche Angaben; frage nicht danach.
 '@
@@ -150,6 +151,11 @@ Regeln:
     ReasonKevNvdDisabled                    = 'Version nicht prüfbar (Dienst NVD nicht aktiviert)'
     ReasonKevFixedInCatalog                 = 'behoben ab {0} (Katalog)'
     ReasonKevRefutedNvd                     = 'KEV-Treffer {0} widerlegt: Version {1} laut NVD nicht betroffen'
+    ReasonKevRefutedPlatform                = 'KEV-Treffer {0} widerlegt: laut NVD nur für {1}, nicht für Windows'
+    ReasonOtherPlatformOnly                 = 'Nur für {0}, nicht für Windows'
+    ReasonOtherPlatformCve                  = '{0}: nur für {1}'
+    ReasonOtherPlatformHidden               = '{0} Lücken betreffen nur andere Plattformen'
+    ReasonOtherPlatformHiddenOne            = 'Eine Lücke betrifft nur eine andere Plattform'
     ReasonKevRefutedCatalog                 = 'KEV-Treffer {0} widerlegt: behoben ab {1} (Katalog), installiert {2}'
 
     # Neueste Version

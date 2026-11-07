@@ -88,6 +88,7 @@ function Invoke-AdvisorTool {
                                 [ordered]@{ cve = $_.CveId; assessment = $_.Assessment; kev = [bool] $_.Kev; cvss = $_.Score; epss = $_.Epss; note = ConvertTo-MessageData $_.Note }
                             })
                         refuted = @(ConvertTo-MessageData @($v.Refuted | ForEach-Object Note))
+                        otherPlatform = @(if ($v.PSObject.Properties['OtherPlatform']) { ConvertTo-MessageData @($v.OtherPlatform | ForEach-Object Note) })
                     })
             }
             { $_ -in 'propose_update', 'propose_uninstall' } {
