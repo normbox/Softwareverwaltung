@@ -1,4 +1,4 @@
-@{
+﻿@{
     RootModule           = 'SoftwareInventory.psm1'
     ModuleVersion        = '0.1.0'
     GUID                 = '5d0c1f7e-6b2a-4e8f-9a51-3c7d2e4b8f10'
@@ -28,6 +28,8 @@
         'Get-AdvisorEndpointPreset'
         'Get-AdvisorEndpointCheck'
         'Get-AdvisorDataPreview'
+        'Get-AdvisorConnection'
+        'Protect-AdvisorText'
         'Get-AdvisorTool'
         'Invoke-AdvisorTool'
         'Set-AdvisorContext'

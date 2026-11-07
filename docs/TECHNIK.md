@@ -28,7 +28,7 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 | Sicherheitsprüfung | NVD CVE-API 2.0, CIRCL Vulnerability-Lookup, CISA KEV, EPSS; Ampel und HTML-Bericht | vorhanden |
 | Aktionen | Aktualisieren und Deinstallieren über winget, MSI, Deinstallationsbefehl, Store-App; Update-Warteschlange | vorhanden |
 | Desktop-App | .NET 10 WPF, Fluent-Design über WPF-UI, PowerShell eingebettet über `Microsoft.PowerShell.SDK` | vorhanden |
-| KI-Berater | Werkzeuge und Bereinigung im Modul (4a) vorhanden; Anbindung in der App über die OpenAI-kompatible Schnittstelle lokaler Server (4b), Chat (4c); Cloud-Anbieter später als Erweiterung | teilweise, geplant |
+| KI-Berater | Werkzeuge, Bereinigung und Freigabestufen im Modul (4a, 4b-1); Anbieter-Schnittstelle und Gesprächsschleife in der App für lokale Server mit OpenAI-kompatibler Schnittstelle (4b-2); Einstellungsseite (4b-3) und Chat (4c) folgen; Cloud-Anbieter später als Erweiterung | teilweise, geplant |
 | MCP-Server | optionaler Zugang für andere KI-Programme | geplant (Etappe 5) |
 
 Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
@@ -42,7 +42,7 @@ Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTIC
 | Versionen und Sicherheit | `Test-SoftwareUpdate`, `Compare-SoftwareVersion`, `Get-SoftwareVulnerability`, `Get-SecurityRating`, `Export-SecurityReport`, `Find-CpeCandidate`, `Get-CpeMapping`, `Set-CpeMapping`, `Remove-CpeMapping`, `Get-CpeMappingReport`, `Clear-CheckCache`, `Get-RefreshEstimate` |
 | Aktionen | `Update-Software`, `Uninstall-Software`, `Get-UpdateQueuePlan`, `Invoke-UpdateQueue`, `Get-ActionLog`, `Test-WingetAvailability`, `Install-WingetPackageManager` |
 | Einstellungen und Schlüssel | `Get-InventorySetting`, `Set-InventorySetting`, `Get-SettingPreset`, `Get-ServiceTermsNotice`, `Set-ServiceCredential`, `Remove-ServiceCredential`, `Get-ServiceCredentialStatus` |
-| KI-Berater | `Get-AdvisorTool`, `Invoke-AdvisorTool`, `Set-AdvisorContext`, `Get-AdvisorEndpointPreset`, `Get-AdvisorEndpointCheck`, `Get-AdvisorDataPreview` |
+| KI-Berater | `Get-AdvisorTool`, `Invoke-AdvisorTool`, `Set-AdvisorContext`, `Get-AdvisorEndpointPreset`, `Get-AdvisorEndpointCheck`, `Get-AdvisorDataPreview`, `Get-AdvisorConnection`, `Protect-AdvisorText` |
 
 Jeder Befehl hat eine kommentarbasierte Hilfe (`Get-Help <Befehl> -Full`).
 
@@ -104,9 +104,9 @@ Eine vollständige Liste mit Datenschutzbewertung steht in [EXTERNE-DIENSTE.md](
 | CIRCL | `vulnerability.circl.lu` | CVE-Datensätze je Hersteller und Produkt | vorhanden |
 | CISA KEV | `www.cisa.gov` | Laden der KEV-Liste | vorhanden |
 | EPSS | `api.first.org` | Ausnutzungswahrscheinlichkeit für gefundene CVEs | vorhanden |
-| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse | nur wenn der KI-Berater eingerichtet ist | geplant (Etappe 4b) |
+| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse, nur Loopback und private Netze | nur wenn der KI-Berater eingerichtet ist | Anbindung vorhanden, Bedienung folgt (4b-3, 4c) |
 
-Alle Abfragen nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt den User-Agent `SoftwareInventory/<Version>`.
+Alle Abfragen an externe Dienste nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt den User-Agent `SoftwareInventory/<Version>`. Ausnahme ist der KI-Server: Die App verbindet sich ohne Proxy und ohne Weiterleitungen direkt mit der geprüften lokalen Adresse (siehe [BERATER.md](BERATER.md#anbieter-schnittstelle-der-app)).
 
 ## Sicherheitsmerkmale
 

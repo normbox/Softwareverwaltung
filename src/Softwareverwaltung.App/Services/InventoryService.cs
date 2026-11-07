@@ -58,7 +58,9 @@ public sealed class InventoryService(IPowerShellHost host) : IInventoryService
         }
         var result = await host.InvokeAsync(command, progress, cancellationToken).ConfigureAwait(false);
         var items = result.Output.Select(SoftwareItem.FromRating).ToList();
-        return new ScanResult(items, result.Warnings.Distinct().ToList(), result.Errors);
+        // Der KI-Berater arbeitet mit genau diesen Bewertungen, ohne selbst neu einzulesen.
+        var context = await host.InvokeAsync(new PSCommand().AddCommand("Set-AdvisorContext").AddParameter("Rating", result.Output.ToArray()), cancellationToken: cancellationToken).ConfigureAwait(false);
+        return new ScanResult(items, result.Warnings.Distinct().ToList(), [.. result.Errors, .. context.Errors]);
     }
 
     public async Task<RefreshEstimate?> GetRefreshEstimateAsync(IReadOnlyList<PSObject> sources, CancellationToken cancellationToken = default)

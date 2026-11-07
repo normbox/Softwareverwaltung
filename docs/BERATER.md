@@ -25,8 +25,8 @@ Unterstützt werden lokale Server mit OpenAI-kompatibler Schnittstelle (`/v1/cha
 - Es gibt **kein Standardmodell**. Gewählt wird aus den Modellen, die der Server unter `/v1/models` meldet.
 - Den Schlüssel speichert `Set-ServiceCredential -Service Advisor` in der Windows-Anmeldeinformationsverwaltung. Alternativ dient die Umgebungsvariable `SOFTWAREINVENTORY_ADVISOR_KEY`.
 - AnythingLLM fehlt vorerst: Seine OpenAI-Schnittstelle gibt `tools` nicht weiter, und „model“ ist dort ein Arbeitsbereich.
-- Externe Anbieter (z. B. Claude API) kommen später als Plugin über die Anbieter-Schnittstelle der App.
-- **Nur lokale Adressen:** `Get-AdvisorEndpointCheck` löst den Namen auf und prüft jede IP-Adresse, nicht nur den Namen. Erlaubt sind Loopback und private Netze: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, Link-Local 169.254.0.0/16, IPv6 fc00::/7 und fe80::/10. Öffentliche Adressen (auch 100.64.0.0/10) lehnt `Set-InventorySetting -AdvisorEndpoint` mit dem Code `AdvisorEndpointNotLocal` ab, nicht auflösbare Namen mit `AdvisorEndpointUnresolvable`. http im privaten Netz ist erlaubt, mit dem Hinweis `AdvisorEndpointUnencrypted`. Beim Verbinden prüft die App zusätzlich die tatsächlich verbundene Adresse (Etappe 4b-2).
+- Externe Anbieter (z. B. Claude API) kommen später als Plugin über die Anbieter-Schnittstelle der App (siehe unten).
+- **Nur lokale Adressen:** `Get-AdvisorEndpointCheck` löst den Namen auf und prüft jede IP-Adresse, nicht nur den Namen. Erlaubt sind Loopback und private Netze: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, Link-Local 169.254.0.0/16, IPv6 fc00::/7 und fe80::/10. Öffentliche Adressen (auch 100.64.0.0/10) lehnt `Set-InventorySetting -AdvisorEndpoint` mit dem Code `AdvisorEndpointNotLocal` ab, nicht auflösbare Namen mit `AdvisorEndpointUnresolvable`. http im privaten Netz ist erlaubt, mit dem Hinweis `AdvisorEndpointUnencrypted`. Beim Verbinden prüft die App zusätzlich jede Adresse selbst und verbindet nur zu geprüften (siehe unten).
 
 Stand der Adressen: 26.10.2026. Maßgeblich ist die Dokumentation des jeweiligen Programms.
 
@@ -64,6 +64,20 @@ Wie viel das Modell sieht, legt die Freigabestufe fest (Tabelle in [EXTERNE-DIEN
 - `Get-AdvisorTool -SystemPrompt` liefert die Systemanweisung: auf Deutsch antworten, nur auf Tool-Ergebnisse stützen, nur vorschlagen, „möglicherweise betroffen“ nicht als sicher darstellen.
 - Gründe, Hinweise und widerlegte Treffer bekommt das Modell als `code`, `args` und `text`. So hängt auch dort die Logik am Code, und der Text ist in der Sprache der Oberfläche.
 - Alle Texte (Tool-Beschreibungen, Systemanweisung, Meldungen, Hinweise zu den Vorgaben) stehen in `src/SoftwareInventory/SoftwareInventory.Strings.psd1` und kommen über `Import-LocalizedData` in der Sprache der Oberfläche; vorerst gibt es nur Deutsch.
+
+## Anbieter-Schnittstelle der App
+
+Die Gesprächsschleife liegt in der App (`src/Softwareverwaltung.App/Advisor`), die Daten und Regeln im Modul.
+
+- **`IAdvisorProvider`**: `Kind` (Local oder External), `ListModelsAsync`, `CompleteAsync(Nachrichten, Tools)`. Nachrichten und Tools sind eigene Typen der App, nicht das Format eines Servers; ein späteres Plugin (z. B. Claude API) wandelt sie selbst um. Die Anbieterart geht an das Modul (`-ProviderKind`), das daraus die Freigabestufe bestimmt; ein Anbieter kann sie nicht erhöhen.
+- **`OpenAiCompatibleProvider`** für lokale Server: `GET /models` und `POST /chat/completions` mit `tools` (`tool_choice: auto`), ohne Streaming. Argumente nimmt er als Text oder als Objekt an. Höchstens 8 MB je Antwort, Zeitgrenze 5 Minuten. Adresse, Modell und Schlüssel kommen aus `Get-AdvisorConnection`; der Schlüssel bleibt ein `SecureString` bis zum Header `Authorization: Bearer` und steht nie in Meldungen.
+- **Prüfung beim Verbinden:** Die App löst den Namen selbst auf, lehnt ab, sobald eine Adresse öffentlich ist (`AdvisorEndpointNotLocal`) oder der Name nicht auflösbar (`AdvisorEndpointUnresolvable`), verbindet nur zu den geprüften Adressen und prüft danach die tatsächlich verbundene Gegenstelle. Ein Name, der zwischen Prüfung und Verbindung auf eine andere Adresse zeigt, hilft also nicht. TLS prüft weiter das Zertifikat gegen den Hostnamen der Adresse. Kein System-Proxy, keine Weiterleitungen (`AdvisorRedirectRefused`), keine Cookies; Verbindungen werden nach 2 Minuten neu aufgebaut und dabei erneut geprüft.
+- Die Regel für lokale Adressen gibt es zweimal, im Modul (`Get-IpAddressNetwork`) und in der App (`LocalAddressPolicy`), damit die Prüfung beim Verbinden nicht an einem laufenden Scan hängt. Beide prüfen Pester und xUnit gegen dieselbe Tabelle `tests/Data/advisor-address-cases.json`.
+- **`AdvisorConversation`**: Systemanweisung und Tools aus `Get-AdvisorTool -ProviderKind …`; die Frage des Benutzers läuft vor dem Senden durch `Protect-AdvisorText`. Tool-Aufrufe führt `Invoke-AdvisorTool -ProviderKind …` aus, bis das Modell antwortet, höchstens 8 Runden (`AdvisorToolRoundLimit`). Bei einem Fehler bleibt das Gespräch wie vor der Frage. Vorschläge werden gesammelt (Karten in Etappe 4c), ausgeführt wird nichts.
+- Läuft gerade ein Scan, warten Tool-Aufrufe an der Sperre der eingebetteten PowerShell. Dienste werden also nie parallel zu einem Scan abgefragt.
+- Nach jedem Scan übergibt die App die Bewertungen mit `Set-AdvisorContext`.
+- **Verbindung testen** (`AdvisorService.TestConnectionAsync`, Oberfläche in 4b-3): Adresse prüfen (mit Hinweis „unverschlüsselt“), Modelle abrufen, gewähltes Modell vorhanden, dann eine Anfrage mit festen Testtexten und nur `get_inventory`. Der Tool-Aufruf wird nicht ausgeführt, es gehen keine Inventardaten an das Modell. Ruft das Modell kein Tool auf oder scheitert nur diese Anfrage, ist das eine Warnung; speichern geht trotzdem.
+- Fehler der App haben feste Codes mit Texten in `Strings.resx`: `AdvisorEndpointInvalid`, `AdvisorEndpointNotLocal`, `AdvisorEndpointUnresolvable`, `AdvisorServerUnreachable`, `AdvisorTimeout`, `AdvisorRedirectRefused`, `AdvisorUnauthorized`, `AdvisorHttpError`, `AdvisorInvalidResponse`, `AdvisorResponseTooLarge`, `AdvisorNoModel`, `AdvisorDisabled`, `AdvisorToolRoundLimit`. Sie nennen höchstens den HTTP-Status, nie den Antworttext des Servers.
 
 ## Bereinigung
 

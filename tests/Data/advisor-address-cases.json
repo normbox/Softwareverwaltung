@@ -1,0 +1,33 @@
+{
+  "_comment": "Gemeinsame Testfälle für die Adressprüfung des KI-Beraters: Modul (Get-IpAddressNetwork) und App (LocalAddressPolicy) müssen beide genau diese Einordnung liefern.",
+  "cases": [
+    { "address": "127.0.0.1", "network": "Loopback" },
+    { "address": "127.255.255.254", "network": "Loopback" },
+    { "address": "::1", "network": "Loopback" },
+    { "address": "::ffff:127.0.0.1", "network": "Loopback" },
+    { "address": "10.0.0.1", "network": "Private" },
+    { "address": "10.255.255.255", "network": "Private" },
+    { "address": "172.16.0.1", "network": "Private" },
+    { "address": "172.31.255.254", "network": "Private" },
+    { "address": "192.168.1.20", "network": "Private" },
+    { "address": "169.254.10.1", "network": "Private" },
+    { "address": "fe80::1", "network": "Private" },
+    { "address": "fe80::1%12", "network": "Private" },
+    { "address": "fc00::1", "network": "Private" },
+    { "address": "fd12:3456::5", "network": "Private" },
+    { "address": "::ffff:192.168.1.5", "network": "Private" },
+    { "address": "::ffff:10.1.2.3", "network": "Private" },
+    { "address": "172.15.255.255", "network": "Public" },
+    { "address": "172.32.0.1", "network": "Public" },
+    { "address": "100.64.1.1", "network": "Public" },
+    { "address": "192.169.0.1", "network": "Public" },
+    { "address": "169.253.0.1", "network": "Public" },
+    { "address": "8.8.8.8", "network": "Public" },
+    { "address": "0.0.0.0", "network": "Public" },
+    { "address": "255.255.255.255", "network": "Public" },
+    { "address": "::", "network": "Public" },
+    { "address": "2001:db8::1", "network": "Public" },
+    { "address": "fec0::1", "network": "Public" },
+    { "address": "::ffff:8.8.8.8", "network": "Public" }
+  ]
+}
