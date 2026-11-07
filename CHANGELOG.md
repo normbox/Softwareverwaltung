@@ -4,6 +4,11 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Windows-Zugriff ohne Add-Type (vor 4c-2)
+
+- **Fertig übersetzte DLL** `SoftwareInventory.Native.dll` im Modul (`lib\`, geladen über `RequiredAssemblies`) für die Anmeldeinformationsverwaltung und die Prüfung der Pipe-Gegenstelle bei Aktionen mit Administratorrechten. Bisher übersetzte das Modul diesen Code zur Laufzeit mit `Add-Type`; das ist im Constrained Language Mode (AppLocker/WDAC) gesperrt, lässt sich nicht signieren und kann Verhaltensschutz-Programme auslösen. Keine neuen Pakete.
+- Zu lange Schlüssel (über 1280 Zeichen) lehnt `Set-ServiceCredential` jetzt mit Text aus der Sprachdatei ab (`ErrorSecretTooLong`).
+
 ### KI-Berater: Chat-Seitenleiste (Etappe 4c-1)
 
 - **Seitenleiste „KI-Berater“** rechts im Hauptfenster, ein- und ausblendbar und in der Breite ziehbar (gemerkt in `app-ui.json`). Fragen mit Eingabetaste, „Abbrechen“, „Neues Gespräch“; Hinweise, wenn der Berater aus ist (mit „Einstellungen öffnen“) oder noch nicht gescannt wurde.

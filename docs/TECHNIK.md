@@ -78,6 +78,7 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | Daten | Ort | Inhalt | Status |
 | --- | --- | --- | --- |
 | Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` | eingeschaltete Quellen, Dienste und Nutzungsspuren, Dateisuche, Haltbarkeit des Zwischenspeichers, Aufbewahrung der Logs, KI-Server | vorhanden |
+| Fertig übersetzter Windows-Zugriff | `Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll` neben der App | Anmeldeinformationsverwaltung und Prüfung der Pipe-Gegenstelle; ersetzt `Add-Type` zur Laufzeit; Quelle `src/SoftwareInventory.Native` | vorhanden |
 | Oberfläche | `%APPDATA%\SoftwareInventory\app-ui.json` | Breite des Detailfelds, Berater-Seitenleiste offen und ihre Breite; kein Gesprächsinhalt (das Gespräch bleibt nur im Speicher) | vorhanden |
 | Eigene CPE-Zuordnungen | `%APPDATA%\SoftwareInventory\cpe-map.json` | vom Benutzer bestätigte Zuordnungen Programm → CPE | vorhanden |
 | Hinweise zu Fremddaten | `%LOCALAPPDATA%\SoftwareInventory\logs\data-notes\<yyyy-MM-dd>.jsonl` | Auffälligkeiten in Datensätzen der Quellen mit Code (z. B. `CommitVersionBound`: Commit-Kennung statt Version; `CirclFullFetchFailed`: vollständiger CIRCL-Abruf abgebrochen, mit Seite und Fehler), CVE, Produkt und Wert; je Lauf jeder Fall einmal; räumt sich mit `logs\` auf | vorhanden |

@@ -137,7 +137,7 @@ Ein Klick auf ein Programm klappt die Details auf. Sie zeigen Gründe, Lücken u
 
 Mehrere Updates laufen über die Warteschlange. Mit Häkchen oder „Alle mit Update auswählen“ wählt man die Programme aus, „Ausgewählte aktualisieren“ zeigt alle genauen Befehle in einer gemeinsamen Bestätigung. Erhöhte Updates brauchen nur eine Windows-Abfrage. Die Warteschlange zeigt den Status je Eintrag und lässt sich anhalten und abbrechen. Deinstallieren bleibt einzeln. Der Schalter „Ohne Cache“ neben „Scannen“ fragt alle Dienste neu ab. In den Details prüft „Neu prüfen (ohne Cache)“ ein einzelnes Programm neu.
 
-Tests:
+Tests (vorher einmal `dotnet build src/SoftwareInventory.Native`, siehe [ENTWICKLUNG.md](docs/ENTWICKLUNG.md#tests)):
 
 ```powershell
 Invoke-Pester ./tests/Unit                                 # Unit-Tests
