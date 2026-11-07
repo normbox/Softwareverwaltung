@@ -59,6 +59,14 @@ public sealed partial class SettingsViewModel
     [NotifyPropertyChangedFor(nameof(ShowLevel4Hint))]
     private int _advisorShareLevelLocal = 3;
 
+    /// <summary>max_tokens je Antwort; schützt vor Endlosschleifen beim Denken des Modells.</summary>
+    [ObservableProperty]
+    private int _advisorMaxTokens = 8192;
+
+    /// <summary>Zeitgrenze je Anfrage in Sekunden.</summary>
+    [ObservableProperty]
+    private int _advisorTimeoutSeconds = 300;
+
     /// <summary>Einmaliger Hinweis nach der Übernahme älterer Einstellungen (Stufe 2).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowShareLevelNoticeInMain))]
@@ -106,7 +114,8 @@ public sealed partial class SettingsViewModel
     /// Gespeicherte Werte, von denen ein laufendes Gespräch abhängt (Anbieter, Modell, Freigabestufe). Ändert sich
     /// der Wert, beginnt die Seitenleiste ein neues Gespräch.
     /// </summary>
-    public string AdvisorSessionKey => string.Join('|', _saved.AdvisorEnabled, _saved.AdvisorPreset, _saved.AdvisorEndpoint, _saved.AdvisorModel, _saved.AdvisorShareLevelLocal);
+    public string AdvisorSessionKey => string.Join('|', _saved.AdvisorEnabled, _saved.AdvisorPreset, _saved.AdvisorEndpoint, _saved.AdvisorModel, _saved.AdvisorShareLevelLocal,
+        _saved.AdvisorMaxTokens, _saved.AdvisorTimeoutSeconds);
 
     private AdvisorDraft Draft => new(AdvisorPreset, AdvisorEndpoint, AdvisorModel);
 
@@ -158,6 +167,10 @@ public sealed partial class SettingsViewModel
 
     partial void OnAdvisorModelChanged(string? value) => UpdateDirty();
 
+    partial void OnAdvisorMaxTokensChanged(int value) => UpdateDirty();
+
+    partial void OnAdvisorTimeoutSecondsChanged(int value) => UpdateDirty();
+
     partial void OnAdvisorShareLevelLocalChanged(int value)
     {
         SelectShareLevelOption(value);
@@ -183,6 +196,8 @@ public sealed partial class SettingsViewModel
         AdvisorEndpoint = settings.AdvisorEndpoint;
         AdvisorModel = settings.AdvisorModel;
         AdvisorShareLevelLocal = settings.AdvisorShareLevelLocal;
+        AdvisorMaxTokens = settings.AdvisorMaxTokens;
+        AdvisorTimeoutSeconds = settings.AdvisorTimeoutSeconds;
         ShowShareLevelNotice = settings.AdvisorShareLevelNoticePending;
         OnPropertyChanged(nameof(ShowShareLevelNoticeInMain));
         OnPropertyChanged(nameof(IsAdvisorActive));
@@ -194,7 +209,9 @@ public sealed partial class SettingsViewModel
         && a.AdvisorPreset == b.AdvisorPreset
         && (a.AdvisorEndpoint ?? "") == (b.AdvisorEndpoint ?? "")
         && (a.AdvisorModel ?? "") == (b.AdvisorModel ?? "")
-        && a.AdvisorShareLevelLocal == b.AdvisorShareLevelLocal;
+        && a.AdvisorShareLevelLocal == b.AdvisorShareLevelLocal
+        && a.AdvisorMaxTokens == b.AdvisorMaxTokens
+        && a.AdvisorTimeoutSeconds == b.AdvisorTimeoutSeconds;
 
     private async Task LoadAdvisorPresetsAsync()
     {

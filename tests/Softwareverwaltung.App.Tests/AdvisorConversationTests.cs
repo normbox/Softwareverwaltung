@@ -59,6 +59,24 @@ public sealed class AdvisorConversationTests
     }
 
     [Fact]
+    public async Task ThinkingLoopAfterTwoToolRoundsEndsWithTruncatedAndLeavesNothingBehind()
+    {
+        // Fall aus der Praxis (07.11.): zwei Tool-Runden klappen, danach denkt das Modell im Kreis bis zur Grenze.
+        var provider = new ScriptedProvider(
+            Calls(("c1", "get_inventory", "{}")),
+            Calls(("c2", "get_program_details", """{"id":"p-0123456789ab"}""")))
+        { FailAfter = 2, Failure = new AdvisorException("AdvisorResponseTruncated", 8192) };
+        var module = new FakeModule();
+        var conversation = new AdvisorConversation(provider, module);
+
+        var ex = await Assert.ThrowsAsync<AdvisorException>(() => conversation.AskAsync("Was zuerst?"));
+
+        Assert.Equal("AdvisorResponseTruncated", ex.Code);
+        Assert.Equal(["get_inventory", "get_program_details"], module.Invoked.Select(i => i.Name));
+        Assert.Empty(conversation.Messages);
+    }
+
+    [Fact]
     public async Task FailedQuestionAfterTrimmingRestoresTheOldRounds()
     {
         var max = AdvisorConversation.MaxQuestions;
@@ -222,6 +240,9 @@ public sealed class AdvisorConversationTests
         /// <summary>Nach so vielen Antworten wirft der Anbieter AdvisorHttpError.</summary>
         public int FailAfter { get; init; } = int.MaxValue;
 
+        /// <summary>Fehler ab FailAfter; ohne Angabe AdvisorHttpError.</summary>
+        public AdvisorException? Failure { get; init; }
+
         public List<IReadOnlyList<AdvisorMessage>> Seen { get; } = [];
 
         public List<IReadOnlyList<AdvisorToolDefinition>> SeenTools { get; } = [];
@@ -242,7 +263,7 @@ public sealed class AdvisorConversationTests
             SeenTools.Add(tools);
             if (_next >= FailAfter)
             {
-                throw new AdvisorException("AdvisorHttpError", 500);
+                throw Failure ?? new AdvisorException("AdvisorHttpError", 500);
             }
             return Task.FromResult(script[_next++]);
         }

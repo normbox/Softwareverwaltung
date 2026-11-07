@@ -47,19 +47,34 @@ public sealed record AdvisorToolDefinition(string Name, string Kind, string Desc
         tool.Properties["ParametersJson"]?.Value?.ToString() ?? "{}");
 }
 
-/// <summary>Antwort des Modells: Text, Tool-Aufrufe oder beides.</summary>
-public sealed record AdvisorCompletion(string? Content, IReadOnlyList<AdvisorToolCall> ToolCalls);
+/// <summary>
+/// Antwort des Modells: Text, Tool-Aufrufe oder beides. FinishReason wie vom Server gemeldet, z. B. „stop“,
+/// „tool_calls“ oder „length“ (Grenze max_tokens erreicht).
+/// </summary>
+public sealed record AdvisorCompletion(string? Content, IReadOnlyList<AdvisorToolCall> ToolCalls, string? FinishReason = null);
 
-/// <summary>Verbindungsdaten aus Get-AdvisorConnection. Der Schlüssel bleibt ein SecureString bis zum Header.</summary>
-public sealed record AdvisorConnection(bool Enabled, string? Preset, string? Endpoint, string? Model, AdvisorProviderKind Kind, SecureString? ApiKey)
+/// <summary>
+/// Verbindungsdaten aus Get-AdvisorConnection. Der Schlüssel bleibt ein SecureString bis zum Header.
+/// MaxTokens geht als max_tokens in jede Anfrage, TimeoutSeconds ist die Zeitgrenze je Anfrage.
+/// </summary>
+public sealed record AdvisorConnection(bool Enabled, string? Preset, string? Endpoint, string? Model, AdvisorProviderKind Kind, SecureString? ApiKey,
+    int MaxTokens = AdvisorConnection.DefaultMaxTokens, int TimeoutSeconds = AdvisorConnection.DefaultTimeoutSeconds)
 {
+    public const int DefaultMaxTokens = 8192;
+    public const int DefaultTimeoutSeconds = 300;
+
     public static AdvisorConnection FromPs(PSObject connection) => new(
         connection.Properties["Enabled"]?.Value is true,
         connection.Properties["Preset"]?.Value?.ToString(),
         connection.Properties["Endpoint"]?.Value?.ToString(),
         connection.Properties["Model"]?.Value?.ToString(),
         Enum.TryParse<AdvisorProviderKind>(connection.Properties["ProviderKind"]?.Value?.ToString(), out var kind) ? kind : AdvisorProviderKind.Local,
-        (connection.Properties["ApiKey"]?.Value as PSObject)?.BaseObject as SecureString ?? connection.Properties["ApiKey"]?.Value as SecureString);
+        (connection.Properties["ApiKey"]?.Value as PSObject)?.BaseObject as SecureString ?? connection.Properties["ApiKey"]?.Value as SecureString,
+        Positive(connection.Properties["MaxTokens"]?.Value, DefaultMaxTokens),
+        Positive(connection.Properties["TimeoutSeconds"]?.Value, DefaultTimeoutSeconds));
+
+    private static int Positive(object? value, int fallback) =>
+        value is not null && int.TryParse(Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture), out var n) && n > 0 ? n : fallback;
 }
 
 /// <summary>Ergebnis von Invoke-AdvisorTool: Content geht an das Modell, Proposal nur an die Oberfläche.</summary>

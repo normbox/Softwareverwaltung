@@ -76,6 +76,11 @@ function Set-InventorySetting {
         Freigabestufe für spätere externe Anbieter (Plugins), 0 bis 3 (Voreinstellung 1); Stufe 4 nie extern.
     .PARAMETER AdvisorShareLevelNoticePending
         Merker für den einmaligen Hinweis nach der Übernahme älterer Einstellungen; die App setzt ihn auf $false.
+    .PARAMETER AdvisorMaxTokens
+        Höchstzahl Tokens je Antwort des Modells (max_tokens), 512 bis 32768 (Voreinstellung 8192). Schützt vor
+        Endlosschleifen beim Denken; erreicht das Modell die Grenze, meldet die App AdvisorResponseTruncated.
+    .PARAMETER AdvisorTimeoutSeconds
+        Zeitgrenze je Anfrage an den KI-Server in Sekunden, 30 bis 1800 (Voreinstellung 300).
     .PARAMETER Reset
         Setzt alles auf den Ausgangszustand zurück: aus, keine eigenen Ausschlüsse,
         SmartExclusions an (Usage bleibt erhalten).
@@ -176,6 +181,12 @@ function Set-InventorySetting {
 
         [bool] $AdvisorShareLevelNoticePending,
 
+        [ValidateRange(512, 32768)]
+        [int] $AdvisorMaxTokens,
+
+        [ValidateRange(30, 1800)]
+        [int] $AdvisorTimeoutSeconds,
+
         [switch] $Reset
     )
 
@@ -262,6 +273,8 @@ function Set-InventorySetting {
         $setting.Advisor.ShareLevelNoticePending = $false
     }
     if ($PSBoundParameters.ContainsKey('AdvisorShareLevelNoticePending')) { $setting.Advisor.ShareLevelNoticePending = $AdvisorShareLevelNoticePending }
+    if ($PSBoundParameters.ContainsKey('AdvisorMaxTokens')) { $setting.Advisor.MaxTokens = $AdvisorMaxTokens }
+    if ($PSBoundParameters.ContainsKey('AdvisorTimeoutSeconds')) { $setting.Advisor.TimeoutSeconds = $AdvisorTimeoutSeconds }
     # Eingeschaltet nur mit Adresse und Modell; geprüft nur, wenn diese Werte geändert werden.
     $advisorChanged = @('AdvisorEnabled', 'AdvisorPreset', 'AdvisorEndpoint', 'AdvisorModel') | Where-Object { $PSBoundParameters.ContainsKey($_) }
     if ($advisorChanged -and $setting.Advisor.Enabled -and (-not $setting.Advisor.Endpoint -or -not $setting.Advisor.Model)) {

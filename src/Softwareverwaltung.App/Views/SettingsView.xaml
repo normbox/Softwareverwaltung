@@ -395,6 +395,23 @@
                         <ui:InfoBar Margin="0,8,0,0" IsOpen="True" IsClosable="False" Title=""
                                     Message="{Binding AdvisorResultText}" Severity="{Binding AdvisorResultSeverity}"
                                     Visibility="{Binding AdvisorResultText, Converter={StaticResource NullToVisibility}}" />
+
+                        <!-- Schutz gegen Endlosschleifen beim Denken des Modells -->
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsAdvisorMaxTokens}" />
+                                <ui:TextBox Width="160" HorizontalAlignment="Left"
+                                            Text="{Binding AdvisorMaxTokens, UpdateSourceTrigger=PropertyChanged}"
+                                            AutomationProperties.Name="{loc:Text SettingsAdvisorMaxTokens}" />
+                            </StackPanel>
+                            <StackPanel Margin="24,0,0,0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsAdvisorTimeout}" />
+                                <ui:TextBox Width="160" HorizontalAlignment="Left"
+                                            Text="{Binding AdvisorTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                            AutomationProperties.Name="{loc:Text SettingsAdvisorTimeout}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Margin="0,4,0,0" Text="{loc:Text SettingsAdvisorLimitsText}" />
                     </StackPanel>
                 </ui:Card>
 

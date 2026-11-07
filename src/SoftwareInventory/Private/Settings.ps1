@@ -26,6 +26,10 @@ $script:AdvisorShareLevelMax = [ordered]@{ Local = 4; External = 3 }
 # Einstellungen aus der Zeit vor den Freigabestufen: lokal Stufe 2 und ein einmaliger Hinweis in der App;
 # höher stellt nur der Benutzer.
 $script:AdvisorShareLevelMigrated = 2
+# Schutz gegen Endlosschleifen beim Denken des Modells: höchstens so viele Tokens je Antwort (max_tokens)
+# und so viele Sekunden je Anfrage. Beides einstellbar; die Grenzen gelten auch beim Lesen der Datei.
+$script:AdvisorMaxTokens = @{ Default = 8192; Min = 512; Max = 32768 }
+$script:AdvisorTimeoutSeconds = @{ Default = 300; Min = 30; Max = 1800 }
 # Selbstbereinigung von Logs und Zwischenspeicher (siehe CLAUDE.md); Grenzen einstellbar.
 $script:DefaultLogRetentionDays = 30
 $script:DefaultLogMaxSizeMB = 100
@@ -77,6 +81,8 @@ function New-DefaultSetting {
             ShareLevel = [pscustomobject] ([ordered]@{} + $script:AdvisorShareLevelDefault)
             # Einmaliger Hinweis in der App nach der Übernahme älterer Einstellungen (Stufe 2)
             ShareLevelNoticePending = $false
+            MaxTokens      = $script:AdvisorMaxTokens.Default        # max_tokens je Antwort des Modells
+            TimeoutSeconds = $script:AdvisorTimeoutSeconds.Default   # Zeitgrenze je Anfrage
         }
         # Hauptschalter für die Suche nach portablen Programmen im vollständigen Scan (Invoke-InventoryScan).
         # Aus = keine Suche; Nutzungsspuren und FileScan bleiben gespeichert. Keine Vorlage schaltet ihn ein.
@@ -148,6 +154,10 @@ function Read-InventorySetting {
         if ($a.PSObject.Properties['Preset'] -and $a.Preset -in $script:AdvisorPresets.Keys) { $setting.Advisor.Preset = [string] $a.Preset }
         if ($a.PSObject.Properties['Endpoint'] -and (Test-AdvisorEndpoint ([string] $a.Endpoint))) { $setting.Advisor.Endpoint = ([string] $a.Endpoint).TrimEnd('/') }
         if ($a.PSObject.Properties['Model'] -and $a.Model) { $setting.Advisor.Model = [string] $a.Model }
+        foreach ($limit in @(@{ Name = 'MaxTokens'; Range = $script:AdvisorMaxTokens }, @{ Name = 'TimeoutSeconds'; Range = $script:AdvisorTimeoutSeconds })) {
+            $value = if ($a.PSObject.Properties[$limit.Name]) { $a.($limit.Name) -as [int] }
+            if ($null -ne $value -and $value -ge $limit.Range.Min -and $value -le $limit.Range.Max) { $setting.Advisor.($limit.Name) = $value }
+        }
         if ($a.PSObject.Properties['ShareLevel'] -and $a.ShareLevel) {
             foreach ($kind in @($script:AdvisorShareLevelMax.Keys)) {
                 $value = $a.ShareLevel.PSObject.Properties[$kind]

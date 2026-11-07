@@ -8,7 +8,8 @@ function Get-AdvisorConnection {
         darf nie in Protokolle, Fehlermeldungen oder an das Modell gelangen. Ohne Schlüssel ist ApiKey $null.
         Ob die Adresse lokal ist, prüft Set-InventorySetting beim Speichern und die App beim Verbinden.
     .OUTPUTS
-        Enabled, Preset, Endpoint, Model, ProviderKind (vorerst immer Local), ApiKey, HasApiKey.
+        Enabled, Preset, Endpoint, Model, ProviderKind (vorerst immer Local), ApiKey, HasApiKey, MaxTokens
+        (max_tokens je Antwort) und TimeoutSeconds (Zeitgrenze je Anfrage).
     .EXAMPLE
         Get-AdvisorConnection | Select-Object Endpoint, Model, HasApiKey
     #>
@@ -37,5 +38,7 @@ function Get-AdvisorConnection {
         ProviderKind = 'Local'
         ApiKey       = $apiKey
         HasApiKey    = $null -ne $apiKey
+        MaxTokens    = [int] $advisor.MaxTokens
+        TimeoutSeconds = [int] $advisor.TimeoutSeconds
     }
 }
