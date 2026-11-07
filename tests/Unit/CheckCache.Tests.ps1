@@ -195,10 +195,10 @@ Describe 'Get-RefreshEstimate' {
         $cache = Join-Path $TestDrive "$([guid]::NewGuid())\cache"
         Mock -ModuleName SoftwareInventory Get-CacheDirectory { $cache }
         Mock -ModuleName SoftwareInventory Get-ServiceSecret { $null }
-        # Bestand von 340 KB, also etwa 10 Seiten
+        # Bestand von 480 KB, also etwa 10 Seiten
         $store = InModuleScope SoftwareInventory { Get-CirclStoreFile -Vendor 'contoso' -Product 'tool' }
         New-Item -ItemType Directory -Path (Split-Path $store) -Force | Out-Null
-        [System.IO.File]::WriteAllBytes($store, [byte[]]::new(340KB))
+        [System.IO.File]::WriteAllBytes($store, [byte[]]::new(480KB))
 
         Mock -ModuleName SoftwareInventory Read-InventorySetting { New-EnabledSetting CIRCL }
         $e = New-TestRecord | Get-RefreshEstimate
@@ -223,7 +223,7 @@ Describe 'Get-RefreshEstimate' {
         # 250 Seiten mit 1,5 s Abstand (Schlüssel auch für CIRCL): gut 6 Minuten
         $store = InModuleScope SoftwareInventory { Get-CirclStoreFile -Vendor 'contoso' -Product 'tool' }
         New-Item -ItemType Directory -Path (Split-Path $store) -Force | Out-Null
-        [System.IO.File]::WriteAllBytes($store, [byte[]]::new(250 * 34KB))
+        [System.IO.File]::WriteAllBytes($store, [byte[]]::new(250 * 48KB))
         $e = New-TestRecord | Get-RefreshEstimate
         $e.Seconds | Should -BeGreaterThan 300
         $e.NeedsConfirmation | Should -BeTrue

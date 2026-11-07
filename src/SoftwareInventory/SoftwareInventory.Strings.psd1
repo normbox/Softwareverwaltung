@@ -86,6 +86,7 @@ Regeln:
     StepCirclFull                           = 'CIRCL: vollständiger Abruf'
     StepCirclFullCounted                    = 'CIRCL: vollständiger Abruf, Seite {0} von {1}, {2}'
     StepCirclSince                          = 'CIRCL: Änderungen seit {0}, Seite {1}'
+    StepCirclRetry                          = 'Seite nicht geladen, neuer Versuch {0} von {1} in {2} s'
 
     # Suche nach portablen Programmen (Invoke-InventoryScan)
     PortableSearchNoLocation                = 'Dateisuche: Keine Option „Wo suchen“ gewählt oder die gewählte Option hat keinen Eintrag, daher wurden keine Dateien durchsucht.'
@@ -208,6 +209,7 @@ Regeln:
     ReasonQueueCancelled                    = 'Abgebrochen, nicht ausgeführt (Warteschlange abgebrochen).'
     ReasonRestorePointNameQueue             = 'Softwareverwaltung: {0} Programme aktualisieren'
     DataNoteCommitVersionBound              = 'Commit-Kennung statt Version als Bereichsgrenze ({0}) in {1}; Grenze nicht ausgewertet'
+    DataNoteCirclFullFetchFailed            = 'Vollständiger CIRCL-Abruf abgebrochen (Seite, Fehler: {0}); kein Bestand gespeichert, der nächste Scan beginnt bei Seite 1'
     ReasonCirclLegacyCacheRemoved           ='Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: {0} Dateien, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
     ReasonCirclLegacyCacheRemovedOne        = 'Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: 1 Datei, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
     ReasonActionIncomplete                = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'

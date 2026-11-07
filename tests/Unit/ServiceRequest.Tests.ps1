@@ -207,6 +207,15 @@ Describe 'Invoke-ServiceRequest' {
         $err.Exception.Data['Reason'] | Should -Be 'NotFound'
     }
 
+    It 'meldet Serverfehler als Http mit Statuscode' {
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest { throw (New-HttpError 503) }
+        $err = $null
+        try { InModuleScope SoftwareInventory -Parameters @{ S = (New-EnabledSetting GitHub) } { Invoke-ServiceRequest -Service GitHub -Uri 'https://api.github.com/r' -Setting $S } }
+        catch { $err = $_ }
+        $err.Exception.Data['Reason'] | Should -Be 'Http'
+        $err.Exception.Data['Status'] | Should -Be 503
+    }
+
     It 'enthält den Schlüssel nicht in Fehlermeldungen' {
         $env:NVD_API_KEY = 'nvd-geheim-456'
         Mock -ModuleName SoftwareInventory Invoke-WebRequest { throw [System.Net.Http.HttpRequestException]::new('Verbindung abgebrochen, apiKey=nvd-geheim-456') }

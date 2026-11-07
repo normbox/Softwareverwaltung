@@ -324,6 +324,82 @@ Describe 'Get-CirclCve' {
         Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 0 -Exactly -ParameterFilter { "$Uri" -match '&since=' }
     }
 
+    Context 'neue Versuche je Seite' {
+        BeforeAll {
+            function New-Failure {
+                # Fehler wie von Invoke-ServiceRequest (Grund und ggf. HTTP-Status in Data)
+                param([string] $Reason, [int] $Status = 0)
+                $e = [System.Exception]::new("CIRCL-Fehler $Reason $Status")
+                $e.Data['Reason'] = $Reason
+                if ($Status) { $e.Data['Status'] = $Status }
+                $e
+            }
+        }
+        BeforeEach {
+            Mock -ModuleName SoftwareInventory Start-Sleep { }
+            Mock -ModuleName SoftwareInventory Write-DataNote { }
+            # Seite 2 von 3 scheitert $script:Failures-mal mit $script:Failure, danach klappt sie.
+            $script:Failures = 0
+            $script:Failure = $null
+            $script:Calls = @{}
+            Mock -ModuleName SoftwareInventory Invoke-ServiceRequest {
+                $page = [int] ([regex]::Match("$Uri", '&page=(\d+)').Groups[1].Value)
+                $script:Calls[$page] = 1 + [int] $script:Calls[$page]
+                if ($page -eq 2 -and $script:Calls[$page] -le $script:Failures) { throw $script:Failure }
+                $rows = @(1..100 | ForEach-Object { , @("cve-2026-$page$_", @{ cveMetadata = @{ cveId = "CVE-2026-$page$('{0:d3}' -f $_)" }; containers = @{ cna = @{} } }) })
+                @{ results = @{ cvelistv5 = $rows }; total_count = 300 } | ConvertTo-Json -Depth 8 | ConvertFrom-Json -DateKind String
+            }
+        }
+
+        It 'lädt die Seite nach <Failures> Fehlern (<Reason> <Status>) beim nächsten Versuch' -ForEach @(
+            @{ Failures = 1; Reason = 'Network'; Status = 0 }
+            @{ Failures = 2; Reason = 'Http'; Status = 503 }
+        ) {
+            $script:Failures = $Failures
+            $script:Failure = New-Failure $Reason $Status
+            (Invoke-Circl).Count | Should -Be 300
+            $script:Calls[2] | Should -Be ($Failures + 1)
+            Should -Invoke -ModuleName SoftwareInventory Start-Sleep -Times 1 -Exactly -ParameterFilter { $Seconds -eq 5 }
+            Should -Invoke -ModuleName SoftwareInventory Start-Sleep -Times ($Failures - 1) -Exactly -ParameterFilter { $Seconds -eq 15 }
+            Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 0 -Exactly
+            Get-Store | Should -Not -BeNullOrEmpty
+        }
+
+        It 'gibt nach drei Versuchen auf, vermerkt Seite und Fehler und schreibt keinen Bestand' {
+            $script:Failures = 99
+            $script:Failure = New-Failure Network
+            { Invoke-Circl } | Should -Throw '*CIRCL-Fehler Network*'
+            $script:Calls[2] | Should -Be 3
+            Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 1 -Exactly -ParameterFilter {
+                $Code -eq 'CirclFullFetchFailed' -and $Source -eq 'CIRCL' -and $Product -eq 'notepad-plus-plus notepad\+\+' -and
+                $Value[0] -eq '2/3' -and $Value[1] -like '*CIRCL-Fehler Network*'
+            }
+            Get-Store | Should -BeNullOrEmpty
+        }
+
+        It 'versucht es bei <Reason> <Status> nicht erneut' -ForEach @(
+            @{ Reason = 'NotFound'; Status = 0 }
+            @{ Reason = 'Http'; Status = 400 }
+            @{ Reason = 'RateLimit'; Status = 0 }
+        ) {
+            $script:Failures = 1
+            $script:Failure = New-Failure $Reason $Status
+            { Invoke-Circl } | Should -Throw
+            $script:Calls[2] | Should -Be 1
+            Should -Invoke -ModuleName SoftwareInventory Start-Sleep -Times 0 -Exactly
+        }
+
+        It 'versucht es auch beim Nachladen mit since erneut, ohne Vermerk bei endgültigem Fehler' {
+            Invoke-Circl | Out-Null
+            Set-StoreAge -FetchedHours 30 -FullHours 30
+            Mock -ModuleName SoftwareInventory Invoke-ServiceRequest { throw (New-Failure Network) }
+            $all = Invoke-Circl
+            $all.Count | Should -Be 300   # alter Bestand, als veraltet
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 3 -Exactly -ParameterFilter { "$Uri" -match '&since=' }
+            Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 0 -Exactly
+        }
+    }
+
     It 'lädt vollständig, wenn das Blättern mit since keine neuen Datensätze liefert' {
         Invoke-Circl | Out-Null
         Set-StoreAge -FetchedHours 30 -FullHours 30
