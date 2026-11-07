@@ -388,6 +388,23 @@ Describe 'Verbindungsdaten und Bereinigung für die App' {
         ($c | ConvertTo-Json -Depth 3) | Should -Not -Match 'geheim'
     }
 
+    It 'schaltet nur mit Adresse und Modell ein (<Case>)' -ForEach @(
+        @{ Case = 'ohne Modell'; Params = @{ AdvisorPreset = 'Ollama'; AdvisorEnabled = $true } }
+        @{ Case = 'ohne Adresse'; Params = @{ AdvisorPreset = 'Custom'; AdvisorModel = 'm'; AdvisorEnabled = $true } }
+    ) {
+        $err = $null
+        try { Set-InventorySetting @Params | Out-Null } catch { $err = $_ }
+        $err.Exception.Data['Code'] | Should -Be 'AdvisorIncomplete'
+        (Get-InventorySetting).Advisor.Enabled | Should -BeFalse
+    }
+
+    It 'prüft die Vollständigkeit nur, wenn Beraterwerte geändert werden' {
+        Set-InventorySetting -AdvisorPreset Ollama -AdvisorModel 'm' -AdvisorEnabled $true | Out-Null
+        { Set-InventorySetting -AdvisorModel '' } | Should -Throw
+        (Set-InventorySetting -LogRetentionDays 20).Maintenance.LogRetentionDays | Should -Be 20
+        (Set-InventorySetting -AdvisorEnabled $false -AdvisorModel '').Advisor.Model | Should -BeNullOrEmpty
+    }
+
     It 'bereinigt Fragen des Benutzers wie die Tool-Antworten' {
         $text = Protect-AdvisorText -Text "Ich bin $env:USERNAME auf $env:COMPUTERNAME, Datei in $env:USERPROFILE\Downloads"
         $text | Should -Not -Match ([regex]::Escape($env:USERPROFILE))
