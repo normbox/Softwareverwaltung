@@ -34,11 +34,16 @@ function Get-SecurityRating {
         if (-not $records.Count) { return }
         # Ein Aufruf je Funktion mit der ganzen Liste: Ergebnisse kommen je Datensatz in derselben Reihenfolge.
         $ownsRefresh = $Refresh -and (Enter-CacheRefresh)
+        # Index je Programm einmal am Ende schreiben (Update- und Lückenprüfung zusammen), nur bei Änderung.
+        $ownsIndex = Enter-CheckIndexBatch
         try {
             $updates = @(Test-SoftwareUpdate -InputObject $records.ToArray())
             $vulns = @(Get-SoftwareVulnerability -InputObject $records.ToArray())
         }
-        finally { Exit-CacheRefresh $ownsRefresh }
+        finally {
+            Exit-CheckIndexBatch $ownsIndex
+            Exit-CacheRefresh $ownsRefresh
+        }
         if ($updates.Count -ne $records.Count -or $vulns.Count -ne $records.Count) {
             throw (Get-LocalizedString 'ErrorInternalResultCount' $records.Count, $updates.Count, $vulns.Count)
         }

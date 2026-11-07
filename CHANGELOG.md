@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Weniger Schreibvorgänge im Zwischenspeicher (Etappe A, vor 4c-2)
+
+- **Index je Programm** wird in `Get-SecurityRating` einmal am Ende geschrieben (Versions- und Lückenprüfung zusammen) und nur, wenn sich der Inhalt ändert. Bisher schrieb jeder Scan jede Index-Datei zweimal neu, auch unverändert.
+- **EPSS je CVE in einer Datei** (`cache\EPSS\scores.json`) statt einer Datei je Sammelabfrage, deren Name die CVE-Liste war (jede neue CVE ließ eine Datei verwaisen). Abgefragt werden nur fehlende oder abgelaufene CVEs; „Geprüft vor …“ zeigt das tatsächliche Alter der EPSS-Werte. Eine unlesbare Datei gilt als leer, mit Eintrag im Fehlerprotokoll und ohne Meldung.
+- **Messung** mit nachgebildeten Diensten (3 Programme): Ein zweiter Scan innerhalb der Haltbarkeit schreibt jetzt 0 Dateien statt 3 (je zweimal); eine neue CVE schreibt die EPSS-Datei einmal neu statt eine weitere anzulegen.
+- Neues Fehlerprotokoll des Moduls für Fälle ohne Meldung (`logs\app-errors-<Datum>.log`, dieselbe Datei wie die App).
+
 ### Windows-Zugriff ohne Add-Type (vor 4c-2)
 
 - **Fertig übersetzte DLL** `SoftwareInventory.Native.dll` im Modul (`lib\`, geladen über `RequiredAssemblies`) für die Anmeldeinformationsverwaltung und die Prüfung der Pipe-Gegenstelle bei Aktionen mit Administratorrechten. Bisher übersetzte das Modul diesen Code zur Laufzeit mit `Add-Type`; das ist im Constrained Language Mode (AppLocker/WDAC) gesperrt, lässt sich nicht signieren und kann Verhaltensschutz-Programme auslösen. Keine neuen Pakete.
