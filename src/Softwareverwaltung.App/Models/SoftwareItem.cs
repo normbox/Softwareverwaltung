@@ -37,6 +37,10 @@ public sealed record SoftwareItem
     public IReadOnlyList<VulnerabilityItem> Vulnerabilities { get; init; } = [];
     /// <summary>KEV-Treffer, die für diese Version widerlegt sind, mit Begründung.</summary>
     public IReadOnlyList<string> Refuted { get; init; } = [];
+    /// <summary>Hinweis „N Lücken betreffen nur andere Plattformen“ (Text des Moduls); null, wenn es keine gibt.</summary>
+    public string? OtherPlatformText { get; init; }
+    /// <summary>Lücken nur für andere Plattformen (macOS, iOS, Android, Linux …), je Zeile CVE und Plattformen; ohne Ampelwirkung.</summary>
+    public IReadOnlyList<string> OtherPlatform { get; init; } = [];
     public string Sources { get; init; } = "";
     public string? WingetId { get; init; }
     /// <summary>CPE-Namen ohne Version (Katalog oder eigene Zuordnung).</summary>
@@ -173,6 +177,8 @@ public sealed record SoftwareItem
             PossibleCount = counted.Count(v => v.Assessment == "PossiblyAffected"),
             Vulnerabilities = vulnerabilities,
             Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => MessageText(r.Properties["Note"]?.Value)).OfType<string>().ToList(),
+            OtherPlatformText = vulnerability is null ? null : MessageText(vulnerability.Properties["OtherPlatformNote"]?.Value),
+            OtherPlatform = vulnerability is null ? [] : GetObjects(vulnerability, "OtherPlatform").Select(o => MessageText(o.Properties["Note"]?.Value)).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
             WingetId = record is null ? null : GetString(record, "WingetId"),
             CpeBase = vulnerability is null ? [] : GetStrings(vulnerability, "CpeBase"),

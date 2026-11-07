@@ -122,6 +122,34 @@ public sealed class SoftwareItemTests
     }
 
     [Fact]
+    public void ShowsVulnerabilitiesForOtherPlatformsSeparately()
+    {
+        // Lücken nur für andere Plattformen: Kopfzeile und Liste kommen als Text des Moduls, sie zählen nicht mit.
+        static System.Management.Automation.PSObject Message(string code, string text, params object[] args) => Ps(("Code", code), ("Args", args), ("Text", text));
+        var item = SoftwareItem.FromRating(Ps(
+            ("Name", "7-Zip 24.08 (x64)"), ("Rating", "Green"),
+            ("VulnerabilityStatus", Ps(("Status", "Checked"), ("Vulnerabilities", Array.Empty<object>()),
+                ("OtherPlatformNote", Message("OtherPlatformHidden", "2 Lücken betreffen nur andere Plattformen", 2)),
+                ("OtherPlatform", new object[] {
+                    Ps(("CveId", "CVE-2025-3001"), ("Platforms", new[] { "macOS" }), ("Note", Message("OtherPlatformCve", "CVE-2025-3001: nur für macOS", "CVE-2025-3001", "macOS"))),
+                    Ps(("CveId", "CVE-2025-3002"), ("Platforms", new[] { "Android", "iOS" }), ("Note", Message("OtherPlatformCve", "CVE-2025-3002: nur für Android, iOS", "CVE-2025-3002", "Android, iOS"))),
+                })))));
+
+        Assert.Equal("2 Lücken betreffen nur andere Plattformen", item.OtherPlatformText);
+        Assert.Equal(["CVE-2025-3001: nur für macOS", "CVE-2025-3002: nur für Android, iOS"], item.OtherPlatform);
+        Assert.Equal(0, item.VulnerabilityCount);
+    }
+
+    [Fact]
+    public void HasNoOtherPlatformHintWithoutSuchVulnerabilities()
+    {
+        var item = SoftwareItem.FromRating(Ps(("Name", "7-Zip"), ("Rating", "Green"),
+            ("VulnerabilityStatus", Ps(("Status", "Checked"), ("Vulnerabilities", Array.Empty<object>())))));
+        Assert.Null(item.OtherPlatformText);
+        Assert.Empty(item.OtherPlatform);
+    }
+
+    [Fact]
     public void MarksUnconfirmedLatestVersion()
     {
         var item = SoftwareItem.FromRating(Ps(
