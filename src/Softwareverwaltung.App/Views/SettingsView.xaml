@@ -297,6 +297,137 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <!-- KI-Berater -->
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsAdvisorTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsAdvisorText}" />
+                <Border Margin="0,0,0,8" Padding="14,10" CornerRadius="4" BorderThickness="1"
+                        Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        Visibility="{Binding ShowShareLevelNotice, Converter={StaticResource BoolToVisibility}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{loc:Text SettingsAdvisorNoticeTitle}" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Text SettingsAdvisorNoticeText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ui:Button Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center"
+                                   Content="{loc:Text SettingsAdvisorNoticeConfirm}" Command="{Binding DismissShareLevelNoticeCommand}" />
+                    </Grid>
+                </Border>
+                <ui:CardControl Margin="0,0,0,4" Padding="14,10">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="{loc:Text SettingsAdvisorEnabled}" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Text SettingsAdvisorEnabledText}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch IsChecked="{Binding AdvisorEnabled}" AutomationProperties.Name="{loc:Text SettingsAdvisorEnabled}"
+                                     OnContent="{loc:Text SwitchOn}" OffContent="{loc:Text SwitchOff}" />
+                </ui:CardControl>
+                <ui:Card Margin="0,0,0,4" Padding="14,10">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,4" Text="{loc:Text SettingsAdvisorServer}" />
+                        <ComboBox Width="260" HorizontalAlignment="Left" ItemsSource="{Binding AdvisorPresets}"
+                                  DisplayMemberPath="Label" SelectedValuePath="Name" SelectedValue="{Binding AdvisorPreset}"
+                                  AutomationProperties.Name="{loc:Text SettingsAdvisorServer}" />
+                        <TextBlock Style="{StaticResource SectionText}" Margin="0,4,0,0" Text="{Binding AdvisorPresetNote}"
+                                   Visibility="{Binding AdvisorPresetNote, Converter={StaticResource NullToVisibility}}" />
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsAdvisorEndpoint}" />
+                        <ui:TextBox Width="420" HorizontalAlignment="Left" PlaceholderText="{loc:Text SettingsAdvisorEndpointPlaceholder}"
+                                    Text="{Binding AdvisorEndpoint, UpdateSourceTrigger=PropertyChanged}"
+                                    AutomationProperties.Name="{loc:Text SettingsAdvisorEndpoint}" />
+                        <TextBlock Style="{StaticResource SectionText}" Margin="0,4,0,0" Text="{loc:Text SettingsAdvisorEndpointText}" />
+                        <TextBlock Margin="0,0,0,4" TextWrapping="Wrap" Text="{Binding AdvisorEndpointNote}"
+                                   Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                   Visibility="{Binding AdvisorEndpointNote, Converter={StaticResource NullToVisibility}}" />
+
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsAdvisorModel}" />
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox Width="320" IsEditable="True" ItemsSource="{Binding AdvisorModels}"
+                                      Text="{Binding AdvisorModel, UpdateSourceTrigger=PropertyChanged}"
+                                      AutomationProperties.Name="{loc:Text SettingsAdvisorModel}" />
+                            <ui:Button Margin="8,0,0,0" Content="{loc:Text SettingsAdvisorLoadModels}" Icon="{ui:SymbolIcon ArrowSync24}"
+                                       Command="{Binding LoadModelsCommand}" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Margin="0,4,0,0" Text="{loc:Text SettingsAdvisorModelText}" />
+
+                        <Grid DataContext="{Binding AdvisorCredential}" Margin="0,4,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <PasswordBox x:Name="AdvisorSecret" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"
+                                         AutomationProperties.Name="{Binding Title}" />
+                            <ui:Button Grid.Row="0" Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center"
+                                       Content="{loc:Text CommonSave}" Click="OnSaveCredential" Tag="{Binding ElementName=AdvisorSecret}" />
+                            <ui:Button Grid.Row="0" Grid.Column="3" Margin="8,0,0,0" VerticalAlignment="Center"
+                                       Content="{loc:Text CommonDelete}" IsEnabled="{Binding Stored}"
+                                       Command="{Binding DataContext.RemoveCredentialCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                       CommandParameter="{Binding}" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,6,0,0"
+                                       Text="{Binding StatusText}" TextWrapping="Wrap" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource SectionText}" Margin="0,4,0,0" Text="{loc:Text SettingsAdvisorKeyRequired}"
+                                   Visibility="{Binding AdvisorPresetNeedsKey, Converter={StaticResource BoolToVisibility}}" />
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <ui:Button Content="{loc:Text SettingsAdvisorTest}" Icon="{ui:SymbolIcon PlugConnected24}"
+                                       Command="{Binding TestConnectionCommand}" />
+                            <ui:ProgressRing Margin="12,0,0,0" Width="20" Height="20" IsIndeterminate="True"
+                                             Visibility="{Binding IsAdvisorBusy, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                        <ui:InfoBar Margin="0,8,0,0" IsOpen="True" IsClosable="False" Title=""
+                                    Message="{Binding AdvisorResultText}" Severity="{Binding AdvisorResultSeverity}"
+                                    Visibility="{Binding AdvisorResultText, Converter={StaticResource NullToVisibility}}" />
+                    </StackPanel>
+                </ui:Card>
+
+                <TextBlock Style="{StaticResource SubsectionTitle}" Text="{loc:Text SettingsAdvisorShareTitle}" />
+                <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsAdvisorShareText}" />
+                <ItemsControl ItemsSource="{Binding ShareLevels}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:ShareLevelOption}">
+                            <RadioButton GroupName="AdvisorShareLevel" Margin="0,2,0,2" IsChecked="{Binding IsSelected}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </RadioButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Margin="0,4,0,4" TextWrapping="Wrap" Text="{loc:Text SettingsAdvisorLevel4Hint}"
+                           Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                           Visibility="{Binding ShowLevel4Hint, Converter={StaticResource BoolToVisibility}}" />
+                <Expander Margin="0,8,0,0" Header="{loc:Text SettingsAdvisorPreview}" IsExpanded="{Binding IsPreviewOpen}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="{loc:Text SettingsAdvisorPreviewText}" />
+                        <TextBlock TextWrapping="Wrap" Text="{Binding PreviewHint}"
+                                   Visibility="{Binding PreviewHint, Converter={StaticResource NullToVisibility}}" />
+                        <TextBox IsReadOnly="True" TextWrapping="NoWrap" MaxHeight="360" FontFamily="Consolas"
+                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                 Text="{Binding PreviewText, Mode=OneWay}" AutomationProperties.Name="{loc:Text SettingsAdvisorPreview}"
+                                 Visibility="{Binding PreviewText, Converter={StaticResource NullToVisibility}}" />
+                    </StackPanel>
+                </Expander>
+
                 <!-- Aktionen -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsActionsTitle}" />
                 <ItemsControl ItemsSource="{Binding Actions}" ItemTemplate="{StaticResource SwitchCard}" />

@@ -481,9 +481,29 @@ public sealed class SettingsViewModelTests
         public Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
             LoadFailure is null ? Task.FromResult(Saved) : Task.FromException<AppSettings>(LoadFailure);
 
-        public Task<AppSettings> SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
+        public AppSettings? LastPrevious { get; private set; }
+
+        public List<AdvisorPresetInfo> AdvisorPresetList { get; } =
+        [
+            new("Ollama", "Ollama", "http://localhost:11434/v1", false, null),
+            new("Unsloth", "Unsloth Studio", "http://localhost:8888/v1", true, "Braucht einen Schlüssel."),
+            new("Custom", "Eigene Adresse", null, false, "Jeder Server."),
+        ];
+
+        public Task<IReadOnlyList<AdvisorPresetInfo>> GetAdvisorPresetsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<AdvisorPresetInfo>>(AdvisorPresetList.ToList());
+
+        public Task<AppSettings> DismissShareLevelNoticeAsync(CancellationToken cancellationToken = default)
+        {
+            Calls.Add("DismissNotice");
+            Saved = Saved with { AdvisorShareLevelNoticePending = false };
+            return Task.FromResult(Saved);
+        }
+
+        public Task<AppSettings> SaveAsync(AppSettings settings, AppSettings? previous = null, CancellationToken cancellationToken = default)
         {
             Calls.Add("Save");
+            LastPrevious = previous;
             if (SaveFailure is not null)
             {
                 return Task.FromException<AppSettings>(SaveFailure);

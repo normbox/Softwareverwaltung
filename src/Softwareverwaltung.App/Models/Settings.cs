@@ -36,6 +36,15 @@ public sealed record AppSettings
     public int CacheHoursCircl { get; init; } = 24;
     public int CacheHoursEpss { get; init; } = 24;
     public int CacheHoursKev { get; init; } = 24;
+    /// <summary>KI-Berater (Advisor): standardmäßig aus, kein Standardmodell.</summary>
+    public bool AdvisorEnabled { get; init; }
+    public string? AdvisorPreset { get; init; }
+    public string? AdvisorEndpoint { get; init; }
+    public string? AdvisorModel { get; init; }
+    /// <summary>Freigabestufe für lokale Server (0–4). Neue Einstellungen 3, übernommene ältere 2 (setzt das Modul).</summary>
+    public int AdvisorShareLevelLocal { get; init; } = 3;
+    /// <summary>Einmaliger Hinweis nach der Übernahme älterer Einstellungen; kein Teil der Änderungserkennung.</summary>
+    public bool AdvisorShareLevelNoticePending { get; init; }
 
     public static AppSettings FromPs(PSObject obj)
     {
@@ -54,6 +63,8 @@ public sealed record AppSettings
         var maintenance = obj.Properties["Maintenance"]?.Value as PSObject;
         var portable = obj.Properties["PortableSearch"]?.Value as PSObject;
         var cache = obj.Properties["CacheHours"]?.Value as PSObject;
+        var advisor = obj.Properties["Advisor"]?.Value as PSObject;
+        var shareLevel = advisor?.Properties["ShareLevel"]?.Value as PSObject;
         return new AppSettings
         {
             Usage = obj.Properties["Usage"]?.Value?.ToString(),
@@ -76,8 +87,17 @@ public sealed record AppSettings
             CacheHoursCircl = Convert.ToInt32(cache?.Properties["CIRCL"]?.Value ?? 24),
             CacheHoursEpss = Convert.ToInt32(cache?.Properties["EPSS"]?.Value ?? 24),
             CacheHoursKev = Convert.ToInt32(cache?.Properties["KEV"]?.Value ?? 24),
+            AdvisorEnabled = advisor?.Properties["Enabled"]?.Value is true,
+            AdvisorPreset = Text(advisor, "Preset"),
+            AdvisorEndpoint = Text(advisor, "Endpoint"),
+            AdvisorModel = Text(advisor, "Model"),
+            AdvisorShareLevelLocal = Convert.ToInt32(shareLevel?.Properties["Local"]?.Value ?? 3),
+            AdvisorShareLevelNoticePending = advisor?.Properties["ShareLevelNoticePending"]?.Value is true,
         };
     }
+
+    private static string? Text(PSObject? obj, string name) =>
+        obj?.Properties[name]?.Value?.ToString() is { Length: > 0 } text ? text : null;
 
     internal static IReadOnlyList<string> Strings(PSObject? obj, string name) => obj?.Properties[name]?.Value switch
     {
@@ -103,6 +123,17 @@ public sealed record SettingPreset(IReadOnlyList<string> Enable, IReadOnlyList<s
             fileScan?.Properties["ComputeHash"]?.Value is true,
             fileScan?.Properties["Mode"]?.Value?.ToString());
     }
+}
+
+/// <summary>Vorgabe für den KI-Server aus Get-AdvisorEndpointPreset (Ollama, LMStudio, Unsloth, Custom).</summary>
+public sealed record AdvisorPresetInfo(string Name, string Label, string? Endpoint, bool RequiresApiKey, string? Note)
+{
+    public static AdvisorPresetInfo FromPs(PSObject obj) => new(
+        obj.Properties["Name"]?.Value?.ToString() ?? "",
+        obj.Properties["Label"]?.Value?.ToString() ?? "",
+        obj.Properties["Endpoint"]?.Value?.ToString() is { Length: > 0 } endpoint ? endpoint : null,
+        obj.Properties["RequiresApiKey"]?.Value is true,
+        obj.Properties["Note"]?.Value?.ToString() is { Length: > 0 } note ? note : null);
 }
 
 /// <summary>Laufwerk aus Get-ScanDrive.</summary>

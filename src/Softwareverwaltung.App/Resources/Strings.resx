@@ -1149,4 +1149,121 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
   <data name="AdvisorTestUserPrompt" xml:space="preserve">
     <value>Wie viele Programme sind installiert?</value>
   </data>
+  <data name="SettingsAdvisorTitle" xml:space="preserve">
+    <value>KI-Berater</value>
+  </data>
+  <data name="SettingsAdvisorText" xml:space="preserve">
+    <value>Ein lokales Sprachmodell beantwortet Fragen zu den installierten Programmen und schlägt Updates oder Deinstallationen vor; ausgeführt wird erst nach Bestätigung. Nur lokale Server (dieser Rechner oder das private Netz). Vor dem Senden werden Benutzername, Rechnername und Benutzerpfade entfernt.</value>
+  </data>
+  <data name="SettingsAdvisorEnabled" xml:space="preserve">
+    <value>KI-Berater verwenden</value>
+  </data>
+  <data name="SettingsAdvisorEnabledText" xml:space="preserve">
+    <value>Standardmäßig aus. Zum Einschalten braucht es eine Adresse und ein Modell.</value>
+  </data>
+  <data name="SettingsAdvisorServer" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="SettingsAdvisorEndpoint" xml:space="preserve">
+    <value>Adresse</value>
+  </data>
+  <data name="SettingsAdvisorEndpointText" xml:space="preserve">
+    <value>Basisadresse der OpenAI-kompatiblen Schnittstelle. Erlaubt sind nur Adressen auf diesem Rechner und im privaten Netz; geprüft wird jede aufgelöste IP-Adresse.</value>
+  </data>
+  <data name="SettingsAdvisorModel" xml:space="preserve">
+    <value>Modell</value>
+  </data>
+  <data name="SettingsAdvisorModelText" xml:space="preserve">
+    <value>Es gibt kein Standardmodell. „Modelle laden“ holt die Liste vom Server; das Modell muss Tool-Aufrufe beherrschen.</value>
+  </data>
+  <data name="SettingsAdvisorLoadModels" xml:space="preserve">
+    <value>Modelle laden</value>
+  </data>
+  <data name="SettingsAdvisorTest" xml:space="preserve">
+    <value>Verbindung testen</value>
+  </data>
+  <data name="SettingsAdvisorTesting" xml:space="preserve">
+    <value>Verbindung wird getestet … Lokale Modelle brauchen beim ersten Aufruf manchmal eine Minute.</value>
+  </data>
+  <data name="SettingsAdvisorModelsLoaded" xml:space="preserve">
+    <value>{0} Modelle gefunden. Bitte eines wählen.</value>
+  </data>
+  <data name="SettingsAdvisorNoModels" xml:space="preserve">
+    <value>Der Server meldet keine Modelle. Ist ein Modell installiert?</value>
+  </data>
+  <data name="SettingsAdvisorFailed" xml:space="preserve">
+    <value>Fehler: {0}</value>
+  </data>
+  <data name="SettingsAdvisorKeyRequired" xml:space="preserve">
+    <value>Dieser Server verlangt einen API-Schlüssel.</value>
+  </data>
+  <data name="SettingsCredentialAdvisor" xml:space="preserve">
+    <value>API-Schlüssel des KI-Servers</value>
+  </data>
+  <data name="SettingsCredentialAdvisorText" xml:space="preserve">
+    <value>Nur nötig, wenn der Server einen Schlüssel verlangt (z. B. Unsloth Studio). Wird in der Windows-Anmeldeinformationsverwaltung gespeichert.</value>
+  </data>
+  <data name="SettingsAdvisorShareTitle" xml:space="preserve">
+    <value>Was das Modell sehen darf</value>
+  </data>
+  <data name="SettingsAdvisorShareText" xml:space="preserve">
+    <value>Die Freigabestufe legt fest, welche Daten die Tools an das Modell geben. Die Grenze setzt das Programm selbst, nicht das Modell.</value>
+  </data>
+  <data name="SettingsAdvisorLevel0" xml:space="preserve">
+    <value>Stufe 0: Nur Übersicht</value>
+  </data>
+  <data name="SettingsAdvisorLevel0Text" xml:space="preserve">
+    <value>Anzahl der Programme, Ampelverteilung, Updates und Lücken, CVE-Nummern ohne Programmzuordnung. Keine Programmnamen.</value>
+  </data>
+  <data name="SettingsAdvisorLevel1" xml:space="preserve">
+    <value>Stufe 1: Programmliste</value>
+  </data>
+  <data name="SettingsAdvisorLevel1Text" xml:space="preserve">
+    <value>Name, Hersteller, Versionen, Ampel, Gründe und Sicherheitslücken der installierten Programme.</value>
+  </data>
+  <data name="SettingsAdvisorLevel2" xml:space="preserve">
+    <value>Stufe 2: + Installationsdetails</value>
+  </data>
+  <data name="SettingsAdvisorLevel2Text" xml:space="preserve">
+    <value>Quellen, Installationsart, Bereich, Architektur, winget-ID und Installationsordner (Benutzerpfade als Platzhalter).</value>
+  </data>
+  <data name="SettingsAdvisorLevel3" xml:space="preserve">
+    <value>Stufe 3: + portable Programme aus der Dateisuche</value>
+  </data>
+  <data name="SettingsAdvisorLevel3Text" xml:space="preserve">
+    <value>Portable Programme mit Signatur, Herausgeber und Art des Fundorts (z. B. Downloads), nie mit Pfad.</value>
+  </data>
+  <data name="SettingsAdvisorLevel4" xml:space="preserve">
+    <value>Stufe 4: + grobe Nutzungsspuren</value>
+  </data>
+  <data name="SettingsAdvisorLevel4Text" xml:space="preserve">
+    <value>Auch Programme, die nur über Nutzungsspuren gefunden wurden, „zuletzt genutzt“ grob (innerhalb eines Monats, 1–6 Monate, älter, unbekannt) und Autostart.</value>
+  </data>
+  <data name="SettingsAdvisorLevel4Hint" xml:space="preserve">
+    <value>Stufe 4 gibt zusätzlich grob preis, welche Programme wann zuletzt benutzt wurden und was automatisch startet. Genaue Zeitpunkte, Startzähler und Pfade gehen nie an das Modell.</value>
+  </data>
+  <data name="SettingsAdvisorPreview" xml:space="preserve">
+    <value>Vorschau: genau diese Daten bekäme das Modell</value>
+  </data>
+  <data name="SettingsAdvisorPreviewText" xml:space="preserve">
+    <value>Bereinigte Antworten der Tools auf der gewählten Stufe (Liste der ersten 5 Programme und Details des ersten). Es wird nichts gesendet.</value>
+  </data>
+  <data name="SettingsAdvisorPreviewNoScan" xml:space="preserve">
+    <value>Noch keine Daten: Nach dem ersten Scan zeigt die Vorschau, was das Modell sähe. Ohne Scan bekommt auch das Modell keine Programmdaten.</value>
+  </data>
+  <data name="SettingsAdvisorNoticeTitle" xml:space="preserve">
+    <value>Freigabestufe des KI-Beraters</value>
+  </data>
+  <data name="SettingsAdvisorNoticeText" xml:space="preserve">
+    <value>Mit der Einführung der Freigabestufen wurde für die bestehenden Einstellungen Stufe 2 gewählt (Programmliste und Installationsdetails, keine portablen Programme). Eine höhere Stufe gibt es nur von Hand; die Vorschau zeigt, was das Modell sieht.</value>
+  </data>
+  <data name="SettingsAdvisorNoticeMain" xml:space="preserve">
+    <value>Für die bestehenden Einstellungen gilt jetzt Stufe 2. Ändern lässt sie sich unter Einstellungen → KI-Berater.</value>
+  </data>
+  <data name="SettingsAdvisorNoticeConfirm" xml:space="preserve">
+    <value>Verstanden</value>
+  </data>
+  <data name="SettingsAdvisorEndpointPlaceholder" xml:space="preserve">
+    <value>http://localhost:11434/v1</value>
+  </data>
 </root>
