@@ -2,6 +2,9 @@
 # Neu prüfen ohne Cache und ein Index je Programm und Version, über den sich die Einträge eines
 # Programms gezielt verwerfen lassen (Clear-CheckCache, z. B. nach einer Aktion).
 
+# Sammellauf für den Index (Get-SecurityRating): Pfad → @{ Update; Vulnerability }, $null außerhalb.
+$script:CheckIndexBatch = $null
+
 function Test-CacheRefresh {
     # Wahr, wenn diese Datei im laufenden Neu-prüfen-Lauf noch nicht frisch geholt wurde (merkt sie sich dabei).
     param([string] $File)
@@ -64,21 +67,67 @@ function Get-CheckIndexFile {
 }
 
 function Save-CheckIndex {
-    # Vermerkt, welche Einträge die Versions- bzw. Sicherheitsprüfung (Kind) eines Programms benutzt hat.
+    <#
+    .SYNOPSIS
+        Vermerkt, welche Einträge die Versions- bzw. Sicherheitsprüfung (Kind) eines Programms benutzt hat.
+    .DESCRIPTION
+        Während eines Sammellaufs (Enter-CheckIndexBatch, z. B. in Get-SecurityRating) nur im Speicher;
+        geschrieben wird am Ende einmal je Programm. Sonst sofort. Geschrieben wird nur, wenn sich der Inhalt
+        ändert: Viele unveränderte Neuschreibungen in kurzer Folge lösen Verhaltensschutz-Programme aus.
+    #>
     param($Record, [ValidateSet('Update', 'Vulnerability')] [string] $Kind, [object[]] $Trace)
-    # Der KEV-Katalog gilt für alle Programme und wird nie gezielt verworfen; er gehört nicht in den Index.
-    $files = @($Trace | Where-Object { $_ -and $_.File -and $_.Service -ne 'KEV' } | ForEach-Object File | Sort-Object -Unique)
+    # KEV und EPSS gelten für alle Programme und werden nie gezielt verworfen; sie gehören nicht in den Index.
+    $files = @($Trace | Where-Object { $_ -and $_.File -and $_.Service -notin 'KEV', 'EPSS' } | ForEach-Object File | Sort-Object -Unique)
     if (-not $files) { return }
     $path = Get-CheckIndexFile $Record
-    $index = [ordered]@{ Update = @(); Vulnerability = @() }
-    try {
-        if (Test-Path -LiteralPath $path) {
-            $old = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
-            foreach ($k in 'Update', 'Vulnerability') { if ($old.PSObject.Properties[$k]) { $index[$k] = @($old.$k) } }
-        }
-        $index[$Kind] = $files
-        New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
-        [pscustomobject] $index | ConvertTo-Json -Compress | Set-Content -LiteralPath $path -Encoding utf8NoBOM
+    if ($null -ne $script:CheckIndexBatch) {
+        if (-not $script:CheckIndexBatch.Contains($path)) { $script:CheckIndexBatch[$path] = @{} }
+        $script:CheckIndexBatch[$path][$Kind] = $files
+        return
     }
-    catch { Write-Verbose "Index nicht schreibbar: $path ($($_.Exception.Message))" }
+    Write-CheckIndex -Path $path -Change @{ $Kind = $files }
+}
+
+function Enter-CheckIndexBatch {
+    # Startet einen Sammellauf; liefert $true, wenn dieser Aufruf ihn begonnen hat (und beenden muss).
+    if ($null -ne $script:CheckIndexBatch) { return $false }
+    $script:CheckIndexBatch = [ordered]@{}
+    $true
+}
+
+function Exit-CheckIndexBatch {
+    # Beendet den Sammellauf und schreibt je Programm einmal (auch nach Abbruch, für das bis dahin Geprüfte).
+    param([bool] $Owner)
+    if (-not $Owner) { return }
+    $batch = $script:CheckIndexBatch
+    $script:CheckIndexBatch = $null
+    foreach ($path in $batch.Keys) { Write-CheckIndex -Path $path -Change $batch[$path] }
+}
+
+function Write-CheckIndex {
+    # Übernimmt die geänderten Teile (Update/Vulnerability) in den Index und schreibt nur bei geändertem Inhalt.
+    param([string] $Path, [hashtable] $Change)
+    try {
+        $index = [ordered]@{ Update = @(); Vulnerability = @() }
+        $oldText = if (Test-Path -LiteralPath $Path) { (Get-Content -LiteralPath $Path -Raw).Trim() }
+        if ($oldText) {
+            try {
+                $old = $oldText | ConvertFrom-Json
+                foreach ($k in 'Update', 'Vulnerability') { if ($old.PSObject.Properties[$k]) { $index[$k] = @($old.$k) } }
+            }
+            catch { Write-Verbose "Index unlesbar, wird neu geschrieben: $Path" }
+        }
+        foreach ($k in $Change.Keys) { $index[$k] = @($Change[$k]) }
+        $text = [pscustomobject] $index | ConvertTo-Json -Compress
+        if ($text -ceq $oldText) { return }
+        Write-CheckIndexFile -Path $Path -Text $text
+    }
+    catch { Write-Verbose "Index nicht schreibbar: $Path ($($_.Exception.Message))" }
+}
+
+function Write-CheckIndexFile {
+    # Eigene Funktion, damit Tests die Schreibvorgänge zählen können.
+    param([string] $Path, [string] $Text)
+    New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force | Out-Null
+    [System.IO.File]::WriteAllText($Path, $Text, [System.Text.UTF8Encoding]::new($false))
 }
