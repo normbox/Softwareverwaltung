@@ -4,6 +4,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### KI-Berater: Freigabestufen (Etappe 4b-1)
+
+- **Freigabestufen 0 bis 4 im Modul:** Die Tools geben nur die Felder der eingestellten Stufe zurück (Übersicht, Programmliste, Installationsdetails, portable Programme aus der Dateisuche, vergröberte Nutzungsspuren). Die Stufe bestimmt das Modul aus Anbieterart (`Invoke-AdvisorTool -ProviderKind Local|External`) und Einstellung `Advisor.ShareLevel`: lokal Voreinstellung 3, höchstens 4; extern (spätere Plugins) Voreinstellung 1, höchstens 3. Auf Stufe 0 gibt es nur eine Übersicht ohne Parameter (`ShareLevelTooLow` für alles andere).
+- **Nie an die KI:** Pfad portabler Programme (nur die Art des Fundorts), Installationsdatum, genaue Zeitstempel, Startzähler, Art der Spur, Produktcodes, Registry-Schlüssel, Deinstallationsbefehle, Hash. „Zuletzt genutzt“ nur grob, fehlende Spuren heißen „unbekannt“.
+- **Ältere Einstellungen** bekommen lokal Stufe 2 und einen einmaligen Hinweis (`ShareLevelNoticePending`); höher stellt nur der Benutzer.
+- **Nur lokale Server:** `Get-AdvisorEndpointCheck` prüft die aufgelöste Adresse (Loopback, private Netze, Link-Local). Öffentliche oder nicht auflösbare Adressen lehnt `Set-InventorySetting` ab (`AdvisorEndpointNotLocal`, `AdvisorEndpointUnresolvable`); http im privaten Netz mit Hinweis `AdvisorEndpointUnencrypted`.
+- **Vorschau:** `Get-AdvisorDataPreview -Level n` zeigt das bereinigte JSON, das das Modell auf dieser Stufe bekäme.
+
 ### Plattformfilter
 
 - **Lücken nur für andere Plattformen zählen unter Windows nicht:** Die NVD führt unter derselben CPE oft Lücken nur für macOS, iOS, Android oder Linux (UND-Konfiguration mit einem anderen Betriebssystem oder `target_sw` wie `android`), CIRCL ebenso (`platforms`, Produktnamen wie „Firefox for Android“). Solche Einträge zählen nicht mehr als Treffer; die Quelle meldet dann „nicht betroffen“ mit dem Grund „Nur für macOS, nicht für Windows“. Ausgeschlossen wird nur, was eindeutig einer bekannten anderen Plattform zugeordnet ist; Unbekanntes zählt weiter. Bei genau passendem CPE-Produkt schließt der Name nichts aus.
