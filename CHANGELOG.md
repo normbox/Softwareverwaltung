@@ -4,6 +4,18 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### KI-Berater: Einstellungsseite (Etappe 4b-3)
+
+- **Abschnitt „KI-Berater“** in den Einstellungen: einschalten (nur mit Adresse und Modell, `AdvisorIncomplete`), Server-Vorgabe, Adresse mit Hinweis „unverschlüsselt“, Modell (anfangs leer, kein Standardmodell) mit „Modelle laden“, API-Schlüssel, „Verbindung testen“.
+- **Freigabestufe 0 bis 4** mit je einem Satz, was dazukommt, Hinweis bei Stufe 4 und aufklappbarer **Vorschau** der Daten, die das Modell auf der gewählten Stufe bekäme.
+- **Einmaliger Hinweis** zur übernommenen Stufe 2 in den Einstellungen und, bei eingeschaltetem Berater, im Hauptfenster; weg nach „Verstanden“ oder einer gespeicherten Stufe.
+- **Das Modul liest nie mehr selbst ein:** Ohne Daten aus einem Scan antworten die Tools mit `NoScanData`, statt still einen Scan mit Abfragen externer Dienste zu starten. Die Vorschau meldet dann `HasScanData = $false`.
+- Beraterwerte gehen beim Speichern nur mit, wenn sie sich geändert haben; eine gespeicherte Adresse wird nicht bei jedem Speichern neu aufgelöst.
+
+### Korrekturen (4b-3)
+
+- `Set-AdvisorContext -Rating @()` speicherte bisher „keine Daten“ statt „Scan ohne Programme“ (PowerShell rollte das leere Array aus einem `if` ab).
+
 ### KI-Berater: Anbieter-Schnittstelle (Etappe 4b-2)
 
 - **Anbieter-Schnittstelle in der App** (`IAdvisorProvider`) mit eigenen Typen für Nachrichten und Tools, damit externe Anbieter später als Plugin dazukommen. Erster Anbieter: `OpenAiCompatibleProvider` für lokale Server (`/models`, `/chat/completions` mit `tools`, ohne Streaming), ohne neue Pakete.

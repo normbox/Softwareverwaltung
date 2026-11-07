@@ -262,6 +262,13 @@ function Set-InventorySetting {
         $setting.Advisor.ShareLevelNoticePending = $false
     }
     if ($PSBoundParameters.ContainsKey('AdvisorShareLevelNoticePending')) { $setting.Advisor.ShareLevelNoticePending = $AdvisorShareLevelNoticePending }
+    # Eingeschaltet nur mit Adresse und Modell; geprüft nur, wenn diese Werte geändert werden.
+    $advisorChanged = @('AdvisorEnabled', 'AdvisorPreset', 'AdvisorEndpoint', 'AdvisorModel') | Where-Object { $PSBoundParameters.ContainsKey($_) }
+    if ($advisorChanged -and $setting.Advisor.Enabled -and (-not $setting.Advisor.Endpoint -or -not $setting.Advisor.Model)) {
+        $exception = [System.ArgumentException]::new((Get-LocalizedString 'SettingsErrorAdvisorIncomplete'), 'AdvisorEnabled')
+        $exception.Data['Code'] = 'AdvisorIncomplete'
+        throw $exception
+    }
 
     if ($PSCmdlet.ShouldProcess((Get-SettingsPath), (Get-LocalizedString 'ConfirmSaveSettings'))) {
         Write-InventorySetting -Setting $setting

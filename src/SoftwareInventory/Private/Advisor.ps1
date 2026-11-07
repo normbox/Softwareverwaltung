@@ -51,11 +51,15 @@ function Get-AdvisorProgramId {
 }
 
 function Get-AdvisorContextRating {
-    # Bewertungen aus dem letzten Scan; ohne App wird einmal eingelesen.
-    if ($null -eq $script:AdvisorContext) {
-        $script:AdvisorContext = @(Get-SoftwareInventory | Get-SecurityRating)
-    }
+    # Bewertungen aus dem letzten Scan (Set-AdvisorContext). Das Modul liest nie selbst ein: Ein Scan fragt
+    # externe Dienste ab und startet nur auf Wunsch des Benutzers. Ohne Kontext antworten die Tools mit NoScanData.
+    if ($null -eq $script:AdvisorContext) { return @() }
     $script:AdvisorContext
+}
+
+function Test-AdvisorContext {
+    # Gibt es Daten aus einem Scan? Auch ein Scan ohne Programme zählt.
+    $null -ne $script:AdvisorContext
 }
 
 function Find-AdvisorRating {

@@ -9,7 +9,9 @@ function Invoke-AdvisorTool {
         error_code) und einer Meldung in der Sprache der Oberfläche, damit das Modell sich korrigieren
         kann; es wird nie eine Ausnahme geworfen.
         Codes: UnknownTool, InvalidArguments, InvalidId, UnknownId, InvalidLimit, InvalidRating,
-        ReasonMissing, NoUpdateKnown, ShareLevelTooLow, ToolFailed; bei Vorschlägen ProposalCreated.
+        ReasonMissing, NoUpdateKnown, ShareLevelTooLow, NoScanData, ToolFailed; bei Vorschlägen ProposalCreated.
+        Ohne Daten aus einem Scan (Set-AdvisorContext) antwortet jedes Tool mit NoScanData; das Modul
+        liest nie selbst ein.
         Freigabestufe: Das Modul bestimmt sie aus -ProviderKind und den Einstellungen (Advisor.ShareLevel),
         höchstens bis zur Grenze der Anbieterart (Get-AdvisorShareLimit). Was die Stufe nicht zeigt,
         steht nicht im Ergebnis; auf Stufe 0 gibt es nur die Übersicht über get_inventory.
@@ -54,6 +56,8 @@ function Invoke-AdvisorToolAtLevel {
     catch {
         return New-AdvisorToolError $Name InvalidArguments
     }
+    # Ohne Scan keine Daten; das Modul startet keinen Scan von selbst.
+    if (-not (Test-AdvisorContext)) { return New-AdvisorToolError $Name NoScanData }
     # Stufe 0: nur die Übersicht, ohne Parameter (sonst ließen sich Namen über filter einzeln abfragen)
     if ($Level -eq 0) {
         if ($Name -ne 'get_inventory' -or $arguments.Count) { return New-AdvisorToolError $Name ShareLevelTooLow @($Level) }

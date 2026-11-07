@@ -238,6 +238,9 @@ public sealed class AdvisorConversationTests
         public Task<string> ProtectTextAsync(string text, CancellationToken cancellationToken = default) => Task.FromResult("[geschützt] " + text);
 
         public Task<AdvisorEndpointStatus> CheckEndpointAsync(string endpoint, CancellationToken cancellationToken = default) => Task.FromResult(Endpoint);
+
+        public Task<AdvisorDataPreview> GetDataPreviewAsync(int level, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AdvisorDataPreview(level, true, "{}", null));
     }
 }
 

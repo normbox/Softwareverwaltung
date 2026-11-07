@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Threading;
+using Softwareverwaltung.App.Advisor;
 using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Services;
 using Softwareverwaltung.App.ViewModels;
@@ -21,7 +22,7 @@ public partial class App : Application
 
         _host = new PowerShellHost();
         var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService(), shell: new ShellService(), cpe: new CpeService(_host), ui: new AppUiStore());
-        var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker());
+        var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker(), new AdvisorService(new AdvisorModule(_host)));
         var viewModel = new ShellViewModel(programs, settings);
         var window = new MainWindow { DataContext = viewModel };
         // Laufwerke und USB-Sticks live: die Liste in den Einstellungen folgt ohne Neustart.

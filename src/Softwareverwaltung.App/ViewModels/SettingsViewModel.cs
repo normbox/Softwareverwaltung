@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Softwareverwaltung.App.Advisor;
 using Softwareverwaltung.App.Localization;
 using Softwareverwaltung.App.Models;
 using Softwareverwaltung.App.Services;
@@ -70,10 +71,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Vorschläge für „Nur bestimmte Ordner“, per Klick übernehmbar.</summary>
     private static readonly string[] FolderSuggestionValues = ["%USERPROFILE%", @"%USERPROFILE%\Downloads"];
 
-    public SettingsViewModel(ISettingsService settings, IFolderPicker? folderPicker = null)
+    public SettingsViewModel(ISettingsService settings, IFolderPicker? folderPicker = null, IAdvisorService? advisor = null)
     {
         _settings = settings;
         _folderPicker = folderPicker;
+        _advisor = advisor;
         ScanFolders.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(FolderSuggestions));
@@ -115,6 +117,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             item.PropertyChanged += OnEditChanged;
         }
+        InitializeAdvisor();
     }
 
     public IReadOnlyList<SettingSwitch> Sources { get; }
@@ -229,7 +232,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _isBusy;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ApplyPresetCommand), nameof(ChooseUsageCommand), nameof(RemoveCredentialCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ApplyPresetCommand), nameof(ChooseUsageCommand), nameof(RemoveCredentialCommand), nameof(LoadModelsCommand), nameof(TestConnectionCommand), nameof(DismissShareLevelNoticeCommand))]
     private bool _isLoaded;
 
     [ObservableProperty]
@@ -333,8 +336,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 _terms[usage] = await _settings.GetServiceTermsAsync(usage);
             }
+            await LoadAdvisorPresetsAsync();
             RebuildDrives(drives, []);
-            foreach (var item in Credentials)
+            foreach (var item in Credentials.Append(AdvisorCredential))
             {
                 item.Status = credentials.FirstOrDefault(c => c.Service == item.Service);
             }
@@ -374,6 +378,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         CacheHoursCircl = CacheHoursCircl,
         CacheHoursEpss = CacheHoursEpss,
         CacheHoursKev = CacheHoursKev,
+        AdvisorEnabled = AdvisorEnabled,
+        AdvisorPreset = AdvisorPreset,
+        AdvisorEndpoint = string.IsNullOrWhiteSpace(AdvisorEndpoint) ? null : AdvisorEndpoint.Trim(),
+        AdvisorModel = string.IsNullOrWhiteSpace(AdvisorModel) ? null : AdvisorModel.Trim(),
+        AdvisorShareLevelLocal = AdvisorShareLevelLocal,
+        AdvisorShareLevelNoticePending = _saved.AdvisorShareLevelNoticePending,
     };
 
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -383,7 +393,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ErrorText = null;
         try
         {
-            Apply(await _settings.SaveAsync(Current));
+            Apply(await _settings.SaveAsync(Current, _saved));
             StatusText = AppText.Get("SettingsSaved");
         }
         catch (Exception ex)
@@ -629,6 +639,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             CacheHoursCircl = settings.CacheHoursCircl;
             CacheHoursEpss = settings.CacheHoursEpss;
             CacheHoursKev = settings.CacheHoursKev;
+            ApplyAdvisor(settings);
         }
         finally
         {
@@ -734,7 +745,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.CacheHoursNvd == b.CacheHoursNvd
         && a.CacheHoursCircl == b.CacheHoursCircl
         && a.CacheHoursEpss == b.CacheHoursEpss
-        && a.CacheHoursKev == b.CacheHoursKev;
+        && a.CacheHoursKev == b.CacheHoursKev
+        && SameAdvisor(a, b);
 
     private static List<string> Lines(string text) =>
         text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();

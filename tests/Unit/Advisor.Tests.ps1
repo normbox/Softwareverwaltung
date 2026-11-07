@@ -160,12 +160,35 @@ Describe 'KI-Berater: Tools' {
         $all | Should -Match 'Pfad nicht erreichbar'
     }
 
-    It 'liest ohne übergebene Daten einmal selbst ein' {
+    It 'liest ohne übergebene Daten nie selbst ein (<Tool>)' -ForEach @(
+        @{ Tool = 'get_inventory'; ToolArgs = '{}' }
+        @{ Tool = 'get_program_details'; ToolArgs = '{"id":"p-0123456789ab"}' }
+        @{ Tool = 'search_vulnerabilities'; ToolArgs = '{"id":"p-0123456789ab"}' }
+        @{ Tool = 'propose_update'; ToolArgs = '{"id":"p-0123456789ab","reason":"x"}' }
+    ) {
         Set-AdvisorContext -Clear
-        Mock -ModuleName SoftwareInventory Get-SoftwareInventory { $script:ratings[2].Record }
-        Mock -ModuleName SoftwareInventory Get-SecurityRating { $script:ratings[2] }
-        (Get-Content2 (Invoke-Tool get_inventory)).programs.name | Should -Be @('Firefox')
-        (Get-Content2 (Invoke-Tool get_inventory)).programs.name | Should -Be @('Firefox')
-        Should -Invoke -ModuleName SoftwareInventory Get-SoftwareInventory -Times 1 -Exactly
+        Mock -ModuleName SoftwareInventory Get-SoftwareInventory { throw 'darf nicht einlesen' }
+        Mock -ModuleName SoftwareInventory Get-SecurityRating { throw 'darf nicht prüfen' }
+        $r = Invoke-Tool $Tool $ToolArgs
+        $r.Ok | Should -BeFalse
+        $r.Code | Should -Be 'NoScanData'
+        (Get-Content2 $r).error_code | Should -Be 'NoScanData'
+        Should -Invoke -ModuleName SoftwareInventory Get-SoftwareInventory -Times 0
+        Should -Invoke -ModuleName SoftwareInventory Get-SecurityRating -Times 0
+    }
+
+    It 'ein Scan ohne Programme ist kein fehlender Scan' {
+        Set-AdvisorContext -Rating @()
+        $r = Invoke-Tool get_inventory
+        $r.Ok | Should -BeTrue
+        (Get-Content2 $r).programs_in_scan | Should -Be 0
+    }
+
+    It 'Vorschau ohne Scan meldet HasScanData = $false' {
+        Set-AdvisorContext -Clear
+        $p = Get-AdvisorDataPreview -Level 3
+        $p.HasScanData | Should -BeFalse
+        $p.Details | Should -BeNullOrEmpty
+        ($p.Inventory | ConvertFrom-Json).error_code | Should -Be 'NoScanData'
     }
 }

@@ -9,7 +9,14 @@ public interface ISettingsService
 {
     Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default);
 
-    Task<AppSettings> SaveAsync(AppSettings settings, CancellationToken cancellationToken = default);
+    /// <param name="previous">Gespeicherter Stand: Beraterwerte gehen nur mit, wenn sie sich geändert haben
+    /// (eine gespeicherte Adresse wird sonst bei jedem Speichern neu aufgelöst und geprüft).</param>
+    Task<AppSettings> SaveAsync(AppSettings settings, AppSettings? previous = null, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdvisorPresetInfo>> GetAdvisorPresetsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>„Verstanden“ beim Hinweis zur übernommenen Freigabestufe; ändert sonst nichts.</summary>
+    Task<AppSettings> DismissShareLevelNoticeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Speichert nur Privat/Firma, andere ungespeicherte Änderungen bleiben unberührt.</summary>
     Task<AppSettings> SaveUsageAsync(string usage, CancellationToken cancellationToken = default);
@@ -34,7 +41,7 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
     public async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
         AppSettings.FromPs(await InvokeSingleAsync(new PSCommand().AddCommand("Get-InventorySetting"), cancellationToken).ConfigureAwait(false));
 
-    public async Task<AppSettings> SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
+    public async Task<AppSettings> SaveAsync(AppSettings settings, AppSettings? previous = null, CancellationToken cancellationToken = default)
     {
         var command = new PSCommand().AddCommand("Set-InventorySetting")
             .AddParameter("Enable", settings.Switches.Where(s => s.Value).Select(s => s.Key).ToArray())
@@ -61,7 +68,43 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
         {
             command.AddParameter("Usage", settings.Usage);
         }
+        AddAdvisorParameters(command, settings, previous);
         return AppSettings.FromPs(await InvokeSingleAsync(command, cancellationToken).ConfigureAwait(false));
+    }
+
+    public async Task<IReadOnlyList<AdvisorPresetInfo>> GetAdvisorPresetsAsync(CancellationToken cancellationToken = default) =>
+        (await InvokeAsync(new PSCommand().AddCommand("Get-AdvisorEndpointPreset"), cancellationToken).ConfigureAwait(false)).Select(AdvisorPresetInfo.FromPs).ToList();
+
+    public async Task<AppSettings> DismissShareLevelNoticeAsync(CancellationToken cancellationToken = default) =>
+        AppSettings.FromPs(await InvokeSingleAsync(
+            new PSCommand().AddCommand("Set-InventorySetting").AddParameter("AdvisorShareLevelNoticePending", false), cancellationToken).ConfigureAwait(false));
+
+    /// <summary>
+    /// Nur geänderte Beraterwerte: Vorgabe und Adresse gehen zusammen (die Vorgabe würde sonst die Adresse
+    /// überschreiben); die Stufe nur bei Änderung, weil das Modul damit auch den einmaligen Hinweis löscht.
+    /// </summary>
+    private static void AddAdvisorParameters(PSCommand command, AppSettings settings, AppSettings? previous)
+    {
+        if (previous is null || settings.AdvisorPreset != previous.AdvisorPreset || settings.AdvisorEndpoint != previous.AdvisorEndpoint)
+        {
+            if (settings.AdvisorPreset is not null)
+            {
+                command.AddParameter("AdvisorPreset", settings.AdvisorPreset);
+            }
+            command.AddParameter("AdvisorEndpoint", settings.AdvisorEndpoint ?? "");
+        }
+        if (previous is null || settings.AdvisorModel != previous.AdvisorModel)
+        {
+            command.AddParameter("AdvisorModel", settings.AdvisorModel ?? "");
+        }
+        if (previous is null || settings.AdvisorEnabled != previous.AdvisorEnabled)
+        {
+            command.AddParameter("AdvisorEnabled", settings.AdvisorEnabled);
+        }
+        if (previous is null || settings.AdvisorShareLevelLocal != previous.AdvisorShareLevelLocal)
+        {
+            command.AddParameter("AdvisorShareLevelLocal", settings.AdvisorShareLevelLocal);
+        }
     }
 
     public async Task<AppSettings> SaveUsageAsync(string usage, CancellationToken cancellationToken = default) =>

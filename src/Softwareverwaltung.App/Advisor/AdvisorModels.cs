@@ -65,6 +65,12 @@ public sealed record AdvisorConnection(bool Enabled, string? Preset, string? End
 /// <summary>Ergebnis von Invoke-AdvisorTool: Content geht an das Modell, Proposal nur an die Oberfläche.</summary>
 public sealed record AdvisorToolResult(string Name, bool Ok, string? Code, string Content, PSObject? Proposal);
 
+/// <summary>Get-AdvisorDataPreview: genau das bereinigte JSON, das das Modell auf dieser Stufe bekäme.</summary>
+public sealed record AdvisorDataPreview(int Level, bool HasScanData, string Inventory, string? Details);
+
+/// <summary>Ungespeicherte Werte der Einstellungsseite für Modellliste und Verbindungstest.</summary>
+public sealed record AdvisorDraft(string? Preset, string? Endpoint, string? Model);
+
 /// <summary>Antwort auf eine Frage: Text des Modells und die Vorschläge für die Karten (Etappe 4c).</summary>
 public sealed record AdvisorReply(string Text, IReadOnlyList<PSObject> Proposals, int ToolRounds);
 
@@ -84,6 +90,16 @@ public sealed class AdvisorException : Exception
     {
         Code = code;
         Args = args;
+    }
+
+    /// <summary>Fehler mit fertigem Text, z. B. aus einer Meldung des Moduls (Code, Args, Text).</summary>
+    public static AdvisorException WithText(string code, string text) => new(code, text, isText: true);
+
+    private AdvisorException(string code, string text, bool isText) : base(text)
+    {
+        _ = isText;
+        Code = code;
+        Args = [];
     }
 
     public string Code { get; }

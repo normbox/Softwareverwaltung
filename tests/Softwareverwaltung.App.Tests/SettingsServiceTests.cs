@@ -43,6 +43,60 @@ public sealed class SettingsServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AdvisorValuesRoundTripWithoutDefaultModel()
+    {
+        var initial = await _service.LoadAsync();
+        Assert.False(initial.AdvisorEnabled);
+        Assert.Null(initial.AdvisorModel);
+        Assert.Equal(3, initial.AdvisorShareLevelLocal);
+        Assert.False(initial.AdvisorShareLevelNoticePending);
+
+        var saved = await _service.SaveAsync(initial with { AdvisorPreset = "LMStudio", AdvisorEndpoint = "http://127.0.0.1:1234/v1", AdvisorModel = "qwen3:8b", AdvisorEnabled = true, AdvisorShareLevelLocal = 1 }, initial);
+
+        var loaded = await _service.LoadAsync();
+        foreach (var settings in new[] { saved, loaded })
+        {
+            Assert.True(settings.AdvisorEnabled);
+            Assert.Equal("LMStudio", settings.AdvisorPreset);
+            Assert.Equal("http://127.0.0.1:1234/v1", settings.AdvisorEndpoint);
+            Assert.Equal("qwen3:8b", settings.AdvisorModel);
+            Assert.Equal(1, settings.AdvisorShareLevelLocal);
+        }
+        Assert.Contains(await _service.GetAdvisorPresetsAsync(), p => p.Name == "Unsloth" && p.RequiresApiKey && p.Endpoint is not null);
+    }
+
+    [Fact]
+    public async Task AdvisorRulesOfTheModuleApplyWhenSaving()
+    {
+        var initial = await _service.LoadAsync();
+
+        var incomplete = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveAsync(initial with { AdvisorPreset = "Ollama", AdvisorEndpoint = "http://localhost:11434/v1", AdvisorEnabled = true }, initial));
+        Assert.Contains("Modell", incomplete.Message);
+
+        var publicAddress = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveAsync(initial with { AdvisorPreset = "Custom", AdvisorEndpoint = "https://8.8.8.8/v1" }, initial));
+        Assert.Contains("8.8.8.8", publicAddress.Message);
+    }
+
+    [Fact]
+    public async Task UnchangedAdvisorAddressIsNotCheckedAgain()
+    {
+        // Gespeicherte Adresse, die sich (z. B. ohne Heimnetz) gerade nicht auflösen lässt
+        File.WriteAllText(Path.Combine(_directory, "settings.json"),
+            """{"Advisor":{"Enabled":false,"Preset":"Custom","Endpoint":"http://ai-box.invalid:11434/v1","ShareLevel":{"Local":2,"External":1},"ShareLevelNoticePending":true}}""");
+        var initial = await _service.LoadAsync();
+        Assert.Equal("http://ai-box.invalid:11434/v1", initial.AdvisorEndpoint);
+        Assert.True(initial.AdvisorShareLevelNoticePending);
+
+        var saved = await _service.SaveAsync(initial with { LogRetentionDays = 9 }, initial);
+
+        Assert.Equal(9, saved.LogRetentionDays);
+        Assert.Equal("http://ai-box.invalid:11434/v1", saved.AdvisorEndpoint);
+        // Stufe unverändert: der einmalige Hinweis bleibt, bis der Benutzer ihn bestätigt
+        Assert.True(saved.AdvisorShareLevelNoticePending);
+        Assert.False((await _service.DismissShareLevelNoticeAsync()).AdvisorShareLevelNoticePending);
+    }
+
+    [Fact]
     public async Task StartsWithEverythingOffAndSavesRoundTrip()
     {
         var initial = await _service.LoadAsync();

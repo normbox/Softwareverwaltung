@@ -9,8 +9,23 @@ namespace Softwareverwaltung.App.Advisor;
 /// </summary>
 public sealed record AdvisorConnectionTestResult(string Code, bool Ok, bool Warning, bool CanSave, IReadOnlyList<string> Models, string Message, string? EndpointNote);
 
+/// <summary>Was die Einstellungsseite vom Berater braucht; eigene Schnittstelle für Tests des ViewModels.</summary>
+public interface IAdvisorService
+{
+    /// <summary>Modelle des Servers zu den ungespeicherten Werten; Adresse wird vorher geprüft.</summary>
+    Task<AdvisorModelList> ListModelsAsync(AdvisorDraft draft, CancellationToken cancellationToken = default);
+
+    /// <summary>Verbindungstest mit den ungespeicherten Werten und dem gespeicherten Schlüssel.</summary>
+    Task<AdvisorConnectionTestResult> TestConnectionAsync(AdvisorDraft draft, CancellationToken cancellationToken = default);
+
+    Task<AdvisorDataPreview> GetPreviewAsync(int level, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Modelle des Servers; EndpointNote ist z. B. der Hinweis „unverschlüsselt“.</summary>
+public sealed record AdvisorModelList(IReadOnlyList<string> Models, string? EndpointNote);
+
 /// <summary>Einstieg für die Oberfläche: Anbieter aus den Einstellungen, Gespräch, Verbindungstest.</summary>
-public sealed class AdvisorService(IAdvisorModule module, Func<AdvisorConnection, IAdvisorProvider>? createProvider = null)
+public sealed class AdvisorService(IAdvisorModule module, Func<AdvisorConnection, IAdvisorProvider>? createProvider = null) : IAdvisorService
 {
     private readonly Func<AdvisorConnection, IAdvisorProvider> _createProvider = createProvider ?? CreateProvider;
 
@@ -19,6 +34,31 @@ public sealed class AdvisorService(IAdvisorModule module, Func<AdvisorConnection
     /// Anbieter hängen sich später hier ein.
     /// </summary>
     public static IAdvisorProvider CreateProvider(AdvisorConnection connection) => new OpenAiCompatibleProvider(connection);
+
+    public async Task<AdvisorModelList> ListModelsAsync(AdvisorDraft draft, CancellationToken cancellationToken = default)
+    {
+        var connection = await FromDraftAsync(draft, cancellationToken).ConfigureAwait(false);
+        var check = await module.CheckEndpointAsync(connection.Endpoint ?? "", cancellationToken).ConfigureAwait(false);
+        if (!check.Ok)
+        {
+            throw AdvisorException.WithText(check.Code ?? "AdvisorEndpointInvalid", check.Message ?? AppText.Format("AdvisorEndpointInvalid", connection.Endpoint ?? ""));
+        }
+        using var provider = _createProvider(connection);
+        return new AdvisorModelList(await provider.ListModelsAsync(cancellationToken).ConfigureAwait(false), check.Unencrypted ? check.Message : null);
+    }
+
+    public async Task<AdvisorConnectionTestResult> TestConnectionAsync(AdvisorDraft draft, CancellationToken cancellationToken = default) =>
+        await TestConnectionAsync(await FromDraftAsync(draft, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+
+    public Task<AdvisorDataPreview> GetPreviewAsync(int level, CancellationToken cancellationToken = default) =>
+        module.GetDataPreviewAsync(level, cancellationToken);
+
+    /// <summary>Ungespeicherte Werte plus gespeicherter Schlüssel; der Schlüssel verlässt das Modul nur als SecureString.</summary>
+    private async Task<AdvisorConnection> FromDraftAsync(AdvisorDraft draft, CancellationToken cancellationToken)
+    {
+        var saved = await module.GetConnectionAsync(cancellationToken).ConfigureAwait(false);
+        return saved with { Preset = draft.Preset, Endpoint = draft.Endpoint?.Trim(), Model = string.IsNullOrWhiteSpace(draft.Model) ? null : draft.Model.Trim() };
+    }
 
     /// <summary>Neues Gespräch mit den gespeicherten Einstellungen; der Berater muss eingeschaltet sein.</summary>
     public async Task<AdvisorConversation> StartConversationAsync(CancellationToken cancellationToken = default)

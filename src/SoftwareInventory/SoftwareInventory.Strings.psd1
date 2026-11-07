@@ -44,6 +44,7 @@ Regeln:
     AdvisorErrorReasonMissing               = 'reason fehlt: Begründung für den Benutzer angeben.'
     AdvisorErrorNoUpdateKnown               = 'Für ''{0}'' ist kein Update bekannt. Erst check_latest_version aufrufen.'
     AdvisorErrorToolFailed                  = 'Fehler bei {0}: {1}'
+    AdvisorErrorNoScanData                  = 'Es gibt noch keine Daten aus einem Scan. Bitte den Benutzer, in der App auf „Scannen“ zu klicken.'
     AdvisorErrorShareLevelTooLow            = 'Auf Freigabestufe {0} gibt es nur die Übersicht über get_inventory, ohne Parameter.'
 
     # KI-Berater: Status (Schlüssel = AdvisorStatus + status_code)
@@ -461,6 +462,7 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     CatalogKevFixedVersion                  = 'KevFixed: Version ''{0}'' für {1} nicht lesbar'
 
     # Einstellungen (Schlüssel = SettingsError + Code)
+    SettingsErrorAdvisorIncomplete          = 'Zum Einschalten des KI-Beraters braucht es eine Adresse und ein Modell.'
     SettingsErrorShareLevelAboveLimit       = 'Freigabestufe {0} ist höher als erlaubt (höchstens {1}).'
     SettingsErrorInvalidAdvisorEndpoint     = 'Ungültige Adresse ''{0}'': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1.'
 }

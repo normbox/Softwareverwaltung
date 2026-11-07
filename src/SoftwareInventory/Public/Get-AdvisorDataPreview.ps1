@@ -6,13 +6,14 @@ function Get-AdvisorDataPreview {
         Für die Vorschau in den Einstellungen: genau die bereinigten Antworten der Tools (JSON), wie sie
         das Modell bekäme – get_inventory mit den ersten 5 Programmen und get_program_details für das
         erste Programm (auf Stufe 0 nur die Übersicht). Es wird nichts gesendet.
-        Ohne -Level gilt die eingestellte Stufe der Anbieterart.
+        Ohne -Level gilt die eingestellte Stufe der Anbieterart. Ohne Daten aus einem Scan ist HasScanData
+        $false und Inventory enthält nur den Fehler NoScanData.
     .PARAMETER Level
         Freigabestufe 0 bis 4, z. B. die gerade in den Einstellungen gewählte.
     .PARAMETER ProviderKind
         Local oder External; ohne -Level bestimmt sie die Stufe aus den Einstellungen.
     .OUTPUTS
-        Level, Inventory (JSON), Details (JSON oder $null), ProgramId (oder $null).
+        Level, HasScanData, Inventory (JSON), Details (JSON oder $null), ProgramId (oder $null).
     .EXAMPLE
         (Get-AdvisorDataPreview -Level 1).Inventory
     #>
@@ -31,7 +32,8 @@ function Get-AdvisorDataPreview {
     $inventory = Invoke-AdvisorToolAtLevel -Name get_inventory -ArgumentsJson $inventoryArgs -Level $effective
     $details = $null
     $programId = $null
-    if ($effective -ge 1) {
+    $hasScanData = Test-AdvisorContext
+    if ($hasScanData -and $effective -ge 1) {
         $first = $inventory.Content | ConvertFrom-Json -AsHashtable
         $programId = @($first['programs']) | Select-Object -First 1 | ForEach-Object { $_['id'] }
         if ($programId) {
@@ -41,6 +43,7 @@ function Get-AdvisorDataPreview {
     [pscustomobject] [ordered]@{
         PSTypeName = 'SoftwareInventory.AdvisorDataPreview'
         Level      = $effective
+        HasScanData = $hasScanData
         Inventory  = $inventory.Content
         Details    = $details
         ProgramId  = $programId

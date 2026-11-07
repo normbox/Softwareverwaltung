@@ -26,6 +26,9 @@ public interface IAdvisorModule
     Task<string> ProtectTextAsync(string text, CancellationToken cancellationToken = default);
 
     Task<AdvisorEndpointStatus> CheckEndpointAsync(string endpoint, CancellationToken cancellationToken = default);
+
+    /// <summary>Vorschau für die Einstellungsseite (Get-AdvisorDataPreview); sendet nichts.</summary>
+    Task<AdvisorDataPreview> GetDataPreviewAsync(int level, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Ruft die Beraterfunktionen des Moduls über die eingebettete PowerShell auf.</summary>
@@ -73,6 +76,16 @@ public sealed class AdvisorModule(IPowerShellHost host) : IAdvisorModule
             check.Properties["Unencrypted"]?.Value is true,
             message is null ? null : ActionOutcome.Text(message, "Code"),
             SoftwareItem.MessageText(message));
+    }
+
+    public async Task<AdvisorDataPreview> GetDataPreviewAsync(int level, CancellationToken cancellationToken = default)
+    {
+        var preview = await InvokeSingleAsync(new PSCommand().AddCommand("Get-AdvisorDataPreview").AddParameter("Level", level), cancellationToken).ConfigureAwait(false);
+        return new AdvisorDataPreview(
+            Convert.ToInt32(preview.Properties["Level"]?.Value ?? level),
+            preview.Properties["HasScanData"]?.Value is true,
+            ActionOutcome.Text(preview, "Inventory") ?? "{}",
+            ActionOutcome.Text(preview, "Details"));
     }
 
     private async Task<IReadOnlyList<PSObject>> InvokeAsync(PSCommand command, CancellationToken cancellationToken)
