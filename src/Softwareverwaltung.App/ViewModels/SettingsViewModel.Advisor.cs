@@ -64,6 +64,13 @@ public sealed partial class SettingsViewModel
     [NotifyPropertyChangedFor(nameof(ShowShareLevelNoticeInMain))]
     private bool _showShareLevelNotice;
 
+    /// <summary>Haken „Nicht mehr anzeigen“ am Hinweis: Nur dann speichert das Schließen dauerhaft.</summary>
+    [ObservableProperty]
+    private bool _dontShowShareLevelNoticeAgain;
+
+    // ✕ ohne Haken: Hinweis nur für diese Sitzung ausgeblendet, auch nach späterem Speichern.
+    private bool _shareLevelNoticeHiddenForSession;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LoadModelsCommand), nameof(TestConnectionCommand))]
     private bool _isAdvisorBusy;
@@ -183,7 +190,7 @@ public sealed partial class SettingsViewModel
         AdvisorEndpoint = settings.AdvisorEndpoint;
         AdvisorModel = settings.AdvisorModel;
         AdvisorShareLevelLocal = settings.AdvisorShareLevelLocal;
-        ShowShareLevelNotice = settings.AdvisorShareLevelNoticePending;
+        ShowShareLevelNotice = settings.AdvisorShareLevelNoticePending && !_shareLevelNoticeHiddenForSession;
         OnPropertyChanged(nameof(ShowShareLevelNoticeInMain));
         OnPropertyChanged(nameof(IsAdvisorActive));
         OnPropertyChanged(nameof(AdvisorSessionKey));
@@ -260,9 +267,19 @@ public sealed partial class SettingsViewModel
         }
     }
 
+    /// <summary>
+    /// ✕ am Hinweis: ohne Haken „Nicht mehr anzeigen“ nur für diese Sitzung (beim nächsten Start erscheint er
+    /// wieder), mit Haken dauerhaft gespeichert.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private async Task DismissShareLevelNoticeAsync()
     {
+        if (!DontShowShareLevelNoticeAgain)
+        {
+            _shareLevelNoticeHiddenForSession = true;
+            ShowShareLevelNotice = false;
+            return;
+        }
         try
         {
             var saved = await _settings.DismissShareLevelNoticeAsync();

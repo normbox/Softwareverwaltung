@@ -1263,6 +1263,9 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
   <data name="SettingsAdvisorNoticeClose" xml:space="preserve">
     <value>Hinweis schließen</value>
   </data>
+  <data name="SettingsAdvisorNoticeDontShowAgain" xml:space="preserve">
+    <value>Nicht mehr anzeigen</value>
+  </data>
   <data name="SettingsAdvisorEndpointPlaceholder" xml:space="preserve">
     <value>http://localhost:11434/v1</value>
   </data>

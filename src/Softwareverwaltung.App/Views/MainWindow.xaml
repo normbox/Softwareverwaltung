@@ -75,6 +75,8 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="{loc:Text SettingsAdvisorNoticeTitle}" FontWeight="SemiBold" />
                     <TextBlock Text="{loc:Text SettingsAdvisorNoticeMain}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    <CheckBox Margin="0,6,0,0" Content="{loc:Text SettingsAdvisorNoticeDontShowAgain}"
+                              IsChecked="{Binding Settings.DontShowShareLevelNoticeAgain}" />
                 </StackPanel>
                 <ui:Button Grid.Column="1" Margin="12,-4,-6,0" VerticalAlignment="Top" Padding="6"
                            Icon="{ui:SymbolIcon Dismiss24}" Appearance="Transparent"

@@ -119,7 +119,7 @@ public sealed class SettingsAdvisorTests
     }
 
     [Fact]
-    public async Task NoticeShowsInMainOnlyWhenTheAdvisorIsOnAndGoesAwayOnConfirm()
+    public async Task NoticeShowsInMainOnlyWhenTheAdvisorIsOnAndIsSavedOnlyWithTheCheckbox()
     {
         var (off, _, _) = await LoadAsync(Saved(s => s with { AdvisorShareLevelLocal = 2, AdvisorShareLevelNoticePending = true }));
         Assert.True(off.ShowShareLevelNotice);
@@ -127,13 +127,28 @@ public sealed class SettingsAdvisorTests
 
         var (on, settings, _) = await LoadAsync(Saved(s => s with { AdvisorEnabled = true, AdvisorModel = "m", AdvisorShareLevelLocal = 2, AdvisorShareLevelNoticePending = true }));
         Assert.True(on.ShowShareLevelNoticeInMain);
+        Assert.False(on.DontShowShareLevelNoticeAgain);
 
+        // ✕ ohne Haken: nur für diese Sitzung, nichts gespeichert
         await on.DismissShareLevelNoticeCommand.ExecuteAsync(null);
-
-        Assert.Contains("DismissNotice", settings.Calls);
+        Assert.DoesNotContain("DismissNotice", settings.Calls);
         Assert.False(on.ShowShareLevelNotice);
         Assert.False(on.ShowShareLevelNoticeInMain);
         Assert.False(on.IsDirty);
+
+        // Späteres Speichern einer anderen Einstellung holt ihn in dieser Sitzung nicht zurück
+        on.LogRetentionDays += 1;
+        await on.SaveCommand.ExecuteAsync(null);
+        Assert.False(on.ShowShareLevelNotice);
+
+        // Neustart (neues ViewModel): wieder da; mit Haken dauerhaft weg
+        var (next, nextSettings, _) = await LoadAsync(settings.Saved);
+        Assert.True(next.ShowShareLevelNotice);
+        next.DontShowShareLevelNoticeAgain = true;
+        await next.DismissShareLevelNoticeCommand.ExecuteAsync(null);
+        Assert.Contains("DismissNotice", nextSettings.Calls);
+        Assert.False(next.ShowShareLevelNotice);
+        Assert.False(nextSettings.Saved.AdvisorShareLevelNoticePending);
     }
 
     [Theory]

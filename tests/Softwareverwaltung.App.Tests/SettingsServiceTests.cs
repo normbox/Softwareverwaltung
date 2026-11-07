@@ -40,8 +40,10 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.Empty(result.Errors);
     }
 
-    [Fact]
-    public async Task ClosedShareLevelNoticeStaysGoneAfterRestart()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClosedShareLevelNoticeComesBackAfterRestartOnlyWithoutTheCheckbox(bool dontShowAgain)
     {
         // Übernommene ältere Einstellungen ohne Freigabestufe: lokal Stufe 2 mit einmaligem Hinweis
         File.WriteAllText(Path.Combine(_directory, "settings.json"),
@@ -52,6 +54,7 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.True(vm.ShowShareLevelNoticeInMain);
         Assert.True(vm.DismissShareLevelNoticeCommand.CanExecute(null));
 
+        vm.DontShowShareLevelNoticeAgain = dontShowAgain;
         await vm.DismissShareLevelNoticeCommand.ExecuteAsync(null);
         Assert.False(vm.ShowShareLevelNotice);
         Assert.False(vm.ShowShareLevelNoticeInMain);
@@ -61,8 +64,8 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         await RedirectAsync(restarted);
         var again = new SettingsViewModel(new SettingsService(restarted));
         await again.LoadAsync();
-        Assert.False(again.ShowShareLevelNotice);
-        Assert.False(again.ShowShareLevelNoticeInMain);
+        Assert.Equal(!dontShowAgain, again.ShowShareLevelNotice);
+        Assert.Equal(!dontShowAgain, again.ShowShareLevelNoticeInMain);
         Assert.Equal(2, again.AdvisorShareLevelLocal);
     }
 
