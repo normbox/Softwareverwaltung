@@ -18,7 +18,6 @@ function Remove-ServiceCredential {
     )
 
     if ($PSCmdlet.ShouldProcess((Get-CredentialTarget $Service), (Get-LocalizedString 'ConfirmDeleteSecret'))) {
-        Initialize-CredentialInterop
         [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget $Service))
     }
     Get-ServiceCredentialStatus -Service $Service

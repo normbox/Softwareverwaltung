@@ -7,6 +7,8 @@
     Description          = 'Inventarisiert installierte und portable Software unter Windows (Registry, winget, Store-Apps, Ausführungsspuren, Dateiscan).'
     PowerShellVersion    = '7.6'
     CompatiblePSEditions = @('Core')
+    # Fertig übersetzter Windows-Zugriff statt Add-Type (auch im Constrained Language Mode ladbar).
+    RequiredAssemblies   = @('lib\SoftwareInventory.Native.dll')
     FunctionsToExport    = @(
         'Get-SoftwareInventory'
         'Resolve-InstallLocation'

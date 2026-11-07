@@ -12,7 +12,10 @@ Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.Power
 
 ## Tests
 
+Das Modul lädt `lib\SoftwareInventory.Native.dll` (Anmeldeinformationsverwaltung, Prüfung der Pipe-Gegenstelle; fertig übersetzt statt `Add-Type`). Sie entsteht beim Bauen von `src/SoftwareInventory.Native` und liegt nicht im Repository. Vor Pester einmal `dotnet build src/SoftwareInventory.Native` ausführen; `dotnet build` für die App baut sie mit.
+
 ```powershell
+dotnet build src/SoftwareInventory.Native                # DLL des Moduls nach src/SoftwareInventory/lib
 pwsh -c "Invoke-Pester ./tests/Unit"                     # Unit-Tests
 pwsh -c "Invoke-Pester ./tests/Integration"              # gegen das echte System
 pwsh -c "Invoke-ScriptAnalyzer ./src/SoftwareInventory -Recurse -Settings ./PSScriptAnalyzerSettings.psd1"

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Fertig übersetzter Windows-Zugriff für das Modul SoftwareInventory (Anmeldeinformationsverwaltung,
+    Prüfung der Pipe-Gegenstelle). Ersetzt Add-Type zur Laufzeit: Das ist im Constrained Language Mode
+    (AppLocker/WDAC) gesperrt, und eine fertige DLL lässt sich signieren und per Richtlinie zulassen.
+    Keine Pakete. Das Modul lädt die DLL über RequiredAssemblies aus lib\.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AssemblyName>SoftwareInventory.Native</AssemblyName>
+    <RootNamespace>SoftwareInventory</RootNamespace>
+    <Version>0.1.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <SatelliteResourceLanguages>de</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- Für Pester und Probeläufe direkt aus src: DLL neben das Modul legen (lib\ ist nicht im Repository). -->
+  <Target Name="CopyToModuleLib" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildThisFileDirectory)..\SoftwareInventory\lib" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

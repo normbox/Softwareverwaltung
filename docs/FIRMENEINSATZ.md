@@ -73,7 +73,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 
 - **Firewall/Proxy:** Hostliste in [TECHNIK.md](TECHNIK.md#netzwerkverbindungen).
 - **Rechte:** Die App läuft ohne Administratorrechte; nur Aktionen und der Wiederherstellungspunkt fordern UAC an, bei einer Update-Warteschlange einmal für alle erhöhten Einträge. In verwalteten Umgebungen Aktionen besser über die vorhandene Softwareverteilung (Intune, SCCM, winget-Richtlinien) auslösen und die App nur zur Analyse nutzen.
-- **Ausführungsrichtlinien:** Für AppLocker/WDAC sind signierte Releases und signierte Skripte vorgesehen (Etappe 6). Bis dahin: Hash-Regel oder Ausnahme für das Installationsverzeichnis.
+- **Ausführungsrichtlinien:** Für AppLocker/WDAC sind signierte Releases und signierte Skripte vorgesehen (Etappe 6). Bis dahin: Hash-Regel oder Ausnahme für das Installationsverzeichnis. Das Modul übersetzt zur Laufzeit keinen Code (kein `Add-Type`, das im Constrained Language Mode gesperrt ist). Der Windows-Zugriff liegt fertig übersetzt in `Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll` und lässt sich wie die übrigen Dateien per Signatur oder Hash zulassen.
 - **Telemetrie Dritter:** winget-Telemetrie per Richtlinie bzw. `winget settings` abschalten; `POWERSHELL_TELEMETRY_OPTOUT=1` setzt die App selbst (siehe [TECHNIK.md](TECHNIK.md#telemetrie)); für Windows PowerShell 5.1 gelten die Windows-Diagnoseeinstellungen.
 - **Updates der App:** keine Selbstaktualisierung im Hintergrund; neue Versionen über die eigene Softwareverteilung.
 

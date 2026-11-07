@@ -380,6 +380,7 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ErrorInvalidDrive                       = 'Ungültige Laufwerksangabe ''{0}'' (erwartet z. B. C oder D:).'
     ErrorInternalResultCount                = 'Interner Fehler: {0} Programme, aber {1} Update- und {2} Schwachstellen-Ergebnisse.'
     ErrorEmptySecret                        = 'Der Schlüssel ist leer.'
+    ErrorSecretTooLong                      = 'Der Schlüssel ist zu lang (höchstens {0} Zeichen).'
     ServiceErrorDisabled                    = 'Dienst {0} ist nicht aktiviert.'
     ServiceErrorNetwork                     = '{0} nicht erreichbar: {1}'
     ServiceErrorRateLimit                   = '{0}-Anfragelimit erreicht (HTTP {1}).'

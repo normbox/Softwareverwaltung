@@ -28,10 +28,21 @@
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
-  <!-- Kern-Modul liegt neben der App unter Modules\SoftwareInventory. -->
+  <!-- Kern-Modul liegt neben der App unter Modules\SoftwareInventory, die fertig übersetzte DLL in lib\. -->
   <ItemGroup>
-    <Content Include="..\SoftwareInventory\**\*" LinkBase="Modules\SoftwareInventory" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\SoftwareInventory\**\*" Exclude="..\SoftwareInventory\lib\**" LinkBase="Modules\SoftwareInventory" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\SoftwareInventory.Native\SoftwareInventory.Native.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
+
+  <!-- DLL des Moduls aus der tatsächlichen Ausgabe des Projekts (auch mit eigenem Ausgabeordner, z. B. -artifacts-path). -->
+  <Target Name="AddModuleNativeDll" BeforeTargets="AssignTargetPaths">
+    <MSBuild Projects="..\SoftwareInventory.Native\SoftwareInventory.Native.csproj" Targets="GetTargetPath" Properties="Configuration=$(Configuration)" RemoveProperties="RuntimeIdentifier;SelfContained;PublishDir">
+      <Output TaskParameter="TargetOutputs" ItemName="_ModuleNativeDll" />
+    </MSBuild>
+    <ItemGroup>
+      <Content Include="@(_ModuleNativeDll)" Link="Modules\SoftwareInventory\lib\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
   <!--
     Microsoft.WinGet.Client wird mitgeliefert, damit Endbenutzer nichts installieren müssen.
