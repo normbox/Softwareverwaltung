@@ -212,7 +212,10 @@ function ConvertTo-ServiceRequestException {
     if ($status -eq 404) {
         return New-ServiceRequestException -Service $Service -Reason NotFound -Message (Get-LocalizedString 'ServiceErrorNotFound' $Service)
     }
-    New-ServiceRequestException -Service $Service -Reason Http -Message (Get-LocalizedString 'ServiceErrorHttp' $Service, $status)
+    $exception = New-ServiceRequestException -Service $Service -Reason Http -Message (Get-LocalizedString 'ServiceErrorHttp' $Service, $status)
+    # Für neue Versuche bei Serverfehlern (5xx), z. B. beim Blättern der CIRCL-Suche
+    $exception.Data['Status'] = $status
+    $exception
 }
 
 function Get-RetryAfterSecond {

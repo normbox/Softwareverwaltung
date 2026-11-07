@@ -10,8 +10,12 @@ $script:CirclPageSize = 100
 $script:CirclVersion = 'v?\d[\w.+-]*'
 # Bestand je Produkt: nach so vielen Tagen wieder vollständig laden, dazwischen nur Änderungen (since).
 $script:CirclFullDays = 30
-# Für Get-RefreshEstimate: Größe des verschlankten Bestands je Suchseite (gemessen an Chrome)
-$script:CirclStoreBytesPerPage = 34KB
+# Für Get-RefreshEstimate: Größe des verschlankten Bestands je Suchseite (gemessen an Chrome, 31.10.2026:
+# 7,0 MB bei 149 Seiten; der frühere Wert 34 KB schätzte 40 % zu viele Seiten)
+$script:CirclStoreBytesPerPage = 48KB
+# Neue Versuche je Seite bei Netzwerkfehler, Zeitüberschreitung oder Serverfehler (5xx): Pausen in Sekunden.
+# Ein einzelner Fehler soll nicht den ganzen Abruf eines großen Produkts (Chrome: ~150 Seiten) verwerfen.
+$script:CirclRetrySeconds = @(5, 15)
 # Schutz vor Endlosschleifen beim Blättern
 $script:CirclMaxPages = 1000
 
@@ -108,7 +112,27 @@ function Get-CirclPage {
             Write-CheckStep -Key "${stepKey}Counted" -Arguments $page, $pages, (Format-RemainingTime ($perPage * ($pages - $page + 1)))
         }
         else { Write-CheckStep -Key $stepKey }
-        $r = Invoke-ServiceRequest -Service CIRCL -Uri "$path`?per_page=$script:CirclPageSize&page=$page$sinceText" -Setting $Setting
+        $r = $null
+        for ($retry = 0; ; $retry++) {
+            try {
+                $r = Invoke-ServiceRequest -Service CIRCL -Uri "$path`?per_page=$script:CirclPageSize&page=$page$sinceText" -Setting $Setting
+                break
+            }
+            catch {
+                if ($retry -ge $script:CirclRetrySeconds.Count -or -not (Test-CirclRetryable $_)) {
+                    # Gescheiterten vollständigen Abruf vermerken; das Ergebnis bleibt verworfen (nie ein halber Bestand).
+                    if ($null -eq $Since) {
+                        $pageText = if ($pages -gt 0) { "$page/$pages" } else { "$page/?" }
+                        Write-DataNote -Code CirclFullFetchFailed -Source CIRCL -Product "$Vendor $Product" -Value $pageText, $_.Exception.Message
+                    }
+                    throw
+                }
+                $delay = $script:CirclRetrySeconds[$retry]
+                Write-Verbose "CIRCL-Seite $page fehlgeschlagen ($($_.Exception.Message)), neuer Versuch in $delay s"
+                Write-CheckStep -Key StepCirclRetry -Arguments ($retry + 1), $script:CirclRetrySeconds.Count, $delay -Wait
+                Start-Sleep -Seconds $delay
+            }
+        }
         # Ohne since stehen die Quellen unter results, mit since direkt in der Antwort.
         $feeds = if ($r -and $r.PSObject.Properties['results']) { $r.results } else { $r }
         $rows = 0
@@ -141,6 +165,18 @@ function Get-CirclPage {
     }
     if ($null -ne $Since) { return $null }
     $all
+}
+
+function Test-CirclRetryable {
+    # Lohnt ein neuer Versuch? Nur bei Netzwerkfehler (auch Zeitüberschreitung) und Serverfehler (5xx).
+    # Anfragelimit (429) wartet Invoke-ServiceRequest schon selbst ab; 404 und andere 4xx ändern sich nicht.
+    param([System.Management.Automation.ErrorRecord] $ErrorRecord)
+    $data = $ErrorRecord.Exception.Data
+    switch ($data['Reason']) {
+        'Network' { return $true }
+        'Http' { return ($data['Status'] -as [int]) -ge 500 }
+    }
+    $false
 }
 
 function ConvertTo-CirclStoreRecord {
@@ -209,7 +245,7 @@ function Remove-CirclLegacyCache {
 
 function Get-CirclPageEstimate {
     # Geschätzte Seitenzahl eines vollständigen Abrufs aus der Größe des Bestands (ohne ihn einzulesen);
-    # $null ohne Bestand. Gemessen: etwa 34 KB verschlankter Bestand je Suchseite (Chrome: 4,8 MB, rund 150 Seiten).
+    # $null ohne Bestand. Gemessen: etwa 48 KB verschlankter Bestand je Suchseite (Chrome: 7,0 MB, 149 Seiten).
     param([string] $CpeBase)
     $parts = $CpeBase -split '(?<!\\):'
     $file = Get-Item -LiteralPath (Get-CirclStoreFile -Vendor $parts[3] -Product $parts[4]) -ErrorAction SilentlyContinue

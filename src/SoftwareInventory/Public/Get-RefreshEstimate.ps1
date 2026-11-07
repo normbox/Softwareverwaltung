@@ -11,7 +11,7 @@ function Get-RefreshEstimate {
         Weitere Seiten und KEV-Nachfragen kommen hinzu; die Schätzung ist eine Untergrenze.
         Ist CIRCL eingeschaltet, lädt eine Prüfung ohne Zwischenspeicher den Bestand je CPE vollständig neu:
         alle Seiten (3 bzw. 1,5 Sekunden Abstand). Die Seitenzahl kommt aus der Größe des vorhandenen
-        Bestands (etwa 34 KB je Seite); ohne Bestand zählt eine Seite, CirclUnknown nennt, für wie viele
+        Bestands (etwa 48 KB je Seite); ohne Bestand zählt eine Seite, CirclUnknown nennt, für wie viele
         CPEs das gilt (dort kann es deutlich länger dauern). Mit NVD kommt je CPE eine NVD-Sammelabfrage
         für den Abgleich hinzu. Je CPE läuft es nacheinander: NVD-Versionssuche, CIRCL-Seiten, NVD-Abgleich;
         der Abstand der NVD überlappt dabei nur mit der Zeit der CIRCL-Seiten.
