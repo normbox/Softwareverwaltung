@@ -312,9 +312,13 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="{loc:Text SettingsAdvisorNoticeTitle}" FontWeight="SemiBold" />
                             <TextBlock Text="{loc:Text SettingsAdvisorNoticeText}" TextWrapping="Wrap" />
+                            <CheckBox Margin="0,6,0,0" Content="{loc:Text SettingsAdvisorNoticeDontShowAgain}"
+                                      IsChecked="{Binding DontShowShareLevelNoticeAgain}" />
                         </StackPanel>
-                        <ui:Button Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center"
-                                   Content="{loc:Text SettingsAdvisorNoticeConfirm}" Command="{Binding DismissShareLevelNoticeCommand}" />
+                        <ui:Button Grid.Column="1" Margin="12,-4,-8,0" VerticalAlignment="Top" Padding="6"
+                                   Icon="{ui:SymbolIcon Dismiss24}" Appearance="Transparent"
+                                   ToolTip="{loc:Text SettingsAdvisorNoticeClose}" AutomationProperties.Name="{loc:Text SettingsAdvisorNoticeClose}"
+                                   Command="{Binding DismissShareLevelNoticeCommand}" />
                     </Grid>
                 </Border>
                 <ui:CardControl Margin="0,0,0,4" Padding="14,10">

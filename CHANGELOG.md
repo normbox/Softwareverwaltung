@@ -4,6 +4,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Korrekturen (Hinweis zur Freigabestufe)
+
+- Der einmalige Hinweis zur übernommenen Freigabestufe ließ sich nicht schließen: Der Knopf blieb nach dem Laden der Einstellungen grau, weil sein Befehl nach dem Ende des Ladens nicht neu bewertet wurde. Jetzt schließt ein ✕ rechts oben („Hinweis schließen“) den Hinweis in den Einstellungen und im Hauptfenster, ohne weiteres Zutun nur für diese Sitzung. Mit dem Haken „Nicht mehr anzeigen“ wird das Schließen sofort gespeichert und gilt auch nach einem Neustart.
+
 ### Weniger Schreibvorgänge im Zwischenspeicher (Etappe A, vor 4c-2)
 
 - **Index je Programm** wird in `Get-SecurityRating` einmal am Ende geschrieben (Versions- und Lückenprüfung zusammen) und nur, wenn sich der Inhalt ändert. Bisher schrieb jeder Scan jede Index-Datei zweimal neu, auch unverändert.

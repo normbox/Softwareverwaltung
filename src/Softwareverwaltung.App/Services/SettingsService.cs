@@ -15,7 +15,7 @@ public interface ISettingsService
 
     Task<IReadOnlyList<AdvisorPresetInfo>> GetAdvisorPresetsAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>„Verstanden“ beim Hinweis zur übernommenen Freigabestufe; ändert sonst nichts.</summary>
+    /// <summary>Hinweis zur übernommenen Freigabestufe dauerhaft ausblenden („Nicht mehr anzeigen“); ändert sonst nichts.</summary>
     Task<AppSettings> DismissShareLevelNoticeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Speichert nur Privat/Firma, andere ungespeicherte Änderungen bleiben unberührt.</summary>

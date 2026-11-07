@@ -228,7 +228,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _isDirty;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DiscardCommand), nameof(ApplyPresetCommand), nameof(ChooseUsageCommand), nameof(RemoveCredentialCommand))]
+    // Alle Befehle mit CanEdit hier aufführen: LoadAsync setzt IsLoaded, solange IsBusy noch wahr ist.
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DiscardCommand), nameof(ApplyPresetCommand), nameof(ChooseUsageCommand), nameof(RemoveCredentialCommand), nameof(DismissShareLevelNoticeCommand))]
     private bool _isBusy;
 
     [ObservableProperty]
