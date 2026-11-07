@@ -1089,4 +1089,64 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
   <data name="CpeMappingPlaceholder" xml:space="preserve">
     <value>cpe:2.3:a:hersteller:produkt</value>
   </data>
+  <data name="AdvisorEndpointInvalid" xml:space="preserve">
+    <value>Die Adresse „{0}“ ist keine gültige http- oder https-Adresse.</value>
+  </data>
+  <data name="AdvisorEndpointUnresolvable" xml:space="preserve">
+    <value>Der Name „{0}“ lässt sich nicht auflösen.</value>
+  </data>
+  <data name="AdvisorEndpointNotLocal" xml:space="preserve">
+    <value>„{0}“ zeigt auf eine öffentliche Adresse ({1}). Erlaubt sind nur lokale Server (Loopback und private Netze).</value>
+  </data>
+  <data name="AdvisorServerUnreachable" xml:space="preserve">
+    <value>Der KI-Server unter {0} ist nicht erreichbar. Läuft der Server?</value>
+  </data>
+  <data name="AdvisorTimeout" xml:space="preserve">
+    <value>Der KI-Server hat nicht innerhalb von {0} Sekunden geantwortet.</value>
+  </data>
+  <data name="AdvisorRedirectRefused" xml:space="preserve">
+    <value>Der KI-Server leitet weiter (HTTP {0}). Weiterleitungen werden nicht verfolgt; bitte die genaue Adresse eintragen.</value>
+  </data>
+  <data name="AdvisorUnauthorized" xml:space="preserve">
+    <value>Der KI-Server lehnt den Zugriff ab (HTTP {0}). Ist der API-Schlüssel richtig?</value>
+  </data>
+  <data name="AdvisorHttpError" xml:space="preserve">
+    <value>Der KI-Server meldet einen Fehler (HTTP {0}).</value>
+  </data>
+  <data name="AdvisorInvalidResponse" xml:space="preserve">
+    <value>Die Antwort des KI-Servers ist nicht im erwarteten Format (OpenAI-kompatibel).</value>
+  </data>
+  <data name="AdvisorResponseTooLarge" xml:space="preserve">
+    <value>Die Antwort des KI-Servers ist größer als {0} MB und wurde verworfen.</value>
+  </data>
+  <data name="AdvisorNoModel" xml:space="preserve">
+    <value>Es ist kein Modell gewählt.</value>
+  </data>
+  <data name="AdvisorDisabled" xml:space="preserve">
+    <value>Der KI-Berater ist ausgeschaltet.</value>
+  </data>
+  <data name="AdvisorToolRoundLimit" xml:space="preserve">
+    <value>Das Modell hat nach {0} Runden mit Tool-Aufrufen noch nicht geantwortet. Die Frage wurde abgebrochen.</value>
+  </data>
+  <data name="AdvisorTestOk" xml:space="preserve">
+    <value>Verbindung klappt: Das Modell „{0}“ ist vorhanden und ruft Tools auf.</value>
+  </data>
+  <data name="AdvisorTestChooseModel" xml:space="preserve">
+    <value>Server erreichbar, {0} Modelle gefunden. Bitte ein Modell wählen.</value>
+  </data>
+  <data name="AdvisorTestModelMissing" xml:space="preserve">
+    <value>Das Modell „{0}“ meldet der Server nicht. Bitte eines aus der Liste wählen.</value>
+  </data>
+  <data name="AdvisorTestNoToolCall" xml:space="preserve">
+    <value>Das Modell „{0}“ hat im Test kein Tool aufgerufen. Der Berater braucht ein Modell mit Tool-Unterstützung; speichern geht trotzdem.</value>
+  </data>
+  <data name="AdvisorTestToolCallFailed" xml:space="preserve">
+    <value>Server und Modell sind da, aber der Test mit Tool-Aufruf ist fehlgeschlagen: {0} Speichern geht trotzdem.</value>
+  </data>
+  <data name="AdvisorTestSystemPrompt" xml:space="preserve">
+    <value>Dies ist ein Verbindungstest. Rufe das Tool get_inventory ohne Parameter auf.</value>
+  </data>
+  <data name="AdvisorTestUserPrompt" xml:space="preserve">
+    <value>Wie viele Programme sind installiert?</value>
+  </data>
 </root>

@@ -53,6 +53,16 @@ public sealed class InventoryServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ScanHandsTheRatingsToTheAdvisor()
+    {
+        var result = await _service.ScanAsync();
+
+        var context = await _host.InvokeAsync(new PSCommand().AddScript("& (Get-Module SoftwareInventory) { @($script:AdvisorContext).Count }"));
+        Assert.Empty(result.Errors);
+        Assert.Equal(result.Items.Count, Convert.ToInt32(context.Output.Single().BaseObject));
+    }
+
+    [Fact]
     public async Task SearchWithoutLocationShowsHintAndFindsNothing()
     {
         var set = await _host.InvokeAsync(new PSCommand().AddCommand("Set-InventorySetting").AddParameter("PortableSearch", true).AddParameter("FileSearch", true));
