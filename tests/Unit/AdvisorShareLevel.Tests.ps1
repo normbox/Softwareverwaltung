@@ -323,6 +323,12 @@ Describe 'Adresse des KI-Servers: nur lokal' {
         $c.Unencrypted | Should -Be ($Code -eq 'AdvisorEndpointUnencrypted')
     }
 
+    It '<Address> ist <Network> (gemeinsame Tabelle mit der App)' -ForEach @(
+        (Get-Content -Raw "$PSScriptRoot/../Data/advisor-address-cases.json" | ConvertFrom-Json).cases | ForEach-Object { @{ Address = $_.address; Network = $_.network } }
+    ) {
+        InModuleScope SoftwareInventory -Parameters @{ A = $Address } { Get-IpAddressNetwork -Address ([System.Net.IPAddress]::Parse($A)) } | Should -Be $Network
+    }
+
     It 'prüft die aufgelöste Adresse, nicht den Namen' {
         $script:Dns['localhost.evil.example'] = @('203.0.113.99')
         (Get-AdvisorEndpointCheck -Endpoint 'http://localhost.evil.example/v1').Ok | Should -BeFalse
@@ -350,5 +356,43 @@ Describe 'Adresse des KI-Servers: nur lokal' {
         It 'speichert eine Adresse im privaten Netz' {
             (Set-InventorySetting -AdvisorEndpoint 'http://nas.lan:11434/v1').Advisor.Endpoint | Should -Be 'http://nas.lan:11434/v1'
         }
+    }
+}
+
+Describe 'Verbindungsdaten und Bereinigung für die App' {
+    BeforeEach {
+        $settingsFile = Join-Path $TestDrive "settings-$([guid]::NewGuid()).json"
+        Mock -ModuleName SoftwareInventory Get-SettingsPath { $settingsFile }
+        Mock -ModuleName SoftwareInventory Read-StoredSecret { $null }
+        Mock -ModuleName SoftwareInventory Read-EnvironmentSecret { $null }
+    }
+
+    It 'nimmt ohne eigene Adresse die der Vorgabe und hat ohne Schlüssel keinen' {
+        Set-InventorySetting -AdvisorPreset LMStudio -AdvisorModel 'qwen3:8b' -AdvisorEnabled $true | Out-Null
+        $c = Get-AdvisorConnection
+        $c.Endpoint | Should -Be 'http://localhost:1234/v1'
+        $c.Model | Should -Be 'qwen3:8b'
+        $c.Enabled | Should -BeTrue
+        $c.ProviderKind | Should -Be 'Local'
+        $c.ApiKey | Should -BeNullOrEmpty
+        $c.HasApiKey | Should -BeFalse
+    }
+
+    It 'liefert den Schlüssel nur als SecureString' {
+        Mock -ModuleName SoftwareInventory Read-StoredSecret { 'sk-unsloth-geheim' } -ParameterFilter { $Service -eq 'Advisor' }
+        $c = Get-AdvisorConnection
+        $c.ApiKey | Should -BeOfType [System.Security.SecureString]
+        $c.HasApiKey | Should -BeTrue
+        [System.Net.NetworkCredential]::new('', $c.ApiKey).Password | Should -Be 'sk-unsloth-geheim'
+        ($c | Out-String) | Should -Not -Match 'geheim'
+        ($c | ConvertTo-Json -Depth 3) | Should -Not -Match 'geheim'
+    }
+
+    It 'bereinigt Fragen des Benutzers wie die Tool-Antworten' {
+        $text = Protect-AdvisorText -Text "Ich bin $env:USERNAME auf $env:COMPUTERNAME, Datei in $env:USERPROFILE\Downloads"
+        $text | Should -Not -Match ([regex]::Escape($env:USERPROFILE))
+        $text | Should -BeLike '*%USERPROFILE%\Downloads'
+        $text | Should -Match '%COMPUTERNAME%'
+        Protect-AdvisorText -Text '' | Should -Be ''
     }
 }
