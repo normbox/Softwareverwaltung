@@ -4,6 +4,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Korrekturen (Hinweis zur Freigabestufe)
+
+- Der einmalige Hinweis zur übernommenen Freigabestufe ließ sich nicht schließen: Der Knopf blieb nach dem Laden der Einstellungen grau, weil sein Befehl nach dem Ende des Ladens nicht neu bewertet wurde. Jetzt schließt ein ✕ rechts oben („Hinweis schließen“) den Hinweis in den Einstellungen und im Hauptfenster; das wird sofort gespeichert und gilt auch nach einem Neustart.
+
 ### Windows-Zugriff ohne Add-Type (vor 4c-2)
 
 - **Fertig übersetzte DLL** `SoftwareInventory.Native.dll` im Modul (`lib\`, geladen über `RequiredAssemblies`) für die Anmeldeinformationsverwaltung und die Prüfung der Pipe-Gegenstelle bei Aktionen mit Administratorrechten. Bisher übersetzte das Modul diesen Code zur Laufzeit mit `Add-Type`; das ist im Constrained Language Mode (AppLocker/WDAC) gesperrt, lässt sich nicht signieren und kann Verhaltensschutz-Programme auslösen. Keine neuen Pakete.
