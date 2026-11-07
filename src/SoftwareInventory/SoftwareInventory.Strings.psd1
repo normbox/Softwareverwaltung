@@ -13,6 +13,7 @@ Regeln:
 - Ampel: Red = aktiv ausgenutzte oder kritische Lücke, Yellow = andere Lücken, „möglicherweise betroffen“ oder Update verfügbar, Green = geprüft ohne Befund, Gray = nicht geprüft (der Grund steht dabei).
 - „Möglicherweise betroffen“ (PossiblyAffected) heißt: Die Version ließ sich nicht prüfen. Stelle das nicht als sicher dar.
 - sources nennt die Angabe jeder Quelle (NVD, CIRCL). Widersprechen sie sich (SourcesDisagree), nenne beide Angaben und entscheide nicht selbst.
+- Du siehst nur, was die eingestellte Freigabestufe zeigt (share_level). Fehlt eine Angabe, sag dem Benutzer, dass die Freigabestufe sie nicht zeigt; frage nicht nach Pfaden oder Nutzungsdaten.
 - otherPlatform nennt Lücken, die laut den Quellen nur andere Plattformen betreffen (z. B. macOS, Android); sie zählen unter Windows nicht als Lücke.
 - Fehler der Tools haben ein Feld error_code; korrigiere den Aufruf oder erkläre dem Benutzer, was fehlt.
 - Platzhalter wie %USERPROFILE%, %USERNAME% oder %OTHERUSER% stehen für bereinigte persönliche Angaben; frage nicht danach.
@@ -20,6 +21,7 @@ Regeln:
 
     # KI-Berater: Tool-Beschreibungen
     AdvisorToolGetInventory                 = 'Listet die installierten Programme aus dem letzten Scan mit Ampel, Versionen und Zahl der Sicherheitslücken. Filterbar; liefert je Programm eine id für die anderen Tools.'
+    AdvisorToolGetInventoryOverview         = 'Übersicht über den letzten Scan: Anzahl Programme, Ampelverteilung, verfügbare Updates, Anzahl Lücken und CVE-Nummern ohne Programmzuordnung. Programmnamen gibt die eingestellte Freigabestufe nicht frei.'
     AdvisorToolGetProgramDetails            = 'Details zu einem Programm: alle Gründe der Ampel, bekannte Sicherheitslücken (CVE, KEV, CVSS, EPSS), widerlegte Treffer, Installationsart und winget-ID.'
     AdvisorToolCheckLatestVersion           = 'Prüft jetzt neu, welche Version eines Programms die neueste ist (nur über die vom Benutzer aktivierten Dienste).'
     AdvisorToolSearchVulnerabilities        = 'Sucht jetzt neu nach bekannten Sicherheitslücken eines Programms (NVD, CISA KEV, EPSS; nur die vom Benutzer aktivierten Dienste).'
@@ -42,6 +44,7 @@ Regeln:
     AdvisorErrorReasonMissing               = 'reason fehlt: Begründung für den Benutzer angeben.'
     AdvisorErrorNoUpdateKnown               = 'Für ''{0}'' ist kein Update bekannt. Erst check_latest_version aufrufen.'
     AdvisorErrorToolFailed                  = 'Fehler bei {0}: {1}'
+    AdvisorErrorShareLevelTooLow            = 'Auf Freigabestufe {0} gibt es nur die Übersicht über get_inventory, ohne Parameter.'
 
     # KI-Berater: Status (Schlüssel = AdvisorStatus + status_code)
     AdvisorStatusProposalCreated            = 'Vorschlag wird dem Benutzer angezeigt. Nichts wurde ausgeführt; der Benutzer entscheidet selbst.'
@@ -152,6 +155,10 @@ Regeln:
     ReasonKevFixedInCatalog                 = 'behoben ab {0} (Katalog)'
     ReasonKevRefutedNvd                     = 'KEV-Treffer {0} widerlegt: Version {1} laut NVD nicht betroffen'
     ReasonKevRefutedPlatform                = 'KEV-Treffer {0} widerlegt: laut NVD nur für {1}, nicht für Windows'
+    ReasonAdvisorEndpointInvalid            = 'Ungültige Adresse ''{0}'': erlaubt sind nur http- und https-Adressen ohne Benutzerdaten.'
+    ReasonAdvisorEndpointUnresolvable       = 'Der Name ''{0}'' lässt sich nicht auflösen. Der KI-Berater nutzt nur erreichbare Server auf diesem PC oder im privaten Netz.'
+    ReasonAdvisorEndpointNotLocal           = 'Die Adresse ''{0}'' ist nicht lokal ({1}). Der KI-Berater nutzt vorerst nur Server auf diesem PC oder im privaten Netz.'
+    ReasonAdvisorEndpointUnencrypted        = 'Die Verbindung zu ''{0}'' ist unverschlüsselt (http im privaten Netz). Die Daten gehen bereinigt, aber lesbar durch das Netz.'
     ReasonOtherPlatformOnly                 = 'Nur für {0}, nicht für Windows'
     ReasonOtherPlatformCve                  = '{0}: nur für {1}'
     ReasonOtherPlatformHidden               = '{0} Lücken betreffen nur andere Plattformen'
@@ -454,5 +461,6 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     CatalogKevFixedVersion                  = 'KevFixed: Version ''{0}'' für {1} nicht lesbar'
 
     # Einstellungen (Schlüssel = SettingsError + Code)
+    SettingsErrorShareLevelAboveLimit       = 'Freigabestufe {0} ist höher als erlaubt (höchstens {1}).'
     SettingsErrorInvalidAdvisorEndpoint     = 'Ungültige Adresse ''{0}'': erwartet wird http:// oder https:// ohne Benutzerdaten, z. B. http://localhost:11434/v1.'
 }

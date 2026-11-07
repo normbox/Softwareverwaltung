@@ -8,6 +8,8 @@ function Get-AdvisorTool {
         oder Proposal (erzeugt nur einen Vorschlag, den der Benutzer bestätigen muss).
         Beschreibungen kommen in der Sprache der Oberfläche. Mit -SystemPrompt kommt stattdessen
         die Systemanweisung für das Modell.
+        Mit -ProviderKind gilt deren Freigabestufe: Auf Stufe 0 gibt es nur get_inventory als Übersicht
+        ohne Parameter; die anderen Tools fehlen dann.
     .EXAMPLE
         Get-AdvisorTool | Format-Table Name, Kind
     .EXAMPLE
@@ -15,9 +17,23 @@ function Get-AdvisorTool {
     #>
     [CmdletBinding()]
     [OutputType('SoftwareInventory.AdvisorTool', [string])]
-    param([switch] $SystemPrompt)
+    param(
+        [switch] $SystemPrompt,
+
+        [ValidateSet('Local', 'External')]
+        [string] $ProviderKind = 'Local'
+    )
 
     if ($SystemPrompt) { return Get-LocalizedString 'AdvisorSystemPrompt' }
+    if ((Get-AdvisorShareLevel -ProviderKind $ProviderKind) -eq 0) {
+        return [pscustomobject] [ordered]@{
+            PSTypeName     = 'SoftwareInventory.AdvisorTool'
+            Name           = 'get_inventory'
+            Kind           = 'Read'
+            Description    = Get-LocalizedString 'AdvisorToolGetInventoryOverview'
+            ParametersJson = [ordered]@{ type = 'object'; properties = [ordered]@{}; required = @() } | ConvertTo-Json -Depth 4 -Compress
+        }
+    }
     foreach ($name in $script:AdvisorTools.Keys) {
         $tool = $script:AdvisorTools[$name]
         [pscustomobject] [ordered]@{
