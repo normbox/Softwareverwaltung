@@ -25,7 +25,7 @@ if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Recurse 
 dotnet publish $project -c $Configuration -r win-x64 --self-contained true -p:PublishSingleFile=false -o $output -nologo
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish fehlgeschlagen ($LASTEXITCODE)." }
 
-foreach ($required in 'Softwareverwaltung.exe', 'Modules\SoftwareInventory\SoftwareInventory.psd1', 'Modules\Microsoft.WinGet.Client') {
+foreach ($required in 'Softwareverwaltung.exe', 'Modules\SoftwareInventory\SoftwareInventory.psd1', 'Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll', 'Modules\Microsoft.WinGet.Client') {
     if (-not (Test-Path -LiteralPath (Join-Path $output $required))) { throw "Im Ergebnis fehlt $required." }
 }
 Copy-Item -LiteralPath (Join-Path $repo 'LICENSE'), (Join-Path $repo 'THIRD-PARTY-NOTICES.md') -Destination $output

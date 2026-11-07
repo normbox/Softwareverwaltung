@@ -17,7 +17,6 @@ Describe 'API-Schlüssel' {
         foreach ($service in 'NVD', 'CIRCL', 'GitHub', 'Advisor') {
             InModuleScope SoftwareInventory -Parameters @{ Service = $service } {
                 param($Service)
-                Initialize-CredentialInterop
                 [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget $Service))
             }
         }
@@ -103,7 +102,7 @@ Describe 'API-Schlüssel für den KI-Berater' {
         InModuleScope SoftwareInventory -Parameters @{ Prefix = $prefix } { param($Prefix); $script:SavedCredentialPrefix = $script:CredentialPrefix; $script:CredentialPrefix = $Prefix }
     }
     AfterEach {
-        InModuleScope SoftwareInventory { Initialize-CredentialInterop; [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget Advisor)); $script:CredentialPrefix = $script:SavedCredentialPrefix }
+        InModuleScope SoftwareInventory { [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget Advisor)); $script:CredentialPrefix = $script:SavedCredentialPrefix }
         $env:SOFTWAREINVENTORY_ADVISOR_KEY = $saved
     }
 

@@ -24,8 +24,10 @@ function Set-ServiceCredential {
     )
 
     if ($Secret.Length -eq 0) { throw (Get-LocalizedString 'ErrorEmptySecret') }
+    if ($Secret.Length -gt [SoftwareInventory.CredentialStore]::MaxSecretLength) {
+        throw (Get-LocalizedString 'ErrorSecretTooLong' ([SoftwareInventory.CredentialStore]::MaxSecretLength))
+    }
     if ($PSCmdlet.ShouldProcess((Get-CredentialTarget $Service), (Get-LocalizedString 'ConfirmSaveSecret'))) {
-        Initialize-CredentialInterop
         [SoftwareInventory.CredentialStore]::Write((Get-CredentialTarget $Service), $Service, $Secret)
     }
     Get-ServiceCredentialStatus -Service $Service

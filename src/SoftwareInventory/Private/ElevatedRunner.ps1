@@ -15,13 +15,7 @@
 $script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\Elevated\ElevatedHelper.ps1'
 $script:WindowsPowerShell = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell\v1.0\powershell.exe'
 
-function Initialize-PipeInterop {
-    if ('SoftwareInventory.PipeInterop' -as [type]) { return }
-    Add-Type -Namespace SoftwareInventory -Name PipeInterop -MemberDefinition @'
-[DllImport("kernel32.dll", SetLastError = true)]
-public static extern bool GetNamedPipeClientProcessId(Microsoft.Win32.SafeHandles.SafePipeHandle pipe, out uint clientProcessId);
-'@
-}
+# Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 
 function New-ResultPipe {
     <#
@@ -112,7 +106,6 @@ function Start-ElevatedHelper {
     $command = Get-ElevatedHelperBootstrap -HelperPath $helper -Hash $hash -PlanBase64 $planBase64
     $argumentList = "-NoProfile -NonInteractive -WindowStyle Hidden -Command `"$command`""
 
-    Initialize-PipeInterop
     $server = New-ResultPipe -Name $pipeName -AllowCurrentUser:$NoElevation
     try {
         $connect = $server.WaitForConnectionAsync()

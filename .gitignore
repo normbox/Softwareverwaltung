@@ -429,3 +429,6 @@ FodyWeavers.xsd
 
 # Ergebnisse des Sandbox-Tests
 tests/Sandbox/out/
+
+# Fertig übersetzte DLL des Moduls (entsteht beim Bauen von src/SoftwareInventory.Native)
+src/SoftwareInventory/lib/

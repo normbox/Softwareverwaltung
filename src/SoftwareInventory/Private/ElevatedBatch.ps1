@@ -44,7 +44,6 @@ function Start-ElevatedHelperBatch {
     $argumentList = "-NoProfile -NonInteractive -WindowStyle Hidden -Command `"$command`""
     $summary = @{ Status = 'Completed'; Error = $null; RestorePoint = 'NotRequested'; RestorePointMessage = $null; Done = 0 }
 
-    Initialize-PipeInterop
     $server = New-ResultPipe -Name $batchPipe -AllowCurrentUser:$NoElevation -Duplex
     try {
         $connect = $server.WaitForConnectionAsync()
