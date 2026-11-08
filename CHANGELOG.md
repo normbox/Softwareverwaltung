@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Helfer: geschützte Kopie unter „Programme“
+
+- **Liegt die App in einem beschreibbaren Ordner, startet sie erhöht nur noch eine geprüfte Kopie** unter `Program Files\Softwareverwaltung\Helper\<Version>\`. Damit schließt sich die Lücke, vor der die Bestätigung bisher nur gewarnt hat. Beim ersten Mal gibt es eine zusätzliche UAC-Abfrage für `robocopy` aus `System32`.
+- **Geprüft wird die Kopie am Zielort:** Pfad, Ordnerrechte und im Release ausschließlich die Signatur. Nur Debug-Builds dürfen über den Hash anerkennen. Ohne Signatur bleibt es deshalb im Release bei der Warnung, bis die Signierung eingerichtet ist.
+- **Austausch bei neuer Version nur durch die bereits geschützte Exe** und nur bei gültiger Signatur desselben Herausgebers. Ältere Versionsordner räumt die neue Exe beim nächsten Lauf auf.
+- **„Kopie entfernen“** in den Einstellungen löscht den ganzen Helfer-Ordner.
+
 ### Updates: kein falsches „Erfolgreich“ mehr
 
 - **Das Ergebnis zählt erst, wenn Windows Installer fertig ist.** winget kann Erfolg melden, während ein Installer im Hintergrund noch die alte Version entfernt. Bei der EA-App stand kurz die neue Version in der Liste, Sekunden später war das Programm weg, protokolliert war „Erfolgreich“. Jetzt wartet die App nach dem ersten Treffer höchstens 180 Sekunden auf das Ende der Transaktion und liest den Stand erneut. Ist das Programm dann weg oder fehlen alle bekannten Pfade, heißt das Ergebnis „Fehlgeschlagen“.
