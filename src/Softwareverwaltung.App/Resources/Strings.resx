@@ -805,6 +805,9 @@
   <data name="SettingsHelperCopyRemoveFailed" xml:space="preserve">
     <value>Die Kopie konnte nicht entfernt werden.</value>
   </data>
+  <data name="NoticeNvdIncomplete" xml:space="preserve">
+    <value>Bei {0} Programmen fehlen die Daten der NVD, die Ergebnisse sind dort unvollständig. Beispiel: {1}</value>
+  </data>
   <data name="StatusActionCancelling" xml:space="preserve">
     <value>Wird abgebrochen …</value>
   </data>

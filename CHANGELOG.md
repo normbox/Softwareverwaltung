@@ -4,6 +4,11 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Sicherheitsprüfung: fehlende NVD-Daten sichtbar
+
+- **Fehlt die NVD in einem Lauf, sagt die App das jetzt:** Hinweis oben in der Liste und eine Zeile in den Details („NVD nicht erreichbar, Ergebnis unvollständig“) mit Grund. Der Grund steht auch in `logs\data-notes\`. Vorher fielen solche Läufe nur dadurch auf, dass Lücken als „möglich“ erschienen, die die NVD längst ausschließt (Fall KeePass 2.61.1).
+- An der einzelnen Lücke heißt es dann „NVD nicht erreichbar“ statt „Versionsbereich nicht auswertbar“.
+
 ### Portable Programme: Reste und ehrliche Meldungen
 
 - **NSIS-Reste verschwinden aus der Liste.** `%TEMP%\~nsu*.tmp\Un_*.exe` ist die kurzzeitige Kopie eines Deinstallationsprogramms und kein Programm (Fall AnythingLLM). Andere Programme aus Temp bleiben sichtbar.

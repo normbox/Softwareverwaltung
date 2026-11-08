@@ -40,6 +40,8 @@ public sealed record SoftwareItem
     /// <summary>Hinweis „N Lücken betreffen nur andere Plattformen“ (Text des Moduls); null, wenn es keine gibt.</summary>
     public string? OtherPlatformText { get; init; }
     public string? InstallType { get; init; }
+    /// <summary>Die NVD war eingeschaltet, hat in diesem Lauf aber nichts beigetragen; mit Grund.</summary>
+    public string? NvdProblemText { get; init; }
     /// <summary>Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.</summary>
     public bool ShowUninstall => !(InstallType == "Portable" && WingetId is null);
     public bool ShowOpenFolderInsteadOfUninstall => !ShowUninstall;
@@ -156,6 +158,13 @@ public sealed record SoftwareItem
         int total => AppText.Format("VulnerabilitiesAffectedAndPossible", total - PossibleCount, PossibleCount),
     };
 
+    /// <summary>Hinweis oben in der Liste, wenn die NVD bei Programmen fehlte; sonst null.</summary>
+    public static string? NvdIncompleteNotice(IEnumerable<SoftwareItem> items)
+    {
+        var affected = items.Where(i => i.NvdProblemText is not null).ToList();
+        return affected.Count == 0 ? null : AppText.Format("NoticeNvdIncomplete", affected.Count, affected[0].NvdProblemText!);
+    }
+
     public static SoftwareItem FromRating(PSObject rating)
     {
         var record = Get<PSObject>(rating, "Record");
@@ -181,6 +190,7 @@ public sealed record SoftwareItem
             PossibleCount = counted.Count(v => v.Assessment == "PossiblyAffected"),
             Vulnerabilities = vulnerabilities,
             Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => MessageText(r.Properties["Note"]?.Value)).OfType<string>().ToList(),
+            NvdProblemText = vulnerability is null ? null : MessageText(vulnerability.Properties["NvdProblem"]?.Value),
             OtherPlatformText = vulnerability is null ? null : MessageText(vulnerability.Properties["OtherPlatformNote"]?.Value),
             OtherPlatform = vulnerability is null ? [] : GetObjects(vulnerability, "OtherPlatform").Select(o => MessageText(o.Properties["Note"]?.Value)).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
