@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Helfer für Administratorrechte als eigene Exe
+
+- **Das PowerShell-Skript ist ersetzt** durch `lib\SoftwareInventory.Helper.exe` (C#, .NET Framework 4.7.2, Teil von Windows). Damit entfallen versteckte PowerShell, dynamischer Scriptblock und Base64-Plan auf der Kommandozeile, die Virenscanner gemeldet hatten. Der Plan kommt erst nach dem Handschlag über die Pipe.
+- **Der Helfer prüft selbst, was er startet:** winget und `msiexec` nur in fester Form; Deinstallationsbefehle liest er aus dem Schlüssel unter HKLM und führt sie nur aus, wenn sie dem Plan entsprechen. Die DLL-Suche ist auf `System32` beschränkt.
+- **Warnung im Bestätigungsdialog,** wenn der Helfer in einem für Benutzer beschreibbaren Ordner liegt. Das schließt die Lücke noch nicht; dafür folgt die geschützte Kopie unter `Program Files`.
+- **Eigene Meldung `HelperFileMissing`,** wenn der Helfer fehlt, etwa nach einer Quarantäne.
+
 ### KI-Berater: Kennzeichnung als KI (AI Act Art. 50)
 
 - Feste, nicht wegklickbare Zeile in der Seitenleiste, solange gefragt werden kann: Antworten erzeugt ein KI-Modell und können falsch sein. Jede Antwort trägt die Überschrift „KI-Berater (maschinell erzeugt)“, auch für Screenreader.

@@ -59,11 +59,14 @@ Zusätzlich wird mit Adminrechten keine Datei gestartet, die der Benutzer verän
 
 ### Erhöhter Helfer
 
-Mit Adminrechten läuft nur ein kleines Helferskript (`src/SoftwareInventory/Elevated/ElevatedHelper.ps1`). Es trifft keine Entscheidungen: Programm, Argumente und Optionen kommen fertig geprüft aus dem Plan. Gestartet wird es mit Windows PowerShell 5.1, das auf jedem Windows 10/11 vorhanden ist. Das Skript ist deshalb 5.1-kompatibel und als UTF-8 mit BOM gespeichert. Aktionen ohne Adminrechte laufen über denselben Helfer, nur ohne UAC.
+Mit Adminrechten läuft nur eine kleine Exe (`lib\SoftwareInventory.Helper.exe`, Quelle `src/SoftwareInventory.Helper`). Sie ist für .NET Framework 4.7.2 gebaut, das zu Windows 10 ab 1809 und Windows 11 gehört. Aktionen ohne Adminrechte laufen über denselben Helfer, nur ohne UAC. Deshalb hat die Exe das Manifest `asInvoker`; die UAC-Abfrage löst das Modul aus.
 
-- `Start-ElevatedHelper` ist die einzige Stelle, die den Prozess startet. Die App (Etappe 3b) ersetzt dort `powershell.exe` durch ihre eigene EXE mit Helfer-Argument, weil sie kein separates PowerShell voraussetzen soll.
-- Der Plan steht als Base64-JSON im Argument, nicht in einer Datei.
-- Der erhöhte Prozess liest das Helferskript einmal ein, prüft dessen SHA256 gegen den mitgegebenen Wert und führt genau diesen Inhalt aus. Bei einer Abweichung führt er nichts aus.
+- `Start-ElevatedHelper` und `Start-ElevatedHelperBatch` sind die einzigen Stellen, die den Prozess starten.
+- Auf der Kommandozeile steht nur der Name der Pipe. Der Plan kommt nach dem Handschlag als JSON über die Pipe, nicht aus einer Datei.
+- Der Helfer glaubt dem Plan nicht blind. Mit Adminrechten führt er winget und `msiexec` nur in ihrer festen Form aus. Einen Deinstallationsbefehl liest er selbst aus dem Schlüssel unter HKLM und führt ihn nur aus, wenn er mit dem Plan übereinstimmt (`HelperCommandMismatch`). Dateien aus Benutzer- und Temp-Ordnern startet er erhöht nie.
+- Die DLL-Suche ist auf `System32` beschränkt, eine `.config` wird nicht mitgeliefert.
+- **Beschreibbarer Ordner:** Liegt der Helfer in einem Ordner, den Programme ohne Adminrechte ändern können (ZIP, Debug-Build), zeigt der Bestätigungsdialog bei jeder erhöhten Aktion eine deutliche Warnung (`HelperInWritableFolder`). Der unterstützte Weg für Releases ist die Installation nach `Program Files`.
+- Fehlt der Helfer, etwa weil ein Virenscanner ihn entfernt hat, meldet das Modul `HelperFileMissing`.
 - Das Ergebnis (Exit-Code, letzte Ausgabezeilen, MSI-Log, Wiederherstellungspunkt) kommt über eine **Named Pipe** zurück, nicht über eine Datei. So schreibt der erhöhte Prozess nie in einen für Benutzer beschreibbaren Ordner.
 - Die Pipe hat einen zufälligen Namen und nimmt nur einen Client an. Verbinden dürfen nur Administratoren und SYSTEM, also erhöhte Prozesse.
 - Der Aufrufer prüft, ob die Prozess-ID des Clients die des gestarteten Helfers ist und ob die Zufallszahl aus dem Plan zurückkommt. Er wartet nur begrenzt.
@@ -147,7 +150,7 @@ Mehrere Updates auf einmal. Das gilt nur für Updates: Deinstallieren bleibt imm
 
 ### Stapelbetrieb des Helfers
 
-Für den erhöhten Block startet `Start-ElevatedHelperBatch` den Helfer einmal mit einer Liste von Schritten. Der Schutz ist derselbe wie beim Einzelaufruf: Hash, Pipe nur für erhöhte Prozesse, Prozess-ID und Nonce. Der Ablauf:
+Für den erhöhten Block startet `Start-ElevatedHelperBatch` den Helfer einmal mit einer Liste von Schritten. Der Schutz ist derselbe wie beim Einzelaufruf: Pipe nur für erhöhte Prozesse, Prozess-ID, Nonce und die Prüfungen im Helfer. Der Ablauf:
 
 1. Der Helfer verbindet sich sofort und meldet zuerst den Wiederherstellungspunkt.
 2. Vor jedem Schritt wartet er auf eine Zeile vom Modul: `next` oder `stop`. Anhalten heißt, das Modul antwortet später. Während eines Schritts achtet er auf `cancel`.
@@ -204,7 +207,7 @@ Set-InventorySetting -LogRetentionDays 14 -LogMaxSizeMB 50
 
 ## Integrationstest in Windows Sandbox
 
-Die Unit-Tests ersetzen winget, msiexec, Registry, Appx, UAC und CIM durch Mocks. Echt ausgeführt wird dabei nur der Helfer unter Windows PowerShell 5.1, ohne Adminrechte und mit harmlosen Programmen wie `where.exe`. Auf dem Entwicklungsrechner wird nichts installiert oder deinstalliert.
+Die Unit-Tests ersetzen winget, msiexec, Registry, Appx, UAC und CIM durch Mocks. Echt ausgeführt wird dabei nur der Helfer, ohne Adminrechte und mit harmlosen Programmen wie `where.exe`. Auf dem Entwicklungsrechner wird nichts installiert oder deinstalliert.
 
 Den echten Ablauf prüft ein Skript in Windows Sandbox. Dafür muss die Windows-Funktion „Windows-Sandbox“ aktiviert sein.
 
