@@ -114,6 +114,7 @@ Jede Tool-Antwort läuft durch `Protect-PrivateText`, **auch bei lokalen Modelle
 | eigenes Profil `C:\Users\<Name>`, auch als `C:\\Users\\…` in JSON und mit `/` | `%USERPROFILE%` |
 | Profile anderer Benutzer | `C:\Users\%OTHERUSER%` (`Public` und `Default` bleiben) |
 | Benutzername, Rechnername, Domäne (als ganzes Wort) | `%USERNAME%`, `%COMPUTERNAME%`, `%USERDOMAIN%` |
+| E-Mail-Adressen (Paketangaben wie `lodash@4.17.21` bleiben) | `%EMAIL%` |
 | gespeicherte API-Schlüssel | `***` |
 
 Dieselbe Regel nutzt der HTML-Bericht.

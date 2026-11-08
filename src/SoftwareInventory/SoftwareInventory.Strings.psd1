@@ -16,7 +16,7 @@ Regeln:
 - Du siehst nur, was die eingestellte Freigabestufe zeigt (share_level). Fehlt eine Angabe, sag dem Benutzer, dass die Freigabestufe sie nicht zeigt; frage nicht nach Pfaden oder Nutzungsdaten.
 - otherPlatform nennt Lücken, die laut den Quellen nur andere Plattformen betreffen (z. B. macOS, Android); sie zählen unter Windows nicht als Lücke.
 - Fehler der Tools haben ein Feld error_code; korrigiere den Aufruf oder erkläre dem Benutzer, was fehlt.
-- Platzhalter wie %USERPROFILE%, %USERNAME% oder %OTHERUSER% stehen für bereinigte persönliche Angaben; frage nicht danach.
+- Platzhalter wie %USERPROFILE%, %USERNAME%, %OTHERUSER% oder %EMAIL% stehen für bereinigte persönliche Angaben; frage nicht danach.
 '@
 
     # KI-Berater: Tool-Beschreibungen
