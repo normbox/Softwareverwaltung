@@ -107,6 +107,8 @@ function Get-InstalledState {
         QuietUninstallString = $null
         UrlUpdateInfo        = $null
         UrlInfoAbout         = $null
+        InstallLocation      = $null
+        DisplayIcon          = $null
         PackageFullName      = $null
         WingetVersion        = $null
         Identity             = $null   # Registry, Appx, Winget oder $null
@@ -128,6 +130,8 @@ function Get-InstalledState {
             $state.QuietUninstallString = ConvertTo-NullIfEmpty $key.GetValue('QuietUninstallString')
             $state.UrlUpdateInfo = ConvertTo-NullIfEmpty $key.GetValue('URLUpdateInfo')
             $state.UrlInfoAbout = ConvertTo-NullIfEmpty $key.GetValue('URLInfoAbout')
+            $state.InstallLocation = ConvertTo-NullIfEmpty $key.GetValue('InstallLocation')
+            $state.DisplayIcon = ConvertTo-NullIfEmpty $key.GetValue('DisplayIcon')
             # Echte Produkt-ID nur bei Windows-Installer-Einträgen, deren Schlüsselname die GUID ist.
             if ($key.GetValue('WindowsInstaller') -eq 1 -and $location.KeyName -match '^\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}$') {
                 $state.ProductCode = $location.KeyName.ToUpperInvariant()
@@ -162,10 +166,12 @@ function Get-InstalledState {
 }
 
 function Get-VendorUrl {
-    # Herstellerlink für manuelle Updates: Registry, sonst GitHub-Releases aus dem Katalog. Nur http(s).
+    # Herstellerlink für manuelle Updates: Katalog, Registry, sonst GitHub-Releases aus dem Katalog. Nur http(s).
     param($Record, $State)
-    $candidates = @($State.UrlUpdateInfo, $State.UrlInfoAbout)
     $match = Find-CatalogEntry -Record $Record -Catalog (Get-SoftwareCatalog)
+    $candidates = @()
+    if ($match) { $candidates += Get-CatalogValue $match.Entry 'VendorUpdateUrl' }
+    $candidates += @($State.UrlUpdateInfo, $State.UrlInfoAbout)
     if ($match -and $match.Entry.PSObject.Properties['GitHub'] -and $match.Entry.GitHub.Repository) {
         $candidates += "https://github.com/$($match.Entry.GitHub.Repository)/releases"
     }
@@ -226,6 +232,7 @@ function New-ActionPlan {
         CommandLine     = $null
         Elevated        = $false
         HelperInWritableFolder = $false
+        UninstallsPrevious = $false
         MsiLog          = $false
         RestorePoint    = $RestorePoint
         Result          = $null
@@ -287,6 +294,10 @@ function New-ActionPlan {
             }
             $plan.FilePath = $winget
             $plan.Arguments = Get-WingetArgument -Action $Action -Id $target.Id -Source $plan.WingetSource -Scope $state.Scope -StoreAgreementAccepted:$storeAccepted
+            if ($Action -eq 'Update' -and (Test-WingetUninstallsPrevious -Record $Record -Id $plan.WingetId -Source $plan.WingetSource)) {
+                $plan.UninstallsPrevious = $true
+                $plan.VendorUrl = Get-VendorUrl -Record $Record -State $state
+            }
             # Unbekannter Bereich: keine eigene Erhöhung, winget fordert sie bei Bedarf selbst an.
             $plan.Elevated = $state.Scope -eq 'Machine'
         }

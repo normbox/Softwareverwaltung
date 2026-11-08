@@ -6,7 +6,7 @@ $script:InstalledSources = @('RegistryMachine', 'RegistryUser', 'Winget', 'Appx'
 $script:TraceSources = @('UserAssist', 'Process', 'Autostart', 'ScheduledTask')
 # Externe Dienste: senden Produkt-/Herstellernamen, Versionen oder CVE-IDs ins Internet.
 # Werden nur einzeln aktiviert, nie über eine Vorlage.
-$script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS')
+$script:ServiceSources = @('WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetManifest')
 # Optionen für Aktualisieren/Deinstallieren; ebenfalls standardmäßig aus.
 $script:ActionOptions = @('RestorePoint')
 # KI-Berater: nur lokale Server mit OpenAI-kompatibler Schnittstelle (Etappe 4). Vorgaben sind

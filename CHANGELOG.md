@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Updates: kein falsches „Erfolgreich“ mehr
+
+- **Das Ergebnis zählt erst, wenn Windows Installer fertig ist.** winget kann Erfolg melden, während ein Installer im Hintergrund noch die alte Version entfernt. Bei der EA-App stand kurz die neue Version in der Liste, Sekunden später war das Programm weg, protokolliert war „Erfolgreich“. Jetzt wartet die App nach dem ersten Treffer höchstens 180 Sekunden auf das Ende der Transaktion und liest den Stand erneut. Ist das Programm dann weg oder fehlen alle bekannten Pfade, heißt das Ergebnis „Fehlgeschlagen“.
+- **Sichtbar und abbrechbar:** Die Statuszeile zeigt „Warte auf Windows Installer …“, „Abbrechen“ beendet das Warten. Bleibt das Ergebnis offen, etwa weil Windows Update gerade installiert, bietet die App „Erneut prüfen“ an.
+- **Warnung bei Paketen, die winget vor dem Update deinstalliert**, mit Link zum Hersteller; die Aktion bleibt möglich. Die EA-App steht dafür fest im Katalog. Für alle anderen Pakete gibt es den neuen Dienst „winget-Manifeste (GitHub)“, standardmäßig aus: Er ruft das Manifest der Zielversion ab, nur beim Bestätigen eines Updates.
+- Nach einer abgelehnten UAC-Abfrage entfällt die Zeile „Kein Wiederherstellungspunkt“.
+
 ### Helfer für Administratorrechte als eigene Exe
 
 - **Das PowerShell-Skript ist ersetzt** durch `lib\SoftwareInventory.Helper.exe` (C#, .NET Framework 4.7.2, Teil von Windows). Damit entfallen versteckte PowerShell, dynamischer Scriptblock und Base64-Plan auf der Kommandozeile, die Virenscanner gemeldet hatten. Der Plan kommt erst nach dem Handschlag über die Pipe.

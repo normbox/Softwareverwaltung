@@ -8,6 +8,7 @@ $script:ServiceInterval = @{
     GitHub = @{ Anonymous = 0.0; WithKey = 0.0 }
     KEV    = @{ Anonymous = 0.0; WithKey = 0.0 }
     EPSS   = @{ Anonymous = 0.0; WithKey = 0.0 }
+    WingetManifest = @{ Anonymous = 0.0; WithKey = 0.0 }
 }
 $script:LastServiceCall = @{}
 # Bei 429 mit Retry-After bis zu dieser Wartezeit (Sekunden) einmal warten und wiederholen; sonst Zwischenspeicher.
@@ -42,11 +43,14 @@ function Invoke-ServiceRequest {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)] [ValidateSet('GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetSearch')] [string] $Service,
+        [Parameter(Mandatory)] [ValidateSet('GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetSearch', 'WingetManifest')] [string] $Service,
         [Parameter(Mandatory)] [uri] $Uri,
         [string] $CacheKey,
         # Ohne Angabe: Haltbarkeit des Dienstes aus den Einstellungen
         [Nullable[timespan]] $MaxAge,
+        [int] $TimeoutSeconds = 60,
+        # Bei Anfragelimit nicht warten, z. B. wenn gerade ein Dialog auf die Antwort wartet
+        [switch] $NoRetryWait,
         $Setting = (Read-InventorySetting)
     )
 
@@ -89,12 +93,12 @@ function Invoke-ServiceRequest {
     for ($attempt = 1; -not $response; $attempt++) {
         Wait-ServiceInterval -Service $Service -HasKey ([bool] $secret)
         try {
-            $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec 60 -ErrorAction Stop
+            $response = Invoke-WebRequest -Uri $Uri -Headers $headers -TimeoutSec $TimeoutSeconds -ErrorAction Stop
         }
         catch {
             $failure = ConvertTo-ServiceRequestException -Service $Service -ErrorRecord $_
             $retryAfter = $failure.Data['RetryAfter']
-            if ($attempt -eq 1 -and $null -ne $retryAfter -and $retryAfter -le $script:MaxRetryAfterSeconds) {
+            if ($attempt -eq 1 -and -not $NoRetryWait -and $null -ne $retryAfter -and $retryAfter -le $script:MaxRetryAfterSeconds) {
                 Write-Verbose "$Service am Anfragelimit, warte $retryAfter s und wiederhole einmal"
                 Write-CheckStep -Key StepWaitRetryAfter -Arguments $Service, ([Math]::Max(1, $retryAfter))
                 Start-Sleep -Seconds ([Math]::Max(1, $retryAfter))
@@ -114,6 +118,7 @@ function Invoke-ServiceRequest {
     # NVD-Antworten verschlankt speichern und auch sofort so auswerten, damit frische und
     # zwischengespeicherte Daten gleich aussehen.
     if ($Service -eq 'NVD') { $content = ConvertTo-NvdCacheContent $content }
+    if ($Service -eq 'WingetManifest') { $content = ConvertTo-WingetManifestCacheContent $content }
     $data = $content | ConvertFrom-Json -DateKind String
     if ($cacheFile) {
         Write-ServiceCache -Path $cacheFile -Content $content

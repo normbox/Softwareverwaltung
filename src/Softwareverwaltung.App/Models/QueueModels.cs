@@ -22,6 +22,12 @@ public sealed record QueueEntry(
     /// <summary>Der Helfer liegt in einem Ordner, den Programme ohne Adminrechte ändern können.</summary>
     public bool HelperInWritableFolder { get; init; }
 
+    /// <summary>winget entfernt bei diesem Update vorher die alte Version.</summary>
+    public bool UninstallsPrevious { get; init; }
+
+    /// <summary>Link zum Hersteller nur zusammen mit der Warnung.</summary>
+    public Uri? UninstallsPreviousUrl { get; init; }
+
     public string VersionText => AppText.Format("QueueVersions", InstalledVersion ?? "?", LatestVersion ?? "?");
 
     public static QueueEntry FromPs(PSObject obj) => new(
@@ -38,6 +44,8 @@ public sealed record QueueEntry(
     {
         Result = ActionOutcome.Text(obj, "Result"),
         HelperInWritableFolder = obj.Properties["HelperInWritableFolder"]?.Value is true,
+        UninstallsPrevious = obj.Properties["UninstallsPrevious"]?.Value is true,
+        UninstallsPreviousUrl = obj.Properties["UninstallsPrevious"]?.Value is true ? VulnerabilityItem.HttpsUri(ActionOutcome.Text(obj, "VendorUrl")) : null,
     };
 }
 

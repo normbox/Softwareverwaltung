@@ -86,7 +86,7 @@ function Invoke-UpdateQueue {
             param($stepIndex, $run)
             $item = $elevatedItems[$stepIndex]
             $read = Read-HelperRun -Result $startedResults[$stepIndex] -Run $run -TimeoutMinutes $TimeoutMinutes
-            $final = Complete-ActionResult -Plan $item.Prepared.Plan -Record $item.Prepared.Record -Result $startedResults[$stepIndex] -Outcome $read.Outcome -Failure $read.Failure
+            $final = Complete-ActionResult -Plan $item.Prepared.Plan -Record $item.Prepared.Record -Result $startedResults[$stepIndex] -Outcome $read.Outcome -Failure $read.Failure -Control $Control
             $queueResults[$item.Index] = $final
             $queueStatus[$item.Index] = $final.Result
             $script:QueueDone++

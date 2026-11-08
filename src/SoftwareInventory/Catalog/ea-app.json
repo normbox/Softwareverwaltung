@@ -1,0 +1,9 @@
+{
+  "Id": "ea-app",
+  "Name": "EA app",
+  "Match": {
+    "WingetId": ["ElectronicArts.EADesktop"]
+  },
+  "WingetUninstallsPrevious": true,
+  "VendorUpdateUrl": "https://www.ea.com/ea-app"
+}

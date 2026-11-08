@@ -248,7 +248,7 @@ Describe 'Einstellungen' {
         Test-Path $settingsFile | Should -BeFalse
         $quick.Enable | Should -Contain 'Winget'
         $quick.Enable | Should -Contain 'UserAssist'
-        foreach ($name in 'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'RestorePoint') {
+        foreach ($name in 'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetManifest', 'RestorePoint') {
             $quick.Enable + $thorough.Enable | Should -Not -Contain $name
         }
         $quick.FileScan.Paths | Should -Be @('%USERPROFILE%')

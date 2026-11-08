@@ -418,12 +418,15 @@
                     <TextBlock Text="{Binding LastOutcome.Message}" TextWrapping="Wrap" Margin="0,2,0,0"
                                Visibility="{Binding LastOutcome.Message, Converter={StaticResource NullToVisibility}}" />
                     <TextBlock Text="{Binding LastOutcome.RestorePointText}" TextWrapping="Wrap" Margin="0,2,0,0"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding LastOutcome.ShowRestorePoint, Converter={StaticResource BoolToVisibility}}" />
                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                         <ui:Button Margin="0,0,12,0" Command="{Binding RetryWithNextMethodCommand}"
                                    Visibility="{Binding CanRetryWithNextMethod, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock Text="{Binding LastOutcome.RetryText, Mode=OneWay}" />
                         </ui:Button>
+                        <ui:Button Margin="0,0,12,0" Content="{loc:Text ActionRecheckLater}" Command="{Binding RecheckLastOutcomeCommand}"
+                                   Visibility="{Binding LastOutcome.OfferRecheck, Converter={StaticResource BoolToVisibility}}" />
                         <ui:HyperlinkButton Content="{loc:Text ActionVendorPage}" NavigateUri="{Binding LastOutcome.VendorUrl}" Padding="0" VerticalAlignment="Center"
                                             Visibility="{Binding LastOutcome.VendorUrl, Converter={StaticResource NullToVisibility}}" />
                     </StackPanel>

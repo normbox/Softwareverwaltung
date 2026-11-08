@@ -9,4 +9,5 @@ $script:ServiceTerms = @(
     [ordered]@{ Service = 'CIRCL'; CompanyHint = $false; Url = 'https://vulnerability.circl.lu/about' }
     [ordered]@{ Service = 'KEV'; CompanyHint = $false; Url = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog' }
     [ordered]@{ Service = 'EPSS'; CompanyHint = $false; Url = 'https://www.first.org/epss/faq' }
+    [ordered]@{ Service = 'WingetManifest'; CompanyHint = $false; Url = 'https://docs.github.com/site-policy/github-terms/github-terms-of-service' }
 )

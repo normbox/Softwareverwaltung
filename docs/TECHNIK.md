@@ -104,6 +104,7 @@ Eine vollständige Liste mit Datenschutzbewertung steht in [EXTERNE-DIENSTE.md](
 | winget-Quellen | `cdn.winget.microsoft.com` und die Download-Server der Hersteller | beim Lesen der winget-Daten, bei der winget-Suche und bei Aktionen | vorhanden (über winget) |
 | winget nachinstallieren | `api.github.com`, `github.com` samt Download-Servern, `aka.ms` | nur wenn winget fehlt und der Benutzer zustimmt | vorhanden |
 | GitHub API | `api.github.com` | Versionsabgleich für Programme aus dem Katalog | vorhanden |
+| winget-Manifeste | `raw.githubusercontent.com` | Erkennt beim Bestätigen eines Updates Pakete, die winget vorher deinstalliert; Dienst `WingetManifest`, standardmäßig aus | vorhanden |
 | NVD | `services.nvd.nist.gov` | CVE-Abfragen, CPE-Vorschläge | vorhanden |
 | CIRCL | `vulnerability.circl.lu` | CVE-Datensätze je Hersteller und Produkt | vorhanden |
 | CISA KEV | `www.cisa.gov` | Laden der KEV-Liste | vorhanden |
