@@ -244,6 +244,16 @@ function New-ActionPlan {
     $finish = { param($Result, $Message) $plan.Result = $Result; $plan.Message = $Message; [pscustomobject] $plan }
 
     if (-not $state.Present) {
+        # Portable Programme stehen in keiner Registry: „nicht installiert“ wäre falsch, solange die Datei da sein kann.
+        $file = Get-RecordValue $Record 'FilePath'
+        $fileGone = $file -and (Test-PathRootReachable $file) -and -not (Test-Path -LiteralPath $file)
+        if ((Test-AdvisorPortable $Record) -and -not $fileGone) {
+            if ($Action -eq 'Uninstall') { return & $finish 'Unsupported' (New-InventoryMessage PortableNoUninstall) }
+            $plan.Method = 'VendorLink'
+            $plan.VendorUrl = Get-VendorUrl -Record $Record -State $state
+            $hint = if ($plan.VendorUrl) { New-InventoryMessage PlanManualUpdateLink $plan.VendorUrl } else { New-InventoryMessage PlanManualUpdateNoLink }
+            return & $finish 'ManualUpdateRequired' $hint
+        }
         return & $finish 'NotInstalled' (New-InventoryMessage PlanNotInstalled)
     }
 

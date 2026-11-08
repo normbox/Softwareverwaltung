@@ -39,6 +39,10 @@ public sealed record SoftwareItem
     public IReadOnlyList<string> Refuted { get; init; } = [];
     /// <summary>Hinweis „N Lücken betreffen nur andere Plattformen“ (Text des Moduls); null, wenn es keine gibt.</summary>
     public string? OtherPlatformText { get; init; }
+    public string? InstallType { get; init; }
+    /// <summary>Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.</summary>
+    public bool ShowUninstall => !(InstallType == "Portable" && WingetId is null);
+    public bool ShowOpenFolderInsteadOfUninstall => !ShowUninstall;
     /// <summary>Lücken nur für andere Plattformen (macOS, iOS, Android, Linux …), je Zeile CVE und Plattformen; ohne Ampelwirkung.</summary>
     public IReadOnlyList<string> OtherPlatform { get; init; } = [];
     public string Sources { get; init; } = "";
@@ -184,6 +188,7 @@ public sealed record SoftwareItem
             CpeBase = vulnerability is null ? [] : GetStrings(vulnerability, "CpeBase"),
             CpeSource = vulnerability is null ? null : GetString(vulnerability, "CpeSource"),
             NeedsCpe = vulnerability?.Properties["Reason"]?.Value is PSObject reason && GetString(reason, "Code") == "NoCpe",
+            InstallType = record is null ? null : GetString(record, "InstallType"),
             InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
             InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,

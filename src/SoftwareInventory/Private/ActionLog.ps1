@@ -55,7 +55,8 @@ function Write-ActionLogEntry {
     $line = Protect-SecretText ($entry | ConvertTo-Json -Compress -Depth 8)
 
     $directory = Get-ActionLogDirectory
-    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    # -WhatIf:$false: Auch ein abgelehnter Klick unter -WhatIf muss im Protokoll landen.
+    New-Item -ItemType Directory -Path $directory -Force -WhatIf:$false | Out-Null
     $path = Join-Path $directory ($now.ToString('yyyy-MM-dd') + '.jsonl')
     $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($line + "`n")
 

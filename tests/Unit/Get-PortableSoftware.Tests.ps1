@@ -326,6 +326,44 @@ Describe 'Signierte Dateien in Temp' {
     }
 }
 
+Describe 'NSIS-Reste in Temp' {
+    BeforeEach {
+        $temp = Join-Path $TestDrive 'Temp'
+        Mock -ModuleName SoftwareInventory Get-TempDirectory { $temp }
+    }
+
+    It 'lässt das Deinstallationsprogramm aus einer Nutzungsspur weg (<Folder>)' -TestCases @(
+        @{ Folder = '~nsu.tmp' }
+        @{ Folder = '~nsuA1B2.tmp' }
+    ) {
+        $file = New-Info "$temp\$Folder\Un_A.exe" 'AnythingLLM' '1.15.0.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = 'UserAssist' }) -Parameter @{ IncludeTemp = $true }
+        $r.FilePath | Should -Not -Contain $file.Path
+    }
+
+    It 'lässt es auch im Dateiscan weg' {
+        $file = New-Info "$temp\~nsu.tmp\Un_B.exe" 'Anderes' '2.0'
+        $r = Invoke-PortableScenario -FileInfo @($file) -Parameter @{ IncludeTemp = $true }
+        $r.FilePath | Should -Not -Contain $file.Path
+    }
+
+    It 'zeigt andere Programme aus Temp weiter an: <Name>' -TestCases @(
+        @{ Name = 'anderer Name im NSIS-Ordner'; Relative = '~nsu.tmp\setup.exe' }
+        @{ Name = 'Un_ in anderem Ordner'; Relative = 'tool\Un_A.exe' }
+        @{ Name = 'normales Programm'; Relative = 'dropper.exe' }
+    ) {
+        $file = New-Info "$temp\$Relative" 'Tool' '1.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = 'Process' }) -Parameter @{ IncludeTemp = $true }
+        $r.FilePath | Should -Contain $file.Path
+    }
+
+    It 'zeigt denselben Pfad außerhalb von Temp weiter an' {
+        $file = New-Info (Join-Path $TestDrive 'Tools\~nsu.tmp\Un_A.exe') 'Tool' '1.0'
+        $r = Invoke-PortableScenario -FileInfo @() -TraceInfo @($file) -Trace @(@{ Path = $file.Path; Evidence = 'UserAssist' }) -Parameter @{ IncludeTemp = $true }
+        $r.FilePath | Should -Contain $file.Path
+    }
+}
+
 Describe 'Merge-NestedComponent (Bestandteile eines Programms)' {
     It 'zieht keine Dateien unter ein Programm, das direkt in einer Scan-Wurzel liegt' {
         $root = Join-Path $TestDrive 'Tools'
