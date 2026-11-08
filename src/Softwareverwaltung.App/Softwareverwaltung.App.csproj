@@ -42,6 +42,12 @@
     <ItemGroup>
       <Content Include="@(_ModuleNativeDll)" Link="Modules\SoftwareInventory\lib\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
+    <MSBuild Projects="..\SoftwareInventory.Helper\SoftwareInventory.Helper.csproj" Targets="GetTargetPath" Properties="Configuration=$(Configuration)" RemoveProperties="TargetFramework;RuntimeIdentifier;SelfContained;PublishDir">
+      <Output TaskParameter="TargetOutputs" ItemName="_ModuleHelperExe" />
+    </MSBuild>
+    <ItemGroup>
+      <Content Include="@(_ModuleHelperExe)" Link="Modules\SoftwareInventory\lib\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 
   <!--

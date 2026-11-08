@@ -69,7 +69,7 @@ function Invoke-UpdateQueue {
     if ($elevatedItems) {
         $startedResults = @{}
         $steps = @($elevatedItems | ForEach-Object {
-                @{ FilePath = $_.Prepared.Plan.FilePath; Arguments = $_.Prepared.Plan.Arguments; MsiLog = [bool] $_.Prepared.Plan.MsiLog; TimeoutSeconds = $TimeoutMinutes * 60 }
+                @{ FilePath = $_.Prepared.Plan.FilePath; Arguments = $_.Prepared.Plan.Arguments; MsiLog = [bool] $_.Prepared.Plan.MsiLog; Method = $_.Prepared.Plan.Method; RegistryKey = $_.Prepared.Plan.RegistryKey; TimeoutSeconds = $TimeoutMinutes * 60 }
             })
         $before = {
             param($stepIndex)

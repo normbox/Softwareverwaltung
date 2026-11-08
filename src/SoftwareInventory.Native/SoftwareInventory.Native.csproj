@@ -19,6 +19,11 @@
     <SatelliteResourceLanguages>de</SatelliteResourceLanguages>
   </PropertyGroup>
 
+  <!-- Der Helfer gehört zum Modul: Wer die DLL baut, bekommt ihn mit (auch vor Pester). -->
+  <ItemGroup>
+    <ProjectReference Include="..\SoftwareInventory.Helper\SoftwareInventory.Helper.csproj" ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" GlobalPropertiesToRemove="TargetFramework;RuntimeIdentifier;SelfContained;PublishDir" />
+  </ItemGroup>
+
   <!--
     Für Pester und Probeläufe direkt aus src: DLL neben das Modul legen (lib\ ist nicht im Repository).
     Hat eine offene PowerShell das Modul geladen, ist die Datei gesperrt; dann nur warnen, die App nimmt

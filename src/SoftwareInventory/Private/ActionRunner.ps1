@@ -53,6 +53,7 @@ function New-ActionResult {
         Arguments           = $Plan.Arguments
         CommandLine         = $Plan.CommandLine
         Elevated            = $Plan.Elevated
+        HelperInWritableFolder = [bool] (Get-RecordValue $Plan 'HelperInWritableFolder')
         Result              = $Plan.Result
         ExitCode            = $null
         ExitCodeHex         = $null
@@ -139,7 +140,7 @@ function Invoke-ActionPlan {
         }
         else {
             $helperPlan = @{
-                FilePath = $Plan.FilePath; Arguments = $Plan.Arguments; MsiLog = $Plan.MsiLog; Elevate = [bool] $Plan.Elevated
+                FilePath = $Plan.FilePath; Arguments = $Plan.Arguments; MsiLog = $Plan.MsiLog; Method = $Plan.Method; RegistryKey = $Plan.RegistryKey
                 RestorePoint = [bool] ($Plan.RestorePoint -and $Plan.Elevated)
                 RestorePointDescription = Get-RestorePointDescription $Plan; RestorePointType = $script:RestorePointType[$Plan.Action]
             }

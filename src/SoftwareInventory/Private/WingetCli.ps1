@@ -1,6 +1,6 @@
 # winget als Kommandozeilenprogramm für Aktionen. Das Inventar nutzt Microsoft.WinGet.Client;
 # für Aktualisieren/Deinstallieren wird winget.exe direkt gestartet, weil das auch im erhöhten
-# Helfer unter Windows PowerShell 5.1 ohne zusätzliches Modul funktioniert.
+# Helfer ohne zusätzliches Modul funktioniert.
 
 function Get-WingetExecutable {
     <#

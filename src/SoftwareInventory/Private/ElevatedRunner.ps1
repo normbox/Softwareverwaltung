@@ -1,19 +1,16 @@
-# Start des erhöhten Helfers und Rückweg des Ergebnisses über eine Named Pipe.
+# Start des Helfers und Rückweg des Ergebnisses über eine Named Pipe.
 #
-# Start-ElevatedHelper ist die EINZIGE Stelle, die einen erhöhten Prozess startet. Heute ist das
-# Windows PowerShell 5.1 (powershell.exe, auf jedem Windows 10/11 vorhanden). In Etappe 3b ersetzt
-# die App nur diese Funktion durch ihre eigene EXE mit Helfer-Argument; der Helfer bleibt gleich.
+# Der Helfer ist eine eigene Exe (lib\SoftwareInventory.Helper.exe, Quelle src/SoftwareInventory.Helper).
+# Start-ElevatedHelper und Start-ElevatedHelperBatch sind die einzigen Stellen, die ihn starten.
 #
 # Schutz:
-# - Der Plan steht als Base64-JSON im Argument, nicht in einer Datei, die man austauschen könnte.
-# - Der erhöhte Prozess liest das Helferskript einmal in den Speicher, prüft dessen SHA256 und
-#   führt genau diesen Inhalt aus.
+# - Auf der Kommandozeile steht nur der Name der Pipe; der Plan kommt erst nach dem Handschlag über die Pipe.
 # - Die Pipe hat einen zufälligen Namen; verbinden dürfen nur erhöhte Prozesse (Administratoren,
 #   SYSTEM). Zusätzlich muss die Prozess-ID des Clients die des gestarteten Helfers sein und die
 #   Zufallszahl (Nonce) aus dem Plan zurückkommen. Es wird nur eine begrenzte Zeit gewartet.
+# - Der Helfer prüft selbst, was er startet (HelperRules.cs).
 
-$script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\Elevated\ElevatedHelper.ps1'
-$script:WindowsPowerShell = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell\v1.0\powershell.exe'
+$script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\lib\SoftwareInventory.Helper.exe'
 
 # Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 
@@ -44,24 +41,16 @@ function New-ResultPipe {
         [System.IO.Pipes.PipeTransmissionMode]::Byte, [System.IO.Pipes.PipeOptions]::Asynchronous, 0, 0, $security)
 }
 
-function Get-ElevatedHelperBootstrap {
-    # Kurzer Startbefehl für -Command: Skript lesen, Hash prüfen, Inhalt ausführen. Nur einfache Anführungszeichen.
-    param([string] $HelperPath, [string] $Hash, [string] $PlanBase64)
-    $path = $HelperPath.Replace("'", "''")
-    # Telemetrie aus, bevor irgendetwas läuft: ein mit UAC gestarteter Prozess erbt die Umgebung der App nicht.
-    "`$env:POWERSHELL_TELEMETRY_OPTOUT='1';" +
-    "`$b=[IO.File]::ReadAllBytes('$path');" +
-    "`$h=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash(`$b)).Replace('-','');" +
-    "if(`$h -ne '$Hash'){exit 3};" +
-    "`$t=[Text.Encoding]::UTF8.GetString(`$b).TrimStart([char]0xFEFF);" +
-    "& ([scriptblock]::Create(`$t)) -PlanBase64 '$PlanBase64'"
+function Test-HelperInWritableFolder {
+    # Liegt der Helfer dort, wo Programme ohne Adminrechte ihn austauschen könnten? Dann warnt die Bestätigung.
+    Test-UserWritablePath ([System.IO.Path]::GetFullPath($script:ElevatedHelperPath))
 }
 
 function Start-ElevatedProcess {
     # Kapselt den Start, damit Tests ihn ersetzen können. Mit Erhöhung über ShellExecuteEx und dem Fenster
     # der App als Besitzer, damit die UAC-Abfrage vorne erscheint; Start-Process kann das nicht.
     param([string] $FilePath, [string] $ArgumentList, [switch] $NoElevation)
-    if ($NoElevation) { return Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -PassThru -WindowStyle Hidden }
+    if ($NoElevation) { return Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -PassThru }
     $owner = (Get-Process -Id $PID).MainWindowHandle
     [SoftwareInventory.ElevationInterop]::Start($FilePath, $ArgumentList, $owner)
 }
@@ -159,14 +148,12 @@ function Start-ElevatedHelper {
     $pipeName = "SoftwareInventory-$([guid]::NewGuid().ToString('N'))"
     $data = @{} + $HelperPlan
     $data.Nonce = $nonce
-    $data.PipeName = $pipeName
     $data.TimeoutSeconds = $TimeoutSeconds
-    $planBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($data | ConvertTo-Json -Compress -Depth 4)))
+    $planJson = $data | ConvertTo-Json -Compress -Depth 4
 
     $helper = [System.IO.Path]::GetFullPath($script:ElevatedHelperPath)
-    $hash = (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash
-    $command = Get-ElevatedHelperBootstrap -HelperPath $helper -Hash $hash -PlanBase64 $planBase64
-    $argumentList = "-NoProfile -NonInteractive -WindowStyle Hidden -Command `"$command`""
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperFileMissing $helper) } }
+    $argumentList = "--pipe $pipeName"
 
     $server = New-ResultPipe -Name $pipeName -AllowCurrentUser:$NoElevation -Duplex
     try {
@@ -174,7 +161,7 @@ function Start-ElevatedHelper {
         try {
             # Der Start kehrt erst zurück, wenn die UAC-Abfrage beantwortet ist; sie lässt sich von außen nicht schließen.
             Set-ActionPhase $Control $(if ($NoElevation) { 'Running' } else { 'WaitingForElevation' })
-            $process = Start-ElevatedProcess -FilePath $script:WindowsPowerShell -ArgumentList $argumentList -NoElevation:$NoElevation
+            $process = Start-ElevatedProcess -FilePath $helper -ArgumentList $argumentList -NoElevation:$NoElevation
         }
         catch {
             if (Test-ElevationCancelled $_) { return @{ Status = 'ElevationDenied'; Error = (New-InventoryMessage ElevationDenied) } }
@@ -206,16 +193,15 @@ function Start-ElevatedHelper {
         $writer = [System.IO.StreamWriter]::new($server, $utf8)
         $writer.AutoFlush = $true
 
-        # Handschlag: Erst nach „go“ startet der Helfer etwas.
+        # Handschlag: Erst mit dem Plan startet der Helfer etwas; „stop“ beendet ihn ohne Aktion.
         $hello = Receive-HelperLine -Reader $reader -Writer $writer -TimeoutSeconds 60
-        if (-not $hello) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) } }
-        if ($hello.Nonce -ne $nonce) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperNonceMismatch) } }
+        if (-not $hello -or $hello.Kind -ne 'Hello') { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) } }
         try {
             if (Test-ActionCancelRequested $Control) {
                 $writer.WriteLine('stop')
                 return @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) }
             }
-            $writer.WriteLine('go')
+            $writer.WriteLine($planJson)
         }
         catch {
             return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultIncomplete) }

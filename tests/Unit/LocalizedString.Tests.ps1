@@ -23,8 +23,12 @@ Describe 'Texte des Moduls' {
         # Codes, die über eine Variable gewählt werden ($code)
         $used = @($used) + 'PossiblyAffected', 'PossiblyAffectedKev', 'UpdateAvailable', 'UpdateAvailableUnconfirmed', 'ActionVerbUpdate', 'ActionVerbUninstall'
         # Codes des erhöhten Helfers (Text bildet das Modul) und aller bekannten Exit-Codes
-        $used += Select-String -Path (Join-Path $ModuleRoot 'Elevated\ElevatedHelper.ps1') -Pattern "Code = '(?<key>\w+)'" -AllMatches |
-            ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value }
+        $helperSources = Get-ChildItem (Join-Path $ModuleRoot '..\SoftwareInventory.Helper') -Filter '*.cs'
+        $helperCodes = @($helperSources | Select-String -Pattern 'new Problem\("(?<key>\w+)"|new RestorePointOutcome\("\w+", "(?<key>\w+)"|SetError\(\w+, "(?<key>\w+)"' -AllMatches |
+            ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique)
+        $helperCodes | Should -Contain 'HelperCommandMismatch'
+        $helperCodes | Should -Contain 'RestorePointNotCreated'
+        $used += $helperCodes
         $used += InModuleScope SoftwareInventory { $script:ExitCodeMap.Keys | ForEach-Object { "ExitCode$_" } }
         $strings = InModuleScope SoftwareInventory { $script:Strings }
         foreach ($code in $used) { $strings.ContainsKey("Reason$code") | Should -BeTrue -Because "Code '$code' wird im Code verwendet" }
