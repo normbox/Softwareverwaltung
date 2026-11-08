@@ -120,6 +120,9 @@
                     </ItemsControl>
                 </Expander>
 
+                <TextBlock Text="{Binding NvdProblemText}" TextWrapping="Wrap" Margin="0,8,0,0" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                           Visibility="{Binding NvdProblemText, Converter={StaticResource NullToVisibility}}" />
                 <!-- Lücken: eine Zeile je CVE, aufklappbar für Quellen, Links und Beschreibung -->
                 <TextBlock Text="{loc:Text DetailsVulnerabilitiesTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
                            Visibility="{Binding VulnerabilityText, Converter={StaticResource NullToVisibility}}" />
