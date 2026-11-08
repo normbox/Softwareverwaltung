@@ -1356,7 +1356,10 @@ Die Angaben stehen im Link und gehen beim Öffnen an GitHub. Veröffentlicht wir
     <value>Frage</value>
   </data>
   <data name="AdvisorChatLabelAssistant" xml:space="preserve">
-    <value>KI-Berater</value>
+    <value>KI-Berater (maschinell erzeugt)</value>
+  </data>
+  <data name="AdvisorChatAiNotice" xml:space="preserve">
+    <value>Antworten erzeugt ein KI-Modell. Sie können falsch sein; prüfen Sie wichtige Angaben, bevor Sie handeln.</value>
   </data>
   <data name="AdvisorChatAnswering" xml:space="preserve">
     <value>Der Berater antwortet … Scan und Aktionen sind so lange gesperrt.</value>

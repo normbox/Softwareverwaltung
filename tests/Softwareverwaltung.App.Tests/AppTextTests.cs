@@ -61,6 +61,21 @@ public sealed partial class AppTextTests
         Assert.Empty(found);
     }
 
+    [Fact]
+    public void AdvisorPanelMarksTheAdvisorAsAi()
+    {
+        // AI Act Art. 50: feste Zeile im Bereich, der an CanType hängt, und Kennzeichnung über jeder Antwort.
+        var xaml = File.ReadAllText(AppFiles("AdvisorPanel.xaml").Single());
+        var area = xaml.IndexOf("Binding CanType", StringComparison.Ordinal);
+        var notice = xaml.IndexOf("{loc:Text AdvisorChatAiNotice}", StringComparison.Ordinal);
+        var input = xaml.IndexOf("x:Name=\"QuestionBox\"", StringComparison.Ordinal);
+
+        Assert.True(area >= 0 && area < notice && notice < input);
+        Assert.Contains("{loc:Text AdvisorChatLabelAssistant}", xaml);
+        Assert.Contains("KI-Modell", AppText.Get("AdvisorChatAiNotice"));
+        Assert.Contains("maschinell erzeugt", AppText.Get("AdvisorChatLabelAssistant"));
+    }
+
     private static IEnumerable<string> AppFiles(string pattern) =>
         Directory.EnumerateFiles(Path.Combine(FindRepositoryRoot(), "src", "Softwareverwaltung.App"), pattern, SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));

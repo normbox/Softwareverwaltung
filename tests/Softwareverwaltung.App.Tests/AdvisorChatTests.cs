@@ -156,6 +156,23 @@ public sealed class AdvisorChatTests
     });
 
     [Fact]
+    public void AiNoticeAreaStaysAvailableAfterErrorsAndANewConversation() => RunOnDispatcher(async () =>
+    {
+        // Die Zeile steht im Bereich, der an CanType hängt (siehe AppTextTests).
+        var s = await CreateAsync();
+        Assert.True(s.Chat.CanType);
+
+        s.Service.Failure = new AdvisorException("AdvisorToolRoundLimit", 8);
+        s.Chat.Question = "Was zuerst?";
+        await s.Chat.SendCommand.ExecuteAsync(null);
+        Assert.True(s.Chat.CanType);
+
+        s.Chat.NewConversationCommand.Execute(null);
+        Assert.Empty(s.Chat.Entries);
+        Assert.True(s.Chat.CanType);
+    });
+
+    [Fact]
     public void NewConversationDropsTheSession() => RunOnDispatcher(async () =>
     {
         var s = await CreateAsync();

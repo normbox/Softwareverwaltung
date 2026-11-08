@@ -98,6 +98,7 @@ Abschnitt „KI-Berater“ in den Einstellungen der App:
 Der Knopf „KI-Berater“ rechts neben den Seitenreitern blendet die Seitenleiste ein und aus. Offen oder zu und die Breite (am linken Rand ziehbar) merkt sich die App in `app-ui.json`.
 
 - **Leere Zustände:** Ist der Berater aus, steht dort ein Hinweis mit „Einstellungen öffnen“. Vor dem ersten Scan erscheint nur ein Hinweis, Fragen geht erst danach (das Modul liest nie selbst ein).
+- **Kennzeichnung als KI:** Solange gefragt werden kann, steht über dem Eingabefeld fest: „Antworten erzeugt ein KI-Modell. Sie können falsch sein; prüfen Sie wichtige Angaben, bevor Sie handeln.“ Die Zeile lässt sich nicht schließen. Jede Antwort trägt die Überschrift „KI-Berater (maschinell erzeugt)“.
 - **Fragen:** Eingabetaste sendet, Umschalt+Eingabetaste macht eine neue Zeile. „Abbrechen“ beendet die Antwort sofort; die Frage steht dann wieder im Eingabefeld, das Gespräch ist wie vorher. Fehler erscheinen mit ihrem Text in der Leiste, ebenfalls mit der Frage wieder im Eingabefeld.
 - **Gleichzeitigkeit:** Solange ein Scan oder eine Aktion läuft, kann nicht gefragt werden. Solange der Berater antwortet, sind Scan und Aktionen gesperrt, weil seine Tools NVD und CIRCL abfragen können.
 - **Antworten** erscheinen als reiner Text: Überschriften, Fett- und Codezeichen fallen weg, Aufzählungen werden zu „•“, Links zu „Text (Adresse)“ und sind nicht klickbar. Denkblöcke mancher Modelle (`<think>…</think>`) werden nicht angezeigt.
