@@ -76,6 +76,69 @@ Describe 'Update-Software und Uninstall-Software' {
         }
     }
 
+    Context 'Portable Programme' {
+        BeforeEach {
+            $script:portableFile = Join-Path $TestDrive "tool-$([guid]::NewGuid().ToString('N')).exe"
+            Set-Content -LiteralPath $script:portableFile -Value 'x'
+            $script:portable = New-TestRecord @{ InstallType = 'Portable'; FilePath = $script:portableFile }
+        }
+
+        It 'nennt beim Deinstallieren den eigenen Grund statt „nicht installiert“' {
+            $r = $script:portable | Uninstall-Software -Confirm:$false
+            $r.Result | Should -Be 'Unsupported'
+            $r.Message.Code | Should -Be 'PortableNoUninstall'
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0
+        }
+
+        It 'verweist beim Aktualisieren auf den Hersteller' {
+            $r = $script:portable | Update-Software -Confirm:$false
+            $r.Result | Should -Be 'ManualUpdateRequired'
+            $r.Method | Should -Be 'VendorLink'
+        }
+
+        It 'bleibt bei „nicht installiert“, wenn die Datei wirklich weg ist' {
+            Remove-Item -LiteralPath $script:portableFile
+            ($script:portable | Uninstall-Software -Confirm:$false).Result | Should -Be 'NotInstalled'
+        }
+
+        It 'behandelt ein nicht erreichbares Laufwerk nicht als entfernt' {
+            Remove-Item -LiteralPath $script:portableFile
+            Mock -ModuleName SoftwareInventory Test-PathRootReachable { $false }
+            ($script:portable | Uninstall-Software -Confirm:$false).Message.Code | Should -Be 'PortableNoUninstall'
+        }
+    }
+
+    Context 'Nicht ausführbare Aktionen aus der App' {
+        BeforeEach {
+            $script:portable = New-TestRecord @{ InstallType = 'Portable'; FilePath = (Join-Path $TestDrive 'nicht-da\tool.exe') }
+            Mock -ModuleName SoftwareInventory Test-PathRootReachable { $false }
+        }
+
+        It 'protokolliert unter -WhatIf mit -LogNotExecutable' {
+            $script:portable | Uninstall-Software -WhatIf -LogNotExecutable | Out-Null
+            $entry = @(Get-ActionLog)
+            $entry.Count | Should -Be 1
+            $entry[0].Result | Should -Be 'Unsupported'
+        }
+
+        It 'protokolliert unter -WhatIf ohne den Schalter nichts' {
+            $script:portable | Uninstall-Software -WhatIf | Out-Null
+            Get-ActionLog | Should -BeNullOrEmpty
+        }
+
+        It 'protokolliert einen ausführbaren Plan auch mit dem Schalter nicht' {
+            ($msiRecord | Uninstall-Software -WhatIf -LogNotExecutable).Result | Should -Be 'Planned'
+            Get-ActionLog | Should -BeNullOrEmpty
+        }
+
+        It 'protokolliert die Store-Vereinbarung nicht als Fehlschlag' {
+            Mock -ModuleName SoftwareInventory Test-StoreAgreementAccepted { $false }
+            $store = New-TestRecord @{ RegistryKey = "$Machine\$Guid"; WingetId = '9NBLGGH4NNS1'; WingetSource = 'msstore' }
+            ($store | Update-Software -WhatIf -LogNotExecutable).Result | Should -Be 'StoreAgreementRequired'
+            Get-ActionLog | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'Vorab-Deinstallation durch winget' {
         BeforeEach {
             $script:eaRecord = New-TestRecord @{ RegistryKey = "$Machine\$Guid"; WingetId = 'ElectronicArts.EADesktop'; WingetSource = 'winget' }

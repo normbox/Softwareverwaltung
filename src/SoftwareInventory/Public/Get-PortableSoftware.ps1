@@ -148,6 +148,7 @@ function Get-PortableSoftware {
                     continue
                 }
                 if (Test-PathExcluded -Path $hint.Path -Exclusion $userExclusions) { continue }
+                if (Test-NsisUninstallerLeftover -Path $hint.Path -TempDirectory $tempDirs) { continue }
                 # Läuft oder startet etwas aus einem für Benutzer beschreibbaren Windows-Unterordner,
                 # wird es immer gemeldet – der Windows-Ordner ist sonst ausgeschlossen.
                 $fromWritableWindows = $hint.Evidence -in 'Process', 'Autostart', 'ScheduledTask' -and
@@ -163,6 +164,7 @@ function Get-PortableSoftware {
 
     $files = if ($roots.Count) { Find-ExecutableFile -Root $roots -ExcludeDirectory $scanExclusions } else { @() }
     foreach ($file in $files) {
+        if (Test-NsisUninstallerLeftover -Path $file -TempDirectory $tempDirs) { continue }
         & $addCandidate $file 'FileScan' $null $null
     }
 
@@ -206,6 +208,13 @@ function Get-PortableSoftware {
     Add-MultipleVersionFlag -Record $records
     $records += @($unreachable.Values | ForEach-Object { New-UnreachableRecord $_ })
     $records | Sort-Object Name, FilePath
+}
+
+function Test-NsisUninstallerLeftover {
+    # NSIS-Deinstallationsprogramme kopieren sich nach %TEMP%\~nsu*.tmp\Un_*.exe; das ist kein eigenes Programm.
+    # Bewusst eng: Andere Programme aus Temp bleiben sichtbar.
+    param([string] $Path, [string[]] $TempDirectory)
+    $Path -match '\\~nsu[^\\]*\.tmp\\Un_[^\\]*\.exe$' -and (Test-PathExcluded -Path $Path -Exclusion $TempDirectory)
 }
 
 function Test-ScanRoot {

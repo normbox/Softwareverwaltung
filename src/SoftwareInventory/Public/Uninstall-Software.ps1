@@ -34,6 +34,8 @@ function Uninstall-Software {
         nichts, winget wird nur beendet, solange es noch keinen Installer gestartet hat, ein laufender
         Installer läuft weiter. Phase (WaitingForElevation, Running) und CancelResult (Stopped,
         Continuing, Orphaned) schreibt das Modul.
+    .PARAMETER LogNotExecutable
+        Für Oberflächen, die mit -WhatIf planen: Ist die Aktion nicht ausführbar, wird das trotzdem protokolliert.
     .PARAMETER TimeoutMinutes
         Höchstens so lange auf das Ende warten (Standard 60). Danach Result „Timeout“.
     .EXAMPLE
@@ -58,7 +60,9 @@ function Uninstall-Software {
 
         [System.Collections.IDictionary] $Control,
 
-        [string] $ConfirmedCommandLine
+        [string] $ConfirmedCommandLine,
+
+        [switch] $LogNotExecutable
     )
 
     begin {
@@ -67,7 +71,7 @@ function Uninstall-Software {
     process {
         foreach ($item in $InputObject) {
             if ($null -eq $item) { continue }
-            $prepared = Resolve-SoftwareAction -Action Uninstall -InputObject $item -Method $Method -RestorePoint $restorePoint -ConfirmedCommandLine $ConfirmedCommandLine
+            $prepared = Resolve-SoftwareAction -Action Uninstall -InputObject $item -Method $Method -RestorePoint $restorePoint -ConfirmedCommandLine $ConfirmedCommandLine -LogNotExecutable:$LogNotExecutable
             if (-not $prepared) { continue }
             if ($prepared.Result) { $prepared.Result; continue }
             if ($PSCmdlet.ShouldProcess($prepared.Plan.Name, $prepared.Description.Text)) {

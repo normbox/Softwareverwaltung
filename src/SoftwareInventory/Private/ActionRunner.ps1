@@ -339,7 +339,9 @@ function Resolve-SoftwareAction {
         [string] $Method = 'Auto',
         [bool] $RestorePoint,
         # Befehl, den der Benutzer bestätigt hat. Weicht der neu ermittelte ab, wird nichts ausgeführt.
-        [string] $ConfirmedCommandLine
+        [string] $ConfirmedCommandLine,
+        # Auch unter -WhatIf protokollieren, wenn die Aktion nicht ausführbar ist (Klick in der App, keine reine Planung).
+        [switch] $LogNotExecutable
     )
 
     $record = Get-ActionRecord $InputObject
@@ -357,7 +359,9 @@ function Resolve-SoftwareAction {
         # Nicht ausführbar: nichts gestartet, aber protokolliert (außer bei -WhatIf).
         $result = New-ActionResult $plan
         $result.CompletedAt = $result.StartedAt
-        if (-not $WhatIfPreference) { Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $result) }
+        # Die Store-Vereinbarung ist ein Zwischenschritt: Nach der Zustimmung plant die App neu.
+        $logRefusal = $LogNotExecutable -and $plan.Result -ne 'StoreAgreementRequired'
+        if (-not $WhatIfPreference -or $logRefusal) { Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $result) }
         return @{ Record = $record; Plan = $plan; Result = $result; Description = $null }
     }
 

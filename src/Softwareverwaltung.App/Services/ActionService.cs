@@ -48,6 +48,10 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
     public async Task<ActionOutcome> PlanAsync(SoftwareActionKind kind, PSObject? source, string method = "Auto", CancellationToken cancellationToken = default)
     {
         var command = NewCommand(kind, source, method).AddParameter("WhatIf");
+        if (kind != SoftwareActionKind.InstallWinget)
+        {
+            command.AddParameter("LogNotExecutable");
+        }
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
     }
 

@@ -190,6 +190,7 @@ Regeln:
     ReasonPlanRightsElevated                = 'mit Administratorrechten (UAC)'
     ReasonPlanRightsNormal                  = 'ohne Administratorrechte'
     ReasonPlanRestorePointFirst             = ', vorher Wiederherstellungspunkt'
+    ReasonPortableNoUninstall               = 'Portable Programme haben kein Deinstallationsprogramm. Wenn Sie es nicht mehr brauchen, löschen Sie den Ordner selbst.'
     ReasonPlanNotInstalled                  = 'Das Programm ist nicht (mehr) installiert; es wurde nichts ausgeführt.'
     ReasonPlanManualUpdateLink              = 'Kein winget-Paket bekannt. Update bitte manuell über den Hersteller: {0}'
     ReasonPlanManualUpdateNoLink            = 'Kein winget-Paket bekannt. Update bitte manuell über den Hersteller; kein Link bekannt.'

@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Portable Programme: Reste und ehrliche Meldungen
+
+- **NSIS-Reste verschwinden aus der Liste.** `%TEMP%\~nsu*.tmp\Un_*.exe` ist die kurzzeitige Kopie eines Deinstallationsprogramms und kein Programm (Fall AnythingLLM). Andere Programme aus Temp bleiben sichtbar.
+- **Portable Programme** bekommen statt „Deinstallieren“ den Knopf „Ordner öffnen“. Die falsche Meldung „nicht (mehr) installiert“ entfällt, solange die Datei noch da sein kann. „Aktualisieren“ verweist auf den Hersteller.
+- **Nicht ausführbare Aktionen aus der App werden protokolliert,** wie es `docs/AKTIONEN.md` schon versprach. Bisher brach die Planung mit `-WhatIf` ohne Eintrag ab.
+
 ### Helfer: geschützte Kopie unter „Programme“
 
 - **Liegt die App in einem beschreibbaren Ordner, startet sie erhöht nur noch eine geprüfte Kopie** unter `Program Files\Softwareverwaltung\Helper\<Version>\`. Damit schließt sich die Lücke, vor der die Bestätigung bisher nur gewarnt hat. Beim ersten Mal gibt es eine zusätzliche UAC-Abfrage für `robocopy` aus `System32`.

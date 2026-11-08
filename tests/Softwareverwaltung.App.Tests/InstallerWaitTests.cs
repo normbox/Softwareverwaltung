@@ -19,6 +19,18 @@ public sealed class InstallerWaitTests
     [Fact]
     public void OpenedMutexMeansBusy() => Assert.True(InstallerActivity.IsBusy(() => { }));
 
+    [Theory]
+    [InlineData("Portable", null, false)]
+    [InlineData("Portable", "A.B", true)]
+    [InlineData("Machine", null, true)]
+    [InlineData(null, null, true)]
+    public void PortableProgramsOfferTheFolderInsteadOfUninstall(string? installType, string? wingetId, bool showUninstall)
+    {
+        var item = new SoftwareItem { Name = "App", InstallType = installType, WingetId = wingetId };
+        Assert.Equal(showUninstall, item.ShowUninstall);
+        Assert.Equal(!showUninstall, item.ShowOpenFolderInsteadOfUninstall);
+    }
+
     [Fact]
     public void StatusNamesTheWindowsInstaller() =>
         Assert.Contains("Windows Installer", ActionProgress.StatusText("Update", "App", ActionProgress.WaitingForInstaller, null, false, TimeSpan.Zero));
