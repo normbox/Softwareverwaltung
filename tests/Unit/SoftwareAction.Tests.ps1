@@ -48,6 +48,7 @@ Describe 'Update-Software und Uninstall-Software' {
         Mock -ModuleName SoftwareInventory Get-AppxPackageByFamily { $null }
         Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
         Mock -ModuleName SoftwareInventory Invoke-AppxRemoval { }
+        Mock -ModuleName SoftwareInventory Test-WindowsInstallerBusy { $false }
         Mock -ModuleName SoftwareInventory Start-ElevatedHelper {
             & $script:helperEffect
             $r = @{ Status = 'Completed'; RestorePoint = 'NotRequested'; ExitCode = 0; TimedOut = $false; Output = 'ok'; InstallerLog = $null; Error = $null }
@@ -55,7 +56,10 @@ Describe 'Update-Software und Uninstall-Software' {
             if ($HelperPlan.RestorePoint -and $r.RestorePoint -eq 'NotRequested') { $r.RestorePoint = 'Created'; $r.RestorePointMessage = 'angelegt' }
             $r
         }
-        InModuleScope SoftwareInventory { $script:VerifyTimeoutSeconds = 0; $script:VerifyIntervalSeconds = 0 }
+        InModuleScope SoftwareInventory {
+            $script:VerifyTimeoutSeconds = 0; $script:VerifyIntervalSeconds = 0
+            $script:InstallerWaitSeconds = 0; $script:InstallerQuietSeconds = 0; $script:InstallerPollMilliseconds = 0
+        }
 
         New-UninstallKey $Machine $Guid @{ DisplayName = 'Contoso Tool'; DisplayVersion = '2.1.0'; WindowsInstaller = 1 }
         New-UninstallKey $User 'UserApp' @{ DisplayName = 'User App'; DisplayVersion = '0.9'; UninstallString = "`"$System\msiexec.exe`" /S" }
@@ -66,7 +70,111 @@ Describe 'Update-Software und Uninstall-Software' {
     }
 
     AfterAll {
-        InModuleScope SoftwareInventory { $script:VerifyTimeoutSeconds = 60; $script:VerifyIntervalSeconds = 2 }
+        InModuleScope SoftwareInventory {
+            $script:VerifyTimeoutSeconds = 60; $script:VerifyIntervalSeconds = 2
+            $script:InstallerWaitSeconds = 180; $script:InstallerQuietSeconds = 4; $script:InstallerPollMilliseconds = 500
+        }
+    }
+
+    Context 'Nachprüfung nach dem Treffer' {
+        BeforeEach {
+            Set-HelperResult @{ ExitCode = 0 } { Set-ItemProperty "$Machine\$Guid" -Name DisplayVersion -Value '2.2.0' }
+            $script:control = [hashtable]::Synchronized(@{ State = 'Running' })
+        }
+
+        It 'bleibt erfolgreich, wenn der Stand stabil ist' {
+            $r = $wingetRecord | Update-Software -Confirm:$false
+            $r.Result | Should -Be 'Succeeded'
+            $r.VersionAfter | Should -Be '2.2.0'
+        }
+
+        It 'Treffer, dann Programm weg ist fehlgeschlagen (Fall EA-App)' {
+            Mock -ModuleName SoftwareInventory Test-WindowsInstallerBusy { Remove-Item "$Machine\$Guid" -ErrorAction SilentlyContinue; $false }
+            $r = $wingetRecord | Update-Software -Confirm:$false
+            $r.Result | Should -Be 'Failed'
+            $r.Message.Code | Should -Be 'ActionStateLost'
+            $r.PresentAfter | Should -BeFalse
+            (Get-ActionLog -Last 1).Result | Should -Be 'Failed'
+        }
+
+        It 'zeigt die Phase und wartet, bis Windows Installer frei ist' {
+            InModuleScope SoftwareInventory { $script:InstallerWaitSeconds = 60 }
+            $script:busyLeft = 2
+            $script:phases = [System.Collections.Generic.List[string]]::new()
+            Mock -ModuleName SoftwareInventory Test-WindowsInstallerBusy { $script:phases.Add([string] $script:control['Phase']); ($script:busyLeft--) -gt 0 }
+            try { $r = $wingetRecord | Update-Software -Confirm:$false -Control $script:control }
+            finally { InModuleScope SoftwareInventory { $script:InstallerWaitSeconds = 0 } }
+            $r.Result | Should -Be 'Succeeded'
+            $script:phases | Should -Contain 'WaitingForInstaller'
+            $script:control['Phase'] | Should -Be 'Running'
+        }
+
+        It 'bleibt nicht bestätigt, wenn Windows Installer belegt bleibt' {
+            Mock -ModuleName SoftwareInventory Test-WindowsInstallerBusy { $true }
+            $r = $wingetRecord | Update-Software -Confirm:$false
+            $r.Result | Should -Be 'NotVerified'
+            $r.Message.Code | Should -Be 'NotVerifiedInstallerBusy'
+            $r.Message.Text | Should -Match 'Windows Update'
+            $r.Message.Text | Should -Match 'später erneut prüfen'
+        }
+
+        It 'meldet Fehlschlag auch dann, wenn beim Warten das Programm verschwindet und der Installer belegt bleibt' {
+            Mock -ModuleName SoftwareInventory Test-WindowsInstallerBusy { Remove-Item "$Machine\$Guid" -ErrorAction SilentlyContinue; $true }
+            ($wingetRecord | Update-Software -Confirm:$false).Message.Code | Should -Be 'ActionStateLost'
+        }
+
+        It 'lässt sich während des Wartens abbrechen' {
+            InModuleScope SoftwareInventory { $script:InstallerWaitSeconds = 60 }
+            Mock -ModuleName SoftwareInventory Test-WindowsInstallerBusy { $script:control['State'] = 'Cancelled'; $true }
+            try { $r = $wingetRecord | Update-Software -Confirm:$false -Control $script:control }
+            finally { InModuleScope SoftwareInventory { $script:InstallerWaitSeconds = 0 } }
+            $r.Result | Should -Be 'NotVerified'
+            $r.Message.Code | Should -Be 'NotVerifiedWaitCancelled'
+            $script:control['Phase'] | Should -Be 'Running'
+        }
+
+        It 'wartet nicht, wenn schon während der Aktion abgebrochen wurde' {
+            $script:control['State'] = 'Cancelled'
+            Mock -ModuleName SoftwareInventory Start-ElevatedHelper {
+                Set-ItemProperty "TestRegistry:\Uninstall\Machine\{11111111-2222-3333-4444-555555555555}" -Name DisplayVersion -Value '2.2.0'
+                @{ Status = 'Completed'; RestorePoint = 'NotRequested'; ExitCode = 0; TimedOut = $false; Output = 'ok'; InstallerLog = $null; Error = $null }
+            }
+            $r = $wingetRecord | Update-Software -Confirm:$false -Control $script:control
+            $r.Result | Should -Be 'Succeeded'
+            Should -Invoke -ModuleName SoftwareInventory Test-WindowsInstallerBusy -Times 0
+        }
+
+        It 'Eintrag da, aber alle bekannten Pfade fehlen: fehlgeschlagen' {
+            Set-HelperResult @{ ExitCode = 0 } {
+                Set-ItemProperty "$Machine\$Guid" -Name DisplayVersion -Value '2.2.0'
+                Set-ItemProperty "$Machine\$Guid" -Name InstallLocation -Value 'C:\gibt-es-nicht-a1b2c3'
+                Set-ItemProperty "$Machine\$Guid" -Name DisplayIcon -Value '"C:\gibt-es-nicht-a1b2c3\app.exe",0'
+            }
+            ($wingetRecord | Update-Software -Confirm:$false).Message.Code | Should -Be 'ActionStateLost'
+        }
+
+        It 'nur ein veralteter Pfad zählt nicht als verloren' {
+            $script:iconPath = (Get-Process -Id $PID).Path
+            Set-HelperResult @{ ExitCode = 0 } {
+                Set-ItemProperty "$Machine\$Guid" -Name DisplayVersion -Value '2.2.0'
+                Set-ItemProperty "$Machine\$Guid" -Name InstallLocation -Value 'C:\gibt-es-nicht-a1b2c3'
+                Set-ItemProperty "$Machine\$Guid" -Name DisplayIcon -Value "$script:iconPath,0"
+            }
+            ($wingetRecord | Update-Software -Confirm:$false).Result | Should -Be 'Succeeded'
+        }
+
+        It 'Pfad auf nicht erreichbarem Laufwerk zählt nicht' {
+            InModuleScope SoftwareInventory {
+                Mock Test-Path { $false }
+                Test-InstalledPathLost -State ([pscustomobject] @{ InstallLocation = 'Q:\App'; DisplayIcon = $null }) | Should -BeFalse
+            }
+        }
+
+        It 'Deinstallationen warten nicht auf Windows Installer' {
+            Set-HelperResult @{ ExitCode = 0 } { Remove-Item "$Machine\$Guid" }
+            ($msiRecord | Uninstall-Software -Confirm:$false).Result | Should -Be 'Succeeded'
+            Should -Invoke -ModuleName SoftwareInventory Test-WindowsInstallerBusy -Times 0
+        }
     }
 
     Context '-WhatIf' {

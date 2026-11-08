@@ -539,7 +539,7 @@
     <value>Erfolgreich, Neustart nötig</value>
   </data>
   <data name="ActionResultNotVerified" xml:space="preserve">
-    <value>Nicht bestätigt: Der Zustand hat sich nicht geändert</value>
+    <value>Nicht bestätigt</value>
   </data>
   <data name="ActionResultInterrupted" xml:space="preserve">
     <value>Abschluss nicht beobachtet</value>
@@ -771,6 +771,12 @@
   </data>
   <data name="StatusActionCancelWhileUac" xml:space="preserve">
     <value>Abbruch vorgemerkt. Die Abfrage der Benutzerkontensteuerung bitte ablehnen; auch nach einer Bestätigung wird nichts ausgeführt.</value>
+  </data>
+  <data name="StatusActionWaitingInstaller" xml:space="preserve">
+    <value>Warte auf Windows Installer …</value>
+  </data>
+  <data name="ActionRecheckLater" xml:space="preserve">
+    <value>Erneut prüfen</value>
   </data>
   <data name="StatusActionCancelling" xml:space="preserve">
     <value>Wird abgebrochen …</value>

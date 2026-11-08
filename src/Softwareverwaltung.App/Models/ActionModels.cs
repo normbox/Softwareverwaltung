@@ -25,6 +25,8 @@ public sealed record ActionOutcome
     public bool HelperInWritableFolder { get; init; }
     public required string Result { get; init; }
     public string? Message { get; init; }
+    /// <summary>Code der Meldung, damit die Anzeige nicht am Text hängt.</summary>
+    public string? MessageCode { get; init; }
     public string? RestorePoint { get; init; }
     public string? RestorePointMessage { get; init; }
     public string? NextMethod { get; init; }
@@ -34,6 +36,10 @@ public sealed record ActionOutcome
 
     public bool IsPlanned => Result == "Planned";
     public bool RestorePointPlanned => RestorePoint == "Planned";
+    /// <summary>Das Ergebnis steht noch nicht fest, weil Windows Installer beschäftigt war: später erneut prüfen anbieten.</summary>
+    public bool OfferRecheck => MessageCode is "NotVerifiedInstallerBusy" or "NotVerifiedWaitCancelled";
+    /// <summary>Bei abgelehnter UAC-Abfrage lief nichts; die Zeile „Kein Wiederherstellungspunkt“ sagt dann nichts aus.</summary>
+    public bool ShowRestorePoint => !(Result == "ElevationDenied" && RestorePoint is null or "NotRequested");
     public bool IsSuccess => Result is "Succeeded" or "SucceededRebootRequired";
     /// <summary>Store-Paket (Quelle „msstore“) ohne bestätigte Store-Vereinbarung: erst zustimmen lassen.</summary>
     public bool IsStoreAgreementRequired => Result == "StoreAgreementRequired";
@@ -69,6 +75,7 @@ public sealed record ActionOutcome
             HelperInWritableFolder = obj.Properties["HelperInWritableFolder"]?.Value is true,
             Result = Text(obj, "Result") ?? "Failed",
             Message = SoftwareItem.MessageText(obj.Properties["Message"]?.Value),
+            MessageCode = obj.Properties["Message"]?.Value is PSObject message ? Text(message, "Code") : null,
             RestorePoint = Text(obj, "RestorePoint"),
             RestorePointMessage = SoftwareItem.MessageText(obj.Properties["RestorePointMessage"]?.Value),
             NextMethod = Text(obj, "NextMethod"),

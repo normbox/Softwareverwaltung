@@ -5,6 +5,11 @@
 # NSIS-Deinstallationsprogramme starten einen Kindprozess und kehren sofort zurück.
 $script:VerifyTimeoutSeconds = 60
 $script:VerifyIntervalSeconds = 2
+# Nach dem Treffer: winget kann fertig sein, während ein Installer im Hintergrund noch etwas entfernt
+# (Fall EA-App: Version kurz richtig, Sekunden später Programm weg). Erst danach zählt das Ergebnis.
+$script:InstallerWaitSeconds = 180
+$script:InstallerQuietSeconds = 4
+$script:InstallerPollMilliseconds = 500
 
 $script:RestorePointType = @{ Update = [uint32] 0; Uninstall = [uint32] 1 }   # APPLICATION_INSTALL / _UNINSTALL
 
@@ -32,6 +37,66 @@ function Wait-ActionState {
         if ((Test-ActionStateReached -Action $Action -Before $Before -After $after) -or [datetime]::UtcNow -ge $deadline) { return $after }
         Start-Sleep -Seconds $script:VerifyIntervalSeconds
     }
+}
+
+function Test-WindowsInstallerBusy {
+    # Unbekannte Fehler zählen wie „läuft noch“: Lieber warten als zu früh „Erfolgreich“ melden.
+    try { [SoftwareInventory.InstallerActivity]::IsWindowsInstallerBusy() }
+    catch {
+        Write-Verbose "Windows-Installer-Status nicht lesbar: $_"
+        $true
+    }
+}
+
+function Wait-InstallerIdle {
+    <#
+    .SYNOPSIS
+        Wartet, bis Windows Installer frei ist und einige Sekunden frei bleibt.
+    .OUTPUTS
+        Idle, Busy (Wartezeit um) oder Cancelled (während des Wartens abgebrochen).
+    .DESCRIPTION
+        Abbrechbar über Control.State. Wurde schon während der Aktion abgebrochen, wird nicht mehr gewartet.
+    #>
+    param([System.Collections.IDictionary] $Control)
+    if (Test-ActionCancelRequested $Control) { return 'Idle' }
+    $deadline = [datetime]::UtcNow.AddSeconds($script:InstallerWaitSeconds)
+    $quietSince = $null
+    $waiting = $false
+    try {
+        while ($true) {
+            if (Test-ActionCancelRequested $Control) { return 'Cancelled' }
+            if (Test-WindowsInstallerBusy) {
+                if (-not $waiting) {
+                    Set-ActionPhase $Control 'WaitingForInstaller'
+                    $waiting = $true
+                }
+                $quietSince = $null
+                if ([datetime]::UtcNow -ge $deadline) { return 'Busy' }
+            }
+            else {
+                if ($null -eq $quietSince) { $quietSince = [datetime]::UtcNow }
+                if (([datetime]::UtcNow - $quietSince).TotalSeconds -ge $script:InstallerQuietSeconds) { return 'Idle' }
+            }
+            Start-Sleep -Milliseconds $script:InstallerPollMilliseconds
+        }
+    }
+    finally {
+        if ($waiting) { Set-ActionPhase $Control 'Running' }
+    }
+}
+
+function Test-InstalledPathLost {
+    # Verloren nur, wenn alle bekannten Pfade fehlen: Manche Hersteller lassen einen veralteten Wert stehen.
+    # Nicht erreichbare Laufwerke und Netzwerkpfade zählen nicht.
+    param($State)
+    $icon = if ($State.DisplayIcon) { ($State.DisplayIcon -replace ',\s*-?\d+$', '').Trim().Trim('"') }
+    $known = @(foreach ($path in @($State.InstallLocation, $icon)) {
+            if (-not $path) { continue }
+            $expanded = [Environment]::ExpandEnvironmentVariables(([string] $path).Trim().Trim('"'))
+            if ($expanded -match '^[A-Za-z]:\\' -and (Test-Path -LiteralPath $expanded.Substring(0, 3))) { $expanded }
+        })
+    if (-not $known) { return $false }
+    -not ($known | Where-Object { Test-Path -LiteralPath $_ })
 }
 
 function New-ActionResult {
@@ -157,7 +222,7 @@ function Invoke-ActionPlan {
         $failure = @('Failed', (New-InventoryMessage UnexpectedError $_.Exception.Message))
     }
 
-    Complete-ActionResult -Plan $Plan -Record $Record -Result $result -Outcome $outcome -Failure $failure
+    Complete-ActionResult -Plan $Plan -Record $Record -Result $result -Outcome $outcome -Failure $failure -Control $Control
 }
 
 function Read-HelperRun {
@@ -187,16 +252,25 @@ function Complete-ActionResult {
     .SYNOPSIS
         Prüft den Zustand nach einer Aktion, setzt Ergebnis und Meldung und protokolliert den Abschluss.
     #>
-    param($Plan, $Record, $Result, $Outcome, $Failure)
+    param($Plan, $Record, $Result, $Outcome, $Failure, [System.Collections.IDictionary] $Control)
     $result = $Result
     $outcome = $Outcome
     $failure = $Failure
 
     $poll = $outcome -and $outcome.Outcome -in 'Success', 'SuccessReboot'
     $after = Wait-ActionState -Action $Plan.Action -Record $Record -Before $Plan.State -Poll $poll
+    $reached = Test-ActionStateReached -Action $Plan.Action -Before $Plan.State -After $after
+    # Der erste Treffer beweist bei Updates noch nichts: Erst warten, bis kein Installer mehr läuft, dann neu lesen.
+    $settled = $null
+    $lost = $false
+    if (-not $failure -and $Plan.Action -eq 'Update' -and $outcome.Outcome -eq 'Success' -and $reached) {
+        $settled = Wait-InstallerIdle -Control $Control
+        $after = Get-InstalledState -Record $Record
+        $reached = Test-ActionStateReached -Action $Plan.Action -Before $Plan.State -After $after
+        $lost = -not $reached -or (Test-InstalledPathLost -State $after)
+    }
     $result.VersionAfter = $after.Version
     $result.PresentAfter = $after.Present
-    $reached = Test-ActionStateReached -Action $Plan.Action -Before $Plan.State -After $after
 
     if ($failure) {
         $result.Result, $result.Message = $failure
@@ -204,7 +278,10 @@ function Complete-ActionResult {
     else {
         switch ($outcome.Outcome) {
             'Success' {
-                if ($reached) { $result.Result = 'Succeeded'; $result.Message = $outcome.Message }
+                if ($lost) { $result.Result = 'Failed'; $result.Message = New-InventoryMessage ActionStateLost $Plan.Name }
+                elseif ($settled -eq 'Busy') { $result.Result = 'NotVerified'; $result.Message = New-InventoryMessage NotVerifiedInstallerBusy $script:InstallerWaitSeconds }
+                elseif ($settled -eq 'Cancelled') { $result.Result = 'NotVerified'; $result.Message = New-InventoryMessage NotVerifiedWaitCancelled }
+                elseif ($reached) { $result.Result = 'Succeeded'; $result.Message = $outcome.Message }
                 else {
                     $result.Result = 'NotVerified'
                     $result.Message = if ($Plan.Action -eq 'Uninstall') { New-InventoryMessage NotVerifiedUninstall }

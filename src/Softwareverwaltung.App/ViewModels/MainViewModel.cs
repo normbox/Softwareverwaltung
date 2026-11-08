@@ -59,7 +59,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Notice> Notices { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(RecheckLastOutcomeCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isBusy;
 
     /// <summary>
@@ -67,7 +67,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// NVD und CIRCL abfragen können und Dienste nie parallel zu einem Scan laufen sollen.
     /// </summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(RecheckLastOutcomeCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isAdvisorBusy;
 
     /// <summary>Scan, Aktion oder Berater laufen: keine weitere Arbeit starten.</summary>
@@ -438,6 +438,27 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool CanRetry() => !IsBlocked && CanRetryWithNextMethod;
 
+    /// <summary>Ergebnis stand noch nicht fest (Windows Installer beschäftigt): dieses Programm neu einlesen.</summary>
+    [RelayCommand(CanExecute = nameof(CanRecheckLastOutcome))]
+    private async Task RecheckLastOutcomeAsync()
+    {
+        IsBusy = true;
+        StatusText = AppText.Get("StatusRechecking");
+        try
+        {
+            await RecheckAsync(_lastOutcomeItem!);
+            StatusText = AppText.Get("StatusRecheckDone");
+            LastOutcome = null;
+        }
+        finally
+        {
+            IsBusy = false;
+            RefreshView();
+        }
+    }
+
+    private bool CanRecheckLastOutcome() => !IsBlocked && LastOutcome is { OfferRecheck: true } && _lastOutcomeItem?.Source is not null;
+
     [RelayCommand(CanExecute = nameof(CanInstallWinget))]
     private Task InstallWingetAsync() => RunActionAsync(SoftwareActionKind.InstallWinget, null, "Auto");
 
@@ -705,6 +726,10 @@ public sealed partial class MainViewModel : ObservableObject
         {
             StatusText = AppText.Format("StatusQueueWaitingUac", ActionProgress.Clock(waited));
         }
+        else if (!CancelRequested && phase == ActionProgress.WaitingForInstaller)
+        {
+            StatusText = AppText.Get("StatusActionWaitingInstaller");
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanPauseQueue))]
@@ -898,6 +923,7 @@ public sealed partial class MainViewModel : ObservableObject
         LastOutcome = outcome;
         OnPropertyChanged(nameof(CanRetryWithNextMethod));
         RetryWithNextMethodCommand.NotifyCanExecuteChanged();
+        RecheckLastOutcomeCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>Liest nur dieses Programm neu ein: Zeile ersetzen oder entfernen, wenn es weg ist.</summary>

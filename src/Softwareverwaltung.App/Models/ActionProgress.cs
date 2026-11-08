@@ -6,6 +6,7 @@ namespace Softwareverwaltung.App.Models;
 public static class ActionProgress
 {
     public const string WaitingForElevation = "WaitingForElevation";
+    public const string WaitingForInstaller = "WaitingForInstaller";
 
     /// <summary>Ab dieser Wartezeit auf die UAC-Abfrage erscheint der deutliche Hinweis. Eine harte Grenze gibt es nicht.</summary>
     public static readonly TimeSpan HintAfter = TimeSpan.FromSeconds(30);
@@ -23,9 +24,12 @@ public static class ActionProgress
                 : Continues(cancelResult) ? AppText.Get("StatusActionContinues")
                 : AppText.Get("StatusActionCancelling");
         }
-        return phase == WaitingForElevation
-            ? AppText.Format("StatusActionWaitingUac", actionText, name, Clock(waited))
-            : AppText.Format("StatusActionRunning", actionText, name);
+        return phase switch
+        {
+            WaitingForElevation => AppText.Format("StatusActionWaitingUac", actionText, name, Clock(waited)),
+            WaitingForInstaller => AppText.Get("StatusActionWaitingInstaller"),
+            _ => AppText.Format("StatusActionRunning", actionText, name),
+        };
     }
 
     public static string? ElevationHint(string? phase, TimeSpan waited) =>

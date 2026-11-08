@@ -107,6 +107,8 @@ function Get-InstalledState {
         QuietUninstallString = $null
         UrlUpdateInfo        = $null
         UrlInfoAbout         = $null
+        InstallLocation      = $null
+        DisplayIcon          = $null
         PackageFullName      = $null
         WingetVersion        = $null
         Identity             = $null   # Registry, Appx, Winget oder $null
@@ -128,6 +130,8 @@ function Get-InstalledState {
             $state.QuietUninstallString = ConvertTo-NullIfEmpty $key.GetValue('QuietUninstallString')
             $state.UrlUpdateInfo = ConvertTo-NullIfEmpty $key.GetValue('URLUpdateInfo')
             $state.UrlInfoAbout = ConvertTo-NullIfEmpty $key.GetValue('URLInfoAbout')
+            $state.InstallLocation = ConvertTo-NullIfEmpty $key.GetValue('InstallLocation')
+            $state.DisplayIcon = ConvertTo-NullIfEmpty $key.GetValue('DisplayIcon')
             # Echte Produkt-ID nur bei Windows-Installer-Einträgen, deren Schlüsselname die GUID ist.
             if ($key.GetValue('WindowsInstaller') -eq 1 -and $location.KeyName -match '^\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}$') {
                 $state.ProductCode = $location.KeyName.ToUpperInvariant()
