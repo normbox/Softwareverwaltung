@@ -1,6 +1,6 @@
 # Einsatz in Unternehmen
 
-Stand: 07.11.2026
+Stand: 08.11.2026
 
 Das Programm ist zunächst für den privaten Einsatz gedacht. Wer es in einem Unternehmen, einer Behörde oder einem Verein nutzen will, findet hier die Punkte, die vorher zu klären sind. Die Liste richtet sich an IT-Verantwortliche, Datenschutzbeauftragte und Betriebsräte.
 
@@ -11,9 +11,9 @@ Das Programm ist zunächst für den privaten Einsatz gedacht. Wer es in einem Un
 | Ausbaustufe | Aufwand Datenschutz | Wichtigster Punkt |
 | --- | --- | --- |
 | Nur Inventar, lokal, ohne Nutzungsspuren | gering | Information der Beschäftigten, Eintrag im Verarbeitungsverzeichnis |
-| + Online-Abgleich (NVD, KEV, EPSS, GitHub, winget) | gering | Firewall-Freigaben; keine Personendaten in den Abfragen |
+| + Online-Abgleich (NVD, CIRCL, KEV, EPSS, GitHub, winget) | gering | Firewall-Freigaben; keine Personendaten in den Abfragen |
 | + Nutzungsspuren (UserAssist, Prozesse, Autostart, geplante Aufgaben) | **hoch** | Verhaltensdaten der Beschäftigten → Betriebsrat, Zweckbindung |
-| + KI-Berater lokal (Ollama, LM Studio o. Ä. im Haus; Etappe 4b) | mittel | Betrieb und Absicherung des KI-Servers |
+| + KI-Berater lokal (Ollama, LM Studio o. Ä. im Haus) | mittel | Betrieb und Absicherung des KI-Servers |
 | + KI-Berater Cloud (später als Erweiterung, derzeit nicht verfügbar) | **hoch** | Auftragsverarbeitung, Drittland, ggf. DSFA |
 | + zentrale Sammlung mehrerer PCs (Etappe 6) | **hoch** | Zugriffskonzept, Löschfristen, Mitbestimmung |
 
@@ -44,7 +44,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 | Auftragsverarbeitung (Art. 28 DSGVO) | Anthropic stellt für kommerzielle Kunden ein Data Processing Addendum bereit, das Bestandteil der Commercial Terms ist. Prüfen, ob es für den eigenen Fall genügt, und dokumentieren. |
 | Drittlandübermittlung (Art. 44 ff. DSGVO) | Verarbeitung in den USA. Prüfen, ob der Anbieter unter dem EU-US Data Privacy Framework zertifiziert ist bzw. welche Standardvertragsklauseln gelten. |
 | Freigabestufe | Per Richtlinie die höchste Stufe für externe KI festlegen, empfohlen Stufe 1 (Programmliste); Nutzungsspuren nie extern. Siehe [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md#was-die-ki-sehen-darf-freigabestufen). |
-| Datenminimierung | Bereinigung (Benutzer, Rechner, Pfade) eingeschaltet lassen; zusätzlich Domänennamen und interne Programmnamen ersetzen (Liste konfigurierbar, geplant). |
+| Datenminimierung | Die Bereinigung (Benutzer, Rechner, Domäne, Pfade, E-Mail-Adressen) läuft immer und lässt sich nicht abschalten. Zusätzlich interne Programmnamen ersetzen (Liste konfigurierbar, geplant). |
 | Speicherdauer beim Anbieter | Standard laut Anthropic 30 Tage, kein Training mit API-Daten; Zero Data Retention nur nach Vereinbarung. Aktuellen Stand prüfen. |
 | Alternativen | Lokales Modell (Ollama im eigenen Netz) oder Claude über einen Cloud-Anbieter mit EU-Region (z. B. AWS Bedrock, Google Cloud Vertex AI), sofern die App diesen Provider unterstützt (derzeit nicht geplant, bei Bedarf als weiterer Provider). |
 | Datenschutz-Folgenabschätzung (Art. 35 DSGVO) | Bei Kombination aus Beschäftigtendaten, Verhaltensdaten und KI in der Cloud wahrscheinlich nötig; mit dem Datenschutzbeauftragten klären. |
@@ -54,7 +54,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 ## 4. EU-KI-Verordnung (AI Act)
 
 - Der Berater ist ein KI-System mit begrenztem Risiko; er trifft keine Entscheidungen über Menschen.
-- **Transparenz** (Art. 50, anwendbar seit 2. August 2026): Nutzer müssen erkennen, dass sie mit einer KI sprechen. Die App kennzeichnet den Berater deutlich als KI und seine Vorschläge als maschinell erzeugt.
+- **Transparenz** (Art. 50, anwendbar seit 2. August 2026): Nutzer müssen erkennen, dass sie mit einer KI sprechen. Die App muss den Berater deutlich als KI und seine Vorschläge als maschinell erzeugt kennzeichnen; die Kennzeichnung wird gerade ergänzt.
 - **KI-Kompetenz** (Art. 4, seit 2. Februar 2025): Organisationen, die KI-Systeme einsetzen, sollen für ausreichende Kenntnisse der Nutzer sorgen. Eine kurze Einweisung („Die KI schlägt nur vor; Ergebnisse aus Web-Recherche sind unbestätigt“) genügt hier in der Regel.
 
 ## 5. Lizenzen und Nutzungsbedingungen im Firmeneinsatz
@@ -62,7 +62,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 | Punkt | Hinweis |
 | --- | --- |
 | Softwareverwaltung selbst | GPLv3: Nutzung in der Firma ohne Einschränkung. Pflichten (Quellcode, Lizenztext) entstehen erst bei **Weitergabe** an Dritte, nicht bei interner Nutzung. Interne Anpassungen müssen nicht veröffentlicht werden. |
-| Einrichtung | Alle Dienste sind anfangs aus und werden einzeln eingerichtet. Die Hinweise zu den Nutzungsbedingungen beim Einschalten beachten. Einstellungen lassen sich optional per Richtlinie festlegen und sperren, siehe [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md#dienste-einrichten-alles-manuell-für-alle-gleich). |
+| Einrichtung | Alle Dienste sind anfangs aus und werden einzeln eingerichtet. Die Hinweise zu den Nutzungsbedingungen beim Einschalten beachten. Das Festlegen und Sperren per Richtlinie ist geplant (Etappe 6), siehe [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md#dienste-einrichten-alles-manuell-für-alle-gleich). |
 | VirusTotal (nicht umgesetzt) | Falls später ergänzt: Die kostenlose öffentliche API ist für geschäftliche Abläufe **nicht erlaubt**. |
 | GitHub, NVD | Je Organisation eigene Schlüssel bzw. Tokens; Abfragegrenzen hinter gemeinsamem Proxy beachten. NVD-Schlüssel nicht über viele Installationen teilen, sondern zentral abrufen und Ergebnisse cachen (Etappe 6). |
 | Microsoft Store (`msstore`) | Zustimmung zur Quellvereinbarung durch die Organisation; ggf. Quelle per Richtlinie sperren. Die App fragt vor der ersten Aktion an einem Store-Paket einmal nach der Zustimmung und speichert sie im Benutzerprofil (`Agreements.MsStore`). |

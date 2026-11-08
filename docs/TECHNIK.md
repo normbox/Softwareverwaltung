@@ -1,6 +1,6 @@
 # Technische Daten
 
-Stand: 28.10.2026 · Etappen 1 bis 3 und 4a fertig; Detailansicht, Zwischenspeicher und Update-Warteschlange umgesetzt; Etappe 4b (KI-Berater in der App) als Nächstes
+Stand: 08.11.2026 · Etappen 1 bis 3, 4a, 4b und die Chat-Seitenleiste (4c-1) fertig; Vorschlagskarten (4c-2) folgen
 
 Dieses Dokument beschreibt, woraus das Programm besteht, was es auf dem Rechner tut, wo es Daten ablegt und mit welchen Diensten es spricht. Begründungen und Fahrplan stehen in [KONZEPT.md](KONZEPT.md), der Datensatzaufbau in [INVENTAR-SCHEMA.md](INVENTAR-SCHEMA.md), Aktionen in [AKTIONEN.md](AKTIONEN.md).
 
@@ -28,7 +28,7 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 | Sicherheitsprüfung | NVD CVE-API 2.0, CIRCL Vulnerability-Lookup, CISA KEV, EPSS; Ampel und HTML-Bericht | vorhanden |
 | Aktionen | Aktualisieren und Deinstallieren über winget, MSI, Deinstallationsbefehl, Store-App; Update-Warteschlange | vorhanden |
 | Desktop-App | .NET 10 WPF, Fluent-Design über WPF-UI, PowerShell eingebettet über `Microsoft.PowerShell.SDK` | vorhanden |
-| KI-Berater | Werkzeuge, Bereinigung und Freigabestufen im Modul (4a, 4b-1); Anbieter-Schnittstelle und Gesprächsschleife in der App für lokale Server mit OpenAI-kompatibler Schnittstelle (4b-2), Einstellungsseite mit Verbindungstest und Vorschau (4b-3); Chat (4c) folgt; Cloud-Anbieter später als Erweiterung | teilweise, geplant |
+| KI-Berater | Werkzeuge, Bereinigung und Freigabestufen im Modul (4a, 4b-1); Anbieter-Schnittstelle und Gesprächsschleife in der App für lokale Server mit OpenAI-kompatibler Schnittstelle (4b-2), Einstellungsseite mit Verbindungstest und Vorschau (4b-3), Chat-Seitenleiste (4c-1); Vorschlagskarten (4c-2) folgen; Cloud-Anbieter später als Erweiterung | teilweise, geplant |
 | MCP-Server | optionaler Zugang für andere KI-Programme | geplant (Etappe 5) |
 
 Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
@@ -78,7 +78,7 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | Daten | Ort | Inhalt | Status |
 | --- | --- | --- | --- |
 | Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` | eingeschaltete Quellen, Dienste und Nutzungsspuren, Dateisuche, Haltbarkeit des Zwischenspeichers, Aufbewahrung der Logs, KI-Server | vorhanden |
-| Fertig übersetzter Windows-Zugriff | `Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll` neben der App | Anmeldeinformationsverwaltung und Prüfung der Pipe-Gegenstelle; ersetzt `Add-Type` zur Laufzeit; Quelle `src/SoftwareInventory.Native` | vorhanden |
+| Fertig übersetzter Windows-Zugriff | `Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll` neben der App | Anmeldeinformationsverwaltung, Prüfung der Pipe-Gegenstelle und Start der UAC-Abfrage mit dem Fenster der App als Besitzer; ersetzt `Add-Type` zur Laufzeit; Quelle `src/SoftwareInventory.Native` | vorhanden |
 | Oberfläche | `%APPDATA%\SoftwareInventory\app-ui.json` | Breite des Detailfelds, Berater-Seitenleiste offen und ihre Breite; kein Gesprächsinhalt (das Gespräch bleibt nur im Speicher) | vorhanden |
 | Eigene CPE-Zuordnungen | `%APPDATA%\SoftwareInventory\cpe-map.json` | vom Benutzer bestätigte Zuordnungen Programm → CPE | vorhanden |
 | Hinweise zu Fremddaten | `%LOCALAPPDATA%\SoftwareInventory\logs\data-notes\<yyyy-MM-dd>.jsonl` | Auffälligkeiten in Datensätzen der Quellen mit Code (z. B. `CommitVersionBound`: Commit-Kennung statt Version; `CirclFullFetchFailed`: vollständiger CIRCL-Abruf abgebrochen, mit Seite und Fehler), CVE, Produkt und Wert; je Lauf jeder Fall einmal; räumt sich mit `logs\` auf | vorhanden |
@@ -101,14 +101,15 @@ Eine vollständige Liste mit Datenschutzbewertung steht in [EXTERNE-DIENSTE.md](
 | Dienst | Host(s) | Wann | Status |
 | --- | --- | --- | --- |
 | winget-Quellen | `cdn.winget.microsoft.com` und die Download-Server der Hersteller | beim Lesen der winget-Daten, bei der winget-Suche und bei Aktionen | vorhanden (über winget) |
+| winget nachinstallieren | `api.github.com`, `github.com` samt Download-Servern, `aka.ms` | nur wenn winget fehlt und der Benutzer zustimmt | vorhanden |
 | GitHub API | `api.github.com` | Versionsabgleich für Programme aus dem Katalog | vorhanden |
 | NVD | `services.nvd.nist.gov` | CVE-Abfragen, CPE-Vorschläge | vorhanden |
 | CIRCL | `vulnerability.circl.lu` | CVE-Datensätze je Hersteller und Produkt | vorhanden |
 | CISA KEV | `www.cisa.gov` | Laden der KEV-Liste | vorhanden |
 | EPSS | `api.first.org` | Ausnutzungswahrscheinlichkeit für gefundene CVEs | vorhanden |
-| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse, nur Loopback und private Netze | nur wenn der KI-Berater eingerichtet ist, Test und Modellliste nur auf Klick | Einstellungen vorhanden, Chat folgt (4c) |
+| Lokaler KI-Server | `localhost:11434` (Ollama), `localhost:1234` (LM Studio), `localhost:8888` (Unsloth Studio) oder eine eigene Adresse, nur Loopback und private Netze | nur wenn der KI-Berater eingerichtet ist, Test und Modellliste nur auf Klick | vorhanden |
 
-Alle Abfragen an externe Dienste nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt den User-Agent `SoftwareInventory/<Version>`. Ausnahme ist der KI-Server: Die App verbindet sich ohne Proxy und ohne Weiterleitungen direkt mit der geprüften lokalen Adresse (siehe [BERATER.md](BERATER.md#anbieter-schnittstelle-der-app)).
+Alle Abfragen an externe Dienste nutzen die Proxy-Einstellungen des Systems. Jede Anfrage trägt den User-Agent `SoftwareInventory/<Version>` mit der Projektadresse. Ausnahme ist der KI-Server: Die App verbindet sich ohne Proxy und ohne Weiterleitungen direkt mit der geprüften lokalen Adresse (siehe [BERATER.md](BERATER.md#anbieter-schnittstelle-der-app)).
 
 ## Sicherheitsmerkmale
 

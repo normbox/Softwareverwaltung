@@ -1,6 +1,6 @@
 # Datenschutz
 
-Stand: 28.10.2026
+Stand: 08.11.2026
 
 Softwareverwaltung ist ein Programm, das man auf dem eigenen Rechner ausführt. Es gibt **keinen Server des Projekts**, kein Benutzerkonto und keine Telemetrie. Die Projektverantwortlichen erhalten keine Daten der Nutzer.
 
@@ -19,7 +19,7 @@ Wer das Programm einsetzt, ist für die damit verarbeiteten Daten selbst verantw
 | **Nutzungsspuren** (nur wenn eingeschaltet): UserAssist, laufende Prozesse, Autostart, geplante Aufgaben | „Programm X zuletzt gestartet am …“ | **ja, beschreibt Verhalten** |
 | Dateisuche in gewählten Laufwerken oder Ordnern (nur wenn eingeschaltet) | Dateiname, Pfad, Version, Signatur, optional Hash von `.exe`-Dateien | ja, Pfade und Dateinamen können persönlich sein |
 | Aktionsprotokoll | „Update von 7-Zip am … durch Benutzer …“ | ja |
-| Chatverlauf mit dem KI-Berater (geplant, Etappe 4c) | Fragen und Antworten | je nach Inhalt |
+| Gespräch mit dem KI-Berater (nur wenn eingeschaltet) | Fragen und Antworten; nur im Arbeitsspeicher, nie auf der Festplatte | je nach Inhalt |
 
 Nicht verarbeitet werden: Inhalte von Dokumenten, Browserverlauf, E-Mails, Passwörter. Programmdateien werden nur gelesen (Versionsinfo, Signatur, Hash), nie ausgeführt. Amcache, BAM und Prefetch liest das Programm nicht.
 
@@ -27,9 +27,9 @@ Nicht verarbeitet werden: Inhalte von Dokumenten, Browserverlauf, E-Mails, Passw
 
 Ausschließlich auf dem eigenen Rechner im Benutzerprofil. Einzelheiten in [docs/TECHNIK.md](docs/TECHNIK.md#datenablage).
 
-- `%LOCALAPPDATA%\SoftwareInventory`: Aktionsprotokoll, Installer-Logs nach Fehlern, Zwischenspeicher der Online-Abfragen, Fehlerprotokoll der App, gespeicherte Scans.
-- `%APPDATA%\SoftwareInventory`: Einstellungen und eigene CPE-Zuordnungen.
-- **Automatische Bereinigung:** Protokolle und Zwischenspeicher werden beim Start aufgeräumt, höchstens 30 Tage alt und höchstens 100 MB insgesamt (beides einstellbar, Ältestes zuerst). Installer-Logs werden nach erfolgreicher Aktion sofort gelöscht.
+- `%LOCALAPPDATA%\SoftwareInventory`: Aktionsprotokoll, Installer-Logs nach Fehlern, Zwischenspeicher der Online-Abfragen, Fehlerprotokoll, Hinweise zu Fremddaten (`logs\data-notes`), gespeicherte Scans.
+- `%APPDATA%\SoftwareInventory`: Einstellungen (auch Adresse und Modell des KI-Servers), eigene CPE-Zuordnungen und die Fensteranordnung (`app-ui.json`, kein Gesprächsinhalt).
+- **Automatische Bereinigung:** Protokolle und Zwischenspeicher werden beim Start aufgeräumt, höchstens 30 Tage alt und höchstens 100 MB insgesamt (beides einstellbar, Ältestes zuerst). Die CIRCL-Bestände haben eine eigene Grenze (Standard 200 MB). Installer-Logs werden nach erfolgreicher Aktion sofort gelöscht.
 - **Scans:** Die App speichert keine Scans. Gespeichert wird nur, wer im Modul ausdrücklich `Save-InventorySnapshot` aufruft. Diese Dateien bleiben, bis man sie löscht.
 - API-Schlüssel liegen in der Windows-Anmeldeinformationsverwaltung, nicht in Dateien.
 
@@ -40,8 +40,9 @@ Nur wenn Online-Funktionen eingeschaltet sind. Alle sind nach der Installation a
 Kurz:
 
 - **winget-Daten und Updates** (Microsoft): winget liest seine Paketkataloge. Bei einem Update lädt winget das Installationsprogramm. Die winget-Suche nach neuen Versionen sendet Paket-IDs oder Programmnamen an die winget-Quellen.
+- **winget nachinstallieren** (Microsoft, GitHub): Nur wenn winget fehlt und der Benutzer zustimmt, lädt die App App Installer und seine Abhängigkeiten herunter. Inventardaten gehen dabei nicht mit.
 - **Versions- und Sicherheitsabgleich** (GitHub, NVD, CIRCL, CISA KEV, FIRST EPSS): Je nach Dienst werden Repository-Namen, Produktkennungen (CPE) mit Version oder CVE-Nummern abgefragt, bei KEV nur die Gesamtliste. An CIRCL gehen nur Hersteller und Produkt aus der CPE, ohne Version; ausgewertet wird auf dem eigenen Rechner. Keine Benutzer- oder Rechnernamen, keine Pfade.
-- **KI-Berater** (geplant, Etappe 4b/4c): vorerst nur mit lokalen Modellservern (Ollama, LM Studio, Unsloth Studio oder eine eigene Adresse). Auf dem eigenen Rechner verlässt nichts den Rechner. Bei einer eigenen Adresse im Netz gehen die Daten an diesen Server. Benutzername, Rechnername und Benutzerpfade werden immer vorher ersetzt, auch für lokale Modelle. Cloud-Anbieter (z. B. die Claude API) kommen erst später als Erweiterung dazu und werden dann hier ergänzt.
+- **KI-Berater** (nur wenn eingeschaltet): vorerst nur mit lokalen Modellservern (Ollama, LM Studio, Unsloth Studio oder eine eigene Adresse). Auf dem eigenen Rechner verlässt nichts den Rechner. Bei einer eigenen Adresse im privaten Netz gehen die Daten an diesen Server; öffentliche Adressen lehnt die App ab. Was das Modell sieht, begrenzt die Freigabestufe. Benutzername, Rechnername, Domäne, Benutzerpfade und E-Mail-Adressen werden immer vorher ersetzt, auch für lokale Modelle. Die Werkzeuge des Beraters können die eingeschalteten Dienste (z. B. NVD, CIRCL, GitHub) neu abfragen; es gelten dieselben Angaben wie beim Abgleich. Cloud-Anbieter (z. B. die Claude API) kommen erst später als Erweiterung dazu und werden dann hier ergänzt.
 - **„Vorschlag melden“**: Wer eine selbst bestätigte CPE-Zuordnung als Verbesserung für den Katalog melden möchte, bekommt ein vorbereitetes GitHub-Issue im Browser. Es enthält Programmname, Hersteller, winget-ID, installierte Version und CPE, keine Pfade; Benutzername, Rechnername und Benutzerpfade werden vorher ersetzt. Die App zeigt den Inhalt vorher an und öffnet den Link erst nach Bestätigung. Die Angaben stehen im Link und gehen beim Öffnen an GitHub; veröffentlicht wird das Issue erst, wenn der Nutzer es dort selbst abschickt, und es ist dann öffentlich.
 - **„CPE zuordnen“**: Die Vorschläge kommen aus dem CPE-Wörterbuch der NVD (Dienst NVD muss eingeschaltet sein). Gesendet wird der Programmname ohne Version bzw. der Produktteil der winget-ID als Suchbegriff.
 
@@ -71,7 +72,7 @@ Diese Regeln gelten für jeden Beitrag zum Projekt:
 1. **Lokal zuerst.** Neue Funktionen müssen ohne Cloud nutzbar sein. Online-Dienste sind Ergänzungen und standardmäßig aus.
 2. **Datensparsam abfragen.** Gesamtlisten laden und lokal vergleichen, wo der Dienst das erlaubt.
 3. **Bereinigen vor dem Senden.** Benutzername, Rechnername, Benutzerpfade, Domänennamen und E-Mail-Adressen werden vor jeder Übertragung an eine KI ersetzt (`Protect-PrivateText`), auch an lokale Modelle. Neue Felder im Datensatz sind daraufhin zu prüfen.
-4. **Nutzungsspuren getrennt halten.** Nutzungsspuren werden nur gelesen, wenn sie in den Einstellungen eingeschaltet sind. Genaue Zeitstempel, Startzähler und Benutzerzuordnung gehen an keine KI. Was die KI sieht, begrenzen Freigabestufen, die das Modul durchsetzt (geplant in Etappe 4b, siehe [docs/EXTERNE-DIENSTE.md](docs/EXTERNE-DIENSTE.md#was-die-ki-sehen-darf-freigabestufen)). Bis dahin geben die Werkzeuge des Beraters gar keine Nutzungsspuren weiter.
+4. **Nutzungsspuren getrennt halten.** Nutzungsspuren werden nur gelesen, wenn sie in den Einstellungen eingeschaltet sind. Genaue Zeitstempel, Startzähler und Benutzerzuordnung gehen an keine KI. Was die KI sieht, begrenzen Freigabestufen, die das Modul durchsetzt (siehe [docs/EXTERNE-DIENSTE.md](docs/EXTERNE-DIENSTE.md#was-die-ki-sehen-darf-freigabestufen)). Nutzungsspuren gibt es nur auf der höchsten Stufe und nur vergröbert.
 5. **Keine Telemetrie** des Projekts, auch keine „anonyme“.
 6. **Sichtbar machen.** Die Einstellungen zeigen, welche Dienste aktiv sind und was sie erhalten.
 7. **Löschbar und selbst aufräumend.** Protokolle und Zwischenspeicher bereinigen sich selbst. Alles, was gespeichert wird, lässt sich löschen.

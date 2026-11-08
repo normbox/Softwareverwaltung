@@ -1,6 +1,6 @@
 # Bereinigung persönlicher Daten, bevor Text den Rechner verlässt oder weitergegeben wird
-# (HTML-Bericht, KI-Berater). Ersetzt werden Benutzerpfade, Benutzername, Rechnername und
-# Domäne; API-Schlüssel entfernt Protect-SecretText. Gilt immer, auch für lokale Modelle.
+# (HTML-Bericht, KI-Berater). Ersetzt werden E-Mail-Adressen, Benutzerpfade, Benutzername,
+# Rechnername und Domäne; API-Schlüssel entfernt Protect-SecretText. Gilt immer, auch für lokale Modelle.
 
 function Get-PrivateIdentity {
     # Werte, die ersetzt werden; eigene Funktion, damit Tests sie vorgeben können.
@@ -22,10 +22,14 @@ function Protect-PrivateText {
         - Profile anderer Benutzer → C:\Users\%OTHERUSER% (Public und Default bleiben).
         - Benutzername → %USERNAME%, Rechnername → %COMPUTERNAME%, Domäne → %USERDOMAIN%
           (jeweils nur als ganzes Wort).
+        - E-Mail-Adressen → %EMAIL%. Die Endung muss aus Buchstaben bestehen, damit Paketangaben wie
+          „lodash@4.17.21“ in CVE-Texten erhalten bleiben.
         - Bekannte API-Schlüssel → ***.
     #>
     param([AllowNull()] [AllowEmptyString()] [string] $Text)
     if (-not $Text) { return $Text }
+    # Zuerst: Sonst würden Benutzer- oder Domänenname mitten in einer Adresse ersetzt und der Rest bliebe stehen.
+    $Text = [regex]::Replace($Text, '(?<![\w.+-])[\w.+-]+@(?:[\w-]+\.)+\p{L}{2,}(?![\w-])', '%EMAIL%')
     $id = Get-PrivateIdentity
     $sep = '(?:\\\\|\\|/)'   # \\ (JSON), \ oder /
 

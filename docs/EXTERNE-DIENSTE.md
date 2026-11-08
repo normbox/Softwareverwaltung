@@ -1,6 +1,6 @@
 # Externe Dienste: was wohin geht
 
-Stand: 28.10.2026
+Stand: 08.11.2026
 
 Das Inventar selbst entsteht vollständig auf dem eigenen Rechner. Erst für den Versions- und Sicherheitsabgleich und für den KI-Berater spricht die App mit Diensten im Internet bzw. im eigenen Netz. Dieses Dokument zeigt für jeden Dienst, welche Daten übertragen werden, wer sie bekommt und was man vor der Nutzung beachten sollte.
 
@@ -12,7 +12,7 @@ Das Inventar selbst entsteht vollständig auf dem eigenen Rechner. Erst für den
 2. **Sparsam fragen.** Wo ein Dienst eine Gesamtliste anbietet (CISA KEV), lädt die App die ganze Liste und vergleicht lokal. Dann erfährt der Anbieter nicht, welche Programme installiert sind. Wo das nicht geht (NVD, CIRCL, EPSS, GitHub), fragt die App gezielt und nur mit den nötigen Angaben.
 3. **Zwischenspeicher.** Antworten werden zwischengespeichert, die Haltbarkeit ist je Quelle einstellbar (Standard: neueste Version 6 Stunden, NVD, CIRCL, EPSS und KEV je 24 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter und sind als veraltet gekennzeichnet.
 4. **Eigene Schlüssel.** Das Projekt betreibt keinen eigenen Server und hat keinen Zugang zu den Daten der Nutzer. API-Schlüssel gehören dem Nutzer und liegen in der Windows-Anmeldeinformationsverwaltung.
-5. **Jeder Abruf überträgt die IP-Adresse** des Rechners (bzw. des Firmen-Proxys) und technische Daten wie Uhrzeit und Programmkennung (User-Agent `SoftwareInventory/<Version>`). Das gilt für alle folgenden Dienste und wird nicht jedes Mal wiederholt.
+5. **Jeder Abruf überträgt die IP-Adresse** des Rechners (bzw. des Firmen-Proxys) und technische Daten wie Uhrzeit und Programmkennung (User-Agent `SoftwareInventory/<Version>` mit der Projektadresse). Das gilt für alle folgenden Dienste und wird nicht jedes Mal wiederholt.
 
 ## Dienste einrichten: alles manuell, für alle gleich
 
@@ -82,8 +82,10 @@ Klassen: **A** frei für alle · **B** kostenlos nur privat · **C** eigenes Kon
 | CIRCL Vulnerability-Lookup | CIRCL, Luxemburg | Hersteller und Produkt aus der CPE, ohne Version | A (Schlüssel optional) | vorhanden | aus |
 | CISA KEV | CISA, USA | nichts außer dem Abruf der Gesamtliste | A | vorhanden | aus |
 | EPSS | FIRST.org, USA | Nummern der gefundenen Lücken (CVE-IDs) | A | vorhanden | aus |
-| Lokaler KI-Server (Ollama, LM Studio, Unsloth Studio) | eigener Rechner | nichts verlässt den Rechner | A (Modelllizenz beachten) | geplant (4b) | aus |
-| KI-Server unter eigener Adresse | eigener Server | bereinigte Unterhaltung und Werkzeugergebnisse an diesen Server | A | geplant (4b) | aus |
+| Lokaler KI-Server (Ollama, LM Studio, Unsloth Studio) | eigener Rechner | nichts verlässt den Rechner | A (Modelllizenz beachten) | vorhanden | aus |
+| KI-Server unter eigener Adresse | eigener Server im privaten Netz | bereinigte Unterhaltung und Werkzeugergebnisse im Umfang der Freigabestufe | A | vorhanden | aus |
+| winget nachinstallieren (`Repair-WinGetPackageManager`) | Microsoft und GitHub, USA | Download von App Installer und Abhängigkeiten, keine Inventardaten | A | vorhanden | nur nach Bestätigung |
+| „Vorschlag melden“ (CPE-Zuordnung) | GitHub, USA | Programmname, Hersteller, winget-ID, Version und CPE im Link; öffentlich erst, wenn man das Issue selbst abschickt | A | vorhanden | nur nach Bestätigung |
 
 Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 
@@ -121,10 +123,11 @@ Klasse und Hinweis geben den Stand der Prüfung vom 24. bis 26.10.2026 wieder.
 - **Datenschutz:** KEV wird als Gesamtliste geladen; es fließen keine Inventardaten ab. EPSS erhält die Nummern der gefundenen Lücken (CVE-IDs), nicht die Programmnamen.
 - **Bedingungen:** KEV ist gemeinfrei (CC0), Logo und Siegel der CISA dürfen nicht verwendet werden. EPSS ist frei nutzbar; Quellenangabe in der App.
 
-### Lokale KI (Ollama, LM Studio, Unsloth Studio) – geplant für Etappe 4b
+### Lokale KI (Ollama, LM Studio, Unsloth Studio)
 
 - **Was:** Das Modell läuft auf dem eigenen Rechner; nichts verlässt ihn. Datenschutzrechtlich die einfachste Wahl. Angesprochen wird jeder Server mit OpenAI-kompatibler Schnittstelle und Tool-Unterstützung.
-- **Bereinigung:** Benutzername, Rechnername und Benutzerpfade werden auch für lokale Modelle ersetzt.
+- **Bereinigung:** Benutzername, Rechnername, Domäne, Benutzerpfade und E-Mail-Adressen werden auch für lokale Modelle ersetzt.
+- **Werkzeuge:** `check_latest_version` und `search_vulnerabilities` fragen die eingeschalteten Dienste neu ab (GitHub, winget-Suche, NVD, CIRCL, KEV, EPSS). Es gehen dieselben Angaben wie beim Abgleich; ausgeschaltete Dienste bleiben aus.
 - **Beachten:** Ollama lauscht standardmäßig nur auf `localhost`. Wer es im Netzwerk freigibt (`OLLAMA_HOST=0.0.0.0`), sollte den Zugriff per Firewall beschränken, da Ollama keine Anmeldung kennt. Läuft der Server im Firmennetz, gehen die Daten dorthin; dann gilt dasselbe wie für jeden internen Dienst. Unsloth Studio verlangt einen API-Schlüssel.
 - **Lizenzen:** Jedes Modell hat eine eigene Lizenz. Für Firmen eignen sich Modelle unter Apache-2.0 oder MIT am einfachsten; bei Llama und Gemma die jeweiligen Bedingungen lesen.
 - **Qualität:** Kleine lokale Modelle beherrschen Tool-Aufrufe unterschiedlich gut. Es gibt kein Standardmodell; gewählt wird aus den installierten Modellen.
@@ -166,7 +169,7 @@ Nutzungsbedingungen, Datenlizenz und Abfragegrenzen der API waren am 28.10.2026 
 
 | Situation | Empfehlung |
 | --- | --- |
-| Privat, maximaler Datenschutz | KEV an; NVD und EPSS nur bei Bedarf; KI-Berater mit Modell auf dem eigenen Rechner |
-| Privat, gründliche Prüfung | NVD (mit kostenlosem Schlüssel), KEV, EPSS, GitHub und winget-Suche an |
+| Privat, maximaler Datenschutz | KEV an; CIRCL, NVD und EPSS nur bei Bedarf; KI-Berater mit Modell auf dem eigenen Rechner |
+| Privat, gründliche Prüfung | NVD (mit kostenlosem Schlüssel), CIRCL, KEV, EPSS, GitHub und winget-Suche an |
 | Firma | Vorher [FIRMENEINSATZ.md](FIRMENEINSATZ.md) durcharbeiten; Dienste einzeln bewerten |
 | Ohne Internet | Nur Inventar; Ergebnisse aus dem Zwischenspeicher sind als veraltet gekennzeichnet; Abgleich später nachholen |

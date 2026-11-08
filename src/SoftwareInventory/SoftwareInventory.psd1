@@ -3,7 +3,7 @@
     ModuleVersion        = '0.1.0'
     GUID                 = '5d0c1f7e-6b2a-4e8f-9a51-3c7d2e4b8f10'
     Author               = 'normbox'
-    Copyright            = '(c) normbox. GPLv3.'
+    Copyright            = '(c) normbox. GPL-3.0-only.'
     Description          = 'Inventarisiert installierte und portable Software unter Windows (Registry, winget, Store-Apps, Ausführungsspuren, Dateiscan).'
     PowerShellVersion    = '7.6'
     CompatiblePSEditions = @('Core')

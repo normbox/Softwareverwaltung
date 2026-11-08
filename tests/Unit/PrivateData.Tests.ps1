@@ -11,6 +11,24 @@ Describe 'Protect-PrivateText' {
         function Protect { param($Text) InModuleScope SoftwareInventory -Parameters @{ T = $Text } { Protect-PrivateText $T } }
     }
 
+    It 'ersetzt E-Mail-Adressen in <Case>' -TestCases @(
+        @{ Case = 'Fließtext'; Text = 'Kontakt: anna.meier+test@beispiel.de.'; Expected = 'Kontakt: %EMAIL%.' }
+        @{ Case = 'JSON'; Text = '{"mail":"a_b@mail.firma.example"}'; Expected = '{"mail":"%EMAIL%"}' }
+        @{ Case = 'Umlauten'; Text = 'jörg@müller.de'; Expected = '%EMAIL%' }
+        @{ Case = 'Benutzer- und Domänenname in der Adresse'; Text = 'normb@FIRMA.de'; Expected = '%EMAIL%' }
+    ) {
+        Protect $Text | Should -Be $Expected
+    }
+
+    It 'lässt Paketangaben und ähnliche Texte stehen: <Text>' -TestCases @(
+        @{ Text = 'lodash@4.17.21' }
+        @{ Text = '@types/node' }
+        @{ Text = 'scoped/pkg@1.2.x' }
+        @{ Text = 'Preis @ 5 Euro' }
+    ) {
+        Protect $Text | Should -Be $Text
+    }
+
     It 'ersetzt das eigene Profil in <Case>' -TestCases @(
         @{ Case = 'Windows-Pfad'; Text = 'C:\Users\normb\AppData\Local\Programs\cursor\Cursor.exe'; Expected = '%USERPROFILE%\AppData\Local\Programs\cursor\Cursor.exe' }
         @{ Case = 'JSON mit doppelten Backslashes'; Text = '{"Path":"C:\\Users\\normb\\Tools\\x.exe"}'; Expected = '{"Path":"%USERPROFILE%\\Tools\\x.exe"}' }
