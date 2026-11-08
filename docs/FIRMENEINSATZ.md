@@ -54,7 +54,7 @@ Derzeit nicht verfügbar: Der KI-Berater nutzt vorerst nur lokale Modellserver. 
 ## 4. EU-KI-Verordnung (AI Act)
 
 - Der Berater ist ein KI-System mit begrenztem Risiko; er trifft keine Entscheidungen über Menschen.
-- **Transparenz** (Art. 50, anwendbar seit 2. August 2026): Nutzer müssen erkennen, dass sie mit einer KI sprechen. Die App muss den Berater deutlich als KI und seine Vorschläge als maschinell erzeugt kennzeichnen; die Kennzeichnung wird gerade ergänzt.
+- **Transparenz** (Art. 50, anwendbar seit 2. August 2026): Nutzer müssen erkennen, dass sie mit einer KI sprechen. Die App kennzeichnet den Berater deutlich als KI: mit einer festen Zeile in der Seitenleiste und „maschinell erzeugt“ über jeder Antwort.
 - **KI-Kompetenz** (Art. 4, seit 2. Februar 2025): Organisationen, die KI-Systeme einsetzen, sollen für ausreichende Kenntnisse der Nutzer sorgen. Eine kurze Einweisung („Die KI schlägt nur vor; Ergebnisse aus Web-Recherche sind unbestätigt“) genügt hier in der Regel.
 
 ## 5. Lizenzen und Nutzungsbedingungen im Firmeneinsatz

@@ -4,6 +4,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### KI-Berater: Kennzeichnung als KI (AI Act Art. 50)
+
+- Feste, nicht wegklickbare Zeile in der Seitenleiste, solange gefragt werden kann: Antworten erzeugt ein KI-Modell und können falsch sein. Jede Antwort trägt die Überschrift „KI-Berater (maschinell erzeugt)“, auch für Screenreader.
+
 ### Datenschutz und Rechtliches: Korrekturen aus der Durchsicht der Dokumentation
 
 - **E-Mail-Adressen werden jetzt wirklich ersetzt** (`%EMAIL%`), bevor Text an den KI-Berater, in den Bericht oder in eine CPE-Meldung geht. `PRIVACY.md` versprach das schon, der Code tat es nicht. Paketangaben wie `lodash@4.17.21` bleiben erhalten.

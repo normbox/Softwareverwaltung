@@ -74,7 +74,8 @@ Einzelheiten: [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md) und [THIRD-PARTY-NOTICES.
 - [x] `GPL-3.0-only` festgelegt und in Modulmanifest und README eingetragen (Dateiköpfe optional)
 - [ ] `CONTRIBUTING.md` mit Hinweis auf DCO bzw. Rechte an Beiträgen
 - [ ] `SECURITY.md` anlegen und „Private vulnerability reporting“ in den Repository-Einstellungen auf GitHub aktivieren
+- [x] KI-Kennzeichnung in der App (AI Act Art. 50): feste Zeile in der Seitenleiste und „maschinell erzeugt“ über jeder Antwort; Vorschlagskarten folgen mit Etappe 4c-2
 - [x] Lizenz von `Microsoft.WinGet.Client` geklärt: MIT, Mitliefern erlaubt (mit Lizenztext und NOTICE)
-- [ ] Hinweistexte vollständig in die App übernehmen: Seite „Über“ mit NVD-, KEV- und EPSS-Hinweis (stehen bisher nur bei den Hinweisen zu den Nutzungsbedingungen), KI-Kennzeichnung (Etappe 4c), Haftungshinweis im Bestätigungsdialog
+- [ ] Hinweistexte vollständig in die App übernehmen: Seite „Über“ mit NVD-, KEV- und EPSS-Hinweis (stehen bisher nur bei den Hinweisen zu den Nutzungsbedingungen), Haftungshinweis im Bestätigungsdialog
 - [x] Updates von Store-Paketen (`msstore`): Zustimmung zur Quellvereinbarung sichtbar machen statt `--accept-source-agreements` im Befehl
 - [ ] Projektnamen vor der Festlegung auf Marken prüfen
