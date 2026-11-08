@@ -230,7 +230,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     // Alle Befehle mit CanEdit hier aufführen: LoadAsync setzt IsLoaded, solange IsBusy noch wahr ist.
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DiscardCommand), nameof(ApplyPresetCommand), nameof(ChooseUsageCommand), nameof(RemoveCredentialCommand), nameof(DismissShareLevelNoticeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DiscardCommand), nameof(ApplyPresetCommand), nameof(ChooseUsageCommand), nameof(RemoveCredentialCommand), nameof(RemoveHelperCopyCommand), nameof(DismissShareLevelNoticeCommand))]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -334,6 +334,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             var saved = await _settings.LoadAsync();
             var drives = await _settings.GetDrivesAsync();
             var credentials = await _settings.GetCredentialStatusAsync();
+            HelperCopyPresent = await _settings.IsHelperCopyPresentAsync();
             foreach (var usage in new[] { "Private", "Company" })
             {
                 _terms[usage] = await _settings.GetServiceTermsAsync(usage);
@@ -587,6 +588,38 @@ public sealed partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             ErrorText = AppText.Format("CredentialSaveFailed", item.Title, ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>Unter Program Files liegt eine geschützte Kopie des Helfers.</summary>
+    [ObservableProperty]
+    private bool _helperCopyPresent;
+
+    [RelayCommand(CanExecute = nameof(CanEdit))]
+    private async Task RemoveHelperCopyAsync()
+    {
+        IsBusy = true;
+        ErrorText = null;
+        try
+        {
+            var result = await _settings.RemoveHelperCopyAsync();
+            if (result.IsRemoved)
+            {
+                HelperCopyPresent = false;
+                StatusText = result.Message ?? AppText.Get("SettingsHelperCopyRemoved");
+            }
+            else
+            {
+                ErrorText = result.Message ?? AppText.Get("SettingsHelperCopyRemoveFailed");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorText = ex.Message;
         }
         finally
         {

@@ -452,6 +452,15 @@
                 <!-- Aktionen -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsActionsTitle}" />
                 <ItemsControl ItemsSource="{Binding Actions}" ItemTemplate="{StaticResource SwitchCard}" />
+                <ui:Card Margin="0,4,0,4" Padding="14,10"
+                         Visibility="{Binding HelperCopyPresent, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:Text SettingsHelperCopyTitle}" FontWeight="SemiBold" />
+                        <TextBlock Text="{loc:Text SettingsHelperCopyText}" TextWrapping="Wrap" Margin="0,2,0,8"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <ui:Button Content="{loc:Text SettingsHelperCopyRemove}" Command="{Binding RemoveHelperCopyCommand}" />
+                    </StackPanel>
+                </ui:Card>
 
                 <!-- Wartung -->
                 <TextBlock Style="{StaticResource SectionTitle}" Text="{loc:Text SettingsLogsTitle}" />

@@ -34,15 +34,16 @@ function Start-ElevatedHelperBatch {
         [switch] $NoElevation,
         [System.Collections.IDictionary] $Control
     )
+    $resolved = Resolve-ElevatedHelperPath -NoElevation:$NoElevation -Control $Control
+    if ($resolved.ContainsKey('Status')) { return $resolved + @{ Done = 0 } }
+    $helper = $resolved.Path
     $batchNonce = [guid]::NewGuid().ToString('N')
     $batchPipe = "SoftwareInventory-$([guid]::NewGuid().ToString('N'))"
     $batchPlan = @{
         Steps = @($Steps); RestorePoint = $RestorePoint; RestorePointDescription = $RestorePointDescription
-        RestorePointType = $RestorePointType; Nonce = $batchNonce
+        RestorePointType = $RestorePointType; Nonce = $batchNonce; RemoveOtherHelperCopies = [bool] $resolved.IsCopy
     }
     $batchJson = $batchPlan | ConvertTo-Json -Compress -Depth 5
-    $helper = [System.IO.Path]::GetFullPath($script:ElevatedHelperPath)
-    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperFileMissing $helper); Done = 0 } }
     $argumentList = "--pipe $batchPipe"
     $summary = @{ Status = 'Completed'; Error = $null; RestorePoint = 'NotRequested'; RestorePointMessage = $null; Done = 0 }
 

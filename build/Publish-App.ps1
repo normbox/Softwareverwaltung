@@ -28,6 +28,12 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish fehlgeschlagen ($LASTEXITCODE).
 foreach ($required in 'Softwareverwaltung.exe', 'Modules\SoftwareInventory\SoftwareInventory.psd1', 'Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll', 'Modules\SoftwareInventory\lib\SoftwareInventory.Helper.exe', 'Modules\Microsoft.WinGet.Client') {
     if (-not (Test-Path -LiteralPath (Join-Path $output $required))) { throw "Im Ergebnis fehlt $required." }
 }
+# Im Release darf die Kopie des Helfers nur über die Signatur anerkannt werden (BuildInfo).
+if ($Configuration -eq 'Release') {
+    $native = Join-Path $output 'Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll'
+    $isDebug = pwsh -NoProfile -Command "Add-Type -Path '$native'; [SoftwareInventory.BuildInfo]::IsDebugBuild"
+    if ($isDebug -ne 'False') { throw "Die Native-DLL im Release-Paket ist kein Release-Build ($isDebug)." }
+}
 Copy-Item -LiteralPath (Join-Path $repo 'LICENSE'), (Join-Path $repo 'THIRD-PARTY-NOTICES.md') -Destination $output
 
 [xml] $csproj = Get-Content -LiteralPath $project -Raw

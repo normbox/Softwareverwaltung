@@ -156,6 +156,12 @@ public sealed record ScanDrive(string Drive, string? Label, long SizeGB, bool Is
         obj.Properties["Type"]?.Value?.ToString());
 }
 
+/// <summary>Ergebnis von Remove-HelperCopy: Removed, NotPresent, ElevationDenied oder Failed.</summary>
+public sealed record HelperCopyRemoval(string Result, string? Message)
+{
+    public bool IsRemoved => Result is "Removed" or "NotPresent";
+}
+
 /// <summary>Hinweis zu den Nutzungsbedingungen eines Dienstes aus Get-ServiceTermsNotice. Reine Information.</summary>
 public sealed record ServiceTermsNotice(string Service, string Name, string Terms, string? UsageHint, Uri? Url, string? General)
 {

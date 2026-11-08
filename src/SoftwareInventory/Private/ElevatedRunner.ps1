@@ -1,6 +1,7 @@
 # Start des Helfers und Rückweg des Ergebnisses über eine Named Pipe.
 #
 # Der Helfer ist eine eigene Exe (lib\SoftwareInventory.Helper.exe, Quelle src/SoftwareInventory.Helper).
+# Erhöht gestartet wird nach Möglichkeit die geschützte Kopie (HelperCopy.ps1).
 # Start-ElevatedHelper und Start-ElevatedHelperBatch sind die einzigen Stellen, die ihn starten.
 #
 # Schutz:
@@ -42,8 +43,10 @@ function New-ResultPipe {
 }
 
 function Test-HelperInWritableFolder {
-    # Liegt der Helfer dort, wo Programme ohne Adminrechte ihn austauschen könnten? Dann warnt die Bestätigung.
-    Test-UserWritablePath ([System.IO.Path]::GetFullPath($script:ElevatedHelperPath))
+    # Kann ein Programm ohne Adminrechte austauschen, was erhöht gestartet würde? Dann warnt die Bestätigung.
+    $source = [System.IO.Path]::GetFullPath($script:ElevatedHelperPath)
+    if (-not (Test-UserWritablePath $source)) { return $false }
+    -not (Test-HelperCopyTrusted -Path (Get-HelperCopyPath) -Source $source)
 }
 
 function Start-ElevatedProcess {
@@ -139,20 +142,25 @@ function Start-ElevatedHelper {
         [Parameter(Mandatory)] [hashtable] $HelperPlan,
         [int] $TimeoutSeconds = 3600,
         [switch] $NoElevation,
-        [System.Collections.IDictionary] $Control
+        [System.Collections.IDictionary] $Control,
+        # Nur für den Austausch der Kopie: genau diese Exe starten, ohne erneut auszuwählen.
+        [string] $HelperPath
     )
 
     if (Test-ActionCancelRequested $Control) { return @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) } }
+
+    $resolved = if ($HelperPath) { @{ Path = $HelperPath; IsCopy = $false } } else { Resolve-ElevatedHelperPath -NoElevation:$NoElevation -Control $Control }
+    if ($resolved.ContainsKey('Status')) { return $resolved }
+    $helper = $resolved.Path
 
     $nonce = [guid]::NewGuid().ToString('N')
     $pipeName = "SoftwareInventory-$([guid]::NewGuid().ToString('N'))"
     $data = @{} + $HelperPlan
     $data.Nonce = $nonce
     $data.TimeoutSeconds = $TimeoutSeconds
+    $data.RemoveOtherHelperCopies = [bool] $resolved.IsCopy
     $planJson = $data | ConvertTo-Json -Compress -Depth 4
 
-    $helper = [System.IO.Path]::GetFullPath($script:ElevatedHelperPath)
-    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperFileMissing $helper) } }
     $argumentList = "--pipe $pipeName"
 
     $server = New-ResultPipe -Name $pipeName -AllowCurrentUser:$NoElevation -Duplex

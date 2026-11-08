@@ -5,6 +5,11 @@ BeforeAll {
 }
 
 Describe 'Start-ElevatedHelper' {
+    BeforeEach {
+        # Keine echte Kopie und keine UAC-Abfrage in den Tests.
+        Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
+    }
+
     It 'führt den Helfer aus und liefert Exit-Code und Ausgabe über die Pipe' {
         $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
             Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false }

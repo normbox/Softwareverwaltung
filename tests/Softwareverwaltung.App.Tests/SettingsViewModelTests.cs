@@ -544,6 +544,14 @@ public sealed class SettingsViewModelTests
             return Task.FromResult(Status(service));
         }
 
+        public bool HelperCopyPresent { get; set; }
+
+        public HelperCopyRemoval HelperCopyResult { get; set; } = new("Removed", "entfernt");
+
+        public Task<bool> IsHelperCopyPresentAsync(CancellationToken cancellationToken = default) => Task.FromResult(HelperCopyPresent);
+
+        public Task<HelperCopyRemoval> RemoveHelperCopyAsync(CancellationToken cancellationToken = default) => Task.FromResult(HelperCopyResult);
+
         public Task<CredentialStatus> RemoveCredentialAsync(string service, CancellationToken cancellationToken = default)
         {
             Calls.Add("RemoveCredential:" + service);
