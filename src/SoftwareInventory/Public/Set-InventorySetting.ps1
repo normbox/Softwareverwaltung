@@ -15,7 +15,7 @@ function Set-InventorySetting {
     .PARAMETER Enable
         Einzuschaltende Bereiche: RegistryMachine, RegistryUser, Winget, Appx,
         UserAssist, Process, Autostart, ScheduledTask sowie die externen Dienste
-        WingetSearch, GitHub, NVD, CIRCL, KEV, EPSS. Externe Dienste schaltet keine Vorlage ein.
+        WingetSearch, GitHub, NVD, CIRCL, KEV, EPSS, WingetManifest. Externe Dienste schaltet keine Vorlage ein.
         RestorePoint: vor jedem Aktualisieren/Deinstallieren einen Wiederherstellungspunkt
         anlegen (eigene UAC-Abfrage). Keine Vorlage schaltet ihn ein.
     .PARAMETER Disable
@@ -102,11 +102,11 @@ function Set-InventorySetting {
         [string] $Preset,
 
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
-            'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'RestorePoint')]
+            'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetManifest', 'RestorePoint')]
         [string[]] $Enable = @(),
 
         [ValidateSet('RegistryMachine', 'RegistryUser', 'Winget', 'Appx', 'UserAssist', 'Process', 'Autostart', 'ScheduledTask',
-            'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'RestorePoint')]
+            'WingetSearch', 'GitHub', 'NVD', 'CIRCL', 'KEV', 'EPSS', 'WingetManifest', 'RestorePoint')]
         [string[]] $Disable = @(),
 
         [ValidateSet('None', 'Drives', 'Folders')]

@@ -392,6 +392,7 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ErrorInternalResultCount                = 'Interner Fehler: {0} Programme, aber {1} Update- und {2} Schwachstellen-Ergebnisse.'
     ErrorEmptySecret                        = 'Der Schlüssel ist leer.'
     ErrorSecretTooLong                      = 'Der Schlüssel ist zu lang (höchstens {0} Zeichen).'
+    CatalogVendorUpdateUrl                  = 'VendorUpdateUrl muss mit https:// beginnen: {0}'
     ServiceErrorDisabled                    = 'Dienst {0} ist nicht aktiviert.'
     ServiceErrorNetwork                     = '{0} nicht erreichbar: {1}'
     ServiceErrorRateLimit                   = '{0}-Anfragelimit erreicht (HTTP {1}).'
@@ -455,6 +456,8 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
     ServiceTermsKEVTerms                    = 'Gemeinfrei (CC0 1.0), auch kommerziell nutzbar. Logo und Siegel der CISA dürfen nicht verwendet werden.'
     ServiceTermsEPSSName                    = 'Exploit Prediction Scoring System (FIRST)'
     ServiceTermsEPSSTerms                   = 'Kostenlos und ohne Anmeldung. FIRST bittet um eine Quellenangabe, wenn EPSS-Daten in Produkten oder Veröffentlichungen verwendet werden.'
+    ServiceTermsWingetManifestName          = 'winget-Manifeste (GitHub)'
+    ServiceTermsWingetManifestTerms         = 'Die Paketbeschreibungen von winget liegen öffentlich im Repository microsoft/winget-pkgs auf GitHub. Es gelten die GitHub-Nutzungsbedingungen. Abgerufen wird nur beim Bestätigen eines Updates, ohne Schlüssel.'
     ServiceTermsGeneralPrivate              = 'Alle Dienste sind für die private Nutzung kostenlos. Sie bleiben aus, bis Sie sie unter „Einstellungen“ einzeln einschalten.'
     ServiceTermsGeneralCompany              = 'Die Dienste sind auch für Firmen kostenlos. Sie senden Programm-, Hersteller- und Versionsangaben ins Internet. Prüfen Sie deshalb vor dem Einschalten Ihre Richtlinien zu IT-Sicherheit und Datenschutz. Alle Dienste bleiben aus, bis Sie sie unter „Einstellungen“ einzeln einschalten.'
 

@@ -76,6 +76,43 @@ Describe 'Update-Software und Uninstall-Software' {
         }
     }
 
+    Context 'Vorab-Deinstallation durch winget' {
+        BeforeEach {
+            $script:eaRecord = New-TestRecord @{ RegistryKey = "$Machine\$Guid"; WingetId = 'ElectronicArts.EADesktop'; WingetSource = 'winget' }
+        }
+
+        It 'warnt laut Katalog auch ohne Abruf und nennt den Hersteller' {
+            Mock -ModuleName SoftwareInventory Invoke-ServiceRequest { throw 'darf nicht aufgerufen werden' }
+            $r = $script:eaRecord | Update-Software -WhatIf
+            $r.Result | Should -Be 'Planned'
+            $r.UninstallsPrevious | Should -BeTrue
+            $r.VendorUrl | Should -Be 'https://www.ea.com/ea-app'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 0
+        }
+
+        It 'nennt die Warnung auch in der Warteschlange' {
+            $entry = @($script:eaRecord) | Get-UpdateQueuePlan
+            $entry.UninstallsPrevious | Should -BeTrue
+            $entry.VendorUrl | Should -Be 'https://www.ea.com/ea-app'
+        }
+
+        It 'lässt die Aktion zu und zeigt den Link nach Erfolg nicht mehr' {
+            Set-HelperResult @{ ExitCode = 0 } { Set-ItemProperty "$Machine\$Guid" -Name DisplayVersion -Value '2.2.0' }
+            $r = $script:eaRecord | Update-Software -Confirm:$false
+            $r.Result | Should -Be 'Succeeded'
+            $r.UninstallsPrevious | Should -BeTrue
+            $r.VendorUrl | Should -BeNullOrEmpty
+        }
+
+        It 'warnt bei Paketen ohne Katalogeintrag nicht, solange der Dienst aus ist' {
+            ($wingetRecord | Update-Software -WhatIf).UninstallsPrevious | Should -BeFalse
+        }
+
+        It 'warnt nicht beim Deinstallieren' {
+            ($script:eaRecord | Uninstall-Software -WhatIf).UninstallsPrevious | Should -BeFalse
+        }
+    }
+
     Context 'Nachprüfung nach dem Treffer' {
         BeforeEach {
             Set-HelperResult @{ ExitCode = 0 } { Set-ItemProperty "$Machine\$Guid" -Name DisplayVersion -Value '2.2.0' }

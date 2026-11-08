@@ -119,6 +119,7 @@ function New-ActionResult {
         CommandLine         = $Plan.CommandLine
         Elevated            = $Plan.Elevated
         HelperInWritableFolder = [bool] (Get-RecordValue $Plan 'HelperInWritableFolder')
+        UninstallsPrevious  = [bool] (Get-RecordValue $Plan 'UninstallsPrevious')
         Result              = $Plan.Result
         ExitCode            = $null
         ExitCodeHex         = $null
@@ -301,6 +302,8 @@ function Complete-ActionResult {
             default { $result.Result = 'Failed'; $result.Message = $outcome.Message }
         }
     }
+    # Der Herstellerlink gehört zur Warnung vor dem Update; nach einem Erfolg stört er nur.
+    if ($result.Result -in 'Succeeded', 'SucceededRebootRequired') { $result.VendorUrl = $null }
     if ($result.Result -in 'Failed', 'NotVerified', 'Timeout' -and $result.NextMethod) {
         $result.Message = New-InventoryMessage WithNextMethod $result.Message, $result.NextMethod
     }

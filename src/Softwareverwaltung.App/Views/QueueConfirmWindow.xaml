@@ -23,6 +23,10 @@
                 </TextBlock>
                 <TextBlock Text="{loc:Text QueueUnconfirmed}" Foreground="{DynamicResource SystemFillColorCautionBrush}" TextWrapping="Wrap"
                            Visibility="{Binding Unconfirmed, Converter={StaticResource BoolToVisibility}}" />
+                <TextBlock Text="{loc:Text QueueUninstallsPreviousWarning}" Foreground="{DynamicResource SystemFillColorCautionBrush}" TextWrapping="Wrap"
+                           Visibility="{Binding UninstallsPrevious, Converter={StaticResource BoolToVisibility}}" />
+                <ui:HyperlinkButton Content="{loc:Text ActionVendorPage}" NavigateUri="{Binding UninstallsPreviousUrl}" Padding="0" HorizontalAlignment="Left"
+                                    Visibility="{Binding UninstallsPreviousUrl, Converter={StaticResource NullToVisibility}}" />
                 <TextBlock Text="{Binding CommandLine}" FontFamily="Cascadia Mono, Consolas" TextWrapping="Wrap"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                            Visibility="{Binding Executable, Converter={StaticResource BoolToVisibility}}" />

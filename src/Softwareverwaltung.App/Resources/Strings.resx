@@ -778,6 +778,18 @@
   <data name="ActionRecheckLater" xml:space="preserve">
     <value>Erneut prüfen</value>
   </data>
+  <data name="ConfirmUninstallsPreviousWarning" xml:space="preserve">
+    <value>Achtung: Bei diesem Paket entfernt winget vor dem Update die alte Version. Läuft das im Hintergrund weiter, kann es das Programm beschädigen. Besser ist das Update des Herstellers.</value>
+  </data>
+  <data name="QueueUninstallsPreviousWarning" xml:space="preserve">
+    <value>Achtung: winget entfernt vorher die alte Version. Besser ist das Update des Herstellers.</value>
+  </data>
+  <data name="SettingsServiceWingetManifest" xml:space="preserve">
+    <value>winget-Manifeste (GitHub)</value>
+  </data>
+  <data name="SettingsServiceWingetManifestText" xml:space="preserve">
+    <value>Sendet beim Bestätigen eines Updates Paket-ID und Zielversion an GitHub. So warnt die App bei Paketen, bei denen winget vorher die alte Version entfernt.</value>
+  </data>
   <data name="StatusActionCancelling" xml:space="preserve">
     <value>Wird abgebrochen …</value>
   </data>

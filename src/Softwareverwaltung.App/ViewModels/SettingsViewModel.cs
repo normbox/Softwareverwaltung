@@ -103,6 +103,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             new("CIRCL", AppText.Get("SettingsServiceCIRCL"), AppText.Get("SettingsServiceCIRCLText")),
             new("KEV", AppText.Get("SettingsServiceKEV"), AppText.Get("SettingsServiceKEVText")),
             new("EPSS", AppText.Get("SettingsServiceEPSS"), AppText.Get("SettingsServiceEPSSText")),
+            new("WingetManifest", AppText.Get("SettingsServiceWingetManifest"), AppText.Get("SettingsServiceWingetManifestText")),
         ];
         Actions =
         [

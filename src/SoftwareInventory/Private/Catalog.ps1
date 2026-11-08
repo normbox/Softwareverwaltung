@@ -59,6 +59,8 @@ function Test-CatalogEntry {
         $tag = Get-CatalogValue $Entry.GitHub 'TagPattern'
         if ($tag -and $tag -notmatch '\(\?<version>') { (Get-LocalizedString 'CatalogTagPatternGroup') }
     }
+    $vendorUpdateUrl = Get-CatalogValue $Entry 'VendorUpdateUrl'
+    if ($vendorUpdateUrl -and $vendorUpdateUrl -notmatch '^https://') { (Get-LocalizedString 'CatalogVendorUpdateUrl' $vendorUpdateUrl) }
     # CPE ohne Version: cpe:2.3:a:<hersteller>:<produkt> (Sonderzeichen mit \ maskiert, z. B. notepad\+\+)
     foreach ($cpe in @(Get-CatalogValue $Entry 'Cpe')) {
         if (-not $cpe) { continue }

@@ -46,6 +46,7 @@ function Get-UpdateQueuePlan {
                 Executable       = -not $plan.Result
                 Elevated         = [bool] $plan.Elevated
                 HelperInWritableFolder = [bool] $plan.HelperInWritableFolder
+                UninstallsPrevious = [bool] $plan.UninstallsPrevious
                 Method           = $plan.Method
                 CommandLine      = $plan.CommandLine
                 Result           = $plan.Result     # Code, wenn nicht ausführbar (z. B. ManualUpdateRequired)

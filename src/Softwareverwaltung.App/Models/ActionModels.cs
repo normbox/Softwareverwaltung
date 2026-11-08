@@ -23,6 +23,8 @@ public sealed record ActionOutcome
     public bool Elevated { get; init; }
     /// <summary>Der Helfer liegt in einem Ordner, den Programme ohne Adminrechte ändern können.</summary>
     public bool HelperInWritableFolder { get; init; }
+    /// <summary>winget entfernt bei diesem Update vorher die alte Version.</summary>
+    public bool UninstallsPrevious { get; init; }
     public required string Result { get; init; }
     public string? Message { get; init; }
     /// <summary>Code der Meldung, damit die Anzeige nicht am Text hängt.</summary>
@@ -31,6 +33,8 @@ public sealed record ActionOutcome
     public string? RestorePointMessage { get; init; }
     public string? NextMethod { get; init; }
     public Uri? VendorUrl { get; init; }
+    /// <summary>Link zum Hersteller nur zusammen mit der Warnung.</summary>
+    public Uri? UninstallsPreviousUrl => UninstallsPrevious ? VendorUrl : null;
     public string? ExitCodeHex { get; init; }
     public string? Output { get; init; }
 
@@ -73,6 +77,7 @@ public sealed record ActionOutcome
             CommandLine = Text(obj, "CommandLine"),
             Elevated = obj.Properties["Elevated"]?.Value is true,
             HelperInWritableFolder = obj.Properties["HelperInWritableFolder"]?.Value is true,
+            UninstallsPrevious = obj.Properties["UninstallsPrevious"]?.Value is true,
             Result = Text(obj, "Result") ?? "Failed",
             Message = SoftwareItem.MessageText(obj.Properties["Message"]?.Value),
             MessageCode = obj.Properties["Message"]?.Value is PSObject message ? Text(message, "Code") : null,
