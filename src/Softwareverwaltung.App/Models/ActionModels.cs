@@ -21,6 +21,8 @@ public sealed record ActionOutcome
     public string? Method { get; init; }
     public string? CommandLine { get; init; }
     public bool Elevated { get; init; }
+    /// <summary>Der Helfer liegt in einem Ordner, den Programme ohne Adminrechte ändern können.</summary>
+    public bool HelperInWritableFolder { get; init; }
     public required string Result { get; init; }
     public string? Message { get; init; }
     public string? RestorePoint { get; init; }
@@ -64,6 +66,7 @@ public sealed record ActionOutcome
             Method = Text(obj, "Method"),
             CommandLine = Text(obj, "CommandLine"),
             Elevated = obj.Properties["Elevated"]?.Value is true,
+            HelperInWritableFolder = obj.Properties["HelperInWritableFolder"]?.Value is true,
             Result = Text(obj, "Result") ?? "Failed",
             Message = SoftwareItem.MessageText(obj.Properties["Message"]?.Value),
             RestorePoint = Text(obj, "RestorePoint"),

@@ -19,6 +19,9 @@ public sealed record QueueEntry(
     /// <summary>Code, wenn der Eintrag nicht ausführbar ist (z. B. StoreAgreementRequired).</summary>
     public string? Result { get; init; }
 
+    /// <summary>Der Helfer liegt in einem Ordner, den Programme ohne Adminrechte ändern können.</summary>
+    public bool HelperInWritableFolder { get; init; }
+
     public string VersionText => AppText.Format("QueueVersions", InstalledVersion ?? "?", LatestVersion ?? "?");
 
     public static QueueEntry FromPs(PSObject obj) => new(
@@ -34,6 +37,7 @@ public sealed record QueueEntry(
         obj)
     {
         Result = ActionOutcome.Text(obj, "Result"),
+        HelperInWritableFolder = obj.Properties["HelperInWritableFolder"]?.Value is true,
     };
 }
 
@@ -44,6 +48,7 @@ public sealed class QueueConfirmation(IReadOnlyList<QueueEntry> entries)
     public IReadOnlyList<QueueEntry> Normal { get; } = entries.Where(e => e.Executable && !e.Elevated).ToList();
     public IReadOnlyList<QueueEntry> NotExecutable { get; } = entries.Where(e => !e.Executable).ToList();
     public bool CanStart => Elevated.Count + Normal.Count > 0;
+    public bool ShowHelperWarning => Elevated.Any(e => e.HelperInWritableFolder);
     public string SummaryText => AppText.Format("QueueConfirmSummary", Elevated.Count + Normal.Count, NotExecutable.Count);
 }
 

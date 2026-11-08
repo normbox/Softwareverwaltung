@@ -760,6 +760,9 @@
   <data name="StatusActionRunning" xml:space="preserve">
     <value>{0}: {1} läuft …</value>
   </data>
+  <data name="ConfirmHelperWritableWarning" xml:space="preserve">
+    <value>Achtung: Der Helfer für Administratorrechte liegt in einem Ordner, den Programme ohne Adminrechte ändern können. Führen Sie die Aktion nur aus, wenn Sie diesem Ordner vertrauen. Der unterstützte Weg ist die Installation nach „Programme“.</value>
+  </data>
   <data name="StatusActionWaitingUac" xml:space="preserve">
     <value>{0}: {1} wartet auf Bestätigung der Benutzerkontensteuerung ({2}).</value>
   </data>

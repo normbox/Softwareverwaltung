@@ -194,7 +194,7 @@ public sealed class PowerShellHost : IPowerShellHost
 
     private static Task SetModulePathAsync(Runspace runspace, string modulePath) => Task.Run(() =>
     {
-        // Gilt für die ganze App (Prozessumgebung), damit auch der erhöhte Helfer (powershell.exe) ihn erbt.
+        // Gilt für die ganze App (Prozessumgebung).
         using var ps = PowerShell.Create();
         ps.Runspace = runspace;
         ps.AddScript("param($Path) $env:PSModulePath = $Path").AddParameter("Path", modulePath);
