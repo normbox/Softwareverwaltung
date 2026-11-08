@@ -38,6 +38,18 @@ Pakete werden nur über die exakte winget-ID aus dem Scan angesprochen, nie übe
 
 Befehle aus der Registry werden ohne Shell gestartet, nie über `cmd /c` oder `Invoke-Expression`. Der Programmpfad wird herausgelöst, in Anführungszeichen oder als längster vorhandener `.exe`-Präfix. Der Rest bleibt unverändert als Argumentzeichenfolge. Programmnamen ohne Ordner (z. B. `MsiExec.exe`) werden nur in System32 gesucht. Interpreter (`cmd`, `powershell`, `pwsh`, `wscript`, `cscript`, `mshta`, `rundll32`, `regsvr32`, …) werden abgelehnt (`Unsupported`).
 
+## Geschützte Kopie des Helfers
+
+Liegt die App in einem für Benutzer beschreibbaren Ordner (ZIP, Debug-Build), startet sie den Helfer erhöht nicht von dort, sondern aus `Program Files\Softwareverwaltung\Helper\<Version>\`.
+
+- **Anlegen:** beim ersten erhöhten Lauf mit `robocopy.exe` aus `System32`, ohne Fenster und mit `System32` als Arbeitsordner (eigene UAC-Abfrage). Die Exe aus dem beschreibbaren Ordner läuft dabei nicht erhöht.
+- **Prüfen:** Immer die Kopie am Zielort, vor jedem Start: Pfad, Rechte von Datei und Ordnern, im Release ausschließlich die Authenticode-Signatur. Nur Debug-Builds vergleichen stattdessen den Hash mit der Quelle (`BuildInfo.IsDebugBuild`; `build/Publish-App.ps1` bricht ab, wenn die DLL im Release-Paket kein Release-Build ist).
+- **Austauschen:** Bei einer neuen Version startet das Modul die vorhandene geschützte Exe. Sie übernimmt die neue Datei nur, wenn beide gültig signiert sind und denselben Herausgeber haben, und prüft die fertige Kopie erneut. Ältere Versionsordner entfernt die neue Exe beim nächsten Lauf; neuere bleiben liegen.
+- **Fallback:** Lässt sich keine anerkannte Kopie herstellen, läuft der Helfer aus dem App-Ordner, und die Bestätigung warnt. Eine vorhandene, nicht anerkannte Kopie wird nicht überschrieben. Unsignierte Release-Pakete legen keine Kopie an.
+- **Entfernen:** „Kopie entfernen“ in den Einstellungen (`Remove-HelperCopy`) löscht den ganzen Ordner `Helper`, per `cmd.exe /d` aus `System32`, weil die Exe ihren eigenen Ordner nicht löschen kann.
+
+Anlegen, Austausch und Entfernen stehen im Aktionsprotokoll. Bewusste Grenzen: Die erste Kopie ist Vertrauen beim ersten Mal, die Warnung gilt dort besonders. `COR_PROFILER` über `HKCU\Environment` wirkt auf jede .NET-Framework-Exe, auch am geschützten Ort.
+
 ## Nachprüfung bei Updates
 
 winget meldet Erfolg, sobald seine Programme beendet sind. Installer können im Hintergrund weiterlaufen. Bei Paketen mit `UpgradeBehavior: uninstallPrevious` startet winget erst die Deinstallation und dann das neue Installationsprogramm. Kehrt die Deinstallation früh zurück, kann sie das frisch installierte Programm noch entfernen.

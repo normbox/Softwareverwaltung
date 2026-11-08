@@ -50,6 +50,8 @@
         'Update-Software'
         'Uninstall-Software'
         'Install-WingetPackageManager'
+        'Get-HelperCopyStatus'
+        'Remove-HelperCopy'
         'Find-InstalledSoftware'
         'Test-WingetAvailability'
         'Set-ServiceCredential'

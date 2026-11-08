@@ -51,10 +51,18 @@ namespace SoftwareInventory
         private const uint SeeMaskNoCloseProcess = 0x00000040;
         private const uint SeeMaskNoAsync = 0x00000100;
         private const uint SeeMaskFlagNoUi = 0x00000400;
+        private const int SwHide = 0;
         private const int SwShowNormal = 1;
 
         /// <summary>Kehrt zurück, wenn die Abfrage beantwortet ist. Ablehnen ergibt Win32Exception 1223.</summary>
-        public static ElevatedProcess Start(string file, string arguments, IntPtr owner)
+        public static ElevatedProcess Start(string file, string arguments, IntPtr owner) =>
+            Run(file, arguments, owner, null, SwShowNormal);
+
+        /// <summary>Für Werkzeuge aus System32: ohne Fenster und mit System32 als Arbeitsordner, damit nichts aus einem anderen Ordner geladen wird.</summary>
+        public static ElevatedProcess StartTool(string file, string arguments, IntPtr owner, string directory) =>
+            Run(file, arguments, owner, directory, SwHide);
+
+        private static ElevatedProcess Run(string file, string arguments, IntPtr owner, string? directory, int show)
         {
             ElevatedProcess? result = null;
             Exception? failure = null;
@@ -63,7 +71,7 @@ namespace SoftwareInventory
             {
                 try
                 {
-                    result = StartCore(file, arguments, owner);
+                    result = StartCore(file, arguments, owner, directory, show);
                 }
                 catch (Exception ex)
                 {
@@ -81,7 +89,7 @@ namespace SoftwareInventory
             return result!;
         }
 
-        private static ElevatedProcess StartCore(string file, string arguments, IntPtr owner)
+        private static ElevatedProcess StartCore(string file, string arguments, IntPtr owner, string? directory, int show)
         {
             var info = new ShellExecuteInfo
             {
@@ -91,7 +99,8 @@ namespace SoftwareInventory
                 lpVerb = "runas",
                 lpFile = file,
                 lpParameters = arguments,
-                nShow = SwShowNormal,
+                lpDirectory = directory!,
+                nShow = show,
             };
             if (!ShellExecuteExW(ref info))
             {

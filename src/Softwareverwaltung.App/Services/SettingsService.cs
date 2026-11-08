@@ -33,6 +33,11 @@ public interface ISettingsService
     Task<CredentialStatus> SetCredentialAsync(string service, SecureString secret, CancellationToken cancellationToken = default);
 
     Task<CredentialStatus> RemoveCredentialAsync(string service, CancellationToken cancellationToken = default);
+
+    Task<bool> IsHelperCopyPresentAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Entfernt die geschützte Kopie des Helfers (UAC-Abfrage).</summary>
+    Task<HelperCopyRemoval> RemoveHelperCopyAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Einstellungen und API-Schlüssel über die Modulfunktionen. Fehler des Moduls werden zu Ausnahmen.</summary>
@@ -70,6 +75,15 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
         }
         AddAdvisorParameters(command, settings, previous);
         return AppSettings.FromPs(await InvokeSingleAsync(command, cancellationToken).ConfigureAwait(false));
+    }
+
+    public async Task<bool> IsHelperCopyPresentAsync(CancellationToken cancellationToken = default) =>
+        (await InvokeSingleAsync(new PSCommand().AddCommand("Get-HelperCopyStatus"), cancellationToken).ConfigureAwait(false)).Properties["Present"]?.Value is true;
+
+    public async Task<HelperCopyRemoval> RemoveHelperCopyAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await InvokeSingleAsync(new PSCommand().AddCommand("Remove-HelperCopy").AddParameter("Confirm", false), cancellationToken).ConfigureAwait(false);
+        return new HelperCopyRemoval(ActionOutcome.Text(result, "Result") ?? "Failed", SoftwareItem.MessageText(result.Properties["Message"]?.Value));
     }
 
     public async Task<IReadOnlyList<AdvisorPresetInfo>> GetAdvisorPresetsAsync(CancellationToken cancellationToken = default) =>

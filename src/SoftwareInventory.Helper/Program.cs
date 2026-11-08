@@ -6,6 +6,8 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
@@ -178,6 +180,80 @@ namespace SoftwareInventory.Helper
         }
     }
 
+    /// <summary>Authenticode-Prüfung einer Datei; liefert den Herausgeber oder null, wenn die Signatur nicht gültig ist.</summary>
+    internal static class SignatureCheck
+    {
+        private static readonly Guid GenericVerifyV2 = new Guid("00AAC56B-CD44-11d0-8CC2-00C04FC295EE");
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct FileInfoData
+        {
+            public int Size;
+            public string FilePath;
+            public IntPtr File;
+            public IntPtr KnownSubject;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct TrustData
+        {
+            public int Size;
+            public IntPtr PolicyCallback;
+            public IntPtr SipClient;
+            public int UiChoice;
+            public int RevocationChecks;
+            public int UnionChoice;
+            public IntPtr File;
+            public int StateAction;
+            public IntPtr StateData;
+            public IntPtr UrlReference;
+            public int ProviderFlags;
+            public int UiContext;
+            public IntPtr SignatureSettings;
+        }
+
+        [DllImport("wintrust.dll", CharSet = CharSet.Unicode)]
+        private static extern int WinVerifyTrust(IntPtr window, [MarshalAs(UnmanagedType.LPStruct)] Guid action, ref TrustData data);
+
+        private static bool IsTrusted(string path)
+        {
+            const int UiNone = 2;
+            const int ChoiceFile = 1;
+            var file = new FileInfoData { Size = Marshal.SizeOf<FileInfoData>(), FilePath = path };
+            var pointer = Marshal.AllocHGlobal(file.Size);
+            try
+            {
+                Marshal.StructureToPtr(file, pointer, false);
+                var data = new TrustData { Size = Marshal.SizeOf<TrustData>(), UiChoice = UiNone, UnionChoice = ChoiceFile, File = pointer };
+                return WinVerifyTrust(new IntPtr(-1), GenericVerifyV2, ref data) == 0;
+            }
+            finally
+            {
+                Marshal.DestroyStructure<FileInfoData>(pointer);
+                Marshal.FreeHGlobal(pointer);
+            }
+        }
+
+        public static string? Publisher(string path)
+        {
+            try
+            {
+                if (!File.Exists(path) || !IsTrusted(path))
+                {
+                    return null;
+                }
+                using (var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path)))
+                {
+                    return certificate.Subject;
+                }
+            }
+            catch (CryptographicException)
+            {
+                return null;
+            }
+        }
+    }
+
     internal sealed class HelperRun
     {
         private readonly string _pipeName;
@@ -205,6 +281,10 @@ namespace SoftwareInventory.Helper
                 {
                     return;
                 }
+                if (Flag(plan, "RemoveOtherHelperCopies"))
+                {
+                    RemoveOlderCopies();
+                }
                 if (plan.TryGetValue("Steps", out var steps) && steps is object[] { Length: > 0 } list)
                 {
                     RunBatch(channel, plan, list);
@@ -222,6 +302,12 @@ namespace SoftwareInventory.Helper
             var result = NewResult(plan, "Result");
             try
             {
+                if (Text(plan, "Operation") == "ReplaceHelperCopy")
+                {
+                    ReplaceHelperCopy(plan, result);
+                    channel.Write(result);
+                    return;
+                }
                 if (Flag(plan, "RestorePoint"))
                 {
                     AddRestorePoint(result, plan);
@@ -279,6 +365,77 @@ namespace SoftwareInventory.Helper
                 index++;
             }
             channel.Write(new Dictionary<string, object?> { ["Kind"] = "End", ["Nonce"] = Text(plan, "Nonce") });
+        }
+
+        private static string OwnPath()
+        {
+            using (var process = Process.GetCurrentProcess())
+            {
+                return process.MainModule!.FileName!;
+            }
+        }
+
+        /// <summary>
+        /// Neue Version in einen eigenen Ordner neben diese Exe legen. Die Quelle liegt im beschreibbaren App-Ordner,
+        /// deshalb zählt die Prüfung der fertigen Kopie unter Program Files, nicht die der Quelle.
+        /// </summary>
+        private void ReplaceHelperCopy(Dictionary<string, object?> plan, Dictionary<string, object?> result)
+        {
+            var own = OwnPath();
+            var source = Text(plan, "SourcePath");
+            var version = Text(plan, "TargetVersion");
+            var ownPublisher = SignatureCheck.Publisher(own);
+            var problem = HelperCopyRules.CheckReplace(own, _paths.ProgramFiles, source!, version!, ownPublisher!, SignatureCheck.Publisher(source!)!);
+            if (problem is not null)
+            {
+                result["ErrorCode"] = problem.Code;
+                result["ErrorArgs"] = problem.Args;
+                return;
+            }
+            var folder = Path.Combine(HelperCopyRules.CopyRoot(own, _paths.ProgramFiles), version!);
+            Directory.CreateDirectory(folder);
+            var target = Path.Combine(folder, HelperCopyRules.FileName);
+            var temporary = target + ".tmp";
+            File.Copy(source!, temporary, true);
+            if (SignatureCheck.Publisher(temporary) != ownPublisher)
+            {
+                File.Delete(temporary);
+                SetError(result, "HelperCopyUntrusted");
+                return;
+            }
+            File.Delete(target);
+            File.Move(temporary, target);
+            result["Replaced"] = true;
+        }
+
+        /// <summary>Räumt nach einem Austausch auf; der alte Ordner war belegt, solange die alte Exe lief.</summary>
+        private void RemoveOlderCopies()
+        {
+            if (!_elevated)
+            {
+                return;
+            }
+            var own = OwnPath();
+            var root = HelperCopyRules.CopyRoot(own, _paths.ProgramFiles);
+            if (root is null)
+            {
+                return;
+            }
+            foreach (var directory in HelperCopyRules.OlderSiblings(Path.GetFileName(Path.GetDirectoryName(own)), Directory.GetDirectories(root)))
+            {
+                try
+                {
+                    Directory.Delete(directory, true);
+                }
+                catch (IOException)
+                {
+                    // Aufräumen ist eine Zugabe; beim nächsten Lauf erneut.
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Ebenso.
+                }
+            }
         }
 
         private void RunChecked(HelperChannel channel, Dictionary<string, object?> plan, string logId, Dictionary<string, object?> result)

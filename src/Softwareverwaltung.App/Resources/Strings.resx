@@ -790,6 +790,21 @@
   <data name="SettingsServiceWingetManifestText" xml:space="preserve">
     <value>Sendet beim Bestätigen eines Updates Paket-ID und Zielversion an GitHub. So warnt die App bei Paketen, bei denen winget vorher die alte Version entfernt.</value>
   </data>
+  <data name="SettingsHelperCopyTitle" xml:space="preserve">
+    <value>Geschützte Kopie des Helfers</value>
+  </data>
+  <data name="SettingsHelperCopyText" xml:space="preserve">
+    <value>Liegt unter „Programme“, damit andere Programme den Helfer für Administratorrechte nicht austauschen können. Beim nächsten Update legt die App sie bei Bedarf wieder an.</value>
+  </data>
+  <data name="SettingsHelperCopyRemove" xml:space="preserve">
+    <value>Kopie entfernen</value>
+  </data>
+  <data name="SettingsHelperCopyRemoved" xml:space="preserve">
+    <value>Die Kopie wurde entfernt.</value>
+  </data>
+  <data name="SettingsHelperCopyRemoveFailed" xml:space="preserve">
+    <value>Die Kopie konnte nicht entfernt werden.</value>
+  </data>
   <data name="StatusActionCancelling" xml:space="preserve">
     <value>Wird abgebrochen …</value>
   </data>
