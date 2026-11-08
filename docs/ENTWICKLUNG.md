@@ -8,7 +8,7 @@ pwsh -c "Install-PSResource Pester,PSScriptAnalyzer,Microsoft.WinGet.Client -Sco
 winget install Microsoft.DotNet.SDK.10                    # ab Etappe 3
 ```
 
-Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.PowerShell.SDK` einbettet). Windows PowerShell 5.1 wird nicht unterstützt. Einzige Ausnahme ist der erhöhte Helfer `src/SoftwareInventory/Elevated/ElevatedHelper.ps1` (siehe [AKTIONEN.md](AKTIONEN.md)). Er läuft unter 5.1 und unter 7, nutzt nur Sprachmittel von 5.1 und ist als UTF-8 **mit BOM** gespeichert, damit 5.1 Umlaute richtig liest. Dasselbe gilt für `tests/Sandbox/*.ps1`.
+Das Modul zielt auf PowerShell 7 (die Engine, die die App über `Microsoft.PowerShell.SDK` einbettet). Windows PowerShell 5.1 wird nicht unterstützt. Ausnahme sind `tests/Sandbox/*.ps1`: Sie laufen unter 5.1, nutzen nur deren Sprachmittel und sind als UTF-8 **mit BOM** gespeichert. Der Helfer für Administratorrechte ist eine eigene Exe für .NET Framework 4.7.2 (`src/SoftwareInventory.Helper`, siehe [AKTIONEN.md](AKTIONEN.md)). `dotnet build src/SoftwareInventory.Native` baut ihn mit und legt ihn nach `src/SoftwareInventory/lib`.
 
 ## Tests
 
@@ -22,7 +22,7 @@ pwsh -c "Invoke-ScriptAnalyzer ./src/SoftwareInventory -Recurse -Settings ./PSSc
 .\tests\Sandbox\Start-ActionSandbox.ps1                  # Aktualisieren/Deinstallieren echt testen, nur in Windows Sandbox
 ```
 
-Die Unit-Tests führen nie echte Installationen, Updates oder Deinstallationen aus; winget, msiexec, Registry, Appx, UAC und CIM werden ersetzt. Echt gestartet wird nur der Helfer unter `powershell.exe` 5.1, ohne Adminrechte und mit harmlosen Programmen (`where.exe`, `timeout.exe`).
+Die Unit-Tests führen nie echte Installationen, Updates oder Deinstallationen aus; winget, msiexec, Registry, Appx, UAC und CIM werden ersetzt. Echt gestartet wird nur der Helfer, ohne Adminrechte und mit harmlosen Programmen (`where.exe`, `timeout.exe`).
 
 ## Texte und Meldungen
 

@@ -51,7 +51,7 @@ namespace SoftwareInventory
         private const uint SeeMaskNoCloseProcess = 0x00000040;
         private const uint SeeMaskNoAsync = 0x00000100;
         private const uint SeeMaskFlagNoUi = 0x00000400;
-        private const int SwHide = 0;
+        private const int SwShowNormal = 1;
 
         /// <summary>Kehrt zurück, wenn die Abfrage beantwortet ist. Ablehnen ergibt Win32Exception 1223.</summary>
         public static ElevatedProcess Start(string file, string arguments, IntPtr owner)
@@ -91,7 +91,7 @@ namespace SoftwareInventory
                 lpVerb = "runas",
                 lpFile = file,
                 lpParameters = arguments,
-                nShow = SwHide,
+                nShow = SwShowNormal,
             };
             if (!ShellExecuteExW(ref info))
             {

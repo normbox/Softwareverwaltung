@@ -36,13 +36,14 @@ Diese werden nicht verteilt; ihre Lizenz betrifft das Release nicht.
 | PSScriptAnalyzer | statische Prüfung | MIT |
 | .NET SDK 10 | Build | MIT |
 | xUnit, Microsoft.NET.Test.Sdk, coverlet | Tests der App | Apache-2.0 bzw. MIT |
+| Microsoft.NETFramework.ReferenceAssemblies | Bauen des Helfers für .NET Framework ohne installiertes Targeting Pack | MIT |
 
 ## 3. Externe Programme (werden aufgerufen, nicht verteilt)
 
 | Programm | Verwendung | Lizenz | Bemerkung |
 | --- | --- | --- | --- |
 | winget (Windows-Paket-Manager) | Abgleich, Update, Deinstallation | MIT (winget-cli) | Teil von Windows / App-Installer. Die Quellen haben eigene Bedingungen, siehe unten. |
-| Windows PowerShell 5.1 (`powershell.exe`) | erhöhter Helfer für Aktionen mit Administratorrechten | Windows-Lizenz | Systembestandteil im Sinne von GPLv3 § 1; das Helferskript wird vor dem Start per Hash geprüft |
+| .NET Framework 4.7.2 | Laufzeit des Helfers für Aktionen mit Administratorrechten | Windows-Lizenz | Systembestandteil im Sinne von GPLv3 § 1; wird nicht mitgeliefert |
 | Windows-Bordmittel (`msiexec`, Appx-Cmdlets, Systemwiederherstellung) | Deinstallation, Wiederherstellungspunkt | Windows-Lizenz | Systembestandteile im Sinne von GPLv3 § 1 |
 | Ollama, LM Studio, Unsloth Studio oder ein anderer OpenAI-kompatibler Server | lokales Sprachmodell für den KI-Berater | Ollama: MIT; LM Studio und Unsloth Studio: eigene Bedingungen | Eigenständige Programme, Kommunikation über HTTP; keine Verknüpfung im Sinne der GPL. |
 | Lokale Sprachmodelle (z. B. Llama, Qwen, Mistral, Gemma) | KI-Berater | jeweils eigene Lizenz (Apache-2.0, Llama Community License, Gemma Terms, …) | Werden nicht mitgeliefert. Nutzer wählt und lädt das Modell selbst; im Firmeneinsatz Lizenz des Modells prüfen. |
@@ -82,7 +83,7 @@ In den Details eines Treffers steht bei jeder Quelle die Namensnennung („Daten
 - **MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, CC0** sind mit GPLv3 vereinbar. Ihr Lizenztext und Copyright-Hinweis müssen mitgeliefert werden; dafür ist diese Datei samt den Hinweisdateien von .NET, PowerShell und Microsoft.WinGet.Client da.
 - **Apache-2.0** ist nur mit GPL **v3** vereinbar, nicht mit v2. Deshalb nicht auf „GPLv2 only“ wechseln.
 - **Nicht aufnehmen:** Bibliotheken unter proprietären Lizenzen ohne Weitergaberecht, unter „Non-Commercial“-Klauseln (z. B. CC BY-NC) oder unter Lizenzen mit Nutzungsbeschränkungen (z. B. viele „Responsible AI“-Lizenzen), weil sie den Freiheiten der GPL widersprechen.
-- **Systembestandteile** von Windows (Registry, COM, WinRT, Windows PowerShell 5.1) fallen unter die Ausnahme für Systembestandteile (GPLv3 § 1) und sind unproblematisch.
+- **Systembestandteile** von Windows (Registry, COM, WinRT, .NET Framework) fallen unter die Ausnahme für Systembestandteile (GPLv3 § 1) und sind unproblematisch.
 - **Externe Dienste über HTTP** (NVD, GitHub, lokale Modellserver …) sind keine abgeleiteten Werke; für sie gelten deren Nutzungsbedingungen, nicht die GPL.
 
 ## 7. Regeln für neue Abhängigkeiten

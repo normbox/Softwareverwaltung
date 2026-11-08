@@ -1,6 +1,6 @@
 # Stapelbetrieb des erhöhten Helfers: mehrere Programme mit einer einzigen UAC-Abfrage (Update-Warteschlange).
-# Gleicher Schutz wie beim Einzelaufruf (siehe ElevatedRunner.ps1): Hash des Helfers, Pipe nur für
-# erhöhte Prozesse, Prozess-ID des Clients, Nonce. Zusätzlich sendet das Modul vor jedem Schritt
+# Gleicher Schutz wie beim Einzelaufruf (siehe ElevatedRunner.ps1): Pipe nur für erhöhte Prozesse,
+# Prozess-ID des Clients, Nonce. Zusätzlich sendet das Modul vor jedem Schritt
 # „next“ oder „stop“; der Helfer nimmt nichts anderes an.
 
 function Read-PipeLine {
@@ -38,13 +38,12 @@ function Start-ElevatedHelperBatch {
     $batchPipe = "SoftwareInventory-$([guid]::NewGuid().ToString('N'))"
     $batchPlan = @{
         Steps = @($Steps); RestorePoint = $RestorePoint; RestorePointDescription = $RestorePointDescription
-        RestorePointType = $RestorePointType; Nonce = $batchNonce; PipeName = $batchPipe
+        RestorePointType = $RestorePointType; Nonce = $batchNonce
     }
-    $batchBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(($batchPlan | ConvertTo-Json -Compress -Depth 5)))
+    $batchJson = $batchPlan | ConvertTo-Json -Compress -Depth 5
     $helper = [System.IO.Path]::GetFullPath($script:ElevatedHelperPath)
-    $hash = (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash
-    $command = Get-ElevatedHelperBootstrap -HelperPath $helper -Hash $hash -PlanBase64 $batchBase64
-    $argumentList = "-NoProfile -NonInteractive -WindowStyle Hidden -Command `"$command`""
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperFileMissing $helper); Done = 0 } }
+    $argumentList = "--pipe $batchPipe"
     $summary = @{ Status = 'Completed'; Error = $null; RestorePoint = 'NotRequested'; RestorePointMessage = $null; Done = 0 }
 
     $server = New-ResultPipe -Name $batchPipe -AllowCurrentUser:$NoElevation -Duplex
@@ -52,7 +51,7 @@ function Start-ElevatedHelperBatch {
         $connect = $server.WaitForConnectionAsync()
         try {
             Set-ActionPhase $Control $(if ($NoElevation) { 'Running' } else { 'WaitingForElevation' })
-            $process = Start-ElevatedProcess -FilePath $script:WindowsPowerShell -ArgumentList $argumentList -NoElevation:$NoElevation
+            $process = Start-ElevatedProcess -FilePath $helper -ArgumentList $argumentList -NoElevation:$NoElevation
         }
         catch {
             if (Test-ElevationCancelled $_) { return @{ Status = 'ElevationDenied'; Error = (New-InventoryMessage ElevationDenied); Done = 0 } }
@@ -75,6 +74,12 @@ function Start-ElevatedHelperBatch {
         $reader = [System.IO.StreamReader]::new($server, $utf8)
         $writer = [System.IO.StreamWriter]::new($server, $utf8)
         $writer.AutoFlush = $true
+
+        # Handschlag wie beim Einzelaufruf; abgebrochen wird im Stapel erst vor dem ersten Schritt.
+        $hello = Read-PipeLine -Reader $reader -TimeoutSeconds 60
+        $helloData = if ($hello) { try { $hello | ConvertFrom-Json -AsHashtable } catch { $null } }
+        if (-not $helloData -or $helloData.Kind -ne 'Hello') { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable); Done = 0 } }
+        $writer.WriteLine($batchJson)
 
         $line = Read-PipeLine -Reader $reader -TimeoutSeconds 900
         $first = if ($line) { try { $line | ConvertFrom-Json -AsHashtable } catch { $null } }

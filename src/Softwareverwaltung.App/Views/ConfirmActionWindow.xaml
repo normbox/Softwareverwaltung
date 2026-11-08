@@ -40,6 +40,10 @@
                 <TextBlock Text="{Binding RestorePointText}" TextWrapping="Wrap" VerticalAlignment="Center" />
             </StackPanel>
 
+            <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                       Text="{loc:Text ConfirmHelperWritableWarning}"
+                       Visibility="{Binding HelperInWritableFolder, Converter={StaticResource BoolToVisibility}}" />
+
             <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Text="{loc:Text ConfirmHint}" />
         </StackPanel>

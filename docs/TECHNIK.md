@@ -12,7 +12,7 @@ Legende: **vorhanden** = im Code umgesetzt · **geplant** = laut Konzept vorgese
 | --- | --- | --- |
 | Betriebssystem | Windows 10 oder 11, x64 | Windows 10 oder 11 |
 | Laufzeit | keine Zusatzinstallation: .NET 10 und die PowerShell-Engine sind in der App enthalten (self-contained) | .NET SDK 10, PowerShell 7.6 LTS |
-| Windows PowerShell 5.1 | wird nur für den erhöhten Helfer gestartet (Aktionen mit Administratorrechten); auf jedem Windows 10/11 vorhanden | ebenso |
+| .NET Framework 4.7.2 | Laufzeit des Helfers für Aktionen mit Administratorrechten; Teil von Windows 10 ab 1809 und Windows 11 | ebenso |
 | winget | Windows-Paket „App-Installer“ (enthält winget und dessen COM-Schnittstelle). Auf normalen Windows-10-(ab 1809) und -11-Installationen vorhanden und über den Store aktuell gehalten. Fehlt oft auf LTSC-, Server- und Sandbox-Systemen. Ohne App-Installer läuft die App weiter, nur ohne winget-Abgleich und winget-Aktionen; sie zeigt einen Hinweis und bietet die Installation über `Repair-WinGetPackageManager` an (nur nach Bestätigung). | ebenso, plus Modul `Microsoft.WinGet.Client` |
 | Rechte | normaler Benutzer; Administratorrechte (UAC) nur für die einzelne Aktion bzw. einmal für den erhöhten Teil einer Update-Warteschlange und für den Wiederherstellungspunkt | normaler Benutzer |
 | Netzwerk | optional; ohne Netzwerk funktioniert das Inventar, Online-Ergebnisse kommen dann aus dem Zwischenspeicher (als veraltet gekennzeichnet) | – |
@@ -78,6 +78,7 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | Daten | Ort | Inhalt | Status |
 | --- | --- | --- | --- |
 | Einstellungen | `%APPDATA%\SoftwareInventory\settings.json` | eingeschaltete Quellen, Dienste und Nutzungsspuren, Dateisuche, Haltbarkeit des Zwischenspeichers, Aufbewahrung der Logs, KI-Server | vorhanden |
+| Helfer für Aktionen | `Modules\SoftwareInventory\lib\SoftwareInventory.Helper.exe` neben der App | führt Aktionen aus, mit oder ohne Administratorrechte; Quelle `src/SoftwareInventory.Helper` | vorhanden |
 | Fertig übersetzter Windows-Zugriff | `Modules\SoftwareInventory\lib\SoftwareInventory.Native.dll` neben der App | Anmeldeinformationsverwaltung, Prüfung der Pipe-Gegenstelle und Start der UAC-Abfrage mit dem Fenster der App als Besitzer; ersetzt `Add-Type` zur Laufzeit; Quelle `src/SoftwareInventory.Native` | vorhanden |
 | Oberfläche | `%APPDATA%\SoftwareInventory\app-ui.json` | Breite des Detailfelds, Berater-Seitenleiste offen und ihre Breite; kein Gesprächsinhalt (das Gespräch bleibt nur im Speicher) | vorhanden |
 | Eigene CPE-Zuordnungen | `%APPDATA%\SoftwareInventory\cpe-map.json` | vom Benutzer bestätigte Zuordnungen Programm → CPE | vorhanden |
@@ -114,7 +115,7 @@ Alle Abfragen an externe Dienste nutzen die Proxy-Einstellungen des Systems. Jed
 ## Sicherheitsmerkmale
 
 - Läuft als normaler Benutzer, UAC nur für die einzelne Aktion.
-- Der erhöhte Helfer ist ein Skript, dessen SHA256 vor dem Start geprüft wird; das Ergebnis kommt über eine Named Pipe zurück, mit der sich nur erhöhte Prozesse verbinden dürfen (Prozess-ID und Zufallszahl werden geprüft).
+- Der erhöhte Helfer ist eine eigene Exe, die selbst prüft, was sie startet. Plan und Ergebnis laufen über eine Named Pipe, mit der sich nur erhöhte Prozesse verbinden dürfen (Prozess-ID und Zufallszahl werden geprüft). Liegt er in einem für Benutzer beschreibbaren Ordner, warnt die Bestätigung.
 - Es wird genau der bestätigte Befehl ausgeführt; hat er sich geändert, bricht die Aktion ohne Ausführung ab.
 - Liest Programmdateien nur (PE-Versionsinfo, Signatur, Hash), führt nichts aus.
 - KI darf nur vorschlagen; jede Aktion braucht einen Klick und wird protokolliert.
@@ -131,7 +132,7 @@ Geplant, nicht umgesetzt: Web-Suche für den KI-Berater, nur Text, Erlaubnislist
 Das Projekt selbst sendet keine Telemetrie und soll das auch künftig nicht tun. Zu beachten sind Bestandteile von Microsoft:
 
 - **winget** sendet Nutzungsdaten gemäß den Windows-Diagnoseeinstellungen. Abschaltbar in den winget-Einstellungen (`winget settings`, Abschnitt `"telemetry": { "disable": true }`).
-- **PowerShell** kennt Telemetrie; die Umgebungsvariable `POWERSHELL_TELEMETRY_OPTOUT=1` schaltet sie ab. Die App setzt sie vor dem Start der eingebetteten Engine für den ganzen Prozess, der erhöhte Helfer setzt sie als Erstes in seinem Startbefehl. Windows PowerShell 5.1 (Helfer) kennt die Variable nicht; seine Diagnosedaten folgen den Windows-Diagnoseeinstellungen.
+- **PowerShell** kennt Telemetrie; die Umgebungsvariable `POWERSHELL_TELEMETRY_OPTOUT=1` schaltet sie ab. Die App setzt sie vor dem Start der eingebetteten Engine für den ganzen Prozess. Der Helfer nutzt keine PowerShell.
 
 ## Build und Veröffentlichung
 

@@ -48,7 +48,7 @@ Kurz:
 
 **Microsoft Store (`msstore`):** Bei Paketen aus der Quelle `msstore` zeigt die App vor dem ersten Update oder der ersten Deinstallation einmal die Vereinbarung der Store-Quelle (Standard-Button „Abbrechen“). Erst nach Zustimmung, die in den Einstellungen gespeichert wird, enthält der Befehl `--accept-source-agreements`; ohne Zustimmung ist die Aktion nicht ausführbar (Grund `StoreAgreementRequired`). Die Store-Quelle übermittelt dabei unter anderem den Ländercode des Rechners (z. B. „DE“) an Microsoft.
 
-**Telemetrie von PowerShell:** Die App setzt `POWERSHELL_TELEMETRY_OPTOUT=1` für die eingebettete PowerShell und für den erhöhten Helfer. Der Helfer läuft unter Windows PowerShell 5.1; dieses kennt die Variable nicht, seine Diagnosedaten folgen den Windows-Diagnoseeinstellungen. Die Telemetrie von winget folgt ebenfalls den Windows-Diagnoseeinstellungen und lässt sich in `winget settings` abschalten.
+**Telemetrie von PowerShell:** Die App setzt `POWERSHELL_TELEMETRY_OPTOUT=1` für die eingebettete PowerShell. Der Helfer für Administratorrechte nutzt keine PowerShell. Die Telemetrie von winget folgt ebenfalls den Windows-Diagnoseeinstellungen und lässt sich in `winget settings` abschalten.
 
 Die derzeit angebundenen Empfänger sitzen in den USA (Microsoft, GitHub, NIST, CISA, FIRST) und in Luxemburg (CIRCL, Computer Incident Response Center Luxembourg, nur wenn der Dienst CIRCL eingeschaltet ist). Bei jeder Verbindung erhält der Anbieter die IP-Adresse; mit einem eigenen CIRCL-Schlüssel ordnet CIRCL die Anfragen diesem Schlüssel zu.
 

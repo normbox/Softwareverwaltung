@@ -225,6 +225,7 @@ function New-ActionPlan {
         Arguments       = $null
         CommandLine     = $null
         Elevated        = $false
+        HelperInWritableFolder = $false
         MsiLog          = $false
         RestorePoint    = $RestorePoint
         Result          = $null
@@ -315,5 +316,6 @@ function New-ActionPlan {
         $display = if ($plan.MsiLog) { "$($plan.Arguments) /l*v <Installer-Log>" } else { $plan.Arguments }
         $plan.CommandLine = Format-CommandLine -FilePath $plan.FilePath -Arguments $display
     }
+    if ($plan.Elevated) { $plan.HelperInWritableFolder = [bool] (Test-HelperInWritableFolder) }
     [pscustomobject] $plan
 }

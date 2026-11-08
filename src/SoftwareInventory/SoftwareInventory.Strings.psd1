@@ -249,6 +249,8 @@ Regeln:
 
     # Aktionen: erhöhter Helfer
     ReasonElevationDenied                   = 'Die Administratorabfrage (UAC) wurde abgelehnt.'
+    ReasonHelperFileMissing                 = 'Der Helfer für Aktionen fehlt ({0}). Möglicherweise hat ein Virenscanner ihn entfernt; bitte dort die Quarantäne prüfen.'
+    ReasonHelperCommandMismatch             = 'Der Befehl entspricht nicht dem, was der Helfer selbst bestätigen kann; es wurde nichts ausgeführt.'
     ReasonHelperStartFailed                 = 'Erhöhter Prozess konnte nicht gestartet werden: {0}'
     ReasonHelperExitedWithoutResult         = 'Helfer ohne Ergebnis beendet (Exit-Code {0})'
     ReasonHelperNoResponse                  = 'Zeitüberschreitung: Der Helfer hat sich nicht gemeldet'

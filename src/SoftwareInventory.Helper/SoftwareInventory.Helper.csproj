@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Helfer für Aktionen, die Administratorrechte brauchen. Ersetzt das frühere PowerShell-Skript: keine
+    versteckte PowerShell, kein dynamischer Scriptblock, kein Plan auf der Kommandozeile.
+    .NET Framework 4.7.2 ist Teil von Windows 10 ab 1809 und Windows 11, also keine Zusatzinstallation und
+    keine mitgelieferte Laufzeit. Einzige Abhängigkeit sind die Referenz-Assemblies zum Bauen.
+    asInvoker statt requireAdministrator: Derselbe Helfer führt auch Aktionen ohne Adminrechte aus; die
+    UAC-Abfrage löst das Modul über ElevationInterop aus.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>SoftwareInventory.Helper</AssemblyName>
+    <RootNamespace>SoftwareInventory.Helper</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.1.0</Version>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Keine .config neben der Exe: Sie könnte das Laden von Assemblys umlenken. -->
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <SatelliteResourceLanguages>de</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <!-- Für Pester und Probeläufe direkt aus src: Exe neben das Modul legen (lib\ ist nicht im Repository). -->
+  <Target Name="CopyToModuleLib" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildThisFileDirectory)..\SoftwareInventory\lib" SkipUnchangedFiles="true"
+          Retries="0" ContinueOnError="WarnAndContinue" />
+  </Target>
+
+</Project>

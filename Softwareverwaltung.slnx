@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SoftwareInventory.Helper/SoftwareInventory.Helper.csproj" />
     <Project Path="src/SoftwareInventory.Native/SoftwareInventory.Native.csproj" />
     <Project Path="src/Softwareverwaltung.App/Softwareverwaltung.App.csproj" />
   </Folder>

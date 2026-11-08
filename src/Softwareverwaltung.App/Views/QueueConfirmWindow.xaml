@@ -55,6 +55,9 @@
                            Visibility="{Binding NotExecutable.Count, Converter={StaticResource CountToVisibility}}" />
                 <ItemsControl ItemsSource="{Binding NotExecutable}" ItemTemplate="{StaticResource EntryTemplate}" />
 
+                <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                           Text="{loc:Text ConfirmHelperWritableWarning}"
+                           Visibility="{Binding ShowHelperWarning, Converter={StaticResource BoolToVisibility}}" />
                 <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                            Text="{loc:Text QueueConfirmHint}" />
             </StackPanel>

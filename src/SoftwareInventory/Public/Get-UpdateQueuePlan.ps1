@@ -45,6 +45,7 @@ function Get-UpdateQueuePlan {
                 Unconfirmed      = [bool] ($update -and $update.PSObject.Properties['Confirmed'] -and -not $update.Confirmed)
                 Executable       = -not $plan.Result
                 Elevated         = [bool] $plan.Elevated
+                HelperInWritableFolder = [bool] $plan.HelperInWritableFolder
                 Method           = $plan.Method
                 CommandLine      = $plan.CommandLine
                 Result           = $plan.Result     # Code, wenn nicht ausführbar (z. B. ManualUpdateRequired)

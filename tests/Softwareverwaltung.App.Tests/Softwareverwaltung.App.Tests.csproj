@@ -26,4 +26,9 @@
     <Using Include="System.IO" />
   </ItemGroup>
 
+  <!-- Die reinen Regeln des Helfers (net472) mitübersetzen, damit sie hier testbar sind. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\SoftwareInventory.Helper\HelperRules.cs" Link="Helper\HelperRules.cs" />
+  </ItemGroup>
+
 </Project>

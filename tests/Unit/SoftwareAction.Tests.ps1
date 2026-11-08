@@ -201,7 +201,7 @@ Describe 'Update-Software und Uninstall-Software' {
             $r = $userRecord | Uninstall-Software -Confirm:$false
             $r.Result | Should -Be 'Succeeded'
             $r.Elevated | Should -BeFalse
-            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $NoElevation -and -not $HelperPlan.Elevate }
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $NoElevation }
         }
 
         It 'entfernt Store-Apps im Benutzerkontext ohne Helfer' {
@@ -280,7 +280,7 @@ Describe 'Update-Software und Uninstall-Software' {
             $r.Result | Should -Be 'Succeeded'
             $r.VersionAfter | Should -Be '2.2.0'
             $r.PresentAfter | Should -BeTrue
-            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { $HelperPlan.Elevate }
+            Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -ParameterFilter { -not $NoElevation }
         }
 
         It 'meldet NotVerified, wenn die Version gleich bleibt' {
