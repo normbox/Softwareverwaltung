@@ -28,6 +28,8 @@ Der Katalog liegt unter `src/SoftwareInventory/Catalog/` und wird mit dem Modul 
 | `Match.Publisher` | bei `NamePattern` | erlaubte Hersteller; verglichen wird das erste Wort (mind. 3 Zeichen), z. B. „Acronis International GmbH“ → `acronis` |
 | `GitHub.Repository` | nein | `owner/repo`; abgefragt wird `releases/latest` (ohne Vorabversionen) |
 | `GitHub.TagPattern` | nein | regulärer Ausdruck mit Gruppe `(?<version>…)`, falls der Tag nicht `v1.2.3` oder `1.2.3` lautet (z. B. `Audacity-4.0.1`) |
+| `VendorUpdateUrl` | nein | Seite des Herstellers zum Aktualisieren (`https://`). Hat Vorrang vor den Links aus der Registry. |
+| `WingetUninstallsPrevious` | nein | `true`: winget entfernt bei diesem Paket vor dem Update die alte Version. Die App warnt dann auch ohne den Dienst `WingetManifest`. Nur eintragen, wenn das zu Problemen geführt hat. |
 | `Cpe` | nein | CPE-Namen ohne Version, z. B. `cpe:2.3:a:videolan:vlc_media_player`; Sonderzeichen wie in der NVD mit `\` (`notepad\+\+`). Mehrere Einträge, wenn die NVD das Produkt unter verschiedenen Herstellern führt. Prüfen unter `https://services.nvd.nist.gov/rest/json/cpes/2.0?cpeMatchString=<cpe>` |
 | `CpeCheck` | bei `Cpe` | Wie die Zuordnung geprüft wurde: `CheckedAt` (Datum `JJJJ-MM-TT`), `Evidence` (Links, mindestens die CPE in der NVD) und `Note` (kurz, was geprüft wurde). Maßstab im Abschnitt [CPE prüfen](#cpe-prüfen). |
 | `CpeVersionPattern` | nein | regulärer Ausdruck mit Gruppe `(?<version>…)`, der eine produkteigene Versionsangabe vor der NVD-Abfrage umrechnet. Beispiel Python: Die Dateiversion `3.13.15150.0` bedeutet 3.13.15 (Release-Stufe und Serie sind angehängt). Passt das Muster nicht, wird die Version unverändert verwendet. |

@@ -38,6 +38,20 @@ Pakete werden nur über die exakte winget-ID aus dem Scan angesprochen, nie übe
 
 Befehle aus der Registry werden ohne Shell gestartet, nie über `cmd /c` oder `Invoke-Expression`. Der Programmpfad wird herausgelöst, in Anführungszeichen oder als längster vorhandener `.exe`-Präfix. Der Rest bleibt unverändert als Argumentzeichenfolge. Programmnamen ohne Ordner (z. B. `MsiExec.exe`) werden nur in System32 gesucht. Interpreter (`cmd`, `powershell`, `pwsh`, `wscript`, `cscript`, `mshta`, `rundll32`, `regsvr32`, …) werden abgelehnt (`Unsupported`).
 
+## Nachprüfung bei Updates
+
+winget meldet Erfolg, sobald seine Programme beendet sind. Installer können im Hintergrund weiterlaufen. Bei Paketen mit `UpgradeBehavior: uninstallPrevious` startet winget erst die Deinstallation und dann das neue Installationsprogramm. Kehrt die Deinstallation früh zurück, kann sie das frisch installierte Programm noch entfernen.
+
+Deshalb gilt ein Update erst nach diesen Schritten als erfolgreich:
+
+1. Der Zustand zeigt die neue Version (bis zu 60 Sekunden Wartezeit).
+2. Der Mutex `Global\_MSIExecute` ist frei und bleibt 4 Sekunden frei (Wartezeit höchstens 180 Sekunden; Phase `WaitingForInstaller`, abbrechbar). Der Mutex wird nur geöffnet, nie in Besitz genommen. „Zugriff verweigert“ zählt als „läuft noch“.
+3. Der Zustand wird erneut gelesen. Fehlt das Programm oder fehlen alle bekannten Pfade (`InstallLocation`, `DisplayIcon`), lautet das Ergebnis `Failed` mit `ActionStateLost`. Nicht erreichbare Laufwerke zählen nicht.
+
+Bleibt Windows Installer belegt, auch durch fremde Installationen wie Windows Update, oder bricht jemand das Warten ab, lautet das Ergebnis `NotVerified` mit `NotVerifiedInstallerBusy` bzw. `NotVerifiedWaitCancelled`. Die App bietet dann „Erneut prüfen“ an. Wurde schon während der Aktion abgebrochen, wird nicht zusätzlich gewartet. Für Deinstallationen und bei nötigem Neustart gilt diese Nachprüfung nicht.
+
+Vor dem Update warnt die Bestätigung, wenn winget vorher deinstalliert: fest über das Katalogfeld `WingetUninstallsPrevious` oder, wenn der Dienst `WingetManifest` eingeschaltet ist, über das Manifest der Zielversion. Ist das nicht ermittelbar, gibt es keine Warnung. Die Aktion bleibt in jedem Fall möglich.
+
 ## winget installieren
 
 `Install-WingetPackageManager` ruft `Repair-WinGetPackageManager -Latest` aus dem mitgelieferten Modul `Microsoft.WinGet.Client` auf. Das lädt die neueste Version von App Installer bei Microsoft herunter und installiert sie nur für das angemeldete Konto, ohne Administratorrechte (kein `-AllUsers`). Es ist die einzige Aktion, die etwas herunterlädt, und läuft nur nach Bestätigung (`ConfirmImpact High`, `-WhatIf` liefert `Planned`). Der Erfolg wird mit `Test-WingetAvailability` geprüft (`Succeeded` oder `NotVerified`). Protokolliert wird mit `Action = InstallWinget`.
@@ -115,7 +129,7 @@ Schließt man die App während einer Aktion, warnt sie zuerst (Standard „Abbre
 | `Planned` | `-WhatIf`: nichts ausgeführt |
 | `Succeeded` | Exit-Code passt und Zustand geprüft (Eintrag weg bzw. Version höher) |
 | `SucceededRebootRequired` | Exit-Code 3010/1641 bzw. winget „Neustart nötig“; der Eintrag kann bis zum Neustart bleiben |
-| `NotVerified` | Exit-Code meldet Erfolg, der Zustand hat sich aber nicht geändert |
+| `NotVerified` | Exit-Code meldet Erfolg, der Zustand hat sich aber nicht geändert, oder das Ergebnis steht noch nicht fest (siehe „Nachprüfung bei Updates“) |
 | `Cancelled` | Abgebrochen (1602, winget `CANCELLED_BY_USER`) oder nicht bestätigt |
 | `ElevationDenied` | UAC-Abfrage abgelehnt |
 | `NotInstalled` | Programm nicht (mehr) vorhanden (vorab erkannt, 1605, winget `NO_APPLICATIONS_FOUND`) |

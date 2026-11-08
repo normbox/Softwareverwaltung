@@ -82,6 +82,7 @@ Klassen: **A** frei für alle · **B** kostenlos nur privat · **C** eigenes Kon
 | CIRCL Vulnerability-Lookup | CIRCL, Luxemburg | Hersteller und Produkt aus der CPE, ohne Version | A (Schlüssel optional) | vorhanden | aus |
 | CISA KEV | CISA, USA | nichts außer dem Abruf der Gesamtliste | A | vorhanden | aus |
 | EPSS | FIRST.org, USA | Nummern der gefundenen Lücken (CVE-IDs) | A | vorhanden | aus |
+| winget-Manifeste | GitHub (Microsoft), USA | Paket-ID und Zielversion, nur beim Bestätigen eines Updates | A | vorhanden | aus |
 | Lokaler KI-Server (Ollama, LM Studio, Unsloth Studio) | eigener Rechner | nichts verlässt den Rechner | A (Modelllizenz beachten) | vorhanden | aus |
 | KI-Server unter eigener Adresse | eigener Server im privaten Netz | bereinigte Unterhaltung und Werkzeugergebnisse im Umfang der Freigabestufe | A | vorhanden | aus |
 | winget nachinstallieren (`Repair-WinGetPackageManager`) | Microsoft und GitHub, USA | Download von App Installer und Abhängigkeiten, keine Inventardaten | A | vorhanden | nur nach Bestätigung |
