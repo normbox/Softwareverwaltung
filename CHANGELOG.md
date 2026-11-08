@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Datenschutz und Rechtliches: Korrekturen aus der Durchsicht der Dokumentation
+
+- **E-Mail-Adressen werden jetzt wirklich ersetzt** (`%EMAIL%`), bevor Text an den KI-Berater, in den Bericht oder in eine CPE-Meldung geht. `PRIVACY.md` versprach das schon, der Code tat es nicht. Paketangaben wie `lodash@4.17.21` bleiben erhalten.
+- **Lizenz festgelegt:** `GPL-3.0-only`.
+- **Doku berichtigt:** KI-Berater, Chat und Freigabestufen sind nicht mehr als geplant beschrieben. Das Nachinstallieren von winget und „Vorschlag melden“ stehen in der Liste der Verbindungen, CIRCL in den rechtlichen Hinweisen. Richtlinien für Firmen sind als geplant gekennzeichnet.
+
 ### Laufende Aktionen: Abbrechen, UAC-Anzeige, kein verlorener Abschluss (vor 4c-2)
 
 - **Abbrechen ohne die App zu schließen**, für Einzelaktionen und die Warteschlange. Noch nicht gestartete Einträge verschwinden sofort. winget wird nur beendet, solange es noch keinen Installer gestartet hat. Ein laufender Installer wird nie beendet; die App zeigt dann „läuft im Hintergrund weiter, das Ergebnis wird nachgetragen“.

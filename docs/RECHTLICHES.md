@@ -1,6 +1,6 @@
 # Rechtliche Hinweise
 
-Stand: 28.10.2026
+Stand: 08.11.2026
 
 > **Keine Rechtsberatung.** Diese Seite fasst zusammen, was beim Entwickeln, Veröffentlichen und Nutzen dieses Open-Source-Projekts rechtlich zu beachten ist. Sie ist nach bestem Wissen recherchiert, ersetzt aber keine anwaltliche Beratung. Bei Zweifeln, besonders vor einem kommerziellen Angebot, bitte fachkundig beraten lassen.
 
@@ -10,7 +10,7 @@ Stand: 28.10.2026
 - Jeder darf das Programm nutzen, untersuchen, ändern und weitergeben, auch kommerziell.
 - Wer es **weitergibt** (auch verändert), muss es wieder unter GPLv3 stellen, den Lizenztext beilegen und den Quellcode zugänglich machen. Interne Nutzung in einer Firma löst diese Pflichten nicht aus.
 - Beiträge (Pull Requests) werden unter derselben Lizenz eingebracht („inbound = outbound“). Ein eigener Contributor License Agreement ist nicht vorgesehen. Empfehlung: In `CONTRIBUTING.md` festhalten, dass Beitragende mit dem Einreichen bestätigen, die Rechte am Beitrag zu haben (z. B. per Developer Certificate of Origin, `git commit -s`).
-- Kopfzeile für Quelldateien (optional, empfohlen): `SPDX-License-Identifier: GPL-3.0-or-later` bzw. `GPL-3.0-only`. **Offen:** Entscheidung „only“ oder „or-later“. „or-later“ erlaubt künftige GPL-Versionen und ist bei GNU üblich; „only“ legt sich fest. Das Modulmanifest verweist derzeit auf GPLv3 ohne Zusatz.
+- Kopfzeile für Quelldateien (optional, empfohlen): `SPDX-License-Identifier: GPL-3.0-only`. Festgelegt ist `GPL-3.0-only` (entschieden am 08.11.2026).
 
 Drittkomponenten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
@@ -34,14 +34,15 @@ Die App verwendet Daten und Schnittstellen Dritter. Deren Bedingungen gelten fü
 
 | Quelle | Wichtigste Bedingung |
 | --- | --- |
+| CIRCL Vulnerability-Lookup | Abfragegrenzen und Zugriffsregeln der API; genutzte CVE-Datensätze unter CC BY 4.0, Namensnennung bei jedem Treffer |
 | NVD | Pflichthinweis „This product uses the NVD API but is not endorsed or certified by the NVD.“; Abfragegrenzen; Schlüssel nicht weitergeben |
 | CISA KEV | gemeinfrei (CC0) |
 | EPSS | frei nutzbar, Quellenangabe erbeten |
 | GitHub API | GitHub Terms of Service, Abfragegrenzen |
-| winget / Microsoft Store | Quellvereinbarungen von Microsoft; Zustimmung durch den Nutzer (bei Store-Paketen offen, siehe Abschnitt 8) |
+| winget / Microsoft Store | Quellvereinbarungen von Microsoft; bei Store-Paketen Zustimmung durch den Nutzer vor der ersten Aktion |
 | Lokale Sprachmodelle | Lizenz des gewählten Modells |
 
-Weitere Dienste (z. B. Cloud-KI, CIRCL) werden hier ergänzt, sobald sie umgesetzt sind.
+Weitere Dienste (z. B. Cloud-KI) werden hier ergänzt, sobald sie umgesetzt sind.
 
 Einzelheiten: [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md) und [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
@@ -70,7 +71,7 @@ Einzelheiten: [EXTERNE-DIENSTE.md](EXTERNE-DIENSTE.md) und [THIRD-PARTY-NOTICES.
 
 ## 8. Offene Punkte für das Projekt
 
-- [ ] `GPL-3.0-only` oder `GPL-3.0-or-later` festlegen und im Modulmanifest, README und ggf. Dateiköpfen eintragen
+- [x] `GPL-3.0-only` festgelegt und in Modulmanifest und README eingetragen (Dateiköpfe optional)
 - [ ] `CONTRIBUTING.md` mit Hinweis auf DCO bzw. Rechte an Beiträgen
 - [ ] `SECURITY.md` anlegen und „Private vulnerability reporting“ in den Repository-Einstellungen auf GitHub aktivieren
 - [x] Lizenz von `Microsoft.WinGet.Client` geklärt: MIT, Mitliefern erlaubt (mit Lizenztext und NOTICE)

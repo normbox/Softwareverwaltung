@@ -2,7 +2,7 @@
 
 Open-Source-Werkzeug für Windows, das installierte Software erfasst, veraltete und unsichere Versionen erkennen soll und Updates oder Deinstallationen vorschlägt.
 
-[![Lizenz: GPLv3](https://img.shields.io/badge/Lizenz-GPLv3-blue.svg)](LICENSE)
+[![Lizenz: GPL-3.0-only](https://img.shields.io/badge/Lizenz-GPL--3.0--only-blue.svg)](LICENSE)
 ![Oberfläche: .NET 10 WPF](https://img.shields.io/badge/Oberfl%C3%A4che-.NET%2010%20WPF-512BD4.svg)
 ![PowerShell 7.6](https://img.shields.io/badge/PowerShell-7.6-5391FE.svg)
 ![Plattform: Windows 10/11](https://img.shields.io/badge/Plattform-Windows%2010%2F11-0078D4.svg)
@@ -164,6 +164,6 @@ Die Oberfläche und die Meldungen sind auf Deutsch geschrieben und für weitere 
 
 ## Lizenz und Haftung
 
-Lizenziert unter der [GNU General Public License v3.0](LICENSE).
+Lizenziert unter der [GNU General Public License v3.0](LICENSE), nur diese Fassung (`GPL-3.0-only`).
 
 Die Software wird ohne jede Gewähr bereitgestellt, soweit gesetzlich zulässig (siehe Abschnitte 15 und 16 der GPLv3). Die Nutzung, insbesondere das Aktualisieren und Deinstallieren von Programmen, erfolgt auf eigene Verantwortung.
