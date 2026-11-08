@@ -201,7 +201,7 @@ Standardmäßig aus. Einschalten mit `Set-InventorySetting -Enable RestorePoint`
 
 ## Protokoll
 
-`%LOCALAPPDATA%\SoftwareInventory\logs\actions\<yyyy-MM-dd>.jsonl` (Datum in UTC), eine JSON-Zeile pro Eintrag. Jede Aktion schreibt einen Eintrag `Started` und einen Eintrag `Completed`. Fehlt der Abschluss, zeigt `Get-ActionLog` die Aktion als `Incomplete`, weil sie noch läuft oder unterbrochen wurde, bis `Update-IncompleteActionLog` ihn nachträgt. Nicht ausführbare Aktionen (`NotInstalled`, `Unsupported`, `ManualUpdateRequired`) werden mit einem Eintrag protokolliert, `-WhatIf` gar nicht.
+`%LOCALAPPDATA%\SoftwareInventory\logs\actions\<yyyy-MM-dd>.jsonl` (Datum in UTC), eine JSON-Zeile pro Eintrag. Jede Aktion schreibt einen Eintrag `Started` und einen Eintrag `Completed`. Fehlt der Abschluss, zeigt `Get-ActionLog` die Aktion als `Incomplete`, weil sie noch läuft oder unterbrochen wurde, bis `Update-IncompleteActionLog` ihn nachträgt. Nicht ausführbare Aktionen (`NotInstalled`, `Unsupported`, `ManualUpdateRequired`) werden mit einem Eintrag protokolliert, `-WhatIf` gar nicht. Ausnahme: Die App plant mit `-WhatIf -LogNotExecutable`, damit auch abgelehnte Klicks im Protokoll stehen; die Planung der Warteschlange protokolliert weiterhin nichts. Portable Programme ohne winget-Paket haben keine Deinstallation (`Unsupported` mit `PortableNoUninstall`).
 
 Ein Eintrag enthält:
 - `Timestamp`, `Phase`, `User`, `ModuleVersion`, `SchemaVersion`
