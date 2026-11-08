@@ -227,6 +227,12 @@ Regeln:
     ReasonCirclLegacyCacheRemoved           ='Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: {0} Dateien, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
     ReasonCirclLegacyCacheRemovedOne        = 'Alter CIRCL-Zwischenspeicher (einzelne Seiten) gelöscht: 1 Datei, {1} MB; nicht löschbar: {2}. Ab jetzt ein Bestand je Produkt.'
     ReasonActionIncomplete                = 'Kein Abschluss protokolliert: Die Aktion läuft noch oder wurde unterbrochen.'
+    ReasonActionCancelledBeforeStart      = 'Abgebrochen, bevor etwas gestartet wurde.'
+    ReasonActionCancelledDuringDownload   = 'Abgebrochen: winget wurde beendet, bevor ein Installer gestartet war. Am Programm hat sich nichts geändert.'
+    ReasonActionCancelOrphaned            = 'winget wurde beendet, der Installer war aber gerade gestartet und läuft weiter. Zustand später prüfen.'
+    ReasonActionInterruptedReached        = 'Abschluss nicht beobachtet, weil die App geschlossen war. Das Programm hat jetzt Version {0}.'
+    ReasonActionInterruptedRemoved        = 'Abschluss nicht beobachtet, weil die App geschlossen war. Das Programm ist nicht mehr installiert.'
+    ReasonActionInterruptedUnknown        = 'Abschluss nicht beobachtet, weil die App geschlossen war. Eine Änderung ist nicht erkennbar; Zustand bitte prüfen.'
     ReasonLegacyText                        = '{0} (älterer Eintrag)'
 
     # Aktionen: Wiederherstellungspunkt (Codes kommen auch vom erhöhten Helfer)

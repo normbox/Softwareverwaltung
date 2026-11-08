@@ -208,6 +208,180 @@ Describe 'Start-ElevatedHelper' {
     }
 }
 
+Describe 'Helferskript: Abbrechen' {
+    BeforeAll {
+        . $HelperPath
+        function New-FakeProcess {
+            $p = [pscustomobject] @{ Id = 42; Killed = 0 }
+            $p | Add-Member ScriptMethod Kill { $this.Killed++ }
+            $p | Add-Member ScriptMethod WaitForExit { param($ms) $true }
+            $p
+        }
+    }
+
+    It 'beendet nie ein anderes Programm als winget' {
+        Mock Get-CimInstance { @() }
+        $p = New-FakeProcess
+        Request-HelperCancel -Process $p -FilePath 'C:\Windows\System32\msiexec.exe' | Should -Be 'Continuing'
+        $p.Killed | Should -Be 0
+    }
+
+    It 'beendet winget nicht, wenn schon ein Installer läuft' {
+        Mock Get-CimInstance { [pscustomobject] @{ Name = 'conhost.exe' }; [pscustomobject] @{ Name = 'setup.exe' } }
+        $p = New-FakeProcess
+        Request-HelperCancel -Process $p -FilePath 'C:\Program Files\WindowsApps\x\winget.exe' | Should -Be 'Continuing'
+        $p.Killed | Should -Be 0
+    }
+
+    It 'beendet winget, solange nur conhost als Kindprozess da ist' {
+        Mock Get-CimInstance { [pscustomobject] @{ Name = 'conhost.exe' } }
+        $p = New-FakeProcess
+        Request-HelperCancel -Process $p -FilePath 'C:\Program Files\WindowsApps\x\winget.exe' | Should -Be 'Stopped'
+        $p.Killed | Should -Be 1
+    }
+
+    It 'meldet ehrlich, wenn der Installer gerade noch gestartet wurde' {
+        $script:queries = 0
+        Mock Get-CimInstance { $script:queries++; if ($script:queries -gt 1) { [pscustomobject] @{ Name = 'setup.exe' } } }
+        $p = New-FakeProcess
+        Request-HelperCancel -Process $p -FilePath 'C:\Program Files\WindowsApps\x\winget.exe' | Should -Be 'Orphaned'
+    }
+
+    It 'lässt die Aktion weiterlaufen, wenn die Prüfung scheitert' {
+        Mock Get-CimInstance { throw 'WMI nicht verfügbar' }
+        $p = New-FakeProcess
+        Request-HelperCancel -Process $p -FilePath 'C:\Program Files\WindowsApps\x\winget.exe' | Should -Be 'Continuing'
+        $p.Killed | Should -Be 0
+    }
+}
+
+Describe 'Start-ElevatedHelper: Handschlag und Abbrechen' {
+    It 'startet nichts, wenn schon vor dem Start abgebrochen wurde' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'darf nicht laufen' }
+        $r = InModuleScope SoftwareInventory {
+            Start-ElevatedHelper -Control ([hashtable]::Synchronized(@{ State = 'Cancelled' })) -HelperPlan @{ FilePath = 'x'; RestorePoint = $false }
+        }
+        $r.Status | Should -Be 'Cancelled'
+        $r.Error.Code | Should -Be 'ActionCancelledBeforeStart'
+    }
+
+    It 'führt nichts aus, wenn während der UAC-Abfrage abgebrochen wurde' {
+        $marker = Join-Path $TestDrive 'lief.txt'
+        Mock -ModuleName SoftwareInventory Set-ActionPhase { if ($Control) { $Control['State'] = 'Cancelled' } }
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System; M = $marker } {
+            $control = [hashtable]::Synchronized(@{ State = 'Running' })
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -Control $control -HelperPlan @{ FilePath = (Join-Path $S 'cmd.exe'); Arguments = "/c echo x>`"$M`""; MsiLog = $false; RestorePoint = $false }
+        }
+        $r.Status | Should -Be 'Cancelled'
+        Test-Path -LiteralPath $marker | Should -BeFalse
+    }
+
+    It 'lässt einen laufenden Installer weiterlaufen und meldet Continuing' {
+        $marker = Join-Path $TestDrive 'laeuft.txt'
+        $control = [hashtable]::Synchronized(@{ State = 'Running' })
+        # Eigener Runspace: bricht ab, sobald das Programm läuft.
+        $canceller = [powershell]::Create().AddScript({
+                param($C, $M)
+                $end = [datetime]::UtcNow.AddSeconds(30)
+                while (-not (Test-Path -LiteralPath $M) -and [datetime]::UtcNow -lt $end) { Start-Sleep -Milliseconds 50 }
+                $C['State'] = 'Cancelled'
+            }).AddArgument($control).AddArgument($marker)
+        [void] $canceller.BeginInvoke()
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System; M = $marker; C = $control } {
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -Control $C -HelperPlan @{ FilePath = (Join-Path $S 'cmd.exe'); Arguments = "/c echo x>`"$M`"& ping -n 4 127.0.0.1>nul"; MsiLog = $false; RestorePoint = $false }
+        }
+        $canceller.Dispose()
+        $r.Status | Should -Be 'Completed'
+        $r.ExitCode | Should -Be 0
+        $r.Cancelled | Should -BeFalse
+        $control['CancelResult'] | Should -Be 'Continuing'
+    }
+
+    It 'wertet einen Abbruch als Ergebnis Cancelled aus' {
+        InModuleScope SoftwareInventory {
+            $result = [pscustomobject] @{ Output = $null; InstallerLog = $null; ExitCode = $null; ExitCodeHex = $null }
+            $stopped = Read-HelperRun -Result $result -Run @{ Status = 'Completed'; Cancelled = $true; ExitCode = -1 } -TimeoutMinutes 60
+            $stopped.Failure[0] | Should -Be 'Cancelled'
+            $stopped.Failure[1].Code | Should -Be 'ActionCancelledDuringDownload'
+            $before = Read-HelperRun -Result $result -Run @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) } -TimeoutMinutes 60
+            $before.Failure[0] | Should -Be 'Cancelled'
+        }
+    }
+
+    It 'startet mit UAC über die Native-DLL und meldet Fehler als Win32-Code' {
+        $missing = Join-Path $TestDrive 'gibt-es-nicht.exe'
+        $failure = $null
+        try { [void] [SoftwareInventory.ElevationInterop]::Start($missing, '', [IntPtr]::Zero) } catch { $failure = $_.Exception.GetBaseException() }
+        $failure | Should -BeOfType [System.ComponentModel.Win32Exception]
+        $failure.NativeErrorCode | Should -Be 2
+    }
+}
+
+Describe 'Update-IncompleteActionLog' {
+    BeforeEach {
+        $appData = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        Mock -ModuleName SoftwareInventory Get-AppDataDirectory { $appData }
+        function Write-Started {
+            param([string] $Id = 'a1', [string] $Action = 'Update')
+            InModuleScope SoftwareInventory -Parameters @{ I = $Id; A = $Action } {
+                Write-ActionLogEntry -Phase Started -Data ([ordered]@{ ActionId = $I; Action = $A; Name = 'Contoso Tool'; RegistryKey = 'HKLM:\X'; VersionBefore = '1.0'; Result = $null })
+            }
+        }
+        function Set-InstalledState { param($Present, $Version)
+            $script:state = [pscustomobject] @{ Present = $Present; Version = $Version; Identity = 'Registry'; WingetVersion = $null }
+            Mock -ModuleName SoftwareInventory Get-InstalledState { $script:state }
+        }
+    }
+
+    It 'trägt ein erreichtes Update sofort nach' {
+        Write-Started
+        Set-InstalledState $true '2.0'
+        $r = @(Update-IncompleteActionLog)
+        $r.Count | Should -Be 1
+        $log = Get-ActionLog
+        $log.Result | Should -Be 'Interrupted'
+        $log.VersionAfter | Should -Be '2.0'
+        $log.Message.Code | Should -Be 'ActionInterruptedReached'
+    }
+
+    It 'trägt eine erfolgte Deinstallation nach' {
+        Write-Started -Action Uninstall
+        Set-InstalledState $false $null
+        Update-IncompleteActionLog | Out-Null
+        (Get-ActionLog).Message.Code | Should -Be 'ActionInterruptedRemoved'
+    }
+
+    It 'lässt eine junge Aktion ohne Änderung offen, sie kann noch laufen' {
+        Write-Started
+        Set-InstalledState $true '1.0'
+        @(Update-IncompleteActionLog).Count | Should -Be 0
+        (Get-ActionLog).Result | Should -Be 'Incomplete'
+    }
+
+    It 'meldet ohne Änderung nach der Wartezeit ehrlich „nicht erkennbar“' {
+        Write-Started
+        Set-InstalledState $true '1.0'
+        @(Update-IncompleteActionLog -WaitMinutes 0).Count | Should -Be 1
+        $log = Get-ActionLog
+        $log.Result | Should -Be 'Interrupted'
+        $log.Message.Code | Should -Be 'ActionInterruptedUnknown'
+    }
+
+    It 'wertet einen nicht lesbaren Zustand nicht als entfernt' {
+        Write-Started -Action Uninstall
+        $script:state = [pscustomobject] @{ Present = $false; Version = $null; Identity = $null; WingetVersion = $null }
+        Mock -ModuleName SoftwareInventory Get-InstalledState { $script:state }
+        @(Update-IncompleteActionLog).Count | Should -Be 0
+    }
+
+    It 'fasst abgeschlossene Aktionen nicht an und trägt jede nur einmal nach' {
+        Write-Started
+        Set-InstalledState $true '2.0'
+        Update-IncompleteActionLog | Out-Null
+        @(Update-IncompleteActionLog).Count | Should -Be 0
+    }
+}
+
 Describe 'Telemetrie im erhöhten Helfer' {
     It 'schaltet die PowerShell-Telemetrie aus, bevor der Helfer läuft' {
         $cmd = InModuleScope SoftwareInventory { Get-ElevatedHelperBootstrap -HelperPath 'C:\x\h.ps1' -Hash 'AB' -PlanBase64 'cGxhbg==' }
