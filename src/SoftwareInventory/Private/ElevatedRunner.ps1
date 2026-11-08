@@ -58,11 +58,68 @@ function Get-ElevatedHelperBootstrap {
 }
 
 function Start-ElevatedProcess {
-    # Kapselt Start-Process, damit Tests es ersetzen können. -Verb RunAs löst die UAC-Abfrage aus.
+    # Kapselt den Start, damit Tests ihn ersetzen können. Mit Erhöhung über ShellExecuteEx und dem Fenster
+    # der App als Besitzer, damit die UAC-Abfrage vorne erscheint; Start-Process kann das nicht.
     param([string] $FilePath, [string] $ArgumentList, [switch] $NoElevation)
-    $parameters = @{ FilePath = $FilePath; ArgumentList = $ArgumentList; PassThru = $true; WindowStyle = 'Hidden' }
-    if (-not $NoElevation) { $parameters.Verb = 'RunAs' }
-    Start-Process @parameters
+    if ($NoElevation) { return Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -PassThru -WindowStyle Hidden }
+    $owner = (Get-Process -Id $PID).MainWindowHandle
+    [SoftwareInventory.ElevationInterop]::Start($FilePath, $ArgumentList, $owner)
+}
+
+function Set-ActionPhase {
+    # Für die Anzeige in der App: WaitingForElevation (UAC-Abfrage offen) oder Running.
+    param([System.Collections.IDictionary] $Control, [string] $Phase)
+    if ($Control) { $Control['Phase'] = $Phase }
+}
+
+function Test-ActionCancelRequested {
+    param([System.Collections.IDictionary] $Control)
+    [bool] ($Control -and $Control['State'] -eq 'Cancelled')
+}
+
+function Receive-HelperLine {
+    <#
+    .SYNOPSIS
+        Wartet auf die nächste Ergebniszeile des Helfers und reicht währenddessen ein Abbrechen weiter.
+    .DESCRIPTION
+        Sobald die App abbricht (Control.State = Cancelled), geht einmal „cancel“ an den Helfer. Seine
+        Antwort (CancelReply) landet in Control.CancelResult: Stopped, Continuing oder Orphaned.
+    .OUTPUTS
+        Hashtable der Zeile; $null bei Zeitüberschreitung, Verbindungsende oder unlesbarer Zeile.
+    #>
+    param(
+        [System.IO.StreamReader] $Reader,
+        [System.IO.StreamWriter] $Writer,
+        [System.Collections.IDictionary] $Control,
+        [int] $TimeoutSeconds
+    )
+    $deadline = [datetime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $sent = $false
+    try {
+        $task = $Reader.ReadLineAsync()
+        while ($true) {
+            if ($task.Wait(250)) {
+                $line = $task.Result
+                if ($null -eq $line) { return $null }
+                $data = try { $line | ConvertFrom-Json -AsHashtable } catch { $null }
+                if ($data -and $data.Kind -eq 'CancelReply') {
+                    if ($Control) { $Control['CancelResult'] = $data.Outcome }
+                    $task = $Reader.ReadLineAsync()
+                    continue
+                }
+                return $data
+            }
+            if ([datetime]::UtcNow -ge $deadline) { return $null }
+            if (-not $sent -and (Test-ActionCancelRequested $Control)) {
+                $sent = $true
+                $Writer.WriteLine('cancel')
+            }
+        }
+    }
+    catch {
+        # Verbindung abgerissen (Helfer beendet)
+        $null
+    }
 }
 
 function Test-ElevationCancelled {
@@ -81,17 +138,22 @@ function Start-ElevatedHelper {
     .SYNOPSIS
         Führt einen Plan im erhöhten Helfer aus und liefert dessen Ergebnis.
     .OUTPUTS
-        Hashtable: Status (Completed|ElevationDenied|Failed) und die Felder des Helfers
-        (RestorePoint, ExitCode, TimedOut, Output, InstallerLog, Error).
+        Hashtable: Status (Completed|ElevationDenied|Cancelled|Failed) und die Felder des Helfers
+        (RestorePoint, ExitCode, TimedOut, Cancelled, Output, InstallerLog, Error).
     .PARAMETER NoElevation
         Startet den Helfer ohne UAC im aktuellen Benutzer und lässt diesen an die Pipe. So laufen
         Aktionen ohne Adminrechte (HKCU, unbekannter Bereich) über denselben Weg.
+    .PARAMETER Control
+        Synchronisierte Hashtabelle der App: State = Cancelled bricht ab; Phase und CancelResult schreibt das Modul.
     #>
     param(
         [Parameter(Mandatory)] [hashtable] $HelperPlan,
         [int] $TimeoutSeconds = 3600,
-        [switch] $NoElevation
+        [switch] $NoElevation,
+        [System.Collections.IDictionary] $Control
     )
+
+    if (Test-ActionCancelRequested $Control) { return @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) } }
 
     $nonce = [guid]::NewGuid().ToString('N')
     $pipeName = "SoftwareInventory-$([guid]::NewGuid().ToString('N'))"
@@ -106,18 +168,21 @@ function Start-ElevatedHelper {
     $command = Get-ElevatedHelperBootstrap -HelperPath $helper -Hash $hash -PlanBase64 $planBase64
     $argumentList = "-NoProfile -NonInteractive -WindowStyle Hidden -Command `"$command`""
 
-    $server = New-ResultPipe -Name $pipeName -AllowCurrentUser:$NoElevation
+    $server = New-ResultPipe -Name $pipeName -AllowCurrentUser:$NoElevation -Duplex
     try {
         $connect = $server.WaitForConnectionAsync()
         try {
+            # Der Start kehrt erst zurück, wenn die UAC-Abfrage beantwortet ist; sie lässt sich von außen nicht schließen.
+            Set-ActionPhase $Control $(if ($NoElevation) { 'Running' } else { 'WaitingForElevation' })
             $process = Start-ElevatedProcess -FilePath $script:WindowsPowerShell -ArgumentList $argumentList -NoElevation:$NoElevation
         }
         catch {
             if (Test-ElevationCancelled $_) { return @{ Status = 'ElevationDenied'; Error = (New-InventoryMessage ElevationDenied) } }
             return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperStartFailed $_.Exception.Message) }
         }
+        Set-ActionPhase $Control 'Running'
 
-        # Restore-Point und Aktion brauchen Zeit; zusätzlich 10 Minuten Puffer.
+        # Bis zur Verbindung: Start des Helfers; zusätzlich 10 Minuten Puffer.
         $deadline = [datetime]::UtcNow.AddSeconds($TimeoutSeconds + 600)
         while (-not $connect.IsCompleted -and -not $process.HasExited -and [datetime]::UtcNow -lt $deadline) {
             Start-Sleep -Milliseconds 200
@@ -136,15 +201,29 @@ function Start-ElevatedHelper {
             return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperUnexpectedProcess) }
         }
 
-        $reader = [System.IO.StreamReader]::new($server, [System.Text.Encoding]::UTF8)
-        $read = $reader.ReadToEndAsync()
-        if (-not $read.Wait([timespan]::FromSeconds(60))) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultIncomplete) } }
+        $utf8 = [System.Text.UTF8Encoding]::new($false)
+        $reader = [System.IO.StreamReader]::new($server, $utf8)
+        $writer = [System.IO.StreamWriter]::new($server, $utf8)
+        $writer.AutoFlush = $true
+
+        # Handschlag: Erst nach „go“ startet der Helfer etwas.
+        $hello = Receive-HelperLine -Reader $reader -Writer $writer -TimeoutSeconds 60
+        if (-not $hello) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) } }
+        if ($hello.Nonce -ne $nonce) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperNonceMismatch) } }
         try {
-            $result = $read.Result | ConvertFrom-Json -AsHashtable
+            if (Test-ActionCancelRequested $Control) {
+                $writer.WriteLine('stop')
+                return @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) }
+            }
+            $writer.WriteLine('go')
         }
         catch {
-            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) }
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultIncomplete) }
         }
+
+        # Restore-Point und Aktion brauchen Zeit; zusätzlich 10 Minuten Puffer.
+        $result = Receive-HelperLine -Reader $reader -Writer $writer -Control $Control -TimeoutSeconds ($TimeoutSeconds + 600)
+        if (-not $result) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultIncomplete) } }
         if ($result.Nonce -ne $nonce) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperNonceMismatch) } }
         $result.Status = 'Completed'
         # Der Helfer liefert nur Codes; den Text bildet das Modul in der Sprache der Oberfläche.

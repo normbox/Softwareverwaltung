@@ -46,6 +46,7 @@
         'Get-SecurityRating'
         'Export-SecurityReport'
         'Get-ActionLog'
+        'Update-IncompleteActionLog'
         'Update-Software'
         'Uninstall-Software'
         'Install-WingetPackageManager'

@@ -9,6 +9,8 @@
       1. legt auf Wunsch einen Wiederherstellungspunkt an,
       2. prüft die Programmdatei erneut und startet sie ohne Shell,
       3. meldet Exit-Code, Ausgabe und ggf. MSI-Log über die Named Pipe des Aufrufers zurück.
+    Er verbindet sich zuerst mit dem Modul und startet erst nach dessen „go“: Ist die App inzwischen
+    geschlossen oder wurde abgebrochen, läuft nichts.
     Er schreibt nichts in den Benutzerordner; ein MSI-Log entsteht im Temp-Ordner des erhöhten
     Kontexts und wird nach dem Auslesen gelöscht.
     Ohne -PlanBase64 werden nur die Funktionen definiert (für Tests).
@@ -24,7 +26,7 @@ function New-HelperResult {
     param($Plan)
     [ordered]@{
         Nonce               = $Plan.Nonce
-        HelperVersion       = 2
+        HelperVersion       = 3
         PowerShellVersion   = $PSVersionTable.PSVersion.ToString()
         RestorePoint        = 'NotRequested'
         RestorePointCode    = $null   # Code und Args; den Text bildet das Modul (Sprache der Oberfläche)
@@ -32,6 +34,7 @@ function New-HelperResult {
         Started             = $false
         ExitCode            = $null
         TimedOut            = $false
+        Cancelled           = $false
         Output              = $null
         InstallerLog        = $null
         ErrorCode           = $null
@@ -171,12 +174,82 @@ function Get-OutputTail {
     (@($clean) | Select-Object -Last $Lines) -join "`n"
 }
 
+function New-HelperChannel {
+    <#
+    .SYNOPSIS
+        Verbindung zum Modul. Asynchron geöffnet, damit Lesen und Schreiben sich nicht gegenseitig blockieren.
+    .DESCRIPTION
+        Es gibt immer höchstens eine offene Leseanfrage (Pending); sie überdauert einen Schritt, damit kein
+        Befehl verloren geht. Ohne Gegenstelle (App geschlossen) schlägt Connect fehl: Dann läuft nichts.
+    #>
+    param([string] $PipeName)
+    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', $PipeName, [System.IO.Pipes.PipeDirection]::InOut, [System.IO.Pipes.PipeOptions]::Asynchronous)
+    $pipe.Connect(30000)
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $writer = New-Object System.IO.StreamWriter($pipe, $utf8)
+    $writer.AutoFlush = $true
+    @{ Pipe = $pipe; Reader = (New-Object System.IO.StreamReader($pipe, $utf8)); Writer = $writer; Pending = $null; Closed = $false }
+}
+
+function Read-HelperCommand {
+    # Wartet auf die nächste Zeile vom Modul; $null, wenn die Verbindung weg ist.
+    param($Channel)
+    if (-not $Channel.Pending) { $Channel.Pending = $Channel.Reader.ReadLineAsync() }
+    try { $line = $Channel.Pending.GetAwaiter().GetResult() } catch { $line = $null }
+    $Channel.Pending = $null
+    $line
+}
+
+function Test-HelperCancelRequested {
+    # Ohne zu warten: Hat das Modul „cancel“ geschickt? Ist die Verbindung weg, läuft die Aktion einfach weiter.
+    param($Channel)
+    if ($Channel.Closed) { return $false }
+    if (-not $Channel.Pending) { $Channel.Pending = $Channel.Reader.ReadLineAsync() }
+    if (-not $Channel.Pending.IsCompleted) { return $false }
+    try { $line = $Channel.Pending.GetAwaiter().GetResult() } catch { $line = $null }
+    $Channel.Pending = $null
+    if ($null -eq $line) { $Channel.Closed = $true; return $false }
+    $line -eq 'cancel'
+}
+
+function Get-HelperChildProcess {
+    # Kindprozesse außer conhost.exe (gehört zu jedem Konsolenprogramm und ist kein Installer).
+    param([int] $ParentId)
+    @(Get-CimInstance -ClassName Win32_Process -Filter "ParentProcessId = $ParentId" -ErrorAction Stop | Where-Object { $_.Name -ine 'conhost.exe' })
+}
+
+function Request-HelperCancel {
+    <#
+    .SYNOPSIS
+        Bricht eine laufende Aktion ab, wenn das ohne halbe Installation geht.
+    .DESCRIPTION
+        Nur winget wird beendet, und nur solange es noch keinen Installer gestartet hat (Download,
+        Hash-Prüfung). Installer selbst werden nie beendet; auch winget tut das beim Abbrechen nicht.
+    .OUTPUTS
+        Stopped; Continuing (läuft weiter); Orphaned (winget beendet, Installer gerade noch gestartet).
+    #>
+    param($Process, [string] $FilePath)
+    if ([System.IO.Path]::GetFileName($FilePath) -ine 'winget.exe') { return 'Continuing' }
+    try {
+        if (@(Get-HelperChildProcess $Process.Id).Count -gt 0) { return 'Continuing' }
+        $Process.Kill()
+        [void] $Process.WaitForExit(5000)
+        if (@(Get-HelperChildProcess $Process.Id).Count -gt 0) { return 'Orphaned' }
+    }
+    catch {
+        return 'Continuing'
+    }
+    'Stopped'
+}
+
 function Invoke-HelperProcess {
     <#
     .SYNOPSIS
         Startet das Programm ohne Shell und wartet höchstens TimeoutSeconds.
+    .PARAMETER Channel
+        Verbindung zum Modul; währenddessen wird auf „cancel“ geachtet und die Antwort als CancelReply gemeldet.
     #>
-    param($Plan, $Result)
+    param($Plan, $Result, $Channel)
 
     $arguments = [string] $Plan.Arguments
     $logPath = $null
@@ -200,10 +273,31 @@ function Invoke-HelperProcess {
         $Result.Started = $true
         $stdout = $process.StandardOutput.ReadToEndAsync()
         $stderr = $process.StandardError.ReadToEndAsync()
-        if ($process.WaitForExit([int] $Plan.TimeoutSeconds * 1000)) {
-            $process.WaitForExit()
+        $limit = [long] $Plan.TimeoutSeconds * 1000
+        $clock = [System.Diagnostics.Stopwatch]::StartNew()
+        $cancelHandled = $false
+        $exited = $false
+        while ($true) {
+            if ($process.WaitForExit(500)) { $exited = $true; break }
+            if ($clock.ElapsedMilliseconds -ge $limit) { break }
+            if ($Channel -and -not $cancelHandled -and (Test-HelperCancelRequested $Channel)) {
+                $cancelHandled = $true
+                $outcome = Request-HelperCancel -Process $process -FilePath $Plan.FilePath
+                if ($outcome -eq 'Stopped') { $Result.Cancelled = $true }
+                elseif ($outcome -eq 'Orphaned') { $Result.ErrorCode = 'ActionCancelOrphaned'; $Result.ErrorArgs = @() }
+                # Die Aktion läuft auch weiter, wenn niemand mehr zuhört.
+                try { Write-HelperLine $Channel.Writer @{ Kind = 'CancelReply'; Nonce = $Plan.Nonce; Outcome = $outcome } } catch { $Channel.Closed = $true }
+            }
+        }
+        if ($exited) {
             $Result.ExitCode = $process.ExitCode
-            $Result.Output = Get-OutputTail ($stdout.Result + "`n" + $stderr.Result)
+            # Begrenzt: Ein weiterlaufender Kindprozess kann die Ausgabe sonst beliebig lange offen halten.
+            try {
+                if ([System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]] @($stdout, $stderr), 10000)) {
+                    $Result.Output = Get-OutputTail ($stdout.Result + "`n" + $stderr.Result)
+                }
+            }
+            catch { $Result.Output = $null }
         }
         else {
             # Nicht beenden: ein halb abgebrochenes Deinstallationsprogramm ist schlimmer.
@@ -218,24 +312,8 @@ function Invoke-HelperProcess {
     }
 }
 
-function Send-HelperResult {
-    param([string] $PipeName, $Result)
-    $json = ConvertTo-Json -InputObject ([pscustomobject] $Result) -Depth 4 -Compress
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', $PipeName, [System.IO.Pipes.PipeDirection]::Out)
-    try {
-        $pipe.Connect(30000)
-        $pipe.Write($bytes, 0, $bytes.Length)
-        $pipe.Flush()
-        $pipe.WaitForPipeDrain()
-    }
-    finally {
-        $pipe.Dispose()
-    }
-}
-
 function Write-HelperLine {
-    # Eine Zeile JSON an das Modul (Stapelbetrieb).
+    # Eine Zeile JSON an das Modul.
     param($Writer, $Result)
     $Writer.WriteLine((ConvertTo-Json -InputObject ([pscustomobject] $Result) -Depth 4 -Compress))
 }
@@ -249,15 +327,12 @@ function Invoke-ElevatedHelperBatch {
         Vor jedem Schritt wartet der Helfer auf eine Zeile vom Modul: „next“ führt den nächsten Schritt
         aus, alles andere beendet den Stapel (Abbrechen; „Anhalten“ heißt, das Modul antwortet später).
         Nach jedem Schritt meldet er dessen Ergebnis als eigene Zeile. Jeder Schritt durchläuft dieselbe
-        Pfadprüfung wie ein Einzelaufruf.
+        Pfadprüfung wie ein Einzelaufruf. Während eines Schritts gilt für „cancel“ dasselbe wie beim
+        Einzelaufruf (Request-HelperCancel).
     #>
     param($Plan)
-    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', $Plan.PipeName, [System.IO.Pipes.PipeDirection]::InOut)
-    $pipe.Connect(30000)
-    $utf8 = New-Object System.Text.UTF8Encoding($false)
-    $writer = New-Object System.IO.StreamWriter($pipe, $utf8)
-    $writer.AutoFlush = $true
-    $reader = New-Object System.IO.StreamReader($pipe, $utf8)
+    $channel = New-HelperChannel $Plan.PipeName
+    $writer = $channel.Writer
     try {
         $start = New-HelperResult $Plan
         $start.Kind = 'Start'
@@ -274,7 +349,7 @@ function Invoke-ElevatedHelperBatch {
 
         $index = 0
         foreach ($step in @($Plan.Steps)) {
-            if ($reader.ReadLine() -ne 'next') { break }
+            if ((Read-HelperCommand $channel) -ne 'next') { break }
             $result = New-HelperResult $Plan
             $result.Kind = 'Step'
             $result.Index = $index
@@ -286,17 +361,17 @@ function Invoke-ElevatedHelperBatch {
             try {
                 $problem = Test-HelperFilePath $step.FilePath -Elevated $true
                 if ($problem) { $result.ErrorCode = $problem.Code; $result.ErrorArgs = @($problem.Args) }
-                else { Invoke-HelperProcess -Plan $stepPlan -Result $result }
+                else { Invoke-HelperProcess -Plan $stepPlan -Result $result -Channel $channel }
             }
             catch { $result.ErrorCode = 'HelperException'; $result.ErrorArgs = @($_.Exception.Message) }
             Write-HelperLine $writer $result
             $index++
         }
         Write-HelperLine $writer @{ Kind = 'End'; Nonce = $Plan.Nonce }
-        $pipe.WaitForPipeDrain()
+        $channel.Pipe.WaitForPipeDrain()
     }
     finally {
-        $pipe.Dispose()
+        $channel.Pipe.Dispose()
     }
 }
 
@@ -307,27 +382,38 @@ function Invoke-ElevatedHelperMain {
         Invoke-ElevatedHelperBatch -Plan $plan
         return
     }
-    $result = New-HelperResult $plan
+    # Zuerst verbinden und auf „go“ warten: Ohne Gegenstelle oder nach „stop“ wird nichts gestartet.
+    $channel = New-HelperChannel $plan.PipeName
     try {
-        if ($plan.RestorePoint) {
-            $rp = Invoke-RestorePoint -Description $plan.RestorePointDescription -Type ([uint32] $plan.RestorePointType)
-            $result.RestorePoint = $rp.Status
-            $result.RestorePointCode = $rp.Code
-            $result.RestorePointArgs = @($rp.Args)
+        Write-HelperLine $channel.Writer @{ Kind = 'Hello'; Nonce = $plan.Nonce }
+        if ((Read-HelperCommand $channel) -ne 'go') { return }
+        $result = New-HelperResult $plan
+        $result.Kind = 'Result'
+        try {
+            if ($plan.RestorePoint) {
+                $rp = Invoke-RestorePoint -Description $plan.RestorePointDescription -Type ([uint32] $plan.RestorePointType)
+                $result.RestorePoint = $rp.Status
+                $result.RestorePointCode = $rp.Code
+                $result.RestorePointArgs = @($rp.Args)
+            }
+            if ($plan.FilePath) {
+                # Fehlt die Angabe (ältere App), gilt die strengere Prüfung für erhöhte Aufrufe.
+                $elevated = -not ($plan.PSObject.Properties['Elevate'] -and $plan.Elevate -eq $false)
+                $problem = Test-HelperFilePath $plan.FilePath -Elevated $elevated
+                if ($problem) { $result.ErrorCode = $problem.Code; $result.ErrorArgs = @($problem.Args) }
+                else { Invoke-HelperProcess -Plan $plan -Result $result -Channel $channel }
+            }
         }
-        if ($plan.FilePath) {
-            # Fehlt die Angabe (ältere App), gilt die strengere Prüfung für erhöhte Aufrufe.
-            $elevated = -not ($plan.PSObject.Properties['Elevate'] -and $plan.Elevate -eq $false)
-            $problem = Test-HelperFilePath $plan.FilePath -Elevated $elevated
-            if ($problem) { $result.ErrorCode = $problem.Code; $result.ErrorArgs = @($problem.Args) }
-            else { Invoke-HelperProcess -Plan $plan -Result $result }
+        catch {
+            $result.ErrorCode = 'HelperException'
+            $result.ErrorArgs = @($_.Exception.Message)
         }
+        Write-HelperLine $channel.Writer $result
+        $channel.Pipe.WaitForPipeDrain()
     }
-    catch {
-        $result.ErrorCode = 'HelperException'
-        $result.ErrorArgs = @($_.Exception.Message)
+    finally {
+        $channel.Pipe.Dispose()
     }
-    Send-HelperResult -PipeName $plan.PipeName -Result $result
 }
 
 if ($PlanBase64) {
