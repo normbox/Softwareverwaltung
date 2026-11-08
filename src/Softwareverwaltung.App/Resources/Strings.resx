@@ -541,6 +541,9 @@
   <data name="ActionResultNotVerified" xml:space="preserve">
     <value>Nicht bestätigt: Der Zustand hat sich nicht geändert</value>
   </data>
+  <data name="ActionResultInterrupted" xml:space="preserve">
+    <value>Abschluss nicht beobachtet</value>
+  </data>
   <data name="ActionResultCancelled" xml:space="preserve">
     <value>Abgebrochen</value>
   </data>
@@ -757,8 +760,40 @@
   <data name="StatusActionRunning" xml:space="preserve">
     <value>{0}: {1} läuft …</value>
   </data>
-  <data name="StatusConfirmUac" xml:space="preserve">
-    <value>Bitte die Windows-Abfrage (UAC) bestätigen.</value>
+  <data name="StatusActionWaitingUac" xml:space="preserve">
+    <value>{0}: {1} wartet auf Bestätigung der Benutzerkontensteuerung ({2}).</value>
+  </data>
+  <data name="StatusQueueWaitingUac" xml:space="preserve">
+    <value>Warteschlange wartet auf Bestätigung der Benutzerkontensteuerung ({0}).</value>
+  </data>
+  <data name="StatusActionCancelWhileUac" xml:space="preserve">
+    <value>Abbruch vorgemerkt. Die Abfrage der Benutzerkontensteuerung bitte ablehnen; auch nach einer Bestätigung wird nichts ausgeführt.</value>
+  </data>
+  <data name="StatusActionCancelling" xml:space="preserve">
+    <value>Wird abgebrochen …</value>
+  </data>
+  <data name="StatusActionContinues" xml:space="preserve">
+    <value>Der Installer läuft bereits und lässt sich nicht sicher abbrechen. Er läuft im Hintergrund weiter, das Ergebnis wird nachgetragen.</value>
+  </data>
+  <data name="ActionElevationHint" xml:space="preserve">
+    <value>Die Abfrage der Benutzerkontensteuerung ist seit {0} offen. Sie kann in der Taskleiste blinken. Ohne Bestätigung startet nichts.</value>
+  </data>
+  <data name="ActionCancelName" xml:space="preserve">
+    <value>Laufende Aktion abbrechen</value>
+  </data>
+  <data name="ActionCloseTitle" xml:space="preserve">
+    <value>Aktion läuft</value>
+  </data>
+  <data name="ActionCloseWarning" xml:space="preserve">
+    <value>Eine Aktion läuft gerade. Wartet sie noch auf die Benutzerkontensteuerung, wird sie nach dem Schließen nicht mehr gestartet. Läuft sie bereits, läuft sie im Hintergrund weiter, und das Ergebnis wird beim nächsten Start nachgetragen.
+
+Trotzdem schließen?</value>
+  </data>
+  <data name="NoticeInterruptedTitle" xml:space="preserve">
+    <value>Ergebnisse nachgetragen</value>
+  </data>
+  <data name="NoticeInterruptedText" xml:space="preserve">
+    <value>Abschluss von {0} Aktion(en) nachgetragen, die liefen, während die App geschlossen war. Das Protokoll beim jeweiligen Programm nennt den Stand.</value>
   </data>
   <data name="StatusRescanForWinget" xml:space="preserve">
     <value>Ein neuer Scan übernimmt die winget-Daten.</value>
@@ -961,7 +996,7 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
     <value>Warteschlange angehalten; die laufende Aktion wird noch fertig.</value>
   </data>
   <data name="StatusQueueCancelling" xml:space="preserve">
-    <value>Warteschlange wird abgebrochen; die laufende Aktion wird noch fertig.</value>
+    <value>Warteschlange abgebrochen: Nicht gestartete Einträge sind entfernt. Eine laufende Aktion stoppt nur, wenn das sauber geht.</value>
   </data>
   <data name="StatusQueueDone" xml:space="preserve">
     <value>Warteschlange fertig: {0} von {1} erfolgreich.</value>

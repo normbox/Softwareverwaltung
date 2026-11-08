@@ -27,6 +27,11 @@ function Update-Software {
         CommandLine aus dem -WhatIf-Ergebnis, das der Benutzer bestätigt hat. Ergibt die erneute
         Prüfung einen anderen Befehl, wird nichts ausgeführt (Result Cancelled, Message nennt den neuen Befehl).
         Für Oberflächen, die zwischen Bestätigen und Ausführen Zeit vergehen lassen.
+    .PARAMETER Control
+        Synchronisierte Hashtabelle für Oberflächen. State = Cancelled bricht ab: Vor dem Start läuft
+        nichts, winget wird nur beendet, solange es noch keinen Installer gestartet hat, ein laufender
+        Installer läuft weiter. Phase (WaitingForElevation, Running) und CancelResult (Stopped,
+        Continuing, Orphaned) schreibt das Modul.
     .PARAMETER TimeoutMinutes
         Höchstens so lange auf das Ende warten (Standard 60). Danach Result „Timeout“; das Programm
         wird nicht beendet.
@@ -46,6 +51,8 @@ function Update-Software {
         [ValidateRange(1, 1440)]
         [int] $TimeoutMinutes = 60,
 
+        [System.Collections.IDictionary] $Control,
+
         [string] $ConfirmedCommandLine
     )
 
@@ -59,7 +66,7 @@ function Update-Software {
             if (-not $prepared) { continue }
             if ($prepared.Result) { $prepared.Result; continue }
             if ($PSCmdlet.ShouldProcess($prepared.Plan.Name, $prepared.Description.Text)) {
-                Invoke-ActionPlan -Plan $prepared.Plan -Record $prepared.Record -TimeoutMinutes $TimeoutMinutes
+                Invoke-ActionPlan -Plan $prepared.Plan -Record $prepared.Record -TimeoutMinutes $TimeoutMinutes -Control $Control
             }
             else {
                 New-DeclinedActionResult $prepared

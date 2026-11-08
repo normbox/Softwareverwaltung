@@ -40,7 +40,7 @@ Abhängigkeiten und ihre Lizenzen: [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTIC
 | Inventar | `Get-SoftwareInventory`, `Get-PortableSoftware`, `Invoke-InventoryScan`, `Find-InstalledSoftware`, `Get-ScanDrive`, `Resolve-InstallLocation` |
 | Scans | `Save-InventorySnapshot`, `Get-InventorySnapshot`, `Compare-InventorySnapshot` |
 | Versionen und Sicherheit | `Test-SoftwareUpdate`, `Compare-SoftwareVersion`, `Get-SoftwareVulnerability`, `Get-SecurityRating`, `Export-SecurityReport`, `Find-CpeCandidate`, `Get-CpeMapping`, `Set-CpeMapping`, `Remove-CpeMapping`, `Get-CpeMappingReport`, `Clear-CheckCache`, `Get-RefreshEstimate` |
-| Aktionen | `Update-Software`, `Uninstall-Software`, `Get-UpdateQueuePlan`, `Invoke-UpdateQueue`, `Get-ActionLog`, `Test-WingetAvailability`, `Install-WingetPackageManager` |
+| Aktionen | `Update-Software`, `Uninstall-Software`, `Get-UpdateQueuePlan`, `Invoke-UpdateQueue`, `Get-ActionLog`, `Update-IncompleteActionLog`, `Test-WingetAvailability`, `Install-WingetPackageManager` |
 | Einstellungen und Schlüssel | `Get-InventorySetting`, `Set-InventorySetting`, `Get-SettingPreset`, `Get-ServiceTermsNotice`, `Set-ServiceCredential`, `Remove-ServiceCredential`, `Get-ServiceCredentialStatus` |
 | KI-Berater | `Get-AdvisorTool`, `Invoke-AdvisorTool`, `Set-AdvisorContext`, `Get-AdvisorEndpointPreset`, `Get-AdvisorEndpointCheck`, `Get-AdvisorDataPreview`, `Get-AdvisorConnection`, `Protect-AdvisorText` |
 
@@ -120,6 +120,10 @@ Alle Abfragen an externe Dienste nutzen die Proxy-Einstellungen des Systems. Jed
 - Vor dem Senden an jedes Modell, auch an lokale, werden Benutzername, Rechnername und Benutzerpfade ersetzt.
 - Ergebnisse aus unbestätigten Quellen werden als „unbestätigt“ gekennzeichnet.
 - Geplant für den Firmeneinsatz: signierte Skripte und signierte Releases (Authenticode), damit SmartScreen und AppLocker/WDAC-Regeln greifen.
+
+## Spätere Erweiterung: Web-Suche
+
+Geplant, nicht umgesetzt: Web-Suche für den KI-Berater, nur Text, Erlaubnisliste für Seiten, Größengrenze, über das Modul. Der Abruf läuft wie jedes Werkzeug über das Modul, nie direkt durch das Modell. Freigabestufe und Bereinigung gelten auch für Suchbegriffe, Ergebnisse gelten als „unbestätigt“ und als Daten, nicht als Anweisungen. Das Werkzeug ist nur lesend und muss standardmäßig aus sein.
 
 ## Telemetrie
 

@@ -344,6 +344,10 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Margin="16,0,16,0">
+        <!-- UAC-Abfrage länger offen: deutlicher Hinweis mit Laufzeit -->
+        <TextBlock Margin="0,0,0,8" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                   Text="{Binding ElevationHint}"
+                   Visibility="{Binding ElevationHint, Converter={StaticResource NullToVisibility}}" />
         <!-- Hinweis, solange „Ohne Cache“ an ist -->
         <TextBlock Margin="0,0,0,8" TextWrapping="Wrap" Foreground="{DynamicResource SystemFillColorCautionBrush}"
                    Text="{loc:Text ScanWithoutCacheHint}"
@@ -640,6 +644,9 @@
                              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
             <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <ui:Button Margin="12,0,0,0" Content="{loc:Text CommonCancel}" Icon="{ui:SymbolIcon Dismiss16}"
+                       AutomationProperties.Name="{loc:Text ActionCancelName}" Command="{Binding CancelActionCommand}"
+                       Visibility="{Binding ActionRunning, Converter={StaticResource BoolToVisibility}}" />
         </StackPanel>
     </Grid>
 </UserControl>

@@ -101,7 +101,8 @@ function Invoke-ActionPlan {
     param(
         [Parameter(Mandatory)] $Plan,
         [Parameter(Mandatory)] $Record,
-        [int] $TimeoutMinutes = 60
+        [int] $TimeoutMinutes = 60,
+        [System.Collections.IDictionary] $Control
     )
 
     $result = New-ActionResult $Plan
@@ -113,7 +114,7 @@ function Invoke-ActionPlan {
     try {
         # Wiederherstellungspunkt für Aktionen ohne Adminrechte: eigener kurzer UAC-Aufruf.
         if ($Plan.RestorePoint -and -not $Plan.Elevated) {
-            $rp = Start-ElevatedHelper -TimeoutSeconds 600 -HelperPlan @{
+            $rp = Start-ElevatedHelper -TimeoutSeconds 600 -Control $Control -HelperPlan @{
                 FilePath = $null; RestorePoint = $true
                 RestorePointDescription = Get-RestorePointDescription $Plan; RestorePointType = $script:RestorePointType[$Plan.Action]
             }
@@ -121,7 +122,7 @@ function Invoke-ActionPlan {
                 $result.RestorePoint = $rp.RestorePoint
                 $result.RestorePointMessage = $rp.RestorePointMessage
             }
-            else {
+            elseif ($rp.Status -ne 'Cancelled') {
                 $result.RestorePoint = 'Failed'
                 $result.RestorePointMessage = New-InventoryMessage RestorePointContinueWithout (, $rp.Error)
             }
@@ -142,7 +143,7 @@ function Invoke-ActionPlan {
                 RestorePoint = [bool] ($Plan.RestorePoint -and $Plan.Elevated)
                 RestorePointDescription = Get-RestorePointDescription $Plan; RestorePointType = $script:RestorePointType[$Plan.Action]
             }
-            $run = Start-ElevatedHelper -HelperPlan $helperPlan -TimeoutSeconds $timeout -NoElevation:(-not $Plan.Elevated)
+            $run = Start-ElevatedHelper -HelperPlan $helperPlan -TimeoutSeconds $timeout -NoElevation:(-not $Plan.Elevated) -Control $Control
             if ($Plan.Elevated -and $run.ContainsKey('RestorePoint') -and $run.RestorePoint -ne 'NotRequested') {
                 $result.RestorePoint = $run.RestorePoint
                 $result.RestorePointMessage = $run.RestorePointMessage
@@ -169,6 +170,8 @@ function Read-HelperRun {
     if ($Run.ContainsKey('Output')) { $Result.Output = Protect-SecretText $Run.Output }
     if ($Run.ContainsKey('InstallerLog')) { $Result.InstallerLog = $Run.InstallerLog }
 
+    if ($Run.Status -eq 'Cancelled') { return @{ Outcome = $null; Failure = @('Cancelled', $Run.Error) } }
+    if ($Run.ContainsKey('Cancelled') -and $Run.Cancelled) { return @{ Outcome = $null; Failure = @('Cancelled', (New-InventoryMessage ActionCancelledDuringDownload)) } }
     if ($Run.Status -eq 'ElevationDenied') { return @{ Outcome = $null; Failure = @('ElevationDenied', $Run.Error) } }
     if ($Run.Status -ne 'Completed' -or $Run.Error) { return @{ Outcome = $null; Failure = @('Failed', $Run.Error) } }
     if ($Run.TimedOut) { return @{ Outcome = $null; Failure = @('Timeout', (New-InventoryMessage ActionTimeout $TimeoutMinutes)) } }

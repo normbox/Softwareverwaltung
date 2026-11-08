@@ -21,6 +21,8 @@ function Start-ElevatedHelperBatch {
         $AfterStep (Index, Ergebnis als Hashtable wie bei Start-ElevatedHelper).
     .OUTPUTS
         @{ Status = Completed|ElevationDenied|Failed; Error; RestorePoint; RestorePointMessage; Done }
+    .PARAMETER Control
+        Wie bei Start-ElevatedHelper: State = Cancelled versucht auch den laufenden Schritt abzubrechen.
     #>
     param(
         [Parameter(Mandatory)] [hashtable[]] $Steps,
@@ -29,7 +31,8 @@ function Start-ElevatedHelperBatch {
         [int] $RestorePointType = 0,
         [Parameter(Mandatory)] [scriptblock] $BeforeStep,
         [Parameter(Mandatory)] [scriptblock] $AfterStep,
-        [switch] $NoElevation
+        [switch] $NoElevation,
+        [System.Collections.IDictionary] $Control
     )
     $batchNonce = [guid]::NewGuid().ToString('N')
     $batchPipe = "SoftwareInventory-$([guid]::NewGuid().ToString('N'))"
@@ -48,13 +51,15 @@ function Start-ElevatedHelperBatch {
     try {
         $connect = $server.WaitForConnectionAsync()
         try {
+            Set-ActionPhase $Control $(if ($NoElevation) { 'Running' } else { 'WaitingForElevation' })
             $process = Start-ElevatedProcess -FilePath $script:WindowsPowerShell -ArgumentList $argumentList -NoElevation:$NoElevation
         }
         catch {
             if (Test-ElevationCancelled $_) { return @{ Status = 'ElevationDenied'; Error = (New-InventoryMessage ElevationDenied); Done = 0 } }
             return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperStartFailed $_.Exception.Message); Done = 0 }
         }
-        # Bis zur Verbindung: UAC-Abfrage beantworten und Wiederherstellungspunkt (bis 10 Minuten).
+        Set-ActionPhase $Control 'Running'
+        # Bis zur Verbindung: Start des Helfers und Wiederherstellungspunkt (bis 10 Minuten).
         $deadline = [datetime]::UtcNow.AddSeconds(900)
         while (-not $connect.IsCompleted -and -not $process.HasExited -and [datetime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 200 }
         if (-not $connect.IsCompleted) { [void] $connect.Wait(2000) }
@@ -82,8 +87,7 @@ function Start-ElevatedHelperBatch {
         for ($stepIndex = 0; $stepIndex -lt $Steps.Count; $stepIndex++) {
             if (-not (& $BeforeStep $stepIndex)) { $writer.WriteLine('stop'); break }
             $writer.WriteLine('next')
-            $line = Read-PipeLine -Reader $reader -TimeoutSeconds ([int] $Steps[$stepIndex].TimeoutSeconds + 300)
-            $stepRun = if ($line) { try { $line | ConvertFrom-Json -AsHashtable } catch { $null } }
+            $stepRun = Receive-HelperLine -Reader $reader -Writer $writer -Control $Control -TimeoutSeconds ([int] $Steps[$stepIndex].TimeoutSeconds + 300)
             if (-not $stepRun -or $stepRun.Nonce -ne $batchNonce -or $stepRun.Index -ne $stepIndex) {
                 $summary.Status = 'Failed'
                 $summary.Error = New-InventoryMessage HelperResultIncomplete

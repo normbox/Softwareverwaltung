@@ -4,6 +4,16 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Laufende Aktionen: Abbrechen, UAC-Anzeige, kein verlorener Abschluss (vor 4c-2)
+
+- **Abbrechen ohne die App zu schließen**, für Einzelaktionen und die Warteschlange. Noch nicht gestartete Einträge verschwinden sofort. winget wird nur beendet, solange es noch keinen Installer gestartet hat. Ein laufender Installer wird nie beendet; die App zeigt dann „läuft im Hintergrund weiter, das Ergebnis wird nachgetragen“.
+- **Eigene Phase für die UAC-Abfrage:** Die Statuszeile bat bisher während der ganzen Aktion um die Bestätigung, auch beim Download. Jetzt erscheint der Text nur, solange die Abfrage offen ist, mit Laufzeit und nach 30 Sekunden einem deutlichen Hinweis. Eine harte Zeitgrenze gibt es nicht, weil sich die Abfrage von außen nicht schließen lässt.
+- **UAC-Abfrage mit dem Fenster der App als Besitzer** (`ElevationInterop` in der Native-DLL), damit sie vorne erscheint.
+- **Handschlag mit dem Helfer:** Er startet erst nach dem `go` des Moduls. Wird die App bei offener Abfrage geschlossen, läuft auch nach einer späteren Bestätigung nichts mehr.
+- **Warnung beim Schließen** auch bei Einzelaktionen. Das Schließen brach Updates nie ab, sie liefen unbeobachtet weiter und ihr Abschluss fehlte im Protokoll.
+- **`Update-IncompleteActionLog`:** Beim Start werden solche Aktionen mit dem Ergebnis `Interrupted` nachgetragen (Praxisfall vom 07.11.: Visual Studio und CUDA).
+- Die Ausgabe eines beendeten Programms wird nur noch begrenzt abgewartet; ein weiterlaufender Kindprozess kann den Helfer nicht mehr aufhalten.
+
 ### KI-Berater: Schutz gegen Endlosschleifen beim Denken (vor 4c-2)
 
 - **`max_tokens` in jeder Anfrage**, einstellbar (`Advisor.MaxTokens`, Vorgabe 8192), und **Zeitgrenze je Anfrage einstellbar** (`Advisor.TimeoutSeconds`, Vorgabe 300 s, bisher fest). Beides auf der Einstellungsseite unter „KI-Berater“.

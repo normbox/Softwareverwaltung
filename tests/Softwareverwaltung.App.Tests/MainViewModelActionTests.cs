@@ -1,3 +1,4 @@
+using Softwareverwaltung.App.Localization;
 using System.Management.Automation;
 using Softwareverwaltung.App.Models;
 using Softwareverwaltung.App.Services;
@@ -262,6 +263,129 @@ public sealed class MainViewModelActionTests
         Assert.False(vm.QueueRunning);
     });
 
+    private static async Task<(MainViewModel Vm, FakeActions Actions, Task Running)> StartHeldActionAsync()
+    {
+        var actions = new FakeActions { HoldAction = new TaskCompletionSource() };
+        var vm = new MainViewModel(new FakeInventory { Items = [Tool] }, actions, new FakeConfirmation());
+        await vm.InitializeAsync();
+        var running = vm.UpdateCommand.ExecuteAsync(Tool);
+        while (actions.ActionControl is null)
+        {
+            await Task.Delay(10);
+        }
+        return (vm, actions, running);
+    }
+
+    private static async Task WaitForStatusAsync(MainViewModel vm, string expected)
+    {
+        for (var i = 0; i < 200 && vm.StatusText != expected; i++)
+        {
+            await Task.Delay(10);
+        }
+        Assert.Equal(expected, vm.StatusText);
+    }
+
+    [Fact]
+    public void CancelSetsTheStateOnceAndKeepsTheAppBlockedUntilTheModuleIsDone() => RunOnDispatcher(async () =>
+    {
+        var (vm, actions, running) = await StartHeldActionAsync();
+        Assert.True(vm.ActionRunning);
+        Assert.True(vm.CancelActionCommand.CanExecute(null));
+
+        vm.CancelActionCommand.Execute(null);
+
+        Assert.Equal("Cancelled", actions.ActionControl!["State"]);
+        Assert.False(vm.CancelActionCommand.CanExecute(null));
+        Assert.True(vm.IsBusy);
+        Assert.False(vm.ScanCommand.CanExecute(null));
+
+        actions.HoldAction!.SetResult();
+        await running;
+        Assert.False(vm.ActionRunning);
+        Assert.False(vm.IsBusy);
+    });
+
+    [Fact]
+    public void WaitingForUacIsShownAsItsOwnPhase() => RunOnDispatcher(async () =>
+    {
+        var (vm, actions, running) = await StartHeldActionAsync();
+        actions.ActionControl!["Phase"] = ActionProgress.WaitingForElevation;
+        for (var i = 0; i < 200 && !vm.StatusText.Contains("Benutzerkontensteuerung"); i++)
+        {
+            await Task.Delay(10);
+        }
+        Assert.Contains("Benutzerkontensteuerung", vm.StatusText);
+
+        actions.ActionControl["Phase"] = "Running";
+        await WaitForStatusAsync(vm, AppText.Format("StatusActionRunning", "Aktualisieren", "Contoso Tool"));
+        actions.HoldAction!.SetResult();
+        await running;
+    });
+
+    [Fact]
+    public void CancelTellsHonestlyWhenTheInstallerContinues() => RunOnDispatcher(async () =>
+    {
+        var (vm, actions, running) = await StartHeldActionAsync();
+        actions.ActionControl!["Phase"] = "Running";
+        vm.CancelActionCommand.Execute(null);
+        await WaitForStatusAsync(vm, AppText.Get("StatusActionCancelling"));
+
+        actions.ActionControl["CancelResult"] = "Continuing";
+        await WaitForStatusAsync(vm, AppText.Get("StatusActionContinues"));
+
+        actions.HoldAction!.SetResult();
+        await running;
+    });
+
+    [Fact]
+    public void CancellingTheQueueRemovesEntriesThatHaveNotStarted() => RunOnDispatcher(async () =>
+    {
+        var a = new SoftwareItem { Name = "Alpha", UpdateAvailable = true, Source = Ps(("Name", "Alpha")) };
+        var b = new SoftwareItem { Name = "Beta", UpdateAvailable = true, Source = Ps(("Name", "Beta")) };
+        var actions = new FakeActions { QueuePlan = [Entry(0, "Alpha", executable: true), Entry(1, "Beta", executable: true)], HoldQueue = new TaskCompletionSource() };
+        var vm = new MainViewModel(new FakeInventory { Items = [a, b] }, actions, new FakeConfirmation());
+        await vm.InitializeAsync();
+        a.Queue.IsChecked = true;
+        b.Queue.IsChecked = true;
+        var running = vm.UpdateSelectedCommand.ExecuteAsync(null);
+        while (actions.Control is null)
+        {
+            await Task.Delay(10);
+        }
+        actions.Control["Status"] = System.Collections.Hashtable.Synchronized(new System.Collections.Hashtable { [0] = "Running", [1] = "Waiting" });
+
+        vm.CancelQueueCommand.Execute(null);
+
+        Assert.Equal("Alpha", Assert.Single(vm.QueueEntries).Name);
+        actions.HoldQueue.SetResult();
+        await running;
+    });
+
+    [Fact]
+    public void InterruptedActionsAreReportedAtStart() => RunOnDispatcher(async () =>
+    {
+        var actions = new FakeActions { InterruptedCount = 2 };
+        var vm = new MainViewModel(new FakeInventory { Items = [Tool] }, actions, new FakeConfirmation());
+        // Nur laden: Ein Scan räumt vorübergehende Hinweise wieder weg.
+        await vm.LoadModulesAsync();
+        Assert.Equal(1, actions.IncompleteLogCalls);
+        Assert.Contains(vm.Notices, n => n.Message == AppText.Format("NoticeInterruptedText", 2));
+    });
+
+    [Theory]
+    [InlineData(29, false)]
+    [InlineData(30, true)]
+    public void ElevationHintAppearsAfterThirtySeconds(int seconds, bool expected)
+    {
+        var hint = ActionProgress.ElevationHint(ActionProgress.WaitingForElevation, TimeSpan.FromSeconds(seconds));
+        Assert.Equal(expected, hint is not null);
+        Assert.Null(ActionProgress.ElevationHint("Running", TimeSpan.FromMinutes(5)));
+        if (expected)
+        {
+            Assert.Contains("0:30", hint);
+        }
+    }
+
     [Fact]
     public void StorePackageAsksForTheStoreAgreementOnceAndRunsOnlyAfterConsent() => RunOnDispatcher(async () =>
     {
@@ -405,11 +529,27 @@ public sealed class MainViewModelActionTests
 
         public bool StorePackage { get; set; }
 
-        public async Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", CancellationToken cancellationToken = default)
+        public System.Collections.Hashtable? ActionControl { get; private set; }
+        public TaskCompletionSource? HoldAction { get; set; }
+        public int InterruptedCount { get; set; }
+        public int IncompleteLogCalls { get; private set; }
+
+        public async Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", System.Collections.Hashtable? control = null, CancellationToken cancellationToken = default)
         {
             await Task.Yield();
             Calls.Add($"Execute:{kind}:{method}:{confirmedPlan.CommandLine}");
+            ActionControl = control;
+            if (HoldAction is not null)
+            {
+                await HoldAction.Task;
+            }
             return Outcome;
+        }
+
+        public Task<int> UpdateIncompleteLogAsync(CancellationToken cancellationToken = default)
+        {
+            IncompleteLogCalls++;
+            return Task.FromResult(InterruptedCount);
         }
 
         public async Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default, bool refresh = false)

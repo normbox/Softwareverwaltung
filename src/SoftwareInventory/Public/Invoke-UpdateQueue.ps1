@@ -14,9 +14,10 @@ function Invoke-UpdateQueue {
         (kein automatisches Ausweichen). Jede Aktion wird einzeln protokolliert.
 
         -Control ist eine synchronisierte Hashtabelle, die die App während des Laufs liest und setzt:
-          State  – Running, Paused oder Cancelled (zwischen zwei Einträgen geprüft; die laufende Aktion
-                   wird immer fertig)
+          State  – Running, Paused oder Cancelled. Nicht gestartete Einträge laufen dann nicht mehr. Die
+                   laufende Aktion wird nur abgebrochen, solange winget noch keinen Installer gestartet hat.
           Status – je Index: Waiting, Running oder das Ergebnis (Succeeded, Failed, Cancelled, …)
+          Phase, CancelResult – wie bei Update-Software
         Nach Abbrechen werden die übrigen Einträge als Cancelled (QueueCancelled) protokolliert.
     .EXAMPLE
         $plan = $ratings | Get-UpdateQueuePlan
@@ -91,7 +92,7 @@ function Invoke-UpdateQueue {
             $script:QueueDone++
         }
         $batch = Start-ElevatedHelperBatch -Steps $steps -BeforeStep $before -AfterStep $after -RestorePoint $restorePoint `
-            -RestorePointDescription (New-InventoryMessage RestorePointNameQueue $total).Text -RestorePointType $script:RestorePointType['Update']
+            -RestorePointDescription (New-InventoryMessage RestorePointNameQueue $total).Text -RestorePointType $script:RestorePointType['Update'] -Control $Control
         if ($restorePoint) { $restoreInfo = @{ RestorePoint = $batch.RestorePoint; RestorePointMessage = $batch.RestorePointMessage } }
         if ($batch.Status -ne 'Completed') {
             # UAC abgelehnt oder Helfer gescheitert: betrifft nur die erhöhten Einträge ohne Ergebnis.
@@ -122,7 +123,7 @@ function Invoke-UpdateQueue {
         if (-not (& $continueQueue)) { break }
         $queueStatus[$item.Index] = 'Running'
         Write-CheckProgress -Id 6 -Activity ProgressUpdateQueue -Index ($script:QueueDone + 1) -Total $total -Name $item.Prepared.Plan.Name
-        $final = Invoke-ActionPlan -Plan $item.Prepared.Plan -Record $item.Prepared.Record -TimeoutMinutes $TimeoutMinutes
+        $final = Invoke-ActionPlan -Plan $item.Prepared.Plan -Record $item.Prepared.Record -TimeoutMinutes $TimeoutMinutes -Control $Control
         $queueResults[$item.Index] = $final
         $queueStatus[$item.Index] = $final.Result
         $script:QueueDone++
