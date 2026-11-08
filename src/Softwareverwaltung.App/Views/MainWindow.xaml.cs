@@ -20,6 +20,7 @@ public partial class MainWindow : FluentWindow
     /// <summary>
     /// Läuft die Warteschlange, erst warnen (Standard „Abbrechen“). Bei Bestätigung wird die laufende
     /// Aktion fertig, der Rest abgebrochen und protokolliert; danach schließt die App von selbst.
+    /// Läuft eine einzelne Aktion, ebenfalls warnen: Sie läuft weiter, ihr Ergebnis wird beim nächsten Start nachgetragen.
     /// </summary>
     protected override void OnClosing(CancelEventArgs e)
     {
@@ -33,6 +34,13 @@ public partial class MainWindow : FluentWindow
                 programs.QueueFinished += (_, _) => Dispatcher.BeginInvoke(Close);
                 programs.CancelQueue();
             }
+            return;
+        }
+        if (DataContext is ShellViewModel { Programs.ActionRunning: true }
+            && System.Windows.MessageBox.Show(this, AppText.Get("ActionCloseWarning"), AppText.Get("ActionCloseTitle"),
+                System.Windows.MessageBoxButton.OKCancel, MessageBoxImage.Warning, System.Windows.MessageBoxResult.Cancel) != System.Windows.MessageBoxResult.OK)
+        {
+            e.Cancel = true;
             return;
         }
         base.OnClosing(e);

@@ -9,8 +9,14 @@ public interface IActionService
     /// <summary>Fragt das Modul mit -WhatIf, was ausgeführt würde. Führt nichts aus.</summary>
     Task<ActionOutcome> PlanAsync(SoftwareActionKind kind, PSObject? source, string method = "Auto", CancellationToken cancellationToken = default);
 
-    /// <summary>Führt genau den bestätigten Plan aus; weicht der Befehl ab, führt das Modul nichts aus.</summary>
-    Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Führt genau den bestätigten Plan aus; weicht der Befehl ab, führt das Modul nichts aus.
+    /// <paramref name="control"/> ist eine synchronisierte Hashtabelle: State = Cancelled setzt die App, Phase und CancelResult liest sie.
+    /// </summary>
+    Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", System.Collections.Hashtable? control = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Trägt den Abschluss von Aktionen nach, deren Ende nicht beobachtet wurde; liefert deren Anzahl.</summary>
+    Task<int> UpdateIncompleteLogAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Liest das Programm nach einer Aktion neu ein; null, wenn es nicht mehr installiert ist.</summary>
     Task<SoftwareItem?> RecheckAsync(PSObject source, CancellationToken cancellationToken = default, bool refresh = false);
@@ -45,9 +51,13 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", CancellationToken cancellationToken = default)
+    public async Task<ActionOutcome> ExecuteAsync(SoftwareActionKind kind, PSObject? source, ActionOutcome confirmedPlan, string method = "Auto", System.Collections.Hashtable? control = null, CancellationToken cancellationToken = default)
     {
         var command = NewCommand(kind, source, method).AddParameter("Confirm", false);
+        if (control is not null)
+        {
+            command.AddParameter("Control", control);
+        }
         if (kind != SoftwareActionKind.InstallWinget)
         {
             // Wiederherstellungspunkt wie im Dialog gezeigt, nicht wie die Einstellung inzwischen lautet.
@@ -58,6 +68,13 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
             }
         }
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<int> UpdateIncompleteLogAsync(CancellationToken cancellationToken = default)
+    {
+        var command = new PSCommand().AddCommand("Update-IncompleteActionLog").AddParameter("Confirm", false);
+        var result = await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return result.Output.Count;
     }
 
     public async Task<StoreAgreement> GetStoreAgreementAsync(CancellationToken cancellationToken = default)

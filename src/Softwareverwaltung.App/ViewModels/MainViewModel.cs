@@ -22,6 +22,8 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly Dictionary<string, InstallLocationInfo> _locations = [];
     // Warteschlange: Steuerung (State/Status) wird zwischen App und Modul geteilt.
     private System.Collections.Hashtable? _queueControl;
+    private System.Collections.Hashtable? _actionControl;
+    private DateTime? _waitingSince;
     private bool _initialized;
     private bool _ready;
     private Notice? _wingetNotice;
@@ -196,6 +198,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeStartup"), message), permanent: true);
             }
+            await ReportInterruptedActionsAsync();
             var winget = await _inventory.GetWingetStatusAsync();
             if (!winget.Available)
             {
@@ -216,6 +219,27 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy = false;
         ScanCommand.NotifyCanExecuteChanged();
         return true;
+    }
+
+    /// <summary>Aktionen, deren Ende die App nicht gesehen hat (sie war geschlossen), im Protokoll nachtragen und melden.</summary>
+    private async Task ReportInterruptedActionsAsync()
+    {
+        if (_actions is null)
+        {
+            return;
+        }
+        try
+        {
+            var count = await _actions.UpdateIncompleteLogAsync();
+            if (count > 0)
+            {
+                AddNotice(new Notice(NoticeSeverity.Informational, AppText.Get("NoticeInterruptedTitle"), AppText.Format("NoticeInterruptedText", count)), permanent: false);
+            }
+        }
+        catch (Exception)
+        {
+            // Zusatzhilfe: Bleibt der Abschluss offen, zeigt das Protokoll die Aktion weiter als unvollständig.
+        }
     }
 
     /// <summary>Schalter „Ohne Cache“: Solange er an ist, fragt „Scannen“ alle Dienste neu ab.</summary>
@@ -331,6 +355,76 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     private bool CanRunAction(SoftwareItem? item) => !IsBlocked && _ready && ActionsAvailable && item?.Source is not null;
+
+    /// <summary>Eine einzelne Aktion läuft und lässt sich abbrechen.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CancelActionCommand))]
+    private bool _actionRunning;
+
+    /// <summary>Abbrechen wurde angefordert (Einzelaktion oder Warteschlange).</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CancelActionCommand))]
+    private bool _cancelRequested;
+
+    /// <summary>Deutlicher Hinweis, wenn die UAC-Abfrage länger offen ist; sonst leer.</summary>
+    [ObservableProperty]
+    private string? _elevationHint;
+
+    private bool CanCancelAction() => ActionRunning && !CancelRequested;
+
+    /// <summary>
+    /// Bricht die laufende Einzelaktion ab, soweit das sauber geht. Das Modul entscheidet: Vor dem Start
+    /// läuft nichts mehr, ein laufender Installer läuft weiter (dann bleibt die Anzeige ehrlich und die App gesperrt).
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanCancelAction))]
+    private void CancelAction()
+    {
+        if (_actionControl is not null)
+        {
+            _actionControl["State"] = "Cancelled";
+            CancelRequested = true;
+        }
+    }
+
+    /// <summary>Zeit seit Beginn der offenen UAC-Abfrage; merkt sich den Beginn beim ersten Aufruf.</summary>
+    private TimeSpan ElevationWaited(string? phase)
+    {
+        if (phase != ActionProgress.WaitingForElevation)
+        {
+            _waitingSince = null;
+            return TimeSpan.Zero;
+        }
+        _waitingSince ??= DateTime.UtcNow;
+        return DateTime.UtcNow - _waitingSince.Value;
+    }
+
+    /// <summary>Wartet auf die Aktion und zeigt solange Phase, Wartezeit und das Ergebnis eines Abbruchs.</summary>
+    private async Task<ActionOutcome> WatchActionAsync(Task<ActionOutcome> run, ActionOutcome plan, System.Collections.Hashtable control)
+    {
+        _actionControl = control;
+        CancelRequested = false;
+        ActionRunning = true;
+        try
+        {
+            while (!run.IsCompleted)
+            {
+                var phase = control["Phase"] as string;
+                var waited = ElevationWaited(phase);
+                StatusText = ActionProgress.StatusText(plan.ActionText, plan.Name, phase, control["CancelResult"] as string, CancelRequested, waited);
+                ElevationHint = ActionProgress.ElevationHint(phase, waited);
+                await Task.WhenAny(run, Task.Delay(400));
+            }
+            return await run;
+        }
+        finally
+        {
+            ActionRunning = false;
+            CancelRequested = false;
+            ElevationHint = null;
+            _waitingSince = null;
+            _actionControl = null;
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanRunAction))]
     private Task UpdateAsync(SoftwareItem? item) => RunActionAsync(SoftwareActionKind.Update, item, "Auto");
@@ -515,6 +609,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 await Task.WhenAny(run, Task.Delay(400));
                 RefreshQueueStatus();
+                RefreshQueuePhase();
             }
             var results = await run;
             RefreshQueueStatus();
@@ -551,6 +646,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             QueueRunning = false;
             QueuePaused = false;
+            CancelRequested = false;
+            ElevationHint = null;
+            _waitingSince = null;
             _queueControl = null;
             IsBusy = false;
             RefreshView();
@@ -589,6 +687,26 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(QueueProgressText));
     }
 
+    /// <summary>Phase und Abbruch der Warteschlange anzeigen (UAC-Abfrage offen, Installer läuft weiter).</summary>
+    private void RefreshQueuePhase()
+    {
+        if (_queueControl is null)
+        {
+            return;
+        }
+        var phase = _queueControl["Phase"] as string;
+        var waited = ElevationWaited(phase);
+        ElevationHint = ActionProgress.ElevationHint(phase, waited);
+        if (CancelRequested && _queueControl["CancelResult"] is string result && ActionProgress.Continues(result))
+        {
+            StatusText = AppText.Get("StatusActionContinues");
+        }
+        else if (!CancelRequested && phase == ActionProgress.WaitingForElevation)
+        {
+            StatusText = AppText.Format("StatusQueueWaitingUac", ActionProgress.Clock(waited));
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanPauseQueue))]
     private void PauseQueue()
     {
@@ -608,14 +726,24 @@ public sealed partial class MainViewModel : ObservableObject
 
     private bool CanResumeQueue() => QueueRunning && QueuePaused;
 
-    /// <summary>Abbrechen: die laufende Aktion wird fertig, der Rest wird nicht ausgeführt (und protokolliert).</summary>
+    /// <summary>
+    /// Abbrechen: Noch nicht gestartete Einträge verschwinden sofort (das Modul protokolliert sie als
+    /// abgebrochen). Die laufende Aktion stoppt nur, wenn das sauber geht.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(QueueRunning))]
     public void CancelQueue()
     {
         if (_queueControl is not null)
         {
             _queueControl["State"] = "Cancelled";
+            CancelRequested = true;
         }
+        RefreshQueueStatus();
+        foreach (var waiting in QueueEntries.Where(e => e.Status == "Waiting").ToList())
+        {
+            QueueEntries.Remove(waiting);
+        }
+        OnPropertyChanged(nameof(QueueProgressText));
         QueuePaused = false;
         StatusText = AppText.Get("StatusQueueCancelling");
     }
@@ -718,8 +846,13 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
-            StatusText = AppText.Format("StatusActionRunning", plan.ActionText, plan.Name) + (plan.Elevated ? " " + AppText.Get("StatusConfirmUac") : "");
-            var outcome = await _actions.ExecuteAsync(kind, item?.Source, plan, method);
+            StatusText = AppText.Format("StatusActionRunning", plan.ActionText, plan.Name);
+            // winget selbst installieren (InstallWinget) kennt kein Abbrechen.
+            var control = kind == SoftwareActionKind.InstallWinget
+                ? null
+                : System.Collections.Hashtable.Synchronized(new System.Collections.Hashtable { ["State"] = "Running" });
+            var run = _actions.ExecuteAsync(kind, item?.Source, plan, method, control);
+            var outcome = control is null ? await run : await WatchActionAsync(run, plan, control);
             StatusText = AppText.Format("StatusActionResult", outcome.ActionText, outcome.ResultText);
 
             if (kind == SoftwareActionKind.InstallWinget)
