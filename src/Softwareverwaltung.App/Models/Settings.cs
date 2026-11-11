@@ -36,6 +36,8 @@ public sealed record AppSettings
     public int CacheHoursCircl { get; init; } = 24;
     public int CacheHoursEpss { get; init; } = 24;
     public int CacheHoursKev { get; init; } = 24;
+    /// <summary>Höchstalter für Grün in Tagen (Rating.GreenMaxAgeDays), 1–30; geprüft im Modul.</summary>
+    public int GreenMaxAgeDays { get; init; } = 7;
     /// <summary>KI-Berater (Advisor): standardmäßig aus, kein Standardmodell.</summary>
     public bool AdvisorEnabled { get; init; }
     public string? AdvisorPreset { get; init; }
@@ -67,6 +69,7 @@ public sealed record AppSettings
         var maintenance = obj.Properties["Maintenance"]?.Value as PSObject;
         var portable = obj.Properties["PortableSearch"]?.Value as PSObject;
         var cache = obj.Properties["CacheHours"]?.Value as PSObject;
+        var rating = obj.Properties["Rating"]?.Value as PSObject;
         var advisor = obj.Properties["Advisor"]?.Value as PSObject;
         var shareLevel = advisor?.Properties["ShareLevel"]?.Value as PSObject;
         return new AppSettings
@@ -91,6 +94,7 @@ public sealed record AppSettings
             CacheHoursCircl = Convert.ToInt32(cache?.Properties["CIRCL"]?.Value ?? 24),
             CacheHoursEpss = Convert.ToInt32(cache?.Properties["EPSS"]?.Value ?? 24),
             CacheHoursKev = Convert.ToInt32(cache?.Properties["KEV"]?.Value ?? 24),
+            GreenMaxAgeDays = Convert.ToInt32(rating?.Properties["GreenMaxAgeDays"]?.Value ?? 7),
             AdvisorEnabled = advisor?.Properties["Enabled"]?.Value is true,
             AdvisorPreset = Text(advisor, "Preset"),
             AdvisorEndpoint = Text(advisor, "Endpoint"),

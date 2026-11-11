@@ -951,7 +951,7 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
     <value>Zwischenspeicher für Online-Abfragen</value>
   </data>
   <data name="SettingsCacheText" xml:space="preserve">
-    <value>So lange werden Ergebnisse der Dienste wiederverwendet, danach wird neu gefragt (1–720 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter, sind aber in der Spalte „Geprüft“ als veraltet gekennzeichnet.</value>
+    <value>So lange werden Ergebnisse der Dienste wiederverwendet, danach wird neu gefragt (1–720 Stunden). Ist ein Dienst nicht erreichbar, gelten ältere Ergebnisse weiter, sind aber in der Spalte „Geprüft“ als veraltet gekennzeichnet. Grün gibt es nur, solange sie nicht älter als das Höchstalter für Grün sind.</value>
   </data>
   <data name="SettingsCacheLatestVersion" xml:space="preserve">
     <value>Neueste Version (Stunden)</value>
@@ -967,6 +967,12 @@ Ein kostenloser NVD-Schlüssel beschleunigt das etwa um das Zehnfache. Beantrage
   </data>
   <data name="SettingsCacheKev" xml:space="preserve">
     <value>CISA KEV (Stunden)</value>
+  </data>
+  <data name="SettingsGreenMaxAge" xml:space="preserve">
+    <value>Höchstalter für Grün (Tage)</value>
+  </data>
+  <data name="SettingsGreenMaxAgeTooltip" xml:space="preserve">
+    <value>Fehlen die Daten von NVD oder CIRCL oder sind sie älter, wird ein Programm ohne Fund grau statt grün (1–30 Tage). CISA KEV zählt bei Programmen mit KEV-Zuordnung im Katalog, EPSS nie. Eingeschaltet müssen die Dienste selbst sein.</value>
   </data>
   <data name="QueueSelectAllWithUpdate" xml:space="preserve">
     <value>Alle mit Update auswählen</value>

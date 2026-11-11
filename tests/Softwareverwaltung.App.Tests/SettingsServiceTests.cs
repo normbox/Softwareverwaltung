@@ -70,6 +70,20 @@ public sealed class SettingsServiceTests : IAsyncLifetime
         Assert.Equal(2, again.AdvisorShareLevelLocal);
     }
 
+    [Fact]
+    public async Task GreenMaxAgeRoundTripsAndTheModuleReportsLongCacheLifetimes()
+    {
+        var loaded = await _service.LoadAsync();
+        Assert.Equal(7, loaded.GreenMaxAgeDays);
+        Assert.Empty(await _service.GetSettingHintsAsync());
+
+        var saved = await _service.SaveAsync(loaded with { GreenMaxAgeDays = 3, CacheHoursKev = 96 }, loaded);
+        Assert.Equal(3, saved.GreenMaxAgeDays);
+        var hint = Assert.Single(await _service.GetSettingHintsAsync());
+        Assert.Contains("KEV", hint);
+        Assert.Contains("3 Tage", hint);
+    }
+
     public async Task DisposeAsync()
     {
         await _service.RemoveCredentialAsync("NVD");
