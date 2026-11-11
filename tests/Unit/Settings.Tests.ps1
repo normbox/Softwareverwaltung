@@ -23,6 +23,35 @@ Describe 'Einstellungen' {
         (InModuleScope SoftwareInventory { Read-InventorySetting }).Agreements.MsStore | Should -BeNullOrEmpty
     }
 
+    It 'speichert das Höchstalter für Grün (Vorgabe 7, erlaubt 1–30)' {
+        (Get-InventorySetting).Rating.GreenMaxAgeDays | Should -Be 7
+        Set-InventorySetting -GreenMaxAgeDays 3 -Confirm:$false
+        (InModuleScope SoftwareInventory { Read-InventorySetting }).Rating.GreenMaxAgeDays | Should -Be 3
+        { Set-InventorySetting -GreenMaxAgeDays 0 -Confirm:$false } | Should -Throw
+        { Set-InventorySetting -GreenMaxAgeDays 31 -Confirm:$false } | Should -Throw
+    }
+
+    It 'nimmt bei älteren Dateien ohne Höchstalter oder mit ungültigem Wert die Vorgabe' {
+        '{ "CacheHours": { "NVD": 48 } }' | Set-Content -LiteralPath $settingsFile
+        (Get-InventorySetting).Rating.GreenMaxAgeDays | Should -Be 7
+        '{ "Rating": { "GreenMaxAgeDays": 99 } }' | Set-Content -LiteralPath $settingsFile
+        (Get-InventorySetting).Rating.GreenMaxAgeDays | Should -Be 7
+        InModuleScope SoftwareInventory { Get-GreenMaxAgeDay ([pscustomobject] @{ Services = @{} }) } | Should -Be 7
+    }
+
+    It 'weist darauf hin, wenn die Haltbarkeit von NVD, CIRCL oder KEV über dem Höchstalter liegt' {
+        Get-InventorySettingHint | Should -BeNullOrEmpty
+        Set-InventorySetting -CacheHoursNvd 168 -CacheHoursEpss 720 -Confirm:$false
+        Get-InventorySettingHint | Should -BeNullOrEmpty -Because '168 h sind genau 7 Tage, EPSS färbt nie'
+        Set-InventorySetting -CacheHoursNvd 200 -CacheHoursKev 720 -Confirm:$false
+        $hint = Get-InventorySettingHint
+        $hint.Code | Should -Be 'CacheLongerThanGreenMaxAge'
+        $hint.Args | Should -Be @('NVD, KEV', 7)
+        $hint.Text | Should -Match 'Höchstalter für Grün \(7 Tage\)'
+        Set-InventorySetting -GreenMaxAgeDays 30 -Confirm:$false
+        Get-InventorySettingHint | Should -BeNullOrEmpty
+    }
+
     It 'ist ohne Datei vollständig aus' {
         $s = Get-InventorySetting
         $s.Sources.PSObject.Properties.Value | Should -Not -Contain $true

@@ -25,6 +25,7 @@
         'Get-ScanDrive'
         'Get-InventorySetting'
         'Set-InventorySetting'
+        'Get-InventorySettingHint'
         'Get-SettingPreset'
         'Get-ServiceTermsNotice'
         'Get-AdvisorEndpointPreset'

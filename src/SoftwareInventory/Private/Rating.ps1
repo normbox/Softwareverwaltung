@@ -1,7 +1,8 @@
 # Ampel aus Versionsstand (Test-SoftwareUpdate) und Schwachstellen (Get-SoftwareVulnerability).
 #   Rot   – aktiv ausgenutzte Lücke (KEV) oder kritische Lücke (CVSS >= 9), jeweils sicher betroffen
 #   Gelb  – andere Lücken, „möglicherweise betroffen“ oder veraltete Version
-#   Grün  – Sicherheitsprüfung gelaufen, nichts gefunden
+#   Grün  – Sicherheitsprüfung gelaufen, nichts gefunden, alle eingeschalteten Fundquellen mit Daten
+#           innerhalb des Höchstalters (sonst Grau mit CheckIncomplete; bei Gelb/Rot nur als letzter Grund)
 #   Grau  – nicht geprüft; immer mit Grund
 # Hinweise (Informational) färben nie.
 
@@ -57,10 +58,18 @@ function Get-RatingFromResult {
 
     # Widerlegte KEV-Treffer färben nie, werden aber als Grund genannt (nachvollziehbar statt still).
     $refuted = @(@(if ($VulnerabilityStatus -and $VulnerabilityStatus.PSObject.Properties['Refuted']) { $VulnerabilityStatus.Refuted }) | Where-Object { $_ } | ForEach-Object Note)
+    # Eingeschaltete Fundquellen ohne Beitrag oder mit zu alten Daten: kein Grün; bei Gelb/Rot letzter Grund.
+    $incompleteSources = @(@(if ($VulnerabilityStatus -and $VulnerabilityStatus.Status -eq 'Checked') { $VulnerabilityStatus.PSObject.Properties['IncompleteSources']?.Value }) | Where-Object { $_ })
+    $incomplete = @(if ($incompleteSources) { New-InventoryMessage CheckIncomplete (, $incompleteSources) })
 
-    if ($red.Count) { return @{ Rating = 'Red'; Reasons = @(@($red) + @($yellow) + $refuted) } }
-    if ($yellow.Count) { return @{ Rating = 'Yellow'; Reasons = @(@($yellow) + $refuted) } }
+    if ($red.Count) { return @{ Rating = 'Red'; Reasons = @(@($red) + @($yellow) + $refuted + $incomplete) } }
+    if ($yellow.Count) { return @{ Rating = 'Yellow'; Reasons = @(@($yellow) + $refuted + $incomplete) } }
 
+    if ($incomplete) {
+        $reasons = @($incomplete) + $refuted
+        if ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $reasons += New-InventoryMessage VersionCurrent }
+        return @{ Rating = 'Gray'; Reasons = @($reasons) }
+    }
     if ($VulnerabilityStatus -and $VulnerabilityStatus.Status -eq 'Checked') {
         $reasons = @(New-InventoryMessage NoFindings) + $refuted
         if ($UpdateStatus -and $UpdateStatus.Status -eq 'UpToDate') { $reasons += New-InventoryMessage VersionCurrent }
