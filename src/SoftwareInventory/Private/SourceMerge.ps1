@@ -58,6 +58,10 @@ function Get-NvdStatement {
     param($Cve, [string[]] $CpeBase, [string] $Version)
     $check = Get-CveProductAssessment -Cve $Cve -CpeBase $CpeBase -Version $Version
     $range = Get-NvdRangeText -Cve $Cve -CpeBase $CpeBase
+    if ($check.PSObject.Properties['NotComparable']?.Value) {
+        $kind = Get-NotComparableAssessment -Cve $Cve -CveId $Cve.id -Range $range -Version $Version -Source NVD -CpeBase $CpeBase
+        return New-SourceStatement -Source NVD -Verdict NotEvaluable -CveId $Cve.id -Range $range -Note $kind.Note -Weight $kind.Assessment
+    }
     if ($null -eq $check.Affected) {
         return New-SourceStatement -Source NVD -Verdict NotEvaluable -CveId $Cve.id -Note (New-InventoryMessage NvdNoProductData)
     }
@@ -81,6 +85,11 @@ function Get-CirclStatement {
         return New-SourceStatement -Source CIRCL -Verdict NotAffected -CveId $id -OtherPlatform $check.OtherPlatform -Note (New-InventoryMessage OtherPlatformOnly ($check.OtherPlatform -join ', '))
     }
     if ($check.Verdict -ne 'NotEvaluable') { return New-SourceStatement -Source CIRCL -Verdict $check.Verdict -CveId $id -Range $check.Range }
+    $published = [pscustomobject] @{ published = $Record.cveMetadata.PSObject.Properties['datePublished']?.Value }
+    if ($check.PSObject.Properties['NotComparable']?.Value) {
+        $kind = Get-NotComparableAssessment -Cve $published -CveId $id -Range $check.Range -Version $Version -Source CIRCL -CpeBase $CpeBase
+        return New-SourceStatement -Source CIRCL -Verdict NotEvaluable -CveId $id -Range $check.Range -Note $kind.Note -Weight $kind.Assessment
+    }
     $kind = Get-UnboundedAssessment -Cve ([pscustomobject] @{ published = $Record.cveMetadata.PSObject.Properties['datePublished']?.Value })
     $note = if ($kind.Assessment -eq 'Informational') { New-InventoryMessage CirclLegacyData $script:UnboundedMaxAgeYears } else { New-InventoryMessage CirclNoVersionRange }
     New-SourceStatement -Source CIRCL -Verdict NotEvaluable -CveId $id -Range $check.Range -Note $note -Weight $kind.Assessment

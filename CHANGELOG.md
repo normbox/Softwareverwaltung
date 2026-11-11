@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Sicherheitsprüfung: nicht vergleichbare Versionsgrenzen (Fall FFmpeg)
+
+- **Eine Grenze, die sich nicht mit der installierten Version vergleichen lässt, macht nicht mehr „betroffen“.** Beispiel: Die NVD führt CVE-2025-25469 und -25468 für FFmpeg mit „< 2025-01-13“ (gemeint ist ein Stand von git-master). FFmpeg 9.0.2 erschien dadurch als betroffen. Jetzt heißt es „möglicherweise betroffen“ mit dem Grund „Versionsgrenze nicht vergleichbar (< 2025-01-13, installiert 9.0.2)“.
+- Gilt für NVD und CIRCL gleich: Datumsgrenzen gegenüber normalen Versionen, Commit-Kennungen, unlesbare Angaben. `20250113` und `2025.01.13` werden nicht mehr als Zahl verglichen. Datumsartige Versionen (yt-dlp) bleiben vergleichbar; Build-Nummern wie `2302.1.0` gelten nicht als Datum.
+- Ältere CVEs (über 5 Jahre) mit solcher Grenze sind nur ein Hinweis, außer sie stehen in KEV. Eine vergleichbare, ausschließende Grenze oder ein echtes „betroffen“ der anderen Quelle geht vor.
+
 ### Katalog: Jan wird auf Lücken geprüft
 
 - **Jan** (Menlo Research, früher Homebrew Computer Company) hat jetzt CPEs: `cpe:2.3:a:homebrew:jan` (so führt die NVD die Lücken von 0.4.12) und `cpe:2.3:a:janhq:jan` (so führt der CNA VulnCheck die neueren Lücken, gefunden über CIRCL, z. B. CVE-2026-66005 bis 0.8.4 und CVE-2026-122235 von 0.8.5 bis vor 0.8.8). Vorher war Jan grau mit „Keine CPE zugeordnet“.

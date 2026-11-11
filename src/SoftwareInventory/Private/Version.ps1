@@ -88,3 +88,60 @@ function Compare-NormalizedVersion {
     }
     0
 }
+
+function Get-VersionDate {
+    <#
+    .SYNOPSIS
+        Datum, wenn eine normalisierte Version wie ein Datum aussieht (yt-dlp 2025.01.15); sonst $null.
+    .DESCRIPTION
+        Verlangt drei Teile, Jahr ab 1900, Monat 1–12 und einen gültigen Tag. Build-Nummern wie 2302.1.0
+        (Tag 0), 1903 (kein Monat) oder 2025.2.0.33046 (Foxit, Tag 0) sind kein Datum.
+    #>
+    param($Normalized)
+    if (-not $Normalized -or $Normalized.Parts.Count -lt 3) { return $null }
+    $year, $month, $day = $Normalized.Parts[0..2]
+    if ($year -lt 1900 -or $year -gt 9999 -or $month -lt 1 -or $month -gt 12 -or $day -lt 1 -or $day -gt [datetime]::DaysInMonth($year, $month)) { return $null }
+    [datetime]::new($year, $month, $day)
+}
+
+function ConvertFrom-DateBound {
+    <#
+    .SYNOPSIS
+        Datum, wenn eine Versionsgrenze ein Datum ist; sonst $null.
+    .DESCRIPTION
+        JJJJ-MM-TT und JJJJMMTT sind immer ein Datum (wenn gültig). JJJJ.MM.TT nur, wenn die installierte
+        Version normal ist (Hauptversion unter 1900); sonst ist es eine Versionsnummer wie bei yt-dlp oder Foxit.
+    #>
+    param([string] $Bound, [bool] $InstalledIsNormal)
+    $b = $Bound.Trim()
+    $m = [regex]::Match($b, '^(?<y>\d{4})-(?<m>\d{2})-(?<d>\d{2})$')
+    if (-not $m.Success) { $m = [regex]::Match($b, '^(?<y>\d{4})(?<m>\d{2})(?<d>\d{2})$') }
+    if (-not $m.Success -and $InstalledIsNormal) { $m = [regex]::Match($b, '^(?<y>\d{4})\.(?<m>\d{1,2})\.(?<d>\d{1,2})$') }
+    if (-not $m.Success) { return $null }
+    $year = [int] $m.Groups['y'].Value; $month = [int] $m.Groups['m'].Value; $day = [int] $m.Groups['d'].Value
+    if ($year -lt 1900 -or $month -lt 1 -or $month -gt 12 -or $day -lt 1 -or $day -gt [datetime]::DaysInMonth($year, $month)) { return $null }
+    [datetime]::new($year, $month, $day)
+}
+
+function Compare-VersionBound {
+    <#
+    .SYNOPSIS
+        Vergleicht die installierte Version mit einer Versionsgrenze aus NVD oder CVE-Datensatz.
+    .DESCRIPTION
+        Ergebnis -1, 0 oder 1; $null, wenn die Grenze nicht vergleichbar ist. Nicht vergleichbar sind:
+        Commit-Kennungen, Datumsgrenzen gegenüber normalen Versionen (FFmpeg 9.0.2 gegen 2025-01-13),
+        unlesbare Angaben. Eine Datumsgrenze ist nur mit einer datumsartigen Version vergleichbar
+        (Get-VersionDate). Kein Abgleich mit Erscheinungsdaten.
+    #>
+    param([string] $Version, [string] $Bound)
+    if ([string]::IsNullOrWhiteSpace($Bound) -or (Test-CommitLikeVersion $Bound.Trim())) { return $null }
+    $installed = ConvertTo-NormalizedVersion $Version
+    if (-not $installed) { return $null }
+    $dateBound = ConvertFrom-DateBound -Bound $Bound -InstalledIsNormal ($installed.Parts[0] -lt 1900)
+    if ($dateBound) {
+        $installedDate = Get-VersionDate $installed
+        if (-not $installedDate) { return $null }
+        return [Math]::Sign(($installedDate - $dateBound).Ticks)
+    }
+    Compare-SoftwareVersion $Version $Bound
+}
