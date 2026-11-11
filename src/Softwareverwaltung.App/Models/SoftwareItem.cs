@@ -44,6 +44,12 @@ public sealed record SoftwareItem
     public IReadOnlyList<ServiceProblemItem> ServiceProblems { get; init; } = [];
     /// <summary>Verwaister Uninstall-Eintrag (Flag Orphaned vom Modul): Programm und Deinstaller fehlen.</summary>
     public bool IsOrphaned { get; init; }
+    /// <summary>Bereich laut Modul (User, Machine), unübersetzt.</summary>
+    public string? ScopeCode { get; init; }
+    /// <summary>„Eintrag entfernen“ vorerst nur für verwaiste Einträge des aktuellen Benutzers (HKCU).</summary>
+    public bool ShowRemoveEntry => IsOrphaned && ScopeCode == "User";
+    /// <summary>Verwaister Eintrag für alle Benutzer (HKLM): Hinweis, dass das Entfernen später folgt.</summary>
+    public bool ShowRemoveEntryLaterHint => IsOrphaned && ScopeCode != "User";
     /// <summary>
     /// Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.
     /// Verwaiste Einträge bekommen weder das eine noch das andere (das Modul lehnt beides ab).
@@ -221,6 +227,7 @@ public sealed record SoftwareItem
             NeedsCpe = vulnerability?.Properties["Reason"]?.Value is PSObject reason && GetString(reason, "Code") == "NoCpe",
             InstallType = record is null ? null : GetString(record, "InstallType"),
             IsOrphaned = record is not null && GetStrings(record, "Flags").Contains("Orphaned"),
+            ScopeCode = record is null ? null : GetString(record, "Scope"),
             InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
             InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,

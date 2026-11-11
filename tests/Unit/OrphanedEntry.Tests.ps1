@@ -161,3 +161,155 @@ Describe 'Verwaiste Einträge in Prüfung, Ampel und Aktionen' {
         finally { Set-AdvisorContext -Clear }
     }
 }
+
+Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
+    BeforeEach {
+        $script:AppDir = Join-Path $TestDrive "app-$([guid]::NewGuid().ToString('N').Substring(0, 6))"
+        Mock -ModuleName SoftwareInventory Get-AppDataDirectory { $script:AppDir }
+        $script:Programs = Join-Path $TestDrive 'Prog'
+        New-Item -ItemType Directory -Path $script:Programs -Force | Out-Null
+        Remove-Item -LiteralPath (Join-Path $script:Programs 'Uninstall Jan.exe') -Force -ErrorAction SilentlyContinue
+        $script:User = 'TestRegistry:\RemoveUser'
+        $script:Machine = 'TestRegistry:\RemoveMachine'
+        Remove-Item -LiteralPath $script:User, $script:Machine -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -Path $script:User, $script:Machine -Force | Out-Null
+        foreach ($root in $script:User, $script:Machine) {
+            New-UninstallKey $root 'janold' @{
+                DisplayName = 'Jan 0.5.16'; DisplayVersion = '0.5.16'; Publisher = 'Jan'
+                DisplayIcon = "$($script:Programs)\uninstallerIcon.ico"; UninstallString = "`"$($script:Programs)\Uninstall Jan.exe`" /currentuser"
+            }
+        }
+        Mock -ModuleName SoftwareInventory Get-DefaultUninstallLocation {
+            @(@{ Path = $script:Machine; Scope = 'Machine'; Architecture = 'X64' }, @{ Path = $script:User; Scope = 'User'; Architecture = $null })
+        }
+        # reg.exe nachbilden: schreibt eine Sicherung wie reg export (UTF-16 mit Schlüsselzeile)
+        $script:ExportMode = 'Good'
+        Mock -ModuleName SoftwareInventory Invoke-RegExport {
+            switch ($script:ExportMode) {
+                'Good' { "Windows Registry Editor Version 5.00`r`n`r`n[$NativeKey]`r`n`"DisplayName`"=`"Jan 0.5.16`"`r`n" | Set-Content -LiteralPath $File -Encoding Unicode; 0 }
+                'Empty' { [System.IO.File]::WriteAllBytes($File, [byte[]] @()); 0 }
+                'WrongKey' { "Windows Registry Editor Version 5.00`r`n`r`n[HKEY_CURRENT_USER\Other]`r`n" | Set-Content -LiteralPath $File -Encoding Unicode; 0 }
+                'None' { 0 }
+                'ExitCode' { 1 }
+            }
+        }
+        function Get-Orphan([string] $Root = $script:User) {
+            $scope = if ($Root -like '*User') { 'User' } else { 'Machine' }
+            InModuleScope SoftwareInventory -Parameters @{ R = $Root; S = $scope } {
+                Get-RegistrySoftware -Location @(@{ Path = $R; Scope = $S; Architecture = $null })
+            } | Where-Object Name -EQ 'Jan 0.5.16'
+        }
+    }
+
+    It 'plant mit -WhatIf, ohne etwas zu ändern' {
+        $r = Get-Orphan | Remove-OrphanedEntry -WhatIf
+        $r.Result | Should -Be 'Planned'
+        $r.Action | Should -Be 'RemoveEntry'
+        $r.CommandLine | Should -BeLike 'HKEY_CURRENT_USER\*\RemoveUser\janold'
+        $r.Message.Code | Should -Be 'PlanRemoveEntry'
+        Test-Path "$($script:User)\janold" | Should -BeTrue
+        Should -Invoke -ModuleName SoftwareInventory Invoke-RegExport -Times 0 -Exactly
+    }
+
+    It 'sichert, prüft die Sicherung, entfernt nur den Schlüssel und protokolliert' {
+        $plan = Get-Orphan | Remove-OrphanedEntry -WhatIf
+        $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
+        $r.Result | Should -Be 'Succeeded'
+        $r.Message.Code | Should -Be 'RemoveEntryDone'
+        Test-Path "$($script:User)\janold" | Should -BeFalse
+        Test-Path $script:Programs | Should -BeTrue -Because 'Ordner werden nie gelöscht'
+        $backup = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File
+        $backup.Name | Should -Be "$($r.ActionId)_Jan_0.5.16.reg"
+        $r.BackupFile | Should -Be $backup.FullName
+        $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+        $log.Phase | Should -Be @('Started', 'Completed')
+        $log[1].Action | Should -Be 'RemoveEntry'
+        $log[1].Result | Should -Be 'Succeeded'
+    }
+
+    It 'entfernt nichts, wenn die Sicherung nicht passt (<Mode>)' -TestCases @(
+        @{ Mode = 'Empty'; Expected = 'Empty' }
+        @{ Mode = 'WrongKey'; Expected = 'KeyNotFound' }
+        @{ Mode = 'None'; Expected = 'Missing' }
+        @{ Mode = 'ExitCode'; Expected = 'Missing' }
+    ) {
+        $script:ExportMode = $Mode
+        $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryBackupInvalid'
+        $r.Message.Args[0] | Should -Be $Expected
+        Test-Path "$($script:User)\janold" | Should -BeTrue
+        @(Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
+    }
+
+    It 'prüft direkt davor neu und entfernt nichts, wenn der Eintrag nicht mehr verwaist ist' {
+        $record = Get-Orphan
+        'x' | Set-Content (Join-Path $script:Programs 'Uninstall Jan.exe')
+        $r = $record | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Unsupported'
+        $r.Message.Code | Should -Be 'RemoveEntryNotOrphaned'
+        Test-Path "$($script:User)\janold" | Should -BeTrue
+        Should -Invoke -ModuleName SoftwareInventory Invoke-RegExport -Times 0 -Exactly
+    }
+
+    It 'lässt Einträge für alle Benutzer (HKLM) vorerst stehen' {
+        $r = Get-Orphan -Root $script:Machine | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Unsupported'
+        $r.Message.Code | Should -Be 'RemoveEntryMachineNotYet'
+        Test-Path "$($script:Machine)\janold" | Should -BeTrue
+    }
+
+    It 'lehnt Schlüssel außerhalb der Uninstall-Zweige ab' {
+        $record = Get-Orphan
+        $record.RegistryKey = 'TestRegistry:\Elsewhere\janold'
+        ($record | Remove-OrphanedEntry -Confirm:$false).Message.Code | Should -Be 'RemoveEntryNotUninstallKey'
+    }
+
+    It 'bricht ab, wenn sich der bestätigte Schlüssel geändert hat' {
+        $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedCommandLine 'HKEY_CURRENT_USER\anders'
+        $r.Result | Should -Be 'Cancelled'
+        Test-Path "$($script:User)\janold" | Should -BeTrue
+    }
+
+    It 'bildet den Dateinamen aus ActionId und bereinigtem Programmnamen' {
+        InModuleScope SoftwareInventory {
+            Get-RegistryBackupFileName -ActionId 'id' -Name 'Jan 0.5.16' | Should -Be 'id_Jan_0.5.16.reg'
+            Get-RegistryBackupFileName -ActionId 'id' -Name 'A/B: C*?' | Should -Be 'id_A_B_C.reg'
+            Get-RegistryBackupFileName -ActionId 'id' -Name '???' | Should -Be 'id_Eintrag.reg'
+        }
+    }
+}
+
+Describe 'Sicherung mit dem echten reg.exe' {
+    It 'erkennt eine echte reg-export-Datei als brauchbar' {
+        $key = New-Item -Path 'TestRegistry:\RealExport\janold' -Force
+        New-ItemProperty -Path $key.PSPath -Name DisplayName -Value 'Jan 0.5.16' | Out-Null
+        $file = Join-Path $TestDrive 'real.reg'
+        InModuleScope SoftwareInventory -Parameters @{ K = $key.Name; F = $file } {
+            Invoke-RegExport -NativeKey $K -File $F | Should -Be 0
+            Test-RegistryBackup -File $F -NativeKey $K | Should -BeNullOrEmpty
+            Test-RegistryBackup -File $F -NativeKey 'HKEY_CURRENT_USER\Software\Anderer' | Should -Be 'KeyNotFound'
+        }
+    }
+}
+
+Describe 'Sicherungen entfernter Einträge in der Selbstbereinigung' {
+    It 'behält Sicherungen bis 365 Tage, auch über der Größengrenze, und löscht ältere' {
+        $root = Join-Path $TestDrive 'cleanup'
+        $backup = Join-Path $root 'logs\registry-backup'
+        $actions = Join-Path $root 'logs\actions'
+        New-Item -ItemType Directory -Path $backup, $actions -Force | Out-Null
+        $old = Join-Path $backup 'old.reg'; $recent = Join-Path $backup 'recent.reg'; $big = Join-Path $backup 'big.reg'; $log = Join-Path $actions 'old.jsonl'
+        'x' | Set-Content -LiteralPath $old, $recent, $log
+        [System.IO.File]::WriteAllBytes($big, [byte[]]::new(2MB))
+        (Get-Item $old).LastWriteTimeUtc = [datetime]::UtcNow.AddDays(-400)
+        (Get-Item $recent).LastWriteTimeUtc = [datetime]::UtcNow.AddDays(-100)
+        (Get-Item $big).LastWriteTimeUtc = [datetime]::UtcNow.AddDays(-1)
+        (Get-Item $log).LastWriteTimeUtc = [datetime]::UtcNow.AddDays(-40)
+        InModuleScope SoftwareInventory -Parameters @{ R = $root } { Invoke-AppDataCleanup -RetentionDays 30 -MaxSizeMB 1 -Root $R } | Out-Null
+        Test-Path $old | Should -BeFalse
+        Test-Path $recent | Should -BeTrue
+        Test-Path $big | Should -BeTrue -Because 'Sicherungen zählen nicht zur Größengrenze'
+        Test-Path $log | Should -BeFalse -Because 'Logs daneben werden normal bereinigt'
+    }
+}

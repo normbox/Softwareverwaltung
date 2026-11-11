@@ -92,6 +92,15 @@
                     <ui:Button Content="{loc:Text DetailsOpenFolder}" Icon="{ui:SymbolIcon FolderOpen24}" Margin="0,0,8,0"
                                Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                Visibility="{Binding ShowOpenFolderInsteadOfUninstall, Converter={StaticResource BoolToVisibility}}" />
+                    <!-- Verwaister Eintrag (nur HKCU): Registry-Eintrag nach Sicherung entfernen -->
+                    <ui:Button Content="{loc:Text ActionRemoveEntry}" Icon="{ui:SymbolIcon DeleteDismiss24}" Margin="0,0,8,0"
+                               ToolTip="{loc:Text ActionRemoveEntryTooltip}"
+                               Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               CommandParameter="{Binding}"
+                               Visibility="{Binding ShowRemoveEntry, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{loc:Text RemoveEntryLaterHint}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Visibility="{Binding ShowRemoveEntryLaterHint, Converter={StaticResource BoolToVisibility}}" />
                     <ui:Button Content="{loc:Text DetailsRecheckWithoutCache}" Icon="{ui:SymbolIcon ArrowSync24}"
                                ToolTip="{loc:Text DetailsRecheckWithoutCacheTooltip}"
                                Command="{Binding DataContext.RecheckWithoutCacheCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

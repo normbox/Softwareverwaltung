@@ -161,7 +161,8 @@ function Invoke-AppDataCleanup {
         logs\ und cache\ ohne CIRCL-Bestände höchstens MaxSizeMB, dabei zuerst der Zwischenspeicher (leicht
         neu abrufbar, Ältestes zuerst), erst dann die Logs (Aktionsprotokoll). Die CIRCL-Bestände
         (cache\CIRCL\) zählen nicht dazu und haben die eigene Grenze CirclMaxSizeMB, Ältestes zuerst.
-        Gesperrte Dateien werden übersprungen.
+        Sicherungen entfernter Registry-Einträge (logs\registry-backup\) sind ausgenommen: eigene Frist
+        365 Tage (Remove-ExpiredRegistryBackup), keine Größengrenze. Gesperrte Dateien werden übersprungen.
     .OUTPUTS
         Anzahl gelöschter Dateien.
     #>
@@ -175,11 +176,14 @@ function Invoke-AppDataCleanup {
     $folders = @('logs', 'cache') | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path -LiteralPath $_ }
     if (-not $folders) { return 0 }
     $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+    $backupDir = (Join-Path $Root 'logs\registry-backup').TrimEnd('\') + '\'
     foreach ($folder in $folders) {
-        foreach ($f in Get-ChildItem -LiteralPath $folder -File -Recurse -Force -ErrorAction SilentlyContinue) { $files.Add($f) }
+        foreach ($f in Get-ChildItem -LiteralPath $folder -File -Recurse -Force -ErrorAction SilentlyContinue) {
+            if (-not $f.FullName.StartsWith($backupDir, [StringComparison]::OrdinalIgnoreCase)) { $files.Add($f) }
+        }
     }
 
-    $deleted = 0
+    $deleted = Remove-ExpiredRegistryBackup -Root $Root
     $cutoff = [datetime]::UtcNow.AddDays(-$RetentionDays)
     $remaining = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
     foreach ($f in $files | Sort-Object LastWriteTimeUtc) {

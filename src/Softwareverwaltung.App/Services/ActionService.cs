@@ -62,14 +62,15 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
         {
             command.AddParameter("Control", control);
         }
-        if (kind != SoftwareActionKind.InstallWinget)
+        if (kind is SoftwareActionKind.Update or SoftwareActionKind.Uninstall)
         {
             // Wiederherstellungspunkt wie im Dialog gezeigt, nicht wie die Einstellung inzwischen lautet.
             command.AddParameter("CreateRestorePoint", new SwitchParameter(confirmedPlan.RestorePointPlanned));
-            if (confirmedPlan.CommandLine is not null)
-            {
-                command.AddParameter("ConfirmedCommandLine", confirmedPlan.CommandLine);
-            }
+        }
+        if (kind != SoftwareActionKind.InstallWinget && confirmedPlan.CommandLine is not null)
+        {
+            // Entfernen eines Eintrags: CommandLine ist der Schlüssel, wie im Dialog gezeigt.
+            command.AddParameter("ConfirmedCommandLine", confirmedPlan.CommandLine);
         }
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
     }
@@ -157,6 +158,9 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
                 break;
             case SoftwareActionKind.Uninstall:
                 command.AddCommand("Uninstall-Software").AddParameter("InputObject", Required(source)).AddParameter("Method", method);
+                break;
+            case SoftwareActionKind.RemoveEntry:
+                command.AddCommand("Remove-OrphanedEntry").AddParameter("InputObject", Required(source));
                 break;
             default:
                 command.AddCommand("Install-WingetPackageManager");

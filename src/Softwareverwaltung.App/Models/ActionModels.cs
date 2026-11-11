@@ -8,6 +8,8 @@ public enum SoftwareActionKind
     Update,
     Uninstall,
     InstallWinget,
+    /// <summary>Verwaisten Uninstall-Eintrag entfernen (Remove-OrphanedEntry), vorerst nur HKCU.</summary>
+    RemoveEntry,
 }
 
 /// <summary>
