@@ -389,14 +389,17 @@ Describe 'Get-CirclCve' {
             Should -Invoke -ModuleName SoftwareInventory Start-Sleep -Times 0 -Exactly
         }
 
-        It 'versucht es auch beim Nachladen mit since erneut, ohne Vermerk bei endgültigem Fehler' {
+        It 'versucht es auch beim Nachladen mit since erneut; bei endgültigem Fehler nur der Rückfall-Vermerk mit Grund' {
             Invoke-Circl | Out-Null
             Set-StoreAge -FetchedHours 30 -FullHours 30
             Mock -ModuleName SoftwareInventory Invoke-ServiceRequest { throw (New-Failure Network) }
-            $all = Invoke-Circl
-            $all.Count | Should -Be 300   # alter Bestand, als veraltet
+            $trace = InModuleScope SoftwareInventory -Parameters @{ B = $script:Npp } { Invoke-WithCheckTrace { Get-CirclCve -CpeBase $B -Setting $null } }
+            $trace.Output.Count | Should -Be 300   # alter Bestand, als veraltet
+            $trace.Trace[0].Failure.Code | Should -Be 'ServiceUnavailable'
+            $trace.Trace[0].Failure.Args[0] | Should -Be 'CIRCL'
             Should -Invoke -ModuleName SoftwareInventory Invoke-ServiceRequest -Times 3 -Exactly -ParameterFilter { "$Uri" -match '&since=' }
-            Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 0 -Exactly
+            Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 0 -Exactly -ParameterFilter { $Code -eq 'CirclFullFetchFailed' }
+            Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 1 -Exactly -ParameterFilter { $Code -eq 'ServiceStaleFallback' -and $Source -eq 'CIRCL' -and $Value[0] -eq 'Network' }
         }
     }
 

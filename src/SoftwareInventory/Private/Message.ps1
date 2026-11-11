@@ -36,6 +36,8 @@ function ConvertTo-MessageText {
         return (@($Value | ForEach-Object { ConvertTo-MessageText $_ }) -join '; ')
     }
     if (Test-InventoryMessage $Value) { return [string] $Value.Text }
+    # Zeitpunkte (UTC gespeichert) in Ortszeit und im Format der Oberflächenkultur; Args behalten den Zeitpunkt.
+    if ($Value -is [datetime]) { return $Value.ToLocalTime().ToString('g', [cultureinfo]::CurrentCulture) }
     # Zahlen wie bisher invariant (CVSS 9.8), Kulturformat erst in der Anzeige.
     [string] $Value
 }

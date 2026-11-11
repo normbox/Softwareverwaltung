@@ -216,6 +216,58 @@ Describe 'Invoke-ServiceRequest' {
         $err.Exception.Data['Status'] | Should -Be 503
     }
 
+    It 'meldet Windows-Fehler 10013 (lokal blockiert) als LocalBlocked, auch verschachtelt' {
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest {
+            $socket = [System.Net.Sockets.SocketException]::new(10013)
+            throw [System.Net.Http.HttpRequestException]::new('Fehler', [System.IO.IOException]::new('innen', $socket))
+        }
+        $err = $null
+        try { InModuleScope SoftwareInventory -Parameters @{ S = (New-EnabledSetting NVD) } { Invoke-ServiceRequest -Service NVD -Uri 'https://nvd/x' -Setting $S } }
+        catch { $err = $_ }
+        $err.Exception.Data['Reason'] | Should -Be 'LocalBlocked'
+        $err.Exception.Message | Should -Match 'Firewall oder Virenscanner'
+        $message = InModuleScope SoftwareInventory -Parameters @{ E = $err } { New-ServiceFailureMessage -Service NVD -Exception $E }
+        $message.Code | Should -Be 'LocalBlocked'
+        $message.Args | Should -Be @('NVD')
+    }
+
+    It 'meldet andere Socket-Fehler weiter als Network, mit der Meldung ohne doppelten Dienstnamen' {
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest {
+            throw [System.Net.Http.HttpRequestException]::new('Zeitüberschreitung', [System.Net.Sockets.SocketException]::new(10060))
+        }
+        $err = $null
+        try { InModuleScope SoftwareInventory -Parameters @{ S = (New-EnabledSetting CIRCL) } { Invoke-ServiceRequest -Service CIRCL -Uri 'https://circl/x' -Setting $S } }
+        catch { $err = $_ }
+        $err.Exception.Data['Reason'] | Should -Be 'Network'
+        $message = InModuleScope SoftwareInventory -Parameters @{ E = $err } { New-ServiceFailureMessage -Service CIRCL -Exception $E }
+        $message.Code | Should -Be 'ServiceUnavailable'
+        $message.Args | Should -Be @('CIRCL', 'Zeitüberschreitung')
+    }
+
+    It 'vermerkt den Rückfall auf den Zwischenspeicher mit Grund im Mitschrieb und in den Datenhinweisen' {
+        Mock -ModuleName SoftwareInventory Write-DataNote { }
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest {
+            throw [System.Net.Http.HttpRequestException]::new('Fehler', [System.Net.Sockets.SocketException]::new(10013))
+        }
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = (New-EnabledSetting KEV) } {
+            $file = Get-ServiceCacheFile -Service KEV -CacheKey 'kev/catalog'
+            Write-ServiceCache -Path $file -Content '{"alt":1}'
+            Invoke-WithCheckTrace { Invoke-ServiceRequest -Service KEV -Uri 'https://kev/x' -CacheKey 'kev/catalog' -MaxAge ([timespan]::Zero) -Setting $S }
+        }
+        $r.Output.alt | Should -Be 1
+        $r.Trace[0].Failure.Code | Should -Be 'LocalBlocked'
+        $r.Trace[0].Failure.Args | Should -Be @('KEV')
+        Should -Invoke -ModuleName SoftwareInventory Write-DataNote -Times 1 -Exactly -ParameterFilter { $Code -eq 'ServiceStaleFallback' -and $Source -eq 'KEV' -and $Value[0] -eq 'LocalBlocked' }
+    }
+
+    It 'vermerkt einen frischen Abruf ohne Grund' {
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest { [pscustomobject] @{ StatusCode = 200; Content = '{"neu":1}' } }
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = (New-EnabledSetting KEV) } {
+            Invoke-WithCheckTrace { Invoke-ServiceRequest -Service KEV -Uri 'https://kev/x' -CacheKey 'kev/catalog' -Setting $S }
+        }
+        $r.Trace[0].Failure | Should -BeNullOrEmpty
+    }
+
     It 'enthält den Schlüssel nicht in Fehlermeldungen' {
         $env:NVD_API_KEY = 'nvd-geheim-456'
         Mock -ModuleName SoftwareInventory Invoke-WebRequest { throw [System.Net.Http.HttpRequestException]::new('Verbindung abgebrochen, apiKey=nvd-geheim-456') }

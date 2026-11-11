@@ -108,6 +108,8 @@ function Invoke-AdvisorToolAtLevel {
                 $v = Get-SoftwareVulnerability -InputObject $rating.Record
                 New-AdvisorToolResult -Name $Name -Ok $true -Data ([ordered]@{
                         status = $v.Status; reason = ConvertTo-MessageData $v.Reason; notes = @(ConvertTo-MessageData @($v.Notes))
+                        # Dienste ohne Beitrag oder nur mit alten Daten: Ergebnis entsprechend vorsichtig einordnen
+                        service_problems = @(ConvertTo-MessageData @($v.PSObject.Properties['ServiceProblems']?.Value))
                         vulnerabilities = @($v.Vulnerabilities | Select-Object -First 25 | ForEach-Object {
                                 [ordered]@{ cve = $_.CveId; assessment = $_.Assessment; kev = [bool] $_.Kev; cvss = $_.Score; epss = $_.Epss; note = ConvertTo-MessageData $_.Note }
                             })

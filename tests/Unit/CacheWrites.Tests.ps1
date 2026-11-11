@@ -199,6 +199,21 @@ Describe 'EPSS-Werte in einer Datei je CVE' {
         { Get-Epss 'CVE-2025-0001', 'CVE-2025-0009' } | Should -Throw
     }
 
+    It 'vermerkt offline den Grund nur an den Werten, die neu geholt werden sollten' {
+        Set-EpssStore @{
+            'CVE-2025-0001' = @{ Epss = 0.3; Percentile = 0.7; FetchedAt = [datetime]::UtcNow.AddHours(-30).ToString('o') }
+            'CVE-2025-0002' = @{ Epss = 0.1; Percentile = 0.5; FetchedAt = [datetime]::UtcNow.AddHours(-1).ToString('o') }
+        }
+        Mock -ModuleName SoftwareInventory Invoke-WebRequest { throw [System.Net.Http.HttpRequestException]::new('Fehler', [System.Net.Sockets.SocketException]::new(10013)) }
+        $r = Get-Epss 'CVE-2025-0001', 'CVE-2025-0002'
+        $r['CVE-2025-0001'].Failure.Code | Should -Be 'LocalBlocked'
+        $r['CVE-2025-0002'].Failure | Should -BeNullOrEmpty
+        # Der Grund gehört nicht in die gespeicherte Datei
+        Get-Content -LiteralPath $script:Store -Raw | Should -Not -BeLike '*Failure*'
+        $note = Get-ChildItem -LiteralPath (Join-Path $script:Logs 'logs\data-notes') -Filter '*.jsonl' | Get-Content -Raw
+        $note | Should -BeLike '*"Code":"ServiceStaleFallback"*"Source":"EPSS"*LocalBlocked*'
+    }
+
     It 'behandelt eine unlesbare Datei als leer, mit Eintrag im Fehlerprotokoll und ohne Meldung' {
         New-Item -ItemType Directory -Path (Split-Path -Parent $script:Store) -Force | Out-Null
         Set-Content -LiteralPath $script:Store -Value '{"Version":1,"Scores":{"CVE-2025' -NoNewline

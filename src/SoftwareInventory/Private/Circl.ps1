@@ -73,7 +73,8 @@ function Get-CirclCve {
             # Abbruch: alten (vollständigen) Bestand als veraltet nutzen, Datum nicht weitersetzen.
             if (-not $store) { throw }
             Write-Verbose "CIRCL nicht erreichbar, verwende Bestand vom $($store.FetchedAt.ToString('o'))"
-            Add-CheckTrace -Service CIRCL -File $file -FetchedAt $store.FetchedAt -MaxAge $maxAge
+            Write-ServiceFallbackNote -Service CIRCL -Exception $_
+            Add-CheckTrace -Service CIRCL -File $file -FetchedAt $store.FetchedAt -MaxAge $maxAge -Failure (New-ServiceFailureMessage -Service CIRCL -Exception $_)
             foreach ($id in $store.Records.Keys) { if (-not $all.ContainsKey($id)) { $all[$id] = $store.Records[$id] } }
             continue
         }
