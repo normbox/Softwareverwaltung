@@ -51,6 +51,26 @@ public sealed class MainViewModelActionTests
     });
 
     [Fact]
+    public void RemoveEntryRunsTheConfirmedKeyWithoutCancelControlAndDropsTheRow() => RunOnDispatcher(async () =>
+    {
+        const string key = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\old";
+        var actions = new FakeActions
+        {
+            Plan = Planned("RemoveEntry", key),
+            Outcome = new ActionOutcome { Action = "RemoveEntry", Name = "Contoso Tool", Result = "Succeeded", Message = "Eintrag entfernt." },
+            Recheck = null,
+        };
+        var (vm, _, confirm) = await CreateAsync(actions);
+
+        await vm.RemoveEntryCommand.ExecuteAsync(Tool);
+
+        Assert.Equal("Eintrag entfernen", Assert.Single(confirm.Shown).ActionText);
+        Assert.Contains($"Execute:RemoveEntry:Auto:{key}", actions.Calls);
+        Assert.Null(actions.ActionControl);
+        Assert.Empty(vm.Items);
+    });
+
+    [Fact]
     public void DeclinedConfirmationRunsNothing() => RunOnDispatcher(async () =>
     {
         var (vm, actions, _) = await CreateAsync(new FakeActions { Plan = Planned("Uninstall") }, confirm: false);

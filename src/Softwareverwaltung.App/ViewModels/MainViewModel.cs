@@ -59,7 +59,7 @@ public sealed partial class MainViewModel : ObservableObject
     public ObservableCollection<Notice> Notices { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(RecheckLastOutcomeCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RemoveEntryCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(RecheckLastOutcomeCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isBusy;
 
     /// <summary>
@@ -67,7 +67,7 @@ public sealed partial class MainViewModel : ObservableObject
     /// NVD und CIRCL abfragen können und Dienste nie parallel zu einem Scan laufen sollen.
     /// </summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(RecheckLastOutcomeCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanCommand), nameof(UpdateCommand), nameof(UninstallCommand), nameof(RemoveEntryCommand), nameof(RecheckWithoutCacheCommand), nameof(RetryWithNextMethodCommand), nameof(RecheckLastOutcomeCommand), nameof(InstallWingetCommand), nameof(UpdateSelectedCommand), nameof(MapCpeCommand), nameof(ReportCpeCommand))]
     private bool _isAdvisorBusy;
 
     /// <summary>Scan, Aktion oder Berater laufen: keine weitere Arbeit starten.</summary>
@@ -435,6 +435,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanRunAction))]
     private Task UninstallAsync(SoftwareItem? item) => RunActionAsync(SoftwareActionKind.Uninstall, item, "Auto");
+
+    /// <summary>Verwaisten Eintrag entfernen: gleicher Weg wie die anderen Aktionen (planen, Bestätigung mit Standard „Abbrechen“).</summary>
+    [RelayCommand(CanExecute = nameof(CanRunAction))]
+    private Task RemoveEntryAsync(SoftwareItem? item) => RunActionAsync(SoftwareActionKind.RemoveEntry, item, "Auto");
 
     /// <summary>Nach einem Fehlschlag: nächste Methode, wieder mit eigener Bestätigung (kein automatischer Ersatzweg).</summary>
     [RelayCommand(CanExecute = nameof(CanRetry))]
@@ -876,8 +880,8 @@ public sealed partial class MainViewModel : ObservableObject
             }
 
             StatusText = AppText.Format("StatusActionRunning", plan.ActionText, plan.Name);
-            // winget selbst installieren (InstallWinget) kennt kein Abbrechen.
-            var control = kind == SoftwareActionKind.InstallWinget
+            // winget selbst installieren und Einträge entfernen kennen kein Abbrechen (kurz, kein Installer).
+            var control = kind is SoftwareActionKind.InstallWinget or SoftwareActionKind.RemoveEntry
                 ? null
                 : System.Collections.Hashtable.Synchronized(new System.Collections.Hashtable { ["State"] = "Running" });
             var run = _actions.ExecuteAsync(kind, item?.Source, plan, method, control);

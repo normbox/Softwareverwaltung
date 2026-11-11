@@ -42,6 +42,20 @@ public sealed class InstallerWaitTests
         Assert.False(SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan"), ("Record", TestHelpers.Ps(("InstallType", "EXE"))))).IsOrphaned);
     }
 
+    [Theory]
+    [InlineData("User", true, false)]
+    [InlineData("Machine", false, true)]
+    public void RemoveEntryOnlyForOrphanedUserEntriesForNow(string scope, bool showButton, bool showHint)
+    {
+        var orphan = SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan 0.5.16"),
+            ("Record", TestHelpers.Ps(("Scope", scope), ("Flags", new[] { "Orphaned" })))));
+        Assert.Equal(showButton, orphan.ShowRemoveEntry);
+        Assert.Equal(showHint, orphan.ShowRemoveEntryLaterHint);
+        var normal = SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan"), ("Record", TestHelpers.Ps(("Scope", scope)))));
+        Assert.False(normal.ShowRemoveEntry);
+        Assert.False(normal.ShowRemoveEntryLaterHint);
+    }
+
     [Fact]
     public void StatusNamesTheWindowsInstaller() =>
         Assert.Contains("Windows Installer", ActionProgress.StatusText("Update", "App", ActionProgress.WaitingForInstaller, null, false, TimeSpan.Zero));

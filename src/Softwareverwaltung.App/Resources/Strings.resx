@@ -259,6 +259,15 @@
   <data name="ActionUninstall" xml:space="preserve">
     <value>Deinstallieren</value>
   </data>
+  <data name="ActionRemoveEntry" xml:space="preserve">
+    <value>Eintrag entfernen</value>
+  </data>
+  <data name="ActionRemoveEntryTooltip" xml:space="preserve">
+    <value>Entfernt nur den verwaisten Eintrag aus der Programmliste von Windows. Vorher wird er als .reg-Datei gesichert (Zurückspielen per Doppelklick). Dateien und Ordner bleiben unberührt.</value>
+  </data>
+  <data name="RemoveEntryLaterHint" xml:space="preserve">
+    <value>Entfernen bei Einträgen für alle Benutzer folgt in einem späteren Schritt.</value>
+  </data>
   <data name="DetailsInstallLabel" xml:space="preserve">
     <value>Installation: </value>
   </data>
