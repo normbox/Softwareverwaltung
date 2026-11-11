@@ -224,6 +224,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int _cacheHoursKev = 24;
 
+    /// <summary>Höchstalter für Grün in Tagen: älter oder fehlend bei NVD, CIRCL, KEV → grau statt grün.</summary>
+    [ObservableProperty]
+    private int _greenMaxAgeDays = 7;
+
+    /// <summary>Hinweis des Moduls, z. B. Haltbarkeit über dem Höchstalter; nach Laden und Speichern neu geholt.</summary>
+    [ObservableProperty]
+    private string? _settingHintText;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DiscardCommand))]
     private bool _isDirty;
@@ -323,6 +331,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnCacheHoursCirclChanged(int value) => UpdateDirty();
     partial void OnCacheHoursEpssChanged(int value) => UpdateDirty();
     partial void OnCacheHoursKevChanged(int value) => UpdateDirty();
+    partial void OnGreenMaxAgeDaysChanged(int value) => UpdateDirty();
 
     /// <summary>Lädt Einstellungen, Laufwerke und Schlüsselstatus. Das Modul muss geladen sein.</summary>
     public async Task LoadAsync()
@@ -346,6 +355,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 item.Status = credentials.FirstOrDefault(c => c.Service == item.Service);
             }
             Apply(saved);
+            await RefreshSettingHintAsync();
             IsLoaded = true;
         }
         catch (Exception ex)
@@ -381,6 +391,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         CacheHoursCircl = CacheHoursCircl,
         CacheHoursEpss = CacheHoursEpss,
         CacheHoursKev = CacheHoursKev,
+        GreenMaxAgeDays = GreenMaxAgeDays,
         AdvisorEnabled = AdvisorEnabled,
         AdvisorPreset = AdvisorPreset,
         AdvisorEndpoint = string.IsNullOrWhiteSpace(AdvisorEndpoint) ? null : AdvisorEndpoint.Trim(),
@@ -400,6 +411,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             Apply(await _settings.SaveAsync(Current, _saved));
             StatusText = AppText.Get("SettingsSaved");
+            await RefreshSettingHintAsync();
         }
         catch (Exception ex)
         {
@@ -412,6 +424,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     private bool CanSave() => IsDirty && !IsBusy;
+
+    /// <summary>Hinweise kommen aus dem Modul (die Regel liegt dort) und gelten für den gespeicherten Stand.</summary>
+    private async Task RefreshSettingHintAsync()
+    {
+        var hints = await _settings.GetSettingHintsAsync();
+        SettingHintText = hints.Count == 0 ? null : string.Join(Environment.NewLine, hints);
+    }
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Discard()
@@ -676,6 +695,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             CacheHoursCircl = settings.CacheHoursCircl;
             CacheHoursEpss = settings.CacheHoursEpss;
             CacheHoursKev = settings.CacheHoursKev;
+            GreenMaxAgeDays = settings.GreenMaxAgeDays;
             ApplyAdvisor(settings);
         }
         finally
@@ -783,6 +803,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         && a.CacheHoursCircl == b.CacheHoursCircl
         && a.CacheHoursEpss == b.CacheHoursEpss
         && a.CacheHoursKev == b.CacheHoursKev
+        && a.GreenMaxAgeDays == b.GreenMaxAgeDays
         && SameAdvisor(a, b);
 
     private static List<string> Lines(string text) =>

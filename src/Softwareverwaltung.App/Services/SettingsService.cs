@@ -7,6 +7,9 @@ namespace Softwareverwaltung.App.Services;
 
 public interface ISettingsService
 {
+    /// <summary>Hinweise des Moduls zu Einstellungen, die sich beeinflussen (Get-InventorySettingHint), als Text.</summary>
+    Task<IReadOnlyList<string>> GetSettingHintsAsync(CancellationToken cancellationToken = default);
+
     Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default);
 
     /// <param name="previous">Gespeicherter Stand: Beraterwerte gehen nur mit, wenn sie sich geändert haben
@@ -68,7 +71,8 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
             .AddParameter("CacheHoursNvd", settings.CacheHoursNvd)
             .AddParameter("CacheHoursCircl", settings.CacheHoursCircl)
             .AddParameter("CacheHoursEpss", settings.CacheHoursEpss)
-            .AddParameter("CacheHoursKev", settings.CacheHoursKev);
+            .AddParameter("CacheHoursKev", settings.CacheHoursKev)
+            .AddParameter("GreenMaxAgeDays", settings.GreenMaxAgeDays);
         if (settings.Usage is not null)
         {
             command.AddParameter("Usage", settings.Usage);
@@ -76,6 +80,10 @@ public sealed class SettingsService(IPowerShellHost host) : ISettingsService
         AddAdvisorParameters(command, settings, previous);
         return AppSettings.FromPs(await InvokeSingleAsync(command, cancellationToken).ConfigureAwait(false));
     }
+
+    public async Task<IReadOnlyList<string>> GetSettingHintsAsync(CancellationToken cancellationToken = default) =>
+        (await InvokeAsync(new PSCommand().AddCommand("Get-InventorySettingHint"), cancellationToken).ConfigureAwait(false))
+            .Select(h => SoftwareItem.MessageText(h)).OfType<string>().ToList();
 
     public async Task<bool> IsHelperCopyPresentAsync(CancellationToken cancellationToken = default) =>
         (await InvokeSingleAsync(new PSCommand().AddCommand("Get-HelperCopyStatus"), cancellationToken).ConfigureAwait(false)).Properties["Present"]?.Value is true;

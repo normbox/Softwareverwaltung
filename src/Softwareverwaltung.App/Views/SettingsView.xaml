@@ -517,6 +517,17 @@
                                     AutomationProperties.Name="{loc:Text SettingsCacheKev}" />
                     </StackPanel>
                 </WrapPanel>
+                <StackPanel Margin="0,0,24,8">
+                    <TextBlock Style="{StaticResource FieldLabel}" Text="{loc:Text SettingsGreenMaxAge}" />
+                    <ui:TextBox Width="160" HorizontalAlignment="Left" Text="{Binding GreenMaxAgeDays, UpdateSourceTrigger=PropertyChanged}"
+                                ToolTip="{loc:Text SettingsGreenMaxAgeTooltip}"
+                                AutomationProperties.Name="{loc:Text SettingsGreenMaxAge}"
+                                AutomationProperties.HelpText="{loc:Text SettingsGreenMaxAgeTooltip}" />
+                </StackPanel>
+                <!-- Hinweis des Moduls (Get-InventorySettingHint), z. B. Haltbarkeit über dem Höchstalter -->
+                <TextBlock Text="{Binding SettingHintText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                           Visibility="{Binding SettingHintText, Converter={StaticResource NullToVisibility}}" />
             </StackPanel>
         </ScrollViewer>
 

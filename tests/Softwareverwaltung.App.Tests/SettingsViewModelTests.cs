@@ -39,6 +39,30 @@ public sealed class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task GreenMaxAgeIsSavedAndTheModuleHintFollowsTheSavedState()
+    {
+        var fake = new FakeSettings
+        {
+            Saved = Off() with { CacheHoursNvd = 200 },
+            Hints = s => s.CacheHoursNvd > s.GreenMaxAgeDays * 24 ? ["Haltbarkeit über dem Höchstalter"] : [],
+        };
+        var vm = new SettingsViewModel(fake);
+        await vm.LoadAsync();
+        Assert.Equal(7, vm.GreenMaxAgeDays);
+        Assert.Equal("Haltbarkeit über dem Höchstalter", vm.SettingHintText);
+
+        // Vor dem Speichern bleibt der Hinweis (er gilt für den gespeicherten Stand)
+        vm.GreenMaxAgeDays = 10;
+        Assert.True(vm.IsDirty);
+        Assert.NotNull(vm.SettingHintText);
+
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(10, fake.Saved.GreenMaxAgeDays);
+        Assert.False(vm.IsDirty);
+        Assert.Null(vm.SettingHintText);
+    }
+
+    [Fact]
     public async Task ShowsEveryModuleSwitch()
     {
         var vm = new SettingsViewModel(new FakeSettings());
@@ -480,6 +504,12 @@ public sealed class SettingsViewModelTests
 
         public Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default) =>
             LoadFailure is null ? Task.FromResult(Saved) : Task.FromException<AppSettings>(LoadFailure);
+
+        /// <summary>Hinweise wie vom Modul; hier abhängig vom gespeicherten Stand nachgebildet.</summary>
+        public Func<AppSettings, IReadOnlyList<string>> Hints { get; set; } = _ => [];
+
+        public Task<IReadOnlyList<string>> GetSettingHintsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Hints(Saved));
 
         public AppSettings? LastPrevious { get; private set; }
 

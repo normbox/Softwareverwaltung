@@ -37,9 +37,11 @@ $script:DefaultLogMaxSizeMB = 100
 $script:DefaultCirclStoreMaxSizeMB = 200
 # Haltbarkeit des Zwischenspeichers je Quelle in Stunden (1–720); LatestVersion gilt für GitHub und winget-Suche.
 $script:DefaultCacheHours = [ordered]@{ LatestVersion = 6; NVD = 24; CIRCL = 24; EPSS = 24; KEV = 24 }
+# Höchstalter für Grün in Tagen: Sind Daten einer eingeschalteten Fundquelle (NVD, CIRCL, KEV) älter, wird nicht grün.
+$script:GreenMaxAgeDays = @{ Default = 7; Min = 1; Max = 30 }
 # Bereiche, die Write-InventorySetting speichert
 $script:SettingSections = @('SchemaVersion', 'Usage', 'Sources', 'Traces', 'Services', 'Actions', 'Agreements', 'Maintenance',
-    'CacheHours', 'Advisor', 'PortableSearch', 'FileScan')
+    'CacheHours', 'Rating', 'Advisor', 'PortableSearch', 'FileScan')
 
 function Get-SettingsPath {
     Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
@@ -72,6 +74,8 @@ function New-DefaultSetting {
             CirclStoreMaxSizeMB = $script:DefaultCirclStoreMaxSizeMB
         }
         CacheHours    = [pscustomobject] ([ordered]@{} + $script:DefaultCacheHours)
+        # Ampel: Grün nur, wenn alle eingeschalteten Fundquellen Daten lieferten, die höchstens so alt sind
+        Rating        = [pscustomobject] [ordered]@{ GreenMaxAgeDays = $script:GreenMaxAgeDays.Default }
         Advisor       = [pscustomobject] [ordered]@{
             Enabled  = $false   # KI-Berater; standardmäßig aus
             Preset   = $null    # Ollama, LMStudio, Unsloth oder Custom
@@ -134,6 +138,10 @@ function Read-InventorySetting {
             $hours = if ($value) { $value.Value -as [int] }
             if ($hours -ge 1 -and $hours -le 720) { $setting.CacheHours.$name = $hours }
         }
+    }
+    if ($data.PSObject.Properties['Rating'] -and $data.Rating -and $data.Rating.PSObject.Properties['GreenMaxAgeDays']) {
+        $days = $data.Rating.GreenMaxAgeDays -as [int]
+        if ($days -ge $script:GreenMaxAgeDays.Min -and $days -le $script:GreenMaxAgeDays.Max) { $setting.Rating.GreenMaxAgeDays = $days }
     }
     if ($data.PSObject.Properties['Agreements'] -and $data.Agreements -and $data.Agreements.PSObject.Properties['MsStore']) {
         # ConvertFrom-Json macht aus dem ISO-Zeitpunkt je nach Aufruf schon ein Datum.
@@ -238,4 +246,12 @@ function Test-ServiceEnabled {
     # Ist der externe Dienst in den Einstellungen aktiviert?
     param([Parameter(Mandatory)] [string] $Name, $Setting = (Read-InventorySetting))
     [bool] $Setting.Services.$Name
+}
+
+function Get-GreenMaxAgeDay {
+    # Höchstalter für Grün in Tagen aus den Einstellungen; fehlt der Wert (ältere oder nachgebildete Einstellungen), die Vorgabe.
+    param($Setting)
+    $rating = if ($Setting) { $Setting.PSObject.Properties['Rating']?.Value }
+    $days = if ($rating) { $rating.PSObject.Properties['GreenMaxAgeDays']?.Value -as [int] }
+    if ($days -ge $script:GreenMaxAgeDays.Min -and $days -le $script:GreenMaxAgeDays.Max) { $days } else { $script:GreenMaxAgeDays.Default }
 }

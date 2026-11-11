@@ -42,6 +42,10 @@ function Set-InventorySetting {
         Haltbarkeit der zwischengespeicherten neuesten Versionen (GitHub, winget-Suche) in Stunden, 1–720 (Standard 6).
     .PARAMETER CacheHoursNvd
         Haltbarkeit der NVD-Antworten in Stunden, 1–720 (Standard 24). Ebenso -CacheHoursCircl, -CacheHoursEpss und -CacheHoursKev.
+    .PARAMETER GreenMaxAgeDays
+        Höchstalter für Grün in Tagen, 1–30 (Standard 7). Sind die Daten einer eingeschalteten Fundquelle (NVD,
+        CIRCL; KEV bei Programmen mit KEV-Zuordnung) älter oder fehlen sie, wird ein Programm ohne Fund grau statt
+        grün. Get-InventorySettingHint warnt, wenn eine Haltbarkeit (CacheHours) darüber liegt.
     .PARAMETER LogRetentionDays
         Logs und Zwischenspeicher, die älter sind, werden beim Laden des Moduls gelöscht. Standard: 30.
     .PARAMETER LogMaxSizeMB
@@ -142,6 +146,9 @@ function Set-InventorySetting {
         [ValidateRange(1, 720)]
         [int] $CacheHoursKev,
 
+        [ValidateRange(1, 30)]
+        [int] $GreenMaxAgeDays,
+
         [ValidateRange(1, 3650)]
         [int] $LogRetentionDays,
 
@@ -224,6 +231,7 @@ function Set-InventorySetting {
     if ($PSBoundParameters.ContainsKey('CacheHoursCircl')) { $setting.CacheHours.CIRCL = $CacheHoursCircl }
     if ($PSBoundParameters.ContainsKey('CacheHoursEpss')) { $setting.CacheHours.EPSS = $CacheHoursEpss }
     if ($PSBoundParameters.ContainsKey('CacheHoursKev')) { $setting.CacheHours.KEV = $CacheHoursKev }
+    if ($PSBoundParameters.ContainsKey('GreenMaxAgeDays')) { $setting.Rating.GreenMaxAgeDays = $GreenMaxAgeDays }
     if ($PSBoundParameters.ContainsKey('LogRetentionDays')) { $setting.Maintenance.LogRetentionDays = $LogRetentionDays }
     if ($PSBoundParameters.ContainsKey('LogMaxSizeMB')) { $setting.Maintenance.LogMaxSizeMB = $LogMaxSizeMB }
     if ($PSBoundParameters.ContainsKey('CirclStoreMaxSizeMB')) { $setting.Maintenance.CirclStoreMaxSizeMB = $CirclStoreMaxSizeMB }

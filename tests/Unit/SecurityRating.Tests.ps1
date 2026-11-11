@@ -7,8 +7,9 @@ BeforeAll {
             Url = "https://nvd.nist.gov/vuln/detail/$Id"; Description = 'Beschreibung'; KevDateAdded = $null; KevRansomware = $false }
     }
     function New-VulnStatus {
-        param([string] $Status = 'Checked', [object[]] $Vulns = @(), $Reason)
-        [pscustomobject] @{ Status = $Status; Reason = $Reason; Vulnerabilities = @($Vulns); Cpe = @('cpe:2.3:a:x:y:1.0:*:*:*:*:*:*:*'); CpeSource = 'Catalog'; Notes = @() }
+        param([string] $Status = 'Checked', [object[]] $Vulns = @(), $Reason, [object[]] $Incomplete = @())
+        [pscustomobject] @{ Status = $Status; Reason = $Reason; Vulnerabilities = @($Vulns); Cpe = @('cpe:2.3:a:x:y:1.0:*:*:*:*:*:*:*'); CpeSource = 'Catalog'; Notes = @()
+            IncompleteSources = @($Incomplete) }
     }
     function New-UpdateStatus {
         param([string] $Status = 'UpToDate', [string] $Latest = '1.0', [bool] $Confirmed = $true, $Reason, [string] $Source = 'Winget')
@@ -149,6 +150,45 @@ Describe 'Ampelregeln' {
         $r.Reasons[0].Args[0].Code | Should -Be 'NoCpe'
         $r.Reasons[1].Args[0].Code | Should -Be 'ServiceDisabled'
         $r.Reasons[1].Args[0].Args | Should -Be @('GitHub')
+    }
+}
+
+Describe 'Ampel bei fehlenden oder zu alten Daten (CheckIncomplete)' {
+    BeforeAll {
+        $script:missing = New-Msg SourceMissing 'NVD', (New-Msg LocalBlocked 'NVD')
+        $script:tooOld = New-Msg ServiceDataTooOld 'CIRCL', ([datetime]::UtcNow.AddDays(-9)), 7
+    }
+
+    It 'Grau statt Grün mit Grund, wenn eine Fundquelle fehlt oder zu alt ist' {
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Incomplete @($script:missing, $script:tooOld))
+        $r.Rating | Should -Be 'Gray'
+        $r.Reasons.Code | Should -Be @('CheckIncomplete', 'VersionCurrent')
+        $r.Reasons[0].Args[0].Code | Should -Be @('SourceMissing', 'ServiceDataTooOld')
+        $r.Reasons[0].Text | Should -Match '^Prüfung unvollständig: NVD: Verbindung auf diesem Rechner blockiert \(Firewall oder Virenscanner\); CIRCL-Daten vom .+ sind älter als das Höchstalter für Grün \(7 Tage\)$'
+    }
+
+    It 'Gelb bleibt Gelb, „Prüfung unvollständig“ steht als letzter Grund' {
+        $r = Get-Rating (New-UpdateStatus -Status Outdated -Latest '2.0') (New-VulnStatus -Vulns @(New-Vuln -Score 5) -Incomplete @($script:missing))
+        $r.Rating | Should -Be 'Yellow'
+        $r.Reasons[-1].Code | Should -Be 'CheckIncomplete'
+        @($r.Reasons | Where-Object Code -EQ 'CheckIncomplete').Count | Should -Be 1
+    }
+
+    It 'Rot bleibt Rot, „Prüfung unvollständig“ steht als letzter Grund' {
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Vulns @(New-Vuln -Kev) -Incomplete @($script:tooOld))
+        $r.Rating | Should -Be 'Red'
+        $r.Reasons[0].Code | Should -Be 'KevAffected'
+        $r.Reasons[-1].Code | Should -Be 'CheckIncomplete'
+    }
+
+    It 'nennt bei nicht geprüften Programmen nichts doppelt' {
+        $r = Get-Rating (New-UpdateStatus) (New-VulnStatus -Status Unknown -Reason (New-Msg NoCpe) -Incomplete @($script:missing))
+        $r.Rating | Should -Be 'Gray'
+        $r.Reasons.Code | Should -Not -Contain 'CheckIncomplete'
+    }
+
+    It 'Grün, wenn alle Fundquellen geliefert haben' {
+        (Get-Rating (New-UpdateStatus) (New-VulnStatus)).Rating | Should -Be 'Green'
     }
 }
 

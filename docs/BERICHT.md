@@ -15,11 +15,12 @@ $ratings | Export-SecurityReport -Path "$env:USERPROFILE\Desktop\Sicherheitsberi
 | --- | --- |
 | **Rot** | Sicher betroffen (`Affected`) von einer aktiv ausgenutzten Lücke (CISA KEV) oder einer kritischen Lücke (CVSS ab 9,0) |
 | **Gelb** | Andere sicher betroffene Lücken; „möglicherweise betroffen“ (z. B. KEV-Eintrag ohne NVD-Versionsdaten, junger NVD-Eintrag ohne Versionsgrenze); Update verfügbar (auch unbestätigt, dann gekennzeichnet) |
-| **Grün** | Sicherheitsprüfung gelaufen (NVD abgefragt) und nichts gefunden |
-| **Grau** | Nicht auf Lücken geprüft – immer mit Grund, z. B. „Keine CPE zugeordnet“, „Dienst NVD nicht aktiviert“, „Version nicht lesbar“ |
+| **Grün** | Sicherheitsprüfung gelaufen und nichts gefunden; jede eingeschaltete Fundquelle (NVD, CIRCL, KEV bei KEV-Zuordnung) hat Daten geliefert, die nicht älter als das Höchstalter für Grün sind (Vorgabe 7 Tage) |
+| **Grau** | Nicht oder nicht vollständig auf Lücken geprüft – immer mit Grund, z. B. „Keine CPE zugeordnet“, „Dienst NVD nicht aktiviert“, „Version nicht lesbar“, „Prüfung unvollständig: NVD: Verbindung auf diesem Rechner blockiert …“ |
 
 - Grün setzt eine gelaufene Sicherheitsprüfung voraus. „Aktuell laut winget“ allein ergibt Grau mit dem Hinweis „Version aktuell“ – ein nicht geprüftes Programm erscheint nie als Grün.
 - Hinweise (`Informational`, z. B. NVD-Altdaten ohne Versionsangabe älter als 5 Jahre) färben nie.
+- **Unvollständige Prüfung (`CheckIncomplete`):** Fehlt eine eingeschaltete Fundquelle (`SourceMissing`) oder sind ihre ältesten benutzten Daten älter als das Höchstalter (`ServiceDataTooOld`), gibt es kein Grün, sondern Grau. Gelb und Rot bleiben, der Grund steht dann zuletzt. Ausgeschaltete Dienste gelten nicht als fehlend; EPSS färbt nie und zählt daher nicht. Ein Rückfall auf gespeicherte Daten innerhalb des Höchstalters steht nur als Hinweis (`ServiceProblems`) da.
 - `Reasons` nennt immer die Gründe der Stufe, bei Rot zusätzlich die gelben Gründe. Jeder Grund ist eine Meldung mit `Code`, `Args` und `Text`, z. B. `KevAffected` oder `NotCheckedBecause` mit dem eigentlichen Grund als Arg.
 - Der Bericht übernimmt Texte, Datumsformat und Sprachangabe aus der Sprache der Oberfläche.
 
