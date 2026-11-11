@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Ampel: Grün nur nach vollständiger Prüfung
+
+- **Grün gibt es nur noch, wenn jede eingeschaltete Fundquelle geliefert hat:** NVD, CIRCL und CISA KEV (KEV nur bei Programmen mit KEV-Zuordnung im Katalog), jeweils mit Daten, die nicht älter als das neue **Höchstalter für Grün** sind (Vorgabe 7 Tage, einstellbar 1–30 unter Einstellungen → Zwischenspeicher). Ausgeschaltete Dienste gelten nicht als fehlend, EPSS zählt nie.
+- Fehlt eine Quelle oder sind ihre Daten zu alt, ist ein Programm ohne Fund **grau** mit dem Grund „Prüfung unvollständig: …“ (Code `CheckIncomplete`, darin je Quelle `SourceMissing` oder `ServiceDataTooOld`). Vorher wurde es grün, etwa wenn Bitdefender die NVD blockierte und nur CIRCL prüfte.
+- **Gelb und Rot bleiben**, „Prüfung unvollständig“ steht dann als letzter Grund dabei. Nicht geprüfte (graue) Programme bekommen nichts doppelt.
+- Die Einstellungsseite weist darauf hin, wenn die Haltbarkeit von NVD, CIRCL oder KEV über dem Höchstalter liegt (`Get-InventorySettingHint`, Code `CacheLongerThanGreenMaxAge`).
+
 ### Sicherheitsprüfung: alle Dienste sichtbar, „lokal blockiert“ als eigener Grund
 
 - **Nicht nur die NVD:** Liefern NVD, CIRCL, KEV oder EPSS in einem Lauf nichts, nennt die App das je Dienst, oben in der Liste (eine Zeile je Dienst mit Zahl der Programme und Grund) und in den Details. Ersetzt den NVD-Hinweis von unten.

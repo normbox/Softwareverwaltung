@@ -91,7 +91,7 @@ Versionen werden normalisiert verglichen (`24.08` = `24.8.0.0`), Ergebnisse zwis
 
 Zuordnung Programm → CPE: gepflegtes Mapping im Repository, dann Suche im NVD-CPE-Wörterbuch, bei Unsicherheit Vorschlag des KI-Beraters mit Bestätigung durch den Nutzer.
 
-Ampel: Rot bei KEV-Treffer oder kritischem CVSS, Gelb bei bekannten Lücken oder veralteter Version, Grün sonst.
+Ampel: Rot bei KEV-Treffer oder kritischem CVSS, Gelb bei bekannten Lücken oder veralteter Version, Grün nur nach vollständiger Prüfung (jede eingeschaltete Fundquelle mit Daten innerhalb des Höchstalters), sonst Grau mit Grund.
 
 ### Lokaler Lückenabzug (Offline-Modus)
 
