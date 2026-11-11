@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Katalog: Jan wird auf Lücken geprüft
+
+- **Jan** (Menlo Research, früher Homebrew Computer Company) hat jetzt CPEs: `cpe:2.3:a:homebrew:jan` (so führt die NVD die Lücken von 0.4.12) und `cpe:2.3:a:janhq:jan` (so führt der CNA VulnCheck die neueren Lücken, gefunden über CIRCL, z. B. CVE-2026-66005 bis 0.8.4 und CVE-2026-122235 von 0.8.5 bis vor 0.8.8). Vorher war Jan grau mit „Keine CPE zugeordnet“.
+- **Katalogregel erweitert** (`docs/KATALOG.md`, „CPE prüfen“, Regel 1): Eine CPE, die nicht im NVD-Wörterbuch steht, ist zulässig, wenn NVD-CVEs sie nennen oder CVE-5-Datensätze sie als Hersteller/Produkt führen, mit mindestens einer Beleg-CVE, die eindeutig auf das Produkt verweist.
+- Bis zur Erkennung verwaister Einträge kann ein alter Rest wie „Jan 0.5.16“ dadurch zusätzlich eine Lücke zeigen.
+
 ### Ampel: Grün nur nach vollständiger Prüfung
 
 - **Grün gibt es nur noch, wenn jede eingeschaltete Fundquelle geliefert hat:** NVD, CIRCL und CISA KEV (KEV nur bei Programmen mit KEV-Zuordnung im Katalog), jeweils mit Daten, die nicht älter als das neue **Höchstalter für Grün** sind (Vorgabe 7 Tage, einstellbar 1–30 unter Einstellungen → Zwischenspeicher). Ausgeschaltete Dienste gelten nicht als fehlend, EPSS zählt nie.
