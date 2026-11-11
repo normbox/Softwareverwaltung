@@ -40,7 +40,7 @@ Snapshots mit einer höheren `SchemaVersion`, als das Modul kennt, werden beim L
 | `UninstallString`, `QuietUninstallString` | Deinstallationsbefehle | Registry |
 | `DisplayIcon` | Pfad zur Haupt-.exe bzw. zum Symbol | Registry |
 | `Companions` | `PackageFullName` der Begleitpakete, die zu diesem Programm gehören (z. B. Kontextmenü-Erweiterung als Sparse Package) | Appx |
-| `Flags` | Hinweise, siehe unten; bei Store-Apps `SparsePackage` | Appx, Portable |
+| `Flags` | Hinweise, siehe unten; bei Store-Apps `SparsePackage`, bei Registry-Resten `Orphaned` | Appx, Portable, Registry |
 
 ### Nur portable Programme
 
@@ -64,6 +64,7 @@ Warnsignale und Hinweise (`Flags`):
 | `InDownloadsOrTemp` | Liegt im Download- oder Temp-Ordner |
 | `Autostart` | Startet automatisch (Run-Schlüssel, Autostart-Ordner, geplante Aufgabe) |
 | `MultipleVersions` | Dasselbe Programm liegt in mehreren Ordnern in verschiedenen Versionen |
+| `Orphaned` | Verwaister Uninstall-Eintrag: Die Datei im Deinstallationsbefehl fehlt, `InstallLocation` und `DisplayIcon` fehlen oder zeigen ins Leere. Nie bei MSI-Einträgen, nicht auswertbaren Befehlen, Systemwerkzeugen (rundll32, msiexec), Einträgen ohne Befehl, Netzwerkpfaden und nicht erreichbaren Laufwerken. Geprüft werden die genannten Dateien selbst, nicht übergeordnete Ordner. Solche Einträge werden nicht auf Versionen und Lücken geprüft, sind grau („Programm nicht mehr vorhanden, nur Restanzeige in Windows“), und Update, Deinstallation sowie Vorschläge des Beraters werden abgelehnt. Gibt es denselben Programmnamen (ohne angehängte Version) oder denselben Katalogeintrag in neuerer Version, nennt die Ampel „Neuere Installation daneben“. |
 
 Leere Felder sind `null`.
 

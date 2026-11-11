@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Verwaiste Uninstall-Einträge
+
+- **Reste in der Programmliste von Windows werden erkannt:** Fehlen der Deinstaller, der Installationsordner und das Symbol eines Eintrags, ist er verwaist (Flag `Orphaned`). Fall Jan: „Jan 0.5.16“ (Rest des alten Installers) erschien gelb mit „Update verfügbar: 0.5.16 → 0.8.8“ und nach dem Katalog-PR mit einer Lücke, obwohl daneben die echte Installation 0.8.8 läuft. Jetzt ist er grau mit „Programm nicht mehr vorhanden, nur Restanzeige in Windows“ und „Neuere Installation daneben: Jan 0.8.8“.
+- Für verwaiste Einträge fragt die App weder winget, GitHub noch NVD/CIRCL ab. Aktualisieren und Deinstallieren entfallen (in der App ohne Knöpfe, im Modul `Unsupported` mit `OrphanedEntry`), der KI-Berater kann nichts vorschlagen.
+- Nie verwaist: MSI-Einträge, nicht auswertbare Befehle, Systemwerkzeuge, Netzwerkpfade und nicht erreichbare Laufwerke. Auf dem Rechner des Entwicklers trifft die Regel genau einen Eintrag (Jan 0.5.16).
+- „Eintrag entfernen“ folgt als eigener Schritt.
+
 ### Sicherheitsprüfung: „laut Beschreibung nicht betroffen“
 
 - **Hat keine Quelle entschieden, hilft jetzt die Beschreibung, aber nur nach unten:** Steht dort „KeePass before 2.54“ und ist 2.61.1 installiert, erscheint die Lücke nicht mehr als „möglicherweise betroffen“, sondern in den Details unter „Laut Beschreibung nicht betroffen (unbestätigt)“, ohne Wirkung auf die Ampel.
