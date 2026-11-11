@@ -32,6 +32,17 @@ public sealed class InstallerWaitTests
     }
 
     [Fact]
+    public void OrphanedEntriesOfferNeitherUninstallNorFolder()
+    {
+        var item = SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan 0.5.16"),
+            ("Record", TestHelpers.Ps(("InstallType", "EXE"), ("Flags", new[] { "Orphaned" })))));
+        Assert.True(item.IsOrphaned);
+        Assert.False(item.ShowUninstall);
+        Assert.False(item.ShowOpenFolderInsteadOfUninstall);
+        Assert.False(SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan"), ("Record", TestHelpers.Ps(("InstallType", "EXE"))))).IsOrphaned);
+    }
+
+    [Fact]
     public void StatusNamesTheWindowsInstaller() =>
         Assert.Contains("Windows Installer", ActionProgress.StatusText("Update", "App", ActionProgress.WaitingForInstaller, null, false, TimeSpan.Zero));
 
