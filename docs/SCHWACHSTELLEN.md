@@ -40,7 +40,13 @@ Ohne NVD-API-Schlüssel ist die NVD auf 5 Anfragen pro 30 Sekunden begrenzt; das
 
 1. **CPE bestimmen:** aus dem Katalog (`Cpe`, siehe [KATALOG.md](KATALOG.md)), sonst aus einer vom Benutzer bestätigten Zuordnung (siehe unten). Ohne beides gibt es keine Prüfung („Keine CPE zugeordnet“). `CpeSource` zeigt die Herkunft (`Catalog` oder `User`).
 2. **NVD abfragen** mit der installierten Version. Die NVD wertet Versionsbereiche selbst aus; die Registry-Schreibweise (`24.8.0.0`) wird wie `24.08` behandelt.
-3. **Lokal filtern:** Es zählen nur CVEs, bei denen das Produkt selbst mit `vulnerable=true` eingetragen ist und die Version im angegebenen Bereich liegt. Einträge, in denen das Produkt nur Umgebung ist (z. B. Python bei einer Lücke in PyGreSQL), entfallen. Nicht vergleichbare Bereichsgrenzen zählen als betroffen.
+3. **Lokal filtern:** Es zählen nur CVEs, bei denen das Produkt selbst mit `vulnerable=true` eingetragen ist und die Version im angegebenen Bereich liegt. Einträge, in denen das Produkt nur Umgebung ist (z. B. Python bei einer Lücke in PyGreSQL), entfallen.
+   **Nicht vergleichbare Bereichsgrenzen** ergeben nie „betroffen“, sondern „möglicherweise betroffen“ mit Grund „Versionsgrenze nicht vergleichbar (Bereich, installiert Version)“ (`VersionBoundNotComparable`), bei CVEs älter als 5 Jahre nur einen Hinweis ohne Ampelwirkung; steht die CVE in KEV, bleibt sie gelb. Dieselbe Regel gilt für CIRCL (`Compare-VersionBound`). Nicht vergleichbar sind:
+   - Commit-Kennungen als Grenze,
+   - ein Datum als Grenze (`2025-01-13`, gültiges `20250113`; `2025.01.13` nur, wenn die installierte Version normal ist, also Hauptversion unter 1900) gegenüber einer normalen Version, z. B. FFmpeg 9.0.2 gegen „< 2025-01-13“ (Fall CVE-2025-25469),
+   - unlesbare Angaben.
+
+   Datumsartige Versionen (yt-dlp `2025.01.15`) bleiben vergleichbar, auch gegen Datumsgrenzen; als Datum gilt eine installierte Version nur mit drei Teilen, Jahr ab 1900, Monat 1–12 und gültigem Tag. Build-Nummern wie `2302.1.0` oder `1903` und Jahresversionen wie Foxit `2025.2.0.33046` sind kein Datum. Kein Abgleich mit Erscheinungsdaten. Eine vergleichbare Grenze, die die Version ausschließt, gilt weiter als „nicht betroffen“, und ein echtes „betroffen“ der anderen Quelle geht vor. Jeder Fall steht in `logs\data-notes\` (Code `VersionBoundNotComparable`).
    Führt die NVD das Produkt **ohne jede Versionsgrenze** (`mozilla:firefox:*`, formal „alle Versionen“, meist Altdaten aus der Zeit vor sauberen Versionsbereichen), gilt:
    - CVE jünger als 5 Jahre → `PossiblyAffected` mit Hinweis „Versionsbereich in der NVD nicht angegeben“ (Ampel: Gelb mit Hinweis)
    - älter → `Informational` mit Hinweis „Altdaten ohne Versionsangabe“, ohne Ampelwirkung (z. B. Firefox-CVEs von 2007)
