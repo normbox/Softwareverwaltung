@@ -286,6 +286,20 @@ public sealed class SoftwareItemTests
     }
 
     [Fact]
+    public void MapsDescriptionFixedHeaderAndEntries()
+    {
+        var rating = Ps(("Name", "KeePass"), ("VulnerabilityStatus", Ps(("Status", "Checked"),
+            ("DescriptionFixedNote", Message("DescriptionFixedHidden", [1], "Laut Beschreibung nicht betroffen (unbestätigt): eine Lücke")),
+            ("DescriptionFixed", new object[] { Ps(("CveId", "CVE-2023-1"), ("Note", Message("DescriptionSaysFixed", ["CVE-2023-1", "2.54", "2.61.1"], "CVE-2023-1: laut Beschreibung behoben ab 2.54, installiert 2.61.1"))) }))));
+
+        var item = SoftwareItem.FromRating(rating);
+
+        Assert.Equal("Laut Beschreibung nicht betroffen (unbestätigt): eine Lücke", item.DescriptionFixedText);
+        Assert.Equal(["CVE-2023-1: laut Beschreibung behoben ab 2.54, installiert 2.61.1"], item.DescriptionFixed);
+        Assert.Null(SoftwareItem.FromRating(Ps(("Name", "X"), ("VulnerabilityStatus", Ps(("Status", "Checked"))))).DescriptionFixedText);
+    }
+
+    [Fact]
     public void NoServiceNoticeWithoutProblems() =>
         Assert.Null(SoftwareItem.ServiceProblemNotice([new SoftwareItem { Name = "A" }]));
 }
