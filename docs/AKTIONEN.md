@@ -201,7 +201,15 @@ Standardmäßig aus. Einschalten mit `Set-InventorySetting -Enable RestorePoint`
 
 ## Protokoll
 
-`%LOCALAPPDATA%\SoftwareInventory\logs\actions\<yyyy-MM-dd>.jsonl` (Datum in UTC), eine JSON-Zeile pro Eintrag. Jede Aktion schreibt einen Eintrag `Started` und einen Eintrag `Completed`. Fehlt der Abschluss, zeigt `Get-ActionLog` die Aktion als `Incomplete`, weil sie noch läuft oder unterbrochen wurde, bis `Update-IncompleteActionLog` ihn nachträgt. Nicht ausführbare Aktionen (`NotInstalled`, `Unsupported`, `ManualUpdateRequired`) werden mit einem Eintrag protokolliert, `-WhatIf` gar nicht. Ausnahme: Die App plant mit `-WhatIf -LogNotExecutable`, damit auch abgelehnte Klicks im Protokoll stehen; die Planung der Warteschlange protokolliert weiterhin nichts. Portable Programme ohne winget-Paket haben keine Deinstallation (`Unsupported` mit `PortableNoUninstall`). Verwaiste Uninstall-Einträge (Flag `Orphaned`) haben weder Update noch Deinstallation (`Unsupported` mit `OrphanedEntry`); das Entfernen des Eintrags kommt als eigene Aktion.
+`%LOCALAPPDATA%\SoftwareInventory\logs\actions\<yyyy-MM-dd>.jsonl` (Datum in UTC), eine JSON-Zeile pro Eintrag. Jede Aktion schreibt einen Eintrag `Started` und einen Eintrag `Completed`. Fehlt der Abschluss, zeigt `Get-ActionLog` die Aktion als `Incomplete`, weil sie noch läuft oder unterbrochen wurde, bis `Update-IncompleteActionLog` ihn nachträgt. Nicht ausführbare Aktionen (`NotInstalled`, `Unsupported`, `ManualUpdateRequired`) werden mit einem Eintrag protokolliert, `-WhatIf` gar nicht. Ausnahme: Die App plant mit `-WhatIf -LogNotExecutable`, damit auch abgelehnte Klicks im Protokoll stehen; die Planung der Warteschlange protokolliert weiterhin nichts. Portable Programme ohne winget-Paket haben keine Deinstallation (`Unsupported` mit `PortableNoUninstall`). Verwaiste Uninstall-Einträge (Flag `Orphaned`) haben weder Update noch Deinstallation (`Unsupported` mit `OrphanedEntry`); das Entfernen des Eintrags ist eine eigene Aktion (unten).
+
+### Verwaisten Eintrag entfernen (`Remove-OrphanedEntry`)
+
+- Nur für Einträge mit Flag `Orphaned`, vorerst nur des aktuellen Benutzers (HKCU, ohne Administratorrechte). Einträge für alle Benutzer (HKLM) folgen über den geschützten Helfer (`RemoveEntryMachineNotYet`).
+- Direkt vor dem Entfernen wird der Schlüssel neu gelesen: Er muss existieren, direkt unter einem der Uninstall-Zweige liegen, darf kein MSI-Eintrag sein und muss weiter verwaist sein (sonst `RemoveEntryNotOrphaned`, `RemoveEntryKeyGone`, `RemoveEntryNotUninstallKey`).
+- Zuerst sichert `reg.exe export` (fester Pfad aus System32) den Schlüssel nach `logs\registry-backup\<ActionId>_<Programmname>.reg`. Die Datei muss existieren, darf nicht leer sein und muss die Zeile `[<Schlüssel>]` enthalten; sonst wird nichts entfernt und die unbrauchbare Datei gelöscht (`RemoveEntryBackupInvalid` mit `Missing`, `Empty` oder `KeyNotFound`).
+- Entfernt wird nur dieser Schlüssel, nie eine Datei oder ein Ordner. Bestätigung in der App mit Standard „Abbrechen“; der KI-Berater kann es nicht vorschlagen. Start und Ende stehen im Aktionsprotokoll (`Action` = `RemoveEntry`).
+- **Zurückspielen:** Doppelklick auf die `.reg`-Datei oder `reg import <Datei>`. Sicherungen bleiben 365 Tage.
 
 Ein Eintrag enthält:
 - `Timestamp`, `Phase`, `User`, `ModuleVersion`, `SchemaVersion`

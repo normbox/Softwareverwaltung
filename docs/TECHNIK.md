@@ -87,6 +87,7 @@ Der KI-Berater kann Aktionen nur vorschlagen, nie selbst auslösen.
 | Aktionsprotokoll | `%LOCALAPPDATA%\SoftwareInventory\logs\actions\<Datum>.jsonl` | Zeitpunkt, Benutzer, Aktion, Programm, Befehl, Ergebnis | vorhanden |
 | Installer-Logs | `%LOCALAPPDATA%\SoftwareInventory\logs\installer\` | nur nach Fehlern, komprimiert | vorhanden |
 | Fehlerprotokoll der App | `%LOCALAPPDATA%\SoftwareInventory\logs\app-errors-<Datum>.log` | unerwartete Fehler mit Details | vorhanden |
+| Sicherungen entfernter Einträge | `%LOCALAPPDATA%\SoftwareInventory\logs\registry-backup\<ActionId>_<Name>.reg` | Registry-Schlüssel vor „Eintrag entfernen“ (reg export); eigene Frist 365 Tage, nicht in der normalen Bereinigung und Größengrenze | vorhanden |
 | Scans (Snapshots) | `%LOCALAPPDATA%\SoftwareInventory\scans\<yyyyMMdd-HHmmss-fff>.json` | nur über `Save-InventorySnapshot`; die App speichert keine Scans | vorhanden |
 | API-Schlüssel | Windows-Anmeldeinformationsverwaltung oder Umgebungsvariable; **nie** in Einstellungsdateien oder im Repository | NVD, CIRCL, GitHub, KI-Server | vorhanden |
 | Richtlinien (Firma) | `HKLM\SOFTWARE\Policies\Softwareverwaltung` (Vorschlag) | vom Administrator festgelegte und gesperrte Einstellungen | geplant (Etappe 6) |
