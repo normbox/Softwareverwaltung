@@ -805,8 +805,11 @@
   <data name="SettingsHelperCopyRemoveFailed" xml:space="preserve">
     <value>Die Kopie konnte nicht entfernt werden.</value>
   </data>
-  <data name="NoticeNvdIncomplete" xml:space="preserve">
-    <value>Bei {0} Programmen fehlen die Daten der NVD, die Ergebnisse sind dort unvollständig. Beispiel: {1}</value>
+  <data name="NoticeServiceIncomplete" xml:space="preserve">
+    <value>{0}: Bei {1} Programmen fehlen diese Daten, die Ergebnisse sind dort unvollständig. Grund: {2}</value>
+  </data>
+  <data name="NoticeServiceStaleFallback" xml:space="preserve">
+    <value>{0}: Bei {1} Programmen wurden ältere gespeicherte Daten verwendet, weil der Abruf scheiterte. Grund: {2}</value>
   </data>
   <data name="StatusActionCancelling" xml:space="preserve">
     <value>Wird abgebrochen …</value>

@@ -40,8 +40,8 @@ public sealed record SoftwareItem
     /// <summary>Hinweis „N Lücken betreffen nur andere Plattformen“ (Text des Moduls); null, wenn es keine gibt.</summary>
     public string? OtherPlatformText { get; init; }
     public string? InstallType { get; init; }
-    /// <summary>Die NVD war eingeschaltet, hat in diesem Lauf aber nichts beigetragen; mit Grund.</summary>
-    public string? NvdProblemText { get; init; }
+    /// <summary>Dienste (NVD, CIRCL, KEV, EPSS), die in diesem Lauf nichts oder nur alte Daten beigetragen haben; mit Grund.</summary>
+    public IReadOnlyList<ServiceProblemItem> ServiceProblems { get; init; } = [];
     /// <summary>Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.</summary>
     public bool ShowUninstall => !(InstallType == "Portable" && WingetId is null);
     public bool ShowOpenFolderInsteadOfUninstall => !ShowUninstall;
@@ -158,11 +158,21 @@ public sealed record SoftwareItem
         int total => AppText.Format("VulnerabilitiesAffectedAndPossible", total - PossibleCount, PossibleCount),
     };
 
-    /// <summary>Hinweis oben in der Liste, wenn die NVD bei Programmen fehlte; sonst null.</summary>
-    public static string? NvdIncompleteNotice(IEnumerable<SoftwareItem> items)
+    /// <summary>
+    /// Hinweis oben in der Liste: je Dienst und Art (fehlt / alte Daten) eine Zeile mit Zahl der Programme
+    /// und dem Grund des ersten Programms; null, wenn alle Dienste beigetragen haben.
+    /// </summary>
+    public static string? ServiceProblemNotice(IEnumerable<SoftwareItem> items)
     {
-        var affected = items.Where(i => i.NvdProblemText is not null).ToList();
-        return affected.Count == 0 ? null : AppText.Format("NoticeNvdIncomplete", affected.Count, affected[0].NvdProblemText!);
+        var lines = items.SelectMany(i => i.ServiceProblems)
+            .GroupBy(p => (p.Service, p.Code))
+            .OrderBy(g => ServiceProblemItem.ServiceOrder(g.Key.Service))
+            .ThenBy(g => g.Key.Code, StringComparer.Ordinal)
+            .Select(g => AppText.Format(
+                g.Key.Code == ServiceProblemItem.StaleFallback ? "NoticeServiceStaleFallback" : "NoticeServiceIncomplete",
+                g.Key.Service, g.Count(), g.First().ReasonText))
+            .ToList();
+        return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
     }
 
     public static SoftwareItem FromRating(PSObject rating)
@@ -190,7 +200,7 @@ public sealed record SoftwareItem
             PossibleCount = counted.Count(v => v.Assessment == "PossiblyAffected"),
             Vulnerabilities = vulnerabilities,
             Refuted = vulnerability is null ? [] : GetObjects(vulnerability, "Refuted").Select(r => MessageText(r.Properties["Note"]?.Value)).OfType<string>().ToList(),
-            NvdProblemText = vulnerability is null ? null : MessageText(vulnerability.Properties["NvdProblem"]?.Value),
+            ServiceProblems = vulnerability is null ? [] : GetObjects(vulnerability, "ServiceProblems").Select(ServiceProblemItem.FromPs).OfType<ServiceProblemItem>().ToList(),
             OtherPlatformText = vulnerability is null ? null : MessageText(vulnerability.Properties["OtherPlatformNote"]?.Value),
             OtherPlatform = vulnerability is null ? [] : GetObjects(vulnerability, "OtherPlatform").Select(o => MessageText(o.Properties["Note"]?.Value)).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
@@ -282,6 +292,32 @@ public sealed record SoftwareItem
         IEnumerable list => list.Cast<object?>().Select(o => o?.ToString()).OfType<string>().Where(s => s.Length > 0).ToList(),
         var single => [single.ToString() ?? ""],
     };
+}
+
+/// <summary>
+/// Ein Dienst aus VulnerabilityStatus.ServiceProblems: Code ServiceIncomplete (nichts beigetragen) oder
+/// ServiceStaleFallback (nur ältere gespeicherte Daten). Args: Dienst, [Datum,] Grund. Text kommt vom Modul.
+/// </summary>
+public sealed record ServiceProblemItem(string Service, string Code, string Text, string ReasonText)
+{
+    public const string StaleFallback = "ServiceStaleFallback";
+    private static readonly string[] Order = ["NVD", "CIRCL", "KEV", "EPSS"];
+
+    public static int ServiceOrder(string service) => Array.IndexOf(Order, service) is var i and >= 0 ? i : Order.Length;
+
+    public static ServiceProblemItem? FromPs(PSObject message)
+    {
+        var code = message.Properties["Code"]?.Value?.ToString();
+        var text = SoftwareItem.MessageText(message);
+        if (code is null || text is null)
+        {
+            return null;
+        }
+        var args = SoftwareItem.GetObjects(message, "Args").ToList();
+        var service = args.Count > 0 ? SoftwareItem.MessageText(args[0]) ?? "" : "";
+        var reason = args.Count > 1 ? SoftwareItem.MessageText(args[^1]) ?? text : text;
+        return new ServiceProblemItem(service, code, text, reason);
+    }
 }
 
 /// <summary>Eine Lücke aus VulnerabilityStatus.Vulnerabilities, für die Detailansicht.</summary>
