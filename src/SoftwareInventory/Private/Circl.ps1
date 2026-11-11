@@ -416,23 +416,26 @@ function Format-VersionRange {
 }
 
 function Test-VersionInRange {
-    # $true/$false; $null, wenn eine Grenze nicht vergleichbar ist.
+    # $true/$false; $null, wenn eine Grenze nicht vergleichbar ist und keine vergleichbare sicher ausschließt
+    # (gleiche Regel wie Test-CpeMatchVersion, siehe Compare-VersionBound).
     param([string] $Version, $Range)
     if ($Range.Exact) {
-        $cmp = Compare-SoftwareVersion $Version $Range.Exact
+        $cmp = Compare-VersionBound $Version $Range.Exact
         if ($null -eq $cmp) { return $null }
         return $cmp -eq 0
     }
+    $unknown = $false
     if ($Range.Start) {
-        $cmp = Compare-SoftwareVersion $Version $Range.Start
-        if ($null -eq $cmp) { return $null }
-        if ($cmp -lt 0 -or ($cmp -eq 0 -and -not $Range.StartIncluding)) { return $false }
+        $cmp = Compare-VersionBound $Version $Range.Start
+        if ($null -eq $cmp) { $unknown = $true }
+        elseif ($cmp -lt 0 -or ($cmp -eq 0 -and -not $Range.StartIncluding)) { return $false }
     }
     if ($Range.End) {
-        $cmp = Compare-SoftwareVersion $Version $Range.End
-        if ($null -eq $cmp) { return $null }
-        if ($cmp -gt 0 -or ($cmp -eq 0 -and -not $Range.EndIncluding)) { return $false }
+        $cmp = Compare-VersionBound $Version $Range.End
+        if ($null -eq $cmp) { $unknown = $true }
+        elseif ($cmp -gt 0 -or ($cmp -eq 0 -and -not $Range.EndIncluding)) { return $false }
     }
+    if ($unknown) { return $null }
     $true
 }
 
@@ -503,6 +506,7 @@ function Get-CirclAssessment {
         Ist die Version laut CVE-Datensatz von CIRCL betroffen?
     .OUTPUTS
         Verdict: Affected, NotAffected oder NotEvaluable; Range: ausgewertete Bereiche als Text;
+        NotComparable: $true, wenn NotEvaluable wegen einer nicht vergleichbaren Grenze (Datum, Commit);
         OtherPlatform: nur gesetzt, wenn der Datensatz das Produkt nur für andere Plattformen führt (NotAffected).
     .DESCRIPTION
         Werden nur einzelne Versionen genannt (oft nur die getestete), gilt: gleiche Version
@@ -524,7 +528,7 @@ function Get-CirclAssessment {
     if (-not $ranges) { return [pscustomobject] @{ Verdict = 'NotEvaluable'; Range = $null } }
     $results = @(foreach ($range in $ranges) { Test-VersionInRange -Version $Version -Range $range })
     if ($results -contains $true) { return [pscustomobject] @{ Verdict = 'Affected'; Range = $text } }
-    if ($null -in $results) { return [pscustomobject] @{ Verdict = 'NotEvaluable'; Range = $text } }
+    if ($null -in $results) { return [pscustomobject] @{ Verdict = 'NotEvaluable'; Range = $text; NotComparable = $true } }
     $exact = @($ranges | Where-Object Exact)
     if ($exact.Count -eq $ranges.Count) {
         $older = $exact | Where-Object { (Compare-SoftwareVersion $Version $_.Exact) -lt 0 }

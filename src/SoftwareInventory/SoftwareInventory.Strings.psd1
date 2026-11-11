@@ -155,6 +155,8 @@ Regeln:
     ReasonNvdNoVersionRange                 = 'Versionsbereich in der NVD nicht angegeben'
     ReasonNvdLegacyData                     = 'Altdaten ohne Versionsangabe in der NVD (älter als {0} Jahre); ohne Ampelwirkung'
     ReasonNvdNoProductData                  = 'Die NVD führt zu dieser CVE keine Angaben für dieses Produkt'
+    ReasonVersionBoundNotComparable         = 'Versionsgrenze nicht vergleichbar ({0}, installiert {1})'
+    DataNoteVersionBoundNotComparable       = 'Versionsgrenze nicht vergleichbar: {0}'
     ReasonCirclNoVersionRange               = 'Versionsbereich im CVE-Datensatz (CIRCL) nicht auswertbar'
     ReasonCirclLegacyData                   = 'Altdaten ohne auswertbare Versionsangabe bei CIRCL (älter als {0} Jahre); ohne Ampelwirkung'
     ReasonSourcesDisagree                   = 'Quellen widersprechen sich bei {0}: eine meldet betroffen, die andere nicht betroffen'
