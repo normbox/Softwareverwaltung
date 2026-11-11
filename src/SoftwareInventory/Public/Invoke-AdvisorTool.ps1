@@ -9,7 +9,7 @@ function Invoke-AdvisorTool {
         error_code) und einer Meldung in der Sprache der Oberfläche, damit das Modell sich korrigieren
         kann; es wird nie eine Ausnahme geworfen.
         Codes: UnknownTool, InvalidArguments, InvalidId, UnknownId, InvalidLimit, InvalidRating,
-        ReasonMissing, NoUpdateKnown, ShareLevelTooLow, NoScanData, ToolFailed; bei Vorschlägen ProposalCreated.
+        ReasonMissing, NoUpdateKnown, OrphanedEntry, ShareLevelTooLow, NoScanData, ToolFailed; bei Vorschlägen ProposalCreated.
         Ohne Daten aus einem Scan (Set-AdvisorContext) antwortet jedes Tool mit NoScanData; das Modul
         liest nie selbst ein.
         Freigabestufe: Das Modul bestimmt sie aus -ProviderKind und den Einstellungen (Advisor.ShareLevel),
@@ -123,6 +123,8 @@ function Invoke-AdvisorToolAtLevel {
                 if (-not $reason) { return New-AdvisorToolError $Name ReasonMissing }
                 if ($reason.Length -gt 500) { $reason = $reason.Substring(0, 500) }
                 $action = if ($Name -eq 'propose_update') { 'Update' } else { 'Uninstall' }
+                # Verwaister Eintrag: Es gibt nichts zu aktualisieren oder zu deinstallieren
+                if (@(Get-RecordValue $rating.Record 'Flags') -contains 'Orphaned') { return New-AdvisorToolError $Name OrphanedEntry @($rating.Name) }
                 if ($action -eq 'Update' -and -not ($rating.UpdateStatus -and $rating.UpdateStatus.Status -eq 'Outdated')) {
                     return New-AdvisorToolError $Name NoUpdateKnown @($rating.Name)
                 }

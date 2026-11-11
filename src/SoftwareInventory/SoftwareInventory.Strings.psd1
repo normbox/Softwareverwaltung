@@ -36,6 +36,7 @@ Regeln:
 
     # KI-Berater: Fehler (Schlüssel = AdvisorError + error_code)
     AdvisorErrorUnknownTool                 = 'Unbekanntes Tool ''{0}''. Verfügbar: {1}.'
+    AdvisorErrorOrphanedEntry               = '''{0}'' ist nur ein verwaister Eintrag in Windows, das Programm ist nicht mehr vorhanden. Weder Update noch Deinstallation möglich.'
     AdvisorErrorInvalidArguments            = 'Die Argumente sind kein gültiges JSON-Objekt.'
     AdvisorErrorInvalidId                   = 'Ungültige id ''{0}''. Erst get_inventory aufrufen und die dortige id verwenden.'
     AdvisorErrorUnknownId                   = 'Kein Programm mit id ''{0}'' im letzten Scan. Erst get_inventory aufrufen.'
@@ -174,6 +175,8 @@ Regeln:
     ReasonAdvisorEndpointUnencrypted        = 'Die Verbindung zu ''{0}'' ist unverschlüsselt (http im privaten Netz). Die Daten gehen bereinigt, aber lesbar durch das Netz.'
     ReasonOtherPlatformOnly                 = 'Nur für {0}, nicht für Windows'
     ReasonOtherPlatformCve                  = '{0}: nur für {1}'
+    ReasonOrphanedEntry                     = 'Programm nicht mehr vorhanden, nur Restanzeige in Windows'
+    ReasonNewerInstallNextTo                = 'Neuere Installation daneben: {0} {1}'
     ReasonDescriptionSaysFixed              = '{0}: laut Beschreibung behoben ab {1}, installiert {2}'
     ReasonDescriptionFixedHidden            = 'Laut Beschreibung nicht betroffen (unbestätigt): {0} Lücken'
     ReasonDescriptionFixedHiddenOne         = 'Laut Beschreibung nicht betroffen (unbestätigt): eine Lücke'

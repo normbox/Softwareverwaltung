@@ -41,6 +41,11 @@ function Test-SoftwareUpdate {
             $done++
             Write-CheckProgress -Id 3 -Activity ProgressCheckUpdates -Index $done -Total $InputObject.Count -Name $record.Name
             $match = Find-CatalogEntry -Record $record -Catalog $catalog
+            # Verwaister Eintrag: Das Programm gibt es nicht mehr, also keine Versionsabfrage (kein „Update verfügbar“).
+            if (@(Get-RecordValue $record 'Flags') -contains 'Orphaned') {
+                New-UpdateStatus -Record $record -Result $null -Reasons @(New-InventoryMessage OrphanedEntry) -CatalogId $(if ($match) { $match.Entry.Id }) -Trace @()
+                continue
+            }
             $reasons = [System.Collections.Generic.List[object]]::new()
             $result = $null
 
