@@ -243,6 +243,9 @@ function New-ActionPlan {
     }
     $finish = { param($Result, $Message) $plan.Result = $Result; $plan.Message = $Message; [pscustomobject] $plan }
 
+    # Verwaister Eintrag: Programm und Deinstaller fehlen; weder Update noch Deinstallation (Entfernen des Eintrags folgt)
+    if (@(Get-RecordValue $Record 'Flags') -contains 'Orphaned') { return & $finish 'Unsupported' (New-InventoryMessage OrphanedEntry) }
+
     if (-not $state.Present) {
         # Portable Programme stehen in keiner Registry: „nicht installiert“ wäre falsch, solange die Datei da sein kann.
         $file = Get-RecordValue $Record 'FilePath'

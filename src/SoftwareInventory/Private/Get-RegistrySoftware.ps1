@@ -50,6 +50,8 @@ function Get-RegistrySoftware {
                 QuietUninstallString = ConvertTo-NullIfEmpty $key.GetValue('QuietUninstallString')
                 DisplayIcon          = ConvertFrom-DisplayIcon $key.GetValue('DisplayIcon')
             }
+            # Verwaister Rest: Deinstaller, Installationsordner und Symbol zeigen ins Leere (Fall Jan 0.5.16)
+            if (Test-OrphanedRegistryEntry -Record $record -IsMsi $isMsi) { $record.Flags = [string[]] @('Orphaned') }
             Add-MatchKey -Record $record -Key @(
                 "arp:$keyName".ToLowerInvariant()
                 "arp:$($loc.Scope):$keyName".ToLowerInvariant()
@@ -93,4 +95,51 @@ function ConvertFrom-DisplayIcon {
     if (-not $text) { return $null }
     $text = ($text -replace ',\s*-?\d+$', '').Trim('"', ' ')
     [Environment]::ExpandEnvironmentVariables($text)
+}
+
+function Get-PathState {
+    <#
+    .SYNOPSIS
+        Exists, Missing oder Unknown für einen Pfad aus der Registry (Anführungszeichen und Umgebungsvariablen erlaubt).
+    .DESCRIPTION
+        Unknown bei leeren Angaben, Netzwerkpfaden und Laufwerken, die gerade nicht erreichbar sind: Dort lässt
+        sich nicht sagen, ob etwas fehlt.
+    #>
+    param([string] $Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return 'Unknown' }
+    $p = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"').Trim())
+    if (-not $p -or $p.StartsWith('\\') -or -not [System.IO.Path]::IsPathRooted($p)) { return 'Unknown' }
+    if (-not (Test-PathRootReachable $p)) { return 'Unknown' }
+    if (Test-Path -LiteralPath $p) { 'Exists' } else { 'Missing' }
+}
+
+function Test-OrphanedRegistryEntry {
+    <#
+    .SYNOPSIS
+        Ist der Uninstall-Eintrag nur noch ein Rest ohne Programm?
+    .DESCRIPTION
+        Verwaist nur, wenn die Datei im Deinstallationsbefehl (UninstallString und QuietUninstallString) fehlt
+        und InstallLocation sowie DisplayIcon fehlen oder ins Leere zeigen. Geprüft werden die genannten Dateien
+        und Ordner selbst, nicht übergeordnete Ordner (bei Jan 0.5.16 gibt es …\Programs\jan noch, weil es der
+        Ordner der neuen Installation ist). Nie verwaist: MSI-Einträge (entscheidet Windows Installer), Einträge
+        ohne Deinstallationsbefehl, nicht auswertbare Befehle, Systemwerkzeuge (rundll32, msiexec …),
+        Netzwerkpfade und nicht erreichbare Laufwerke.
+    #>
+    param($Record, [bool] $IsMsi)
+    if ($IsMsi) { return $false }
+    $commands = @($Record.UninstallString, $Record.QuietUninstallString) | Where-Object { $_ }
+    if (-not $commands) { return $false }
+    $system = @([Environment]::GetFolderPath('System'), [Environment]::GetFolderPath('SystemX86'), $env:WINDIR) |
+        Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') + '\' }
+    foreach ($command in $commands) {
+        $parts = Split-CommandLine $command
+        if ($parts.Error -or -not $parts.FilePath) { return $false }
+        if ($system | Where-Object { $parts.FilePath.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }) { return $false }
+        if ((Get-PathState $parts.FilePath) -ne 'Missing') { return $false }
+    }
+    foreach ($path in $Record.InstallLocation, $Record.DisplayIcon) {
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        if ((Get-PathState $path) -ne 'Missing') { return $false }
+    }
+    $true
 }

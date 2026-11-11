@@ -42,9 +42,14 @@ public sealed record SoftwareItem
     public string? InstallType { get; init; }
     /// <summary>Dienste (NVD, CIRCL, KEV, EPSS), die in diesem Lauf nichts oder nur alte Daten beigetragen haben; mit Grund.</summary>
     public IReadOnlyList<ServiceProblemItem> ServiceProblems { get; init; } = [];
-    /// <summary>Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.</summary>
-    public bool ShowUninstall => !(InstallType == "Portable" && WingetId is null);
-    public bool ShowOpenFolderInsteadOfUninstall => !ShowUninstall;
+    /// <summary>Verwaister Uninstall-Eintrag (Flag Orphaned vom Modul): Programm und Deinstaller fehlen.</summary>
+    public bool IsOrphaned { get; init; }
+    /// <summary>
+    /// Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.
+    /// Verwaiste Einträge bekommen weder das eine noch das andere (das Modul lehnt beides ab).
+    /// </summary>
+    public bool ShowUninstall => !IsOrphaned && !(InstallType == "Portable" && WingetId is null);
+    public bool ShowOpenFolderInsteadOfUninstall => !IsOrphaned && InstallType == "Portable" && WingetId is null;
     /// <summary>Lücken nur für andere Plattformen (macOS, iOS, Android, Linux …), je Zeile CVE und Plattformen; ohne Ampelwirkung.</summary>
     public IReadOnlyList<string> OtherPlatform { get; init; } = [];
     /// <summary>Überschrift „Laut Beschreibung nicht betroffen (unbestätigt): …“ (Text des Moduls); null, wenn es keine gibt.</summary>
@@ -215,6 +220,7 @@ public sealed record SoftwareItem
             CpeSource = vulnerability is null ? null : GetString(vulnerability, "CpeSource"),
             NeedsCpe = vulnerability?.Properties["Reason"]?.Value is PSObject reason && GetString(reason, "Code") == "NoCpe",
             InstallType = record is null ? null : GetString(record, "InstallType"),
+            IsOrphaned = record is not null && GetStrings(record, "Flags").Contains("Orphaned"),
             InstallLocation = record is null ? null : GetString(record, "InstallLocation") ?? GetString(record, "FilePath"),
             InstallInfo = record is null ? null : InstallInfoText(record),
             Source = rating,

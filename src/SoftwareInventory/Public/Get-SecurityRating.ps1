@@ -48,11 +48,17 @@ function Get-SecurityRating {
             throw (Get-LocalizedString 'ErrorInternalResultCount' $records.Count, $updates.Count, $vulns.Count)
         }
         $order = @{ Red = 0; Yellow = 1; Gray = 2; Green = 3 }
+        $catalog = Get-SoftwareCatalog
 
         $ratings = for ($i = 0; $i -lt $records.Count; $i++) {
             $u = $updates[$i]
             $v = $vulns[$i]
             $r = Get-RatingFromResult -UpdateStatus $u -VulnerabilityStatus $v
+            # Verwaister Eintrag: Grau mit eigenem Grund statt „nicht geprüft“; neuere Installation daneben als Hinweis.
+            if (@(Get-RecordValue $records[$i] 'Flags') -contains 'Orphaned') {
+                $newer = Find-NewerInstallation -Record $records[$i] -Candidate $records -Catalog $catalog
+                $r = @{ Rating = 'Gray'; Reasons = @(@(New-InventoryMessage OrphanedEntry) + @(if ($newer) { New-InventoryMessage NewerInstallNextTo $newer.Name, $newer.Version })) }
+            }
             # Treffer aus Nutzungsspuren, deren Laufwerk fehlt: Grund zuerst nennen (statt still zu verwerfen).
             if (@(Get-RecordValue $records[$i] 'Flags') -contains 'PathUnreachable') {
                 $r.Reasons = @(@(New-InventoryMessage PathUnreachable) + @($r.Reasons))
@@ -76,4 +82,30 @@ function Get-SecurityRating {
         }
         $ratings | Sort-Object @{ Expression = { $order[$_.Rating] } }, Name
     }
+}
+
+function Find-NewerInstallation {
+    <#
+    .SYNOPSIS
+        Ein anderer, nicht verwaister Eintrag desselben Programms mit neuerer Version; sonst $null.
+    .DESCRIPTION
+        Dasselbe Programm: gleicher Katalogeintrag oder gleicher Name ohne angehängte Versionsnummer
+        („Jan 0.5.16“ = „Jan“). Nur ein Hinweis, kein Kriterium für „verwaist“.
+    #>
+    param($Record, [object[]] $Candidate, $Catalog)
+    $baseName = { param($n) ([string] $n -replace '\s+v?\d+(?:\.\d+)*\s*$', '').Trim() }
+    $ownName = & $baseName $Record.Name
+    $ownMatch = Find-CatalogEntry -Record $Record -Catalog $Catalog
+    $ownId = if ($ownMatch) { $ownMatch.Entry.Id }
+    $found = foreach ($c in $Candidate) {
+        if ([object]::ReferenceEquals($c, $Record) -or @(Get-RecordValue $c 'Flags') -contains 'Orphaned') { continue }
+        $cmp = Compare-SoftwareVersion $c.Version $Record.Version
+        if ($null -eq $cmp -or $cmp -le 0) { continue }
+        $sameName = (& $baseName $c.Name) -eq $ownName
+        $match = if (-not $sameName -and $ownId) { Find-CatalogEntry -Record $c -Catalog $Catalog }
+        if ($sameName -or ($match -and $match.Entry.Id -eq $ownId)) { $c }
+    }
+    $best = $null
+    foreach ($c in @($found)) { if (-not $best -or (Compare-SoftwareVersion $c.Version $best.Version) -gt 0) { $best = $c } }
+    $best
 }
