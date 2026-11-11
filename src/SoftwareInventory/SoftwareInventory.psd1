@@ -50,6 +50,7 @@
         'Update-IncompleteActionLog'
         'Update-Software'
         'Uninstall-Software'
+        'Remove-OrphanedEntry'
         'Install-WingetPackageManager'
         'Get-HelperCopyStatus'
         'Remove-HelperCopy'

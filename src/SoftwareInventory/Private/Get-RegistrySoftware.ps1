@@ -30,8 +30,18 @@ function Get-RegistrySoftware {
         }
 
         foreach ($key in Get-ChildItem -LiteralPath $loc.Path -ErrorAction SilentlyContinue) {
+            ConvertFrom-UninstallKey -Key $key -Location $loc
+        }
+    }
+}
+
+function ConvertFrom-UninstallKey {
+    # Datensatz aus einem Uninstall-Schlüssel; nichts, wenn der Eintrag kein eigenständiges Programm ist.
+    param([Parameter(Mandatory)] $Key, [Parameter(Mandatory)] [hashtable] $Location)
+            $key = $Key
+            $loc = $Location
             $name = [string] $key.GetValue('DisplayName')
-            if (-not (Test-RegistryEntryIsProgram -Key $key -DisplayName $name)) { continue }
+            if (-not (Test-RegistryEntryIsProgram -Key $key -DisplayName $name)) { return }
 
             $keyName = $key.PSChildName
             $isMsi = $key.GetValue('WindowsInstaller') -eq 1
@@ -55,9 +65,7 @@ function Get-RegistrySoftware {
             Add-MatchKey -Record $record -Key @(
                 "arp:$keyName".ToLowerInvariant()
                 "arp:$($loc.Scope):$keyName".ToLowerInvariant()
-            )
-        }
-    }
+            )   # gibt den Datensatz aus
 }
 
 function Test-RegistryEntryIsProgram {
