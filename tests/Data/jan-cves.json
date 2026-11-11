@@ -1,0 +1,636 @@
+{
+  "Source": "Gekürzte echte Datensätze zu Jan (janhq/jan, homebrew:jan), abgerufen am 2026-11-11: CIRCL Vulnerability-Lookup (CVE-5, CC BY 4.0) und NVD-API (virtualMatchString=cpe:2.3:a:homebrew:jan).",
+  "Cve5": [
+    {
+      "dataType": "CVE_RECORD",
+      "dataVersion": "5.2",
+      "cveMetadata": {
+        "cveId": "CVE-2026-122235",
+        "state": "PUBLISHED",
+        "datePublished": "2026-11-04T21:06:42.684Z",
+        "dateUpdated": "2026-11-09T16:57:40.843Z",
+        "assignerShortName": "VulnCheck"
+      },
+      "containers": {
+        "cna": {
+          "affected": [
+            {
+              "vendor": "janhq",
+              "product": "jan",
+              "defaultStatus": "unaffected",
+              "versions": [
+                {
+                  "version": "0.8.5",
+                  "lessThan": "0.8.8",
+                  "status": "affected",
+                  "versionType": "semver"
+                }
+              ],
+              "packageURL": "pkg:github/janhq/jan",
+              "repo": "https://github.com/janhq/jan"
+            }
+          ],
+          "metrics": [
+            {
+              "format": "CVSS",
+              "cvssV4_0": {
+                "version": "4.0",
+                "vectorString": "CVSS:4.0/AV:L/AC:L/AT:P/PR:N/UI:P/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+                "attackVector": "LOCAL",
+                "attackComplexity": "LOW",
+                "attackRequirements": "PRESENT",
+                "privilegesRequired": "NONE",
+                "userInteraction": "PASSIVE",
+                "vulnConfidentialityImpact": "NONE",
+                "vulnIntegrityImpact": "HIGH",
+                "vulnAvailabilityImpact": "NONE",
+                "subConfidentialityImpact": "NONE",
+                "subIntegrityImpact": "NONE",
+                "subAvailabilityImpact": "NONE",
+                "baseScore": 5.7,
+                "baseSeverity": "MEDIUM"
+              }
+            },
+            {
+              "format": "CVSS",
+              "cvssV3_1": {
+                "version": "3.1",
+                "vectorString": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:U/C:N/I:H/A:N",
+                "attackVector": "LOCAL",
+                "attackComplexity": "HIGH",
+                "privilegesRequired": "NONE",
+                "userInteraction": "REQUIRED",
+                "scope": "UNCHANGED",
+                "confidentialityImpact": "NONE",
+                "integrityImpact": "HIGH",
+                "availabilityImpact": "NONE",
+                "baseScore": 4.7,
+                "baseSeverity": "MEDIUM"
+              }
+            }
+          ],
+          "title": "Jan 0.8.5 before 0.8.8 Workspace Guard Bypass via Dangling Symlink",
+          "descriptions": [
+            {
+              "lang": "en",
+              "value": "Jan from 0.8.5 before 0.8.8 contains a workspace guard bypass vulnerability in the agent-tools gate.rs that allows attackers to write files outside the workspace via dangling symlinks. Attackers supplying a malicious repository can use prompt injection to make the write or edit tools follow symlinks, creating files like ~/.ssh/authorized_keys on the host."
+            }
+          ]
+        },
+        "adp": [
+          {
+            "metrics": [
+              {
+                "other": {
+                  "type": "ssvc",
+                  "content": {
+                    "timestamp": "2026-11-09T16:09:38.690510Z",
+                    "id": "CVE-2026-122235",
+                    "options": [
+                      {
+                        "Exploitation": "none"
+                      },
+                      {
+                        "Automatable": "no"
+                      },
+                      {
+                        "Technical Impact": "partial"
+                      }
+                    ],
+                    "role": "CISA Coordinator",
+                    "version": "2.0.3"
+                  }
+                }
+              }
+            ],
+            "providerMetadata": {
+              "orgId": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+              "shortName": "CISA-ADP",
+              "dateUpdated": "2026-11-09T16:57:40.843Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "dataType": "CVE_RECORD",
+      "dataVersion": "5.2",
+      "cveMetadata": {
+        "cveId": "CVE-2026-66005",
+        "state": "PUBLISHED",
+        "datePublished": "2026-07-24T14:57:33.054Z",
+        "dateUpdated": "2026-09-17T17:54:37.219Z",
+        "assignerShortName": "VulnCheck"
+      },
+      "containers": {
+        "cna": {
+          "affected": [
+            {
+              "vendor": "janhq",
+              "product": "jan",
+              "defaultStatus": "unaffected",
+              "packageURL": "pkg:github/janhq/jan",
+              "versions": [
+                {
+                  "version": "0",
+                  "status": "affected",
+                  "versionType": "semver",
+                  "lessThanOrEqual": "0.8.4"
+                },
+                {
+                  "status": "unaffected",
+                  "version": "3e1c1e724f696620d89bb4a9cc18a380e0753757",
+                  "versionType": "git"
+                }
+              ],
+              "repo": "https://github.com/janhq/jan"
+            }
+          ],
+          "metrics": [
+            {
+              "format": "CVSS",
+              "scenarios": [
+                {
+                  "lang": "en",
+                  "value": "GENERAL"
+                }
+              ],
+              "cvssV4_0": {
+                "attackVector": "NETWORK",
+                "attackComplexity": "LOW",
+                "attackRequirements": "NONE",
+                "privilegesRequired": "NONE",
+                "userInteraction": "PASSIVE",
+                "vulnConfidentialityImpact": "LOW",
+                "subConfidentialityImpact": "NONE",
+                "vulnIntegrityImpact": "LOW",
+                "subIntegrityImpact": "NONE",
+                "vulnAvailabilityImpact": "LOW",
+                "subAvailabilityImpact": "NONE",
+                "exploitMaturity": "NOT_DEFINED",
+                "Safety": "NOT_DEFINED",
+                "Automatable": "NOT_DEFINED",
+                "Recovery": "NOT_DEFINED",
+                "valueDensity": "NOT_DEFINED",
+                "vulnerabilityResponseEffort": "NOT_DEFINED",
+                "providerUrgency": "NOT_DEFINED",
+                "version": "4.0",
+                "baseSeverity": "MEDIUM",
+                "baseScore": 5.3,
+                "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N"
+              }
+            },
+            {
+              "format": "CVSS",
+              "scenarios": [
+                {
+                  "lang": "en",
+                  "value": "GENERAL"
+                }
+              ],
+              "cvssV3_1": {
+                "attackVector": "NETWORK",
+                "attackComplexity": "LOW",
+                "privilegesRequired": "NONE",
+                "userInteraction": "REQUIRED",
+                "scope": "UNCHANGED",
+                "confidentialityImpact": "LOW",
+                "integrityImpact": "LOW",
+                "availabilityImpact": "LOW",
+                "version": "3.1",
+                "baseSeverity": "MEDIUM",
+                "baseScore": 6.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:L"
+              }
+            }
+          ],
+          "title": "Jan Local API Server CORS Origin Reflection via 0.0.0.0 Binding",
+          "descriptions": [
+            {
+              "lang": "en",
+              "value": "Jan through 0.8.4, fixed in commit 3e1c1e7, contains a CORS misconfiguration vulnerability in its local API server that allows network-adjacent attackers to bypass trusted host restrictions by exploiting the server's replacement of user-configured trusted hosts with a wildcard that reflects arbitrary origins with credentials. Attackers on the local network or using DNS rebinding can reach the unauthenticated OpenAI-compatible API to perform inference, enumerate models, invoke MCP tools, and read cross-origin responses."
+            }
+          ]
+        },
+        "adp": [
+          {
+            "metrics": [
+              {
+                "other": {
+                  "type": "ssvc",
+                  "content": {
+                    "timestamp": "2026-07-24T15:32:21.328068Z",
+                    "id": "CVE-2026-66005",
+                    "options": [
+                      {
+                        "Exploitation": "poc"
+                      },
+                      {
+                        "Automatable": "no"
+                      },
+                      {
+                        "Technical Impact": "partial"
+                      }
+                    ],
+                    "role": "CISA Coordinator",
+                    "version": "2.0.3"
+                  }
+                }
+              }
+            ],
+            "providerMetadata": {
+              "orgId": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+              "shortName": "CISA-ADP",
+              "dateUpdated": "2026-07-24T15:32:36.654Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "dataType": "CVE_RECORD",
+      "dataVersion": "5.1",
+      "cveMetadata": {
+        "cveId": "CVE-2024-36857",
+        "state": "PUBLISHED",
+        "datePublished": "2024-06-04T18:26:04.843Z",
+        "dateUpdated": "2025-02-13T15:59:45.280Z",
+        "assignerShortName": "mitre"
+      },
+      "containers": {
+        "cna": {
+          "affected": [
+            {
+              "vendor": "n/a",
+              "product": "n/a",
+              "versions": [
+                {
+                  "version": "n/a",
+                  "status": "affected"
+                }
+              ]
+            }
+          ],
+          "descriptions": [
+            {
+              "lang": "en",
+              "value": "Jan v0.4.12 was discovered to contain an arbitrary file read vulnerability via the /v1/app/readFileSync interface."
+            }
+          ]
+        },
+        "adp": [
+          {
+            "affected": [
+              {
+                "vendor": "janhq",
+                "product": "jan",
+                "cpes": [
+                  "cpe:2.3:a:janhq:jan:0.4.12:*:*:*:*:*:*:*"
+                ],
+                "defaultStatus": "unknown",
+                "versions": [
+                  {
+                    "version": "0.4.12",
+                    "status": "affected"
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "cvssV3_1": {
+                  "scope": "UNCHANGED",
+                  "version": "3.1",
+                  "baseScore": 7.5,
+                  "attackVector": "NETWORK",
+                  "baseSeverity": "HIGH",
+                  "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "integrityImpact": "NONE",
+                  "userInteraction": "NONE",
+                  "attackComplexity": "LOW",
+                  "availabilityImpact": "NONE",
+                  "privilegesRequired": "NONE",
+                  "confidentialityImpact": "HIGH"
+                }
+              },
+              {
+                "other": {
+                  "type": "ssvc",
+                  "content": {
+                    "timestamp": "2024-08-14T19:34:07.254336Z",
+                    "id": "CVE-2024-36857",
+                    "options": [
+                      {
+                        "Exploitation": "poc"
+                      },
+                      {
+                        "Automatable": "yes"
+                      },
+                      {
+                        "Technical Impact": "partial"
+                      }
+                    ],
+                    "role": "CISA Coordinator",
+                    "version": "2.0.3"
+                  }
+                }
+              }
+            ],
+            "providerMetadata": {
+              "orgId": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+              "shortName": "CISA-ADP",
+              "dateUpdated": "2024-08-14T19:36:14.624Z"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "Nvd": [
+    {
+      "id": "CVE-2024-36857",
+      "published": "2024-06-04T19:20:14.060",
+      "lastModified": "2026-06-17T07:37:15.240",
+      "vulnStatus": "Modified",
+      "descriptions": [
+        {
+          "lang": "en",
+          "value": "Jan v0.4.12 was discovered to contain an arbitrary file read vulnerability via the /v1/app/readFileSync interface."
+        }
+      ],
+      "metrics": {
+        "cvssMetricV31": [
+          {
+            "source": "nvd@nist.gov",
+            "type": "Primary",
+            "cvssData": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "baseScore": 7.5,
+              "baseSeverity": "HIGH",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "NONE",
+              "availabilityImpact": "NONE"
+            },
+            "exploitabilityScore": 3.9,
+            "impactScore": 3.6
+          },
+          {
+            "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+            "type": "Secondary",
+            "cvssData": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+              "baseScore": 7.5,
+              "baseSeverity": "HIGH",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "NONE",
+              "availabilityImpact": "NONE"
+            },
+            "exploitabilityScore": 3.9,
+            "impactScore": 3.6
+          }
+        ],
+        "ssvcV203": [
+          {
+            "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+            "ssvcData": {
+              "timestamp": "2024-08-14T19:34:07.254336Z",
+              "id": "CVE-2024-36857",
+              "options": [
+                {
+                  "exploitation": "poc"
+                },
+                {
+                  "automatable": "yes"
+                },
+                {
+                  "technicalImpact": "partial"
+                }
+              ],
+              "role": "CISA Coordinator",
+              "version": "2.0.3"
+            }
+          }
+        ]
+      },
+      "configurations": [
+        {
+          "nodes": [
+            {
+              "operator": "OR",
+              "negate": false,
+              "cpeMatch": [
+                {
+                  "vulnerable": true,
+                  "criteria": "cpe:2.3:a:homebrew:jan:0.4.12:*:*:*:*:*:*:*",
+                  "matchCriteriaId": "70BA6868-01BA-4A87-9D68-A66DB9DCCABF"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "CVE-2024-36858",
+      "published": "2024-06-04T19:20:14.150",
+      "lastModified": "2026-06-17T07:37:15.400",
+      "vulnStatus": "Modified",
+      "descriptions": [
+        {
+          "lang": "en",
+          "value": "An arbitrary file upload vulnerability in the /v1/app/writeFileSync interface of Jan v0.4.12 allows attackers to execute arbitrary code via uploading a crafted file."
+        }
+      ],
+      "metrics": {
+        "cvssMetricV31": [
+          {
+            "source": "nvd@nist.gov",
+            "type": "Primary",
+            "cvssData": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "baseScore": 9.8,
+              "baseSeverity": "CRITICAL",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH"
+            },
+            "exploitabilityScore": 3.9,
+            "impactScore": 5.9
+          },
+          {
+            "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+            "type": "Secondary",
+            "cvssData": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "baseScore": 9.8,
+              "baseSeverity": "CRITICAL",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH"
+            },
+            "exploitabilityScore": 3.9,
+            "impactScore": 5.9
+          }
+        ],
+        "ssvcV203": [
+          {
+            "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+            "ssvcData": {
+              "timestamp": "2024-08-14T19:00:03.821160Z",
+              "id": "CVE-2024-36858",
+              "options": [
+                {
+                  "exploitation": "poc"
+                },
+                {
+                  "automatable": "yes"
+                },
+                {
+                  "technicalImpact": "total"
+                }
+              ],
+              "role": "CISA Coordinator",
+              "version": "2.0.3"
+            }
+          }
+        ]
+      },
+      "configurations": [
+        {
+          "nodes": [
+            {
+              "operator": "OR",
+              "negate": false,
+              "cpeMatch": [
+                {
+                  "vulnerable": true,
+                  "criteria": "cpe:2.3:a:homebrew:jan:0.4.12:*:*:*:*:*:*:*",
+                  "matchCriteriaId": "70BA6868-01BA-4A87-9D68-A66DB9DCCABF"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "CVE-2024-37273",
+      "published": "2024-06-04T19:20:15.363",
+      "lastModified": "2026-06-17T07:38:03.167",
+      "vulnStatus": "Modified",
+      "descriptions": [
+        {
+          "lang": "en",
+          "value": "An arbitrary file upload vulnerability in the /v1/app/appendFileSync interface of Jan v0.4.12 allows attackers to execute arbitrary code via uploading a crafted file."
+        }
+      ],
+      "metrics": {
+        "cvssMetricV31": [
+          {
+            "source": "nvd@nist.gov",
+            "type": "Primary",
+            "cvssData": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "baseScore": 9.8,
+              "baseSeverity": "CRITICAL",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH"
+            },
+            "exploitabilityScore": 3.9,
+            "impactScore": 5.9
+          },
+          {
+            "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+            "type": "Secondary",
+            "cvssData": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "baseScore": 9.8,
+              "baseSeverity": "CRITICAL",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH"
+            },
+            "exploitabilityScore": 3.9,
+            "impactScore": 5.9
+          }
+        ],
+        "ssvcV203": [
+          {
+            "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+            "ssvcData": {
+              "timestamp": "2024-08-15T13:46:59.783844Z",
+              "id": "CVE-2024-37273",
+              "options": [
+                {
+                  "exploitation": "poc"
+                },
+                {
+                  "automatable": "yes"
+                },
+                {
+                  "technicalImpact": "total"
+                }
+              ],
+              "role": "CISA Coordinator",
+              "version": "2.0.3"
+            }
+          }
+        ]
+      },
+      "configurations": [
+        {
+          "nodes": [
+            {
+              "operator": "OR",
+              "negate": false,
+              "cpeMatch": [
+                {
+                  "vulnerable": true,
+                  "criteria": "cpe:2.3:a:homebrew:jan:0.4.12:*:*:*:*:*:*:*",
+                  "matchCriteriaId": "70BA6868-01BA-4A87-9D68-A66DB9DCCABF"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
