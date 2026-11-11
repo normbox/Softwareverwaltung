@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Sicherheitsprüfung: „laut Beschreibung nicht betroffen“
+
+- **Hat keine Quelle entschieden, hilft jetzt die Beschreibung, aber nur nach unten:** Steht dort „KeePass before 2.54“ und ist 2.61.1 installiert, erscheint die Lücke nicht mehr als „möglicherweise betroffen“, sondern in den Details unter „Laut Beschreibung nicht betroffen (unbestätigt)“, ohne Wirkung auf die Ampel.
+- Strenge Bedingungen: genau eine Versionsangabe, Produktname direkt vor „before“/„prior to“, installierte Version vergleichbar und nicht kleiner, nie bei aktiv ausgenutzten Lücken (KEV). „through X“ zählt nicht (z. B. KeePass CVE-2026-86776 „through 2.61.1“ bleibt „möglicherweise betroffen“).
+- Der KI-Berater bekommt die Liste als `description_fixed`, der HTML-Bericht zeigt sie wie „nur andere Plattformen“.
+
 ### Sicherheitsprüfung: nicht vergleichbare Versionsgrenzen (Fall FFmpeg)
 
 - **Eine Grenze, die sich nicht mit der installierten Version vergleichen lässt, macht nicht mehr „betroffen“.** Beispiel: Die NVD führt CVE-2025-25469 und -25468 für FFmpeg mit „< 2025-01-13“ (gemeint ist ein Stand von git-master). FFmpeg 9.0.2 erschien dadurch als betroffen. Jetzt heißt es „möglicherweise betroffen“ mit dem Grund „Versionsgrenze nicht vergleichbar (< 2025-01-13, installiert 9.0.2)“.
