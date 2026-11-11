@@ -311,9 +311,9 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeHint"), warning), permanent: false);
             }
-            if (SoftwareItem.NvdIncompleteNotice(result.Items) is { } nvdNotice)
+            if (SoftwareItem.ServiceProblemNotice(result.Items) is { } serviceNotice)
             {
-                AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeHint"), nvdNotice), permanent: false);
+                AddNotice(new Notice(NoticeSeverity.Warning, AppText.Get("NoticeHint"), serviceNotice), permanent: false);
             }
             foreach (var error in result.Errors)
             {

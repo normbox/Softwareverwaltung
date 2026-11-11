@@ -38,8 +38,10 @@ function Invoke-ServiceRequest {
         Bei Neu prüfen (CacheRefresh) wird jede Antwort pro Lauf einmal frisch geholt. Ist der Dienst
         nicht erreichbar oder am Anfragelimit, wird ein abgelaufener Eintrag verwendet und im Mitschrieb
         als veraltet gekennzeichnet. Antwortet ein Dienst mit 429 und Retry-After bis 60 Sekunden, wird
-        einmal so lange gewartet und die Anfrage wiederholt. Fehler werden als ServiceRequestException mit Grund
-        (Disabled, RateLimit, NotFound, Http, Network) geworfen; Schlüssel sind entfernt.
+        einmal so lange gewartet und die Anfrage wiederholt. Der Rückfall auf alte Daten steht mit Grund im
+        Mitschrieb (Failure) und in logs\data-notes. LocalBlocked heißt: Windows-Fehler 10013, die Verbindung
+        wird auf diesem Rechner verweigert (Firewall oder Virenscanner). Fehler werden als ServiceRequestException mit Grund
+        (Disabled, RateLimit, NotFound, Http, Network, LocalBlocked) geworfen; Schlüssel sind entfernt.
     #>
     [CmdletBinding()]
     param(
@@ -105,9 +107,11 @@ function Invoke-ServiceRequest {
                 continue
             }
             # Offline oder Anfragelimit: lieber alte Daten, als veraltet gekennzeichnet, als gar keine.
-            if ($entry -and $failure.Data['Reason'] -in 'Network', 'RateLimit', 'Http') {
+            # Der Rückfall wird mit Grund vermerkt (ServiceProblems, logs\data-notes), nie still.
+            if ($entry -and $failure.Data['Reason'] -in 'Network', 'LocalBlocked', 'RateLimit', 'Http') {
                 Write-Verbose "$Service nicht erreichbar, verwende Zwischenspeicher vom $($entry.FetchedAt.ToString('o'))"
-                Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge
+                Write-ServiceFallbackNote -Service $Service -Exception $failure
+                Add-CheckTrace -Service $Service -File $cacheFile -FetchedAt $entry.FetchedAt -MaxAge $MaxAge -Failure (New-ServiceFailureMessage -Service $Service -Exception $failure)
                 return $entry.Data
             }
             throw $failure
@@ -191,7 +195,7 @@ function Write-ServiceCache {
 }
 
 function New-ServiceRequestException {
-    param([string] $Service, [ValidateSet('Disabled', 'RateLimit', 'NotFound', 'Http', 'Network')] [string] $Reason, [string] $Message)
+    param([string] $Service, [ValidateSet('Disabled', 'RateLimit', 'NotFound', 'Http', 'Network', 'LocalBlocked')] [string] $Reason, [string] $Message)
     $exception = [System.Exception]::new((Protect-SecretText $Message))
     $exception.Data['Service'] = $Service
     $exception.Data['Reason'] = $Reason
@@ -203,7 +207,15 @@ function ConvertTo-ServiceRequestException {
     param([string] $Service, [System.Management.Automation.ErrorRecord] $ErrorRecord)
     $response = $ErrorRecord.Exception.PSObject.Properties['Response']?.Value
     if (-not $response) {
-        return New-ServiceRequestException -Service $Service -Reason Network -Message (Get-LocalizedString 'ServiceErrorNetwork' $Service, $ErrorRecord.Exception.Message)
+        # WSAEACCES (10013): Windows verweigert die Verbindung auf diesem Rechner, meist Firewall oder
+        # Virenscanner (Fall 08.11.: Bitdefender-Filter). Limit, Schlüssel und Ausfall des Dienstes scheiden aus.
+        if (Test-SocketAccessDenied $ErrorRecord.Exception) {
+            return New-ServiceRequestException -Service $Service -Reason LocalBlocked -Message (Get-LocalizedString 'ServiceErrorLocalBlocked' $Service)
+        }
+        $exception = New-ServiceRequestException -Service $Service -Reason Network -Message (Get-LocalizedString 'ServiceErrorNetwork' $Service, $ErrorRecord.Exception.Message)
+        # Ursprüngliche Meldung ohne Dienstnamen, für ServiceProblems (keine doppelte Nennung)
+        $exception.Data['Detail'] = Protect-SecretText $ErrorRecord.Exception.Message
+        return $exception
     }
     $status = [int] $response.StatusCode
     $remaining = $null
@@ -234,8 +246,43 @@ function Get-RetryAfterSecond {
 }
 
 function Get-ServiceErrorReason {
-    # Grund aus einer Ausnahme von Invoke-ServiceRequest, sonst 'Http'.
+    # Grund aus einer Ausnahme von Invoke-ServiceRequest (ErrorRecord oder Ausnahme), sonst 'Http'.
     param($ErrorRecord)
-    $reason = $ErrorRecord.Exception.Data['Reason']
+    $exception = if ($ErrorRecord -is [System.Management.Automation.ErrorRecord]) { $ErrorRecord.Exception } else { $ErrorRecord }
+    $reason = if ($exception) { $exception.Data['Reason'] }
     if ($reason) { $reason } else { 'Http' }
+}
+
+function Test-SocketAccessDenied {
+    # Wahr, wenn in der Kette der inneren Ausnahmen eine SocketException mit WSAEACCES (10013) steckt.
+    param([System.Exception] $Exception)
+    for ($e = $Exception; $e; $e = $e.InnerException) {
+        if ($e -is [System.Net.Sockets.SocketException] -and $e.ErrorCode -eq 10013) { return $true }
+    }
+    $false
+}
+
+function New-ServiceFailureMessage {
+    <#
+    .SYNOPSIS
+        Meldung (Code, Args, Text) zu einem gescheiterten Dienstabruf.
+    .DESCRIPTION
+        LocalBlocked und RateLimit bekommen ihren eigenen Code, alles andere ServiceUnavailable mit der
+        Fehlermeldung (bei Netzwerkfehlern ohne doppelten Dienstnamen). Nimmt einen ErrorRecord oder eine Ausnahme.
+    #>
+    param([Parameter(Mandatory)] [string] $Service, [Parameter(Mandatory)] $Exception)
+    if ($Exception -is [System.Management.Automation.ErrorRecord]) { $Exception = $Exception.Exception }
+    switch (Get-ServiceErrorReason $Exception) {
+        'LocalBlocked' { return New-InventoryMessage LocalBlocked $Service }
+        'RateLimit' { return New-InventoryMessage RateLimit $Service }
+    }
+    $detail = $Exception.Data['Detail']
+    New-InventoryMessage ServiceUnavailable $Service, $(if ($detail) { $detail } else { $Exception.Message })
+}
+
+function Write-ServiceFallbackNote {
+    # Vermerkt in logs\data-notes, dass ein Dienst nicht antwortete und alte Daten verwendet wurden (einmal je Lauf und Grund).
+    param([string] $Service, $Exception)
+    if ($Exception -is [System.Management.Automation.ErrorRecord]) { $Exception = $Exception.Exception }
+    Write-DataNote -Code ServiceStaleFallback -Source $Service -Value (Get-ServiceErrorReason $Exception), $Exception.Message
 }

@@ -240,4 +240,52 @@ public sealed class SoftwareItemTests
         Assert.Equal("1 weiterer Grund", four.ReasonsMoreText);
         Assert.Null(SoftwareItem.FromRating(Ps(("Name", "Y"), ("Reasons", new object[] { "a" }))).ReasonsMoreText);
     }
+
+    private static object Message(string code, object[] args, string text) => Ps(("Code", code), ("Args", args), ("Text", text));
+
+    [Fact]
+    public void MapsServiceProblemsWithServiceAndReason()
+    {
+        var blocked = Message("LocalBlocked", ["CIRCL"], "CIRCL: Verbindung auf diesem Rechner blockiert (Firewall oder Virenscanner)");
+        var rating = Ps(("Name", "KeePass"), ("VulnerabilityStatus", Ps(("Status", "Checked"), ("ServiceProblems", new object[]
+        {
+            Message("ServiceStaleFallback", ["CIRCL", new DateTime(2026, 11, 1, 8, 30, 0, DateTimeKind.Utc), blocked], "CIRCL: ältere gespeicherte Daten vom … verwendet"),
+            Message("ServiceIncomplete", ["NVD", Message("RateLimit", ["NVD"], "NVD-Anfragelimit erreicht")], "Ergebnis ohne NVD (unvollständig): NVD-Anfragelimit erreicht"),
+        }))));
+
+        var item = SoftwareItem.FromRating(rating);
+
+        Assert.Equal(2, item.ServiceProblems.Count);
+        Assert.Equal(("CIRCL", "ServiceStaleFallback"), (item.ServiceProblems[0].Service, item.ServiceProblems[0].Code));
+        Assert.Contains("Firewall oder Virenscanner", item.ServiceProblems[0].ReasonText);
+        Assert.Equal("CIRCL: ältere gespeicherte Daten vom … verwendet", item.ServiceProblems[0].Text);
+        Assert.Equal("NVD-Anfragelimit erreicht", item.ServiceProblems[1].ReasonText);
+    }
+
+    [Fact]
+    public void ServiceNoticeHasOneLinePerServiceAndKindInFixedOrder()
+    {
+        static SoftwareItem With(params ServiceProblemItem[] problems) => new() { Name = "X", ServiceProblems = problems };
+        var stale = new ServiceProblemItem("CIRCL", "ServiceStaleFallback", "t", "lokal blockiert");
+        var items = new[]
+        {
+            With(stale, new ServiceProblemItem("KEV", "ServiceStaleFallback", "t", "lokal blockiert")),
+            With(stale),
+            With(new ServiceProblemItem("NVD", "ServiceIncomplete", "t", "Anfragelimit")),
+            With(),
+        };
+
+        var lines = SoftwareItem.ServiceProblemNotice(items)!.Split(Environment.NewLine);
+
+        Assert.Equal(3, lines.Length);
+        Assert.StartsWith("NVD: Bei 1 Programmen fehlen diese Daten", lines[0]);
+        Assert.Contains("Anfragelimit", lines[0]);
+        Assert.StartsWith("CIRCL: Bei 2 Programmen wurden ältere gespeicherte Daten verwendet", lines[1]);
+        Assert.Contains("lokal blockiert", lines[1]);
+        Assert.StartsWith("KEV: Bei 1 Programmen", lines[2]);
+    }
+
+    [Fact]
+    public void NoServiceNoticeWithoutProblems() =>
+        Assert.Null(SoftwareItem.ServiceProblemNotice([new SoftwareItem { Name = "A" }]));
 }

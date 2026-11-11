@@ -142,6 +142,23 @@ Describe 'KI-Berater: Tools' {
         (Get-Content2 $v).refuted | Should -Be @('KEV-Treffer CVE-2025-0411 widerlegt')
     }
 
+    It 'nennt Dienste ohne Beitrag oder mit alten Daten mit Code, Args und Text' {
+        Mock -ModuleName SoftwareInventory Get-SoftwareVulnerability {
+            InModuleScope SoftwareInventory {
+                [pscustomobject] @{
+                    Status = 'Checked'; Reason = $null; Notes = @(); Vulnerabilities = @(); Refuted = @()
+                    ServiceProblems = @(New-InventoryMessage ServiceIncomplete 'CIRCL', (New-InventoryMessage LocalBlocked 'CIRCL'))
+                }
+            }
+        }
+        $data = Get-Content2 (Invoke-Tool search_vulnerabilities "{`"id`":`"$zipId`"}")
+        $data.service_problems[0].code | Should -Be 'ServiceIncomplete'
+        $data.service_problems[0].args[0] | Should -Be 'CIRCL'
+        $data.service_problems[0].args[1].code | Should -Be 'LocalBlocked'
+        $data.service_problems[0].text | Should -Match 'Firewall oder Virenscanner'
+        (Get-Content2 (Invoke-Tool get_program_details "{`"id`":`"$zipId`"}")).vulnerability_check.service_problems | Should -BeNullOrEmpty
+    }
+
     It 'gibt keine Nutzungsspuren (Zeitstempel, Startzähler, Spurenart) und keine Pfade an die KI, auch nicht für Treffer auf nicht erreichbaren Laufwerken' {
         $usb = New-TestRating 'tool' Gray @{
             FilePath = 'F:\Users\normb\PortableApps\tool.exe'; InstallLocation = 'F:\Users\normb\PortableApps'

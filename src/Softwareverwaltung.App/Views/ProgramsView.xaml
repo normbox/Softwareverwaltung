@@ -120,9 +120,15 @@
                     </ItemsControl>
                 </Expander>
 
-                <TextBlock Text="{Binding NvdProblemText}" TextWrapping="Wrap" Margin="0,8,0,0" FontWeight="SemiBold"
-                           Foreground="{DynamicResource SystemFillColorCautionBrush}"
-                           Visibility="{Binding NvdProblemText, Converter={StaticResource NullToVisibility}}" />
+                <!-- Dienste ohne Beitrag oder nur mit alten Daten (NVD, CIRCL, KEV, EPSS), je eine Zeile mit Grund -->
+                <ItemsControl ItemsSource="{Binding ServiceProblems}" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:ServiceProblemItem}">
+                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
                 <!-- Lücken: eine Zeile je CVE, aufklappbar für Quellen, Links und Beschreibung -->
                 <TextBlock Text="{loc:Text DetailsVulnerabilitiesTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
                            Visibility="{Binding VulnerabilityText, Converter={StaticResource NullToVisibility}}" />

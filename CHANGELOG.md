@@ -4,6 +4,14 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Sicherheitsprüfung: alle Dienste sichtbar, „lokal blockiert“ als eigener Grund
+
+- **Nicht nur die NVD:** Liefern NVD, CIRCL, KEV oder EPSS in einem Lauf nichts, nennt die App das je Dienst, oben in der Liste (eine Zeile je Dienst mit Zahl der Programme und Grund) und in den Details. Ersetzt den NVD-Hinweis von unten.
+- **Kein stiller Rückfall mehr:** Nimmt die App ältere gespeicherte Daten, weil ein Dienst nicht antwortet, steht das mit Datum (Ortszeit) und Grund dort ebenso („CIRCL: ältere gespeicherte Daten vom … verwendet“). Vorher war das nur am Vermerk „veraltet“ in der Spalte „Geprüft“ zu ahnen (Fall 08.11.: Bitdefender verwarf auch Verbindungen zu CIRCL, EPSS und KEV).
+- **Windows-Fehler 10013 heißt jetzt „Verbindung auf diesem Rechner blockiert (Firewall oder Virenscanner)“** (Code `LocalBlocked`) statt der Windows-Meldung zu Socket-Zugriffsrechten. Andere Netzwerkfehler bleiben „nicht erreichbar“.
+- In `logs\data-notes\` stehen die Codes `ServiceUnavailable` (Dienst fehlt) und `ServiceStaleFallback` (alte Daten verwendet), je Dienst mit Grund; `NvdUnavailable` entfällt.
+- Der KI-Berater bekommt dieselben Angaben als `service_problems` (Code, Args, Text). Die Ampel bleibt unverändert.
+
 ### Sicherheitsprüfung: fehlende NVD-Daten sichtbar
 
 - **Fehlt die NVD in einem Lauf, sagt die App das jetzt:** Hinweis oben in der Liste und eine Zeile in den Details („NVD nicht erreichbar, Ergebnis unvollständig“) mit Grund. Der Grund steht auch in `logs\data-notes\`. Vorher fielen solche Läufe nur dadurch auf, dass Lücken als „möglich“ erschienen, die die NVD längst ausschließt (Fall KeePass 2.61.1).

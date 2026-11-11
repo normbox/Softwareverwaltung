@@ -283,7 +283,7 @@ function ConvertTo-AdvisorDetail {
         $evidence = @(Get-RecordValue $record 'Evidence')
         $detail.autostart = [bool] ('Autostart' -in $evidence -or 'ScheduledTask' -in $evidence -or 'Autostart' -in @(Get-RecordValue $record 'Flags'))
     }
-    $detail.vulnerability_check = if ($v) { [ordered]@{ status = $v.Status; reason = ConvertTo-MessageData $v.Reason; notes = @(ConvertTo-MessageData @($v.Notes)) } } else { $null }
+    $detail.vulnerability_check = if ($v) { [ordered]@{ status = $v.Status; reason = ConvertTo-MessageData $v.Reason; notes = @(ConvertTo-MessageData @($v.Notes)); service_problems = @(ConvertTo-MessageData @($v.PSObject.Properties['ServiceProblems']?.Value)) } } else { $null }
     $detail.vulnerability_list = @(if ($v) {
             $v.Vulnerabilities | Select-Object -First 25 | ForEach-Object {
                 [ordered]@{

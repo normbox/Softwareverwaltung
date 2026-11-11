@@ -32,24 +32,6 @@ public sealed class InstallerWaitTests
     }
 
     [Fact]
-    public void NvdNoticeCountsProgramsAndNamesTheReason()
-    {
-        var items = new[]
-        {
-            new SoftwareItem { Name = "A", NvdProblemText = "NVD nicht erreichbar: Limit" },
-            new SoftwareItem { Name = "B" },
-            new SoftwareItem { Name = "C", NvdProblemText = "NVD nicht erreichbar: Limit" },
-        };
-        var notice = SoftwareItem.NvdIncompleteNotice(items);
-        Assert.Contains("2", notice);
-        Assert.Contains("Limit", notice);
-    }
-
-    [Fact]
-    public void NoNvdNoticeWithoutProblems() =>
-        Assert.Null(SoftwareItem.NvdIncompleteNotice([new SoftwareItem { Name = "A" }]));
-
-    [Fact]
     public void StatusNamesTheWindowsInstaller() =>
         Assert.Contains("Windows Installer", ActionProgress.StatusText("Update", "App", ActionProgress.WaitingForInstaller, null, false, TimeSpan.Zero));
 

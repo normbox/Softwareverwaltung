@@ -24,14 +24,16 @@ function Exit-CacheRefresh {
 }
 
 function Add-CheckTrace {
-    # Vermerkt einen benutzten Eintrag für das gerade geprüfte Programm.
-    param([string] $Service, [string] $File, [datetime] $FetchedAt, [timespan] $MaxAge)
+    # Vermerkt einen benutzten Eintrag für das gerade geprüfte Programm. -Failure: Der Dienst antwortete
+    # nicht, der Eintrag ist ein Rückfall auf alte Daten (Meldung mit Grund, für ServiceProblems).
+    param([string] $Service, [string] $File, [datetime] $FetchedAt, [timespan] $MaxAge, $Failure)
     if ($null -eq $script:CheckTrace) { return }
     $script:CheckTrace.Add([pscustomobject] @{
             Service   = $Service
             File      = $File
             FetchedAt = $FetchedAt
             Stale     = ([datetime]::UtcNow - $FetchedAt) -gt $MaxAge
+            Failure   = $Failure
         })
 }
 
