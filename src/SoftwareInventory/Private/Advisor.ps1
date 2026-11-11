@@ -301,6 +301,8 @@ function ConvertTo-AdvisorDetail {
     $detail.refuted = @(if ($v -and $v.PSObject.Properties['Refuted']) { ConvertTo-MessageData @($v.Refuted | ForEach-Object Note) })
     # Lücken nur für andere Plattformen (zählen unter Windows nicht)
     $detail.otherPlatform = @(if ($v -and $v.PSObject.Properties['OtherPlatform']) { ConvertTo-MessageData @($v.OtherPlatform | ForEach-Object Note) })
+    # Laut Beschreibung nicht betroffen: unbestätigte Textauswertung, ohne Ampelwirkung
+    $detail.description_fixed = @(if ($v -and $v.PSObject.Properties['DescriptionFixed']) { ConvertTo-MessageData @($v.DescriptionFixed | ForEach-Object Note) })
     $detail
 }
 

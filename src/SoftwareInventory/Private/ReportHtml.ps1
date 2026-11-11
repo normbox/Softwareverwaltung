@@ -61,6 +61,9 @@ function ConvertTo-SecurityReportHtml {
             if ($v -and $v.PSObject.Properties['OtherPlatformNote'] -and $v.OtherPlatformNote) {
                 "<p class='muted'>$(& $e (ConvertTo-MessageText $v.OtherPlatformNote)): $(& $e (@($v.OtherPlatform | ForEach-Object { ConvertTo-MessageText $_.Note }) -join '; '))</p>"
             }
+            if ($v -and $v.PSObject.Properties['DescriptionFixedNote'] -and $v.DescriptionFixedNote) {
+                "<p class='muted'>$(& $e (ConvertTo-MessageText $v.DescriptionFixedNote)): $(& $e (@($v.DescriptionFixed | ForEach-Object { ConvertTo-MessageText $_.Note }) -join '; '))</p>"
+            }
             if ($vulnRows) {
                 "<table class='cves'><thead><tr><th>CVE</th><th>$(& $t ColumnAssessment)</th><th>CVSS</th><th>EPSS</th><th>$(& $t ColumnPublished)</th><th>$(& $t ColumnNote)</th></tr></thead><tbody>$($vulnRows -join '')</tbody></table>"
             }
