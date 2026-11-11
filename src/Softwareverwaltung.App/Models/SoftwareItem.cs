@@ -47,6 +47,10 @@ public sealed record SoftwareItem
     public bool ShowOpenFolderInsteadOfUninstall => !ShowUninstall;
     /// <summary>Lücken nur für andere Plattformen (macOS, iOS, Android, Linux …), je Zeile CVE und Plattformen; ohne Ampelwirkung.</summary>
     public IReadOnlyList<string> OtherPlatform { get; init; } = [];
+    /// <summary>Überschrift „Laut Beschreibung nicht betroffen (unbestätigt): …“ (Text des Moduls); null, wenn es keine gibt.</summary>
+    public string? DescriptionFixedText { get; init; }
+    /// <summary>Lücken, die laut Beschreibung vor der installierten Version behoben sind; ohne Ampelwirkung.</summary>
+    public IReadOnlyList<string> DescriptionFixed { get; init; } = [];
     public string Sources { get; init; } = "";
     public string? WingetId { get; init; }
     /// <summary>CPE-Namen ohne Version (Katalog oder eigene Zuordnung).</summary>
@@ -203,6 +207,8 @@ public sealed record SoftwareItem
             ServiceProblems = vulnerability is null ? [] : GetObjects(vulnerability, "ServiceProblems").Select(ServiceProblemItem.FromPs).OfType<ServiceProblemItem>().ToList(),
             OtherPlatformText = vulnerability is null ? null : MessageText(vulnerability.Properties["OtherPlatformNote"]?.Value),
             OtherPlatform = vulnerability is null ? [] : GetObjects(vulnerability, "OtherPlatform").Select(o => MessageText(o.Properties["Note"]?.Value)).OfType<string>().ToList(),
+            DescriptionFixedText = vulnerability is null ? null : MessageText(vulnerability.Properties["DescriptionFixedNote"]?.Value),
+            DescriptionFixed = vulnerability is null ? [] : GetObjects(vulnerability, "DescriptionFixed").Select(o => MessageText(o.Properties["Note"]?.Value)).OfType<string>().ToList(),
             Sources = record is null ? "" : string.Join(", ", GetStrings(record, "Sources")),
             WingetId = record is null ? null : GetString(record, "WingetId"),
             CpeBase = vulnerability is null ? [] : GetStrings(vulnerability, "CpeBase"),

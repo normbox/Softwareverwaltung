@@ -115,6 +115,7 @@ function Invoke-AdvisorToolAtLevel {
                             })
                         refuted = @(ConvertTo-MessageData @($v.Refuted | ForEach-Object Note))
                         otherPlatform = @(if ($v.PSObject.Properties['OtherPlatform']) { ConvertTo-MessageData @($v.OtherPlatform | ForEach-Object Note) })
+                        description_fixed = @(if ($v.PSObject.Properties['DescriptionFixed']) { ConvertTo-MessageData @($v.DescriptionFixed | ForEach-Object Note) })
                     })
             }
             { $_ -in 'propose_update', 'propose_uninstall' } {

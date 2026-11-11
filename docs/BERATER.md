@@ -53,7 +53,7 @@ Wie viel das Modell sieht, legt die Freigabestufe fest (Tabelle in [EXTERNE-DIEN
 | `get_inventory` | Read | Programme aus dem letzten Scan mit Ampel, Versionen und Zahl der Lücken. Filter: `filter` (Name/Hersteller), `rating`, `updates_only`, `limit` (1–200, Standard 50). Liefert je Programm eine `id`. |
 | `get_program_details` | Read | Alle Gründe der Ampel, Lücken (CVE, KEV, CVSS, EPSS, höchstens 25), widerlegte Treffer, Lücken nur für andere Plattformen; ab Stufe 2 Installationsdetails |
 | `check_latest_version` | Read | Prüft die neueste Version neu (nur aktivierte Dienste) |
-| `search_vulnerabilities` | Read | Sucht Lücken neu (nur aktivierte Dienste); `service_problems` nennt Dienste, die nichts oder nur alte Daten geliefert haben (auch in `get_program_details` unter `vulnerability_check`) |
+| `search_vulnerabilities` | Read | Sucht Lücken neu (nur aktivierte Dienste); `description_fixed` nennt Lücken, die laut Beschreibung behoben sind (unbestätigt, ohne Ampelwirkung, auch in `get_program_details`); `service_problems` nennt Dienste, die nichts oder nur alte Daten geliefert haben (auch in `get_program_details` unter `vulnerability_check`) |
 | `propose_update` | Proposal | Schlägt ein Update vor; nur bei bekanntem Update |
 | `propose_uninstall` | Proposal | Schlägt eine Deinstallation vor |
 

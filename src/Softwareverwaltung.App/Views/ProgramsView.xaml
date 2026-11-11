@@ -297,6 +297,20 @@
                     </ItemsControl>
                 </Expander>
 
+                <!-- Laut Beschreibung nicht betroffen: unbestätigte Textauswertung, ohne Ampelwirkung -->
+                <Expander Style="{StaticResource CompactExpander}" Header="{Binding DescriptionFixedText}" Margin="0,4,0,0"
+                          AutomationProperties.Name="{Binding DescriptionFixedText}"
+                          Visibility="{Binding DescriptionFixedText, Converter={StaticResource NullToVisibility}}">
+                    <ItemsControl ItemsSource="{Binding DescriptionFixed}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+
                 <!-- Versionsverlauf: bisherige Aktionen zu diesem Programm aus dem Aktionsprotokoll -->
                 <TextBlock Text="{loc:Text DetailsHistoryTitle}" FontWeight="SemiBold" Margin="0,8,0,0"
                            Visibility="{Binding DataContext.History.Count, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource CountToVisibility}}" />
