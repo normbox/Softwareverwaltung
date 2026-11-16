@@ -37,13 +37,28 @@ namespace SoftwareInventory.Helper
         private static readonly Regex OddLineBreaks = new Regex(
             "[" + string.Concat(new[] { 0x00, 0x0B, 0x0C, 0x85, 0x2028, 0x2029 }.Select(code => "\\u" + code.ToString("X4"))) + "]|\\r(?!\\n)|(?<!\\r)\\n",
             RegexOptions.Compiled);
-        private static readonly Regex KeyLine = new Regex(@"^\[(?<key>[^\]]+)\]$", RegexOptions.Compiled);
         // Fortsetzungszeile eines Hex-Werts (reg export: "  01,02,\").
         private static readonly Regex HexLine = new Regex(@"^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$", RegexOptions.Compiled);
         private static readonly char[] Blanks = { ' ', '\t' };
 
         /// <summary>
-        /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine,
+        /// Ein Schlüsselname mit [ oder ] oder einem Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) ist nie sicher
+        /// zu lesen (reg.exe könnte Kopfzeilen anders trennen): Solche Einträge bleiben Handarbeit.
+        /// </summary>
+        public static bool HasUnsafeKeyCharacter(string name)
+        {
+            foreach (var c in name)
+            {
+                if (c == '[' || c == ']' || c < ' ' || (c >= '\u007f' && c <= '\u009f'))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe,
         /// KeyNotFound, KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur Benutzer erlaubt)
         /// oder WrongScope (HKCU, aber nur HKLM erlaubt).
         /// </summary>
@@ -86,12 +101,16 @@ namespace SoftwareInventory.Helper
                 {
                     return "DeleteLine";
                 }
-                var match = KeyLine.Match(trimmed);
-                if (!match.Success)
+                if (trimmed.Length < 3 || !trimmed.EndsWith("]", StringComparison.Ordinal))
                 {
                     return "BadKeyLine";
                 }
-                headers.Add(match.Groups["key"].Value);
+                var name = trimmed.Substring(1, trimmed.Length - 2);
+                if (HasUnsafeKeyCharacter(name))
+                {
+                    return "KeyNameUnsafe";
+                }
+                headers.Add(name);
             }
             if (headers.Count == 0)
             {

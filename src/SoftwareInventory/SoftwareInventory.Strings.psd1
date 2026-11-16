@@ -205,6 +205,7 @@ Regeln:
     ReasonBackupKeyNotUninstall             = 'Der Schlüssel liegt nicht direkt unter einem Uninstall-Zweig'
     ReasonBackupMachineNotYet               = 'Zurückspielen bei Einträgen für alle Benutzer folgt in einem späteren Schritt'
     ReasonBackupWrongScope                  = 'Der Schlüssel gehört nicht zum Bereich dieser Sicherung (Benutzer oder alle Benutzer)'
+    ReasonBackupKeyNameUnsafe               = 'Der Schlüsselname enthält [ ] oder Steuerzeichen; solche Einträge werden nicht automatisch gesichert, entfernt oder zurückgespielt (Handarbeit)'
     ReasonBackupBadLine                     = 'Die Sicherungsdatei enthält eine Zeile in unbekanntem Format und wird nicht zurückgespielt'
     ReasonBackupFolderOutsideRoot           = 'Der Sicherungsordner liegt nicht unter Program Files: {0}'
     ReasonBackupFolderMissing               = 'Der Sicherungsordner fehlt: {0}'

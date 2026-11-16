@@ -4,6 +4,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Schlüsselnamen mit [ ] oder Steuerzeichen
+
+- Ein Uninstall-Schlüssel, dessen Name `[`, `]` oder ein Steuerzeichen enthält, wird nicht automatisch gesichert, entfernt oder zurückgespielt (`KeyNameUnsafe`), auch nicht für HKCU: Solche Schlüssel sind extrem selten und bleiben Handarbeit. „Eintrag entfernen“ nennt den Grund schon bei der Planung (`BackupKeyNameUnsafe`); beide Prüfungen (Modul und Helfer) nutzen dieselbe Fälletabelle.
+
 ### Erhöhter Helfer: fail-closed (Grundlage für HKLM-Sicherungen)
 
 - Der Helfer (Version 5) lehnt unbekannte Operationen und Pläne ohne Aufgabe mit Fehlercode ab (`HelperUnknownOperation`, `HelperNoOperation`), auch bei Stapelschritten; ein leeres Ergebnis ist nie ein Erfolg. Ein Plan ohne Programm und ohne Operation meldet jetzt `HelperNoOperation` statt `HelperPathNotAbsolute`.

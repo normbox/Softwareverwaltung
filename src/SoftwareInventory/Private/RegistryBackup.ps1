@@ -112,7 +112,7 @@ function Test-RegistryBackupContent {
         (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel, nur bekannte Zeilenformate (Wert,
         Kommentar, Hex-Fortsetzung; sonst BadLine).
     .OUTPUTS
-        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNotFound,
+        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe, KeyNotFound,
         KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur User erlaubt) oder WrongScope
         (HKCU, aber nur Machine erlaubt). Der Helfer prüft mit denselben Regeln (RegistryBackupRules.cs); beide
         gegen tests/Data/registry-backup-cases.json.
@@ -138,9 +138,11 @@ function Test-RegistryBackupContent {
             return 'BadLine'
         }
         if ($t.StartsWith('[-', [StringComparison]::Ordinal)) { return 'DeleteLine' }
-        # Ein ] im Schlüsselnamen ist unklar (reg.exe könnte am ersten statt am letzten ] trennen): nicht zulassen.
-        if ($t -notmatch '^\[(?<key>[^\]]+)\]$') { return 'BadKeyLine' }
-        $headers.Add($Matches.key)
+        if ($t.Length -lt 3 -or -not $t.EndsWith(']', [StringComparison]::Ordinal)) { return 'BadKeyLine' }
+        $name = $t.Substring(1, $t.Length - 2)
+        # [ oder ] oder ein Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) im Namen: nie sicher zu lesen, Handarbeit.
+        if ($name -cmatch '[\[\]\x00-\x1F\x7F-\x9F]') { return 'KeyNameUnsafe' }
+        $headers.Add($name)
     }
     if ($headers.Count -eq 0) { return 'KeyNotFound' }
     if (-not [string]::Equals($headers[0], $NativeKey, [StringComparison]::OrdinalIgnoreCase)) { return 'KeyMismatch' }

@@ -325,6 +325,22 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         @(Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
     }
 
+    It 'lehnt Schlüsselnamen mit [ ] oder Steuerzeichen schon bei der Planung ab (<Name>)' -ForEach @(
+        @{ Name = 'eckige Klammern'; Leaf = 'jan[1]' }
+        @{ Name = 'nur ]'; Leaf = 'jan]' }
+        @{ Name = 'Tabulator'; Leaf = "jan`tx" }
+        @{ Name = 'U+0001'; Leaf = "jan$([char] 1)x" }
+        @{ Name = 'U+007F'; Leaf = "jan$([char] 127)x" }
+        @{ Name = 'U+0080'; Leaf = "jan$([char] 128)x" }
+    ) {
+        $record = Get-Orphan
+        $record.RegistryKey = "$($script:User)\$Leaf"
+        $r = $record | Remove-OrphanedEntry -WhatIf
+        $r.Result | Should -Be 'Unsupported'
+        $r.Message.Code | Should -Be 'BackupKeyNameUnsafe'
+        Should -Invoke -ModuleName SoftwareInventory Invoke-RegExport -Times 0 -Exactly
+    }
+
     It 'bildet den Dateinamen aus ActionId und bereinigtem Programmnamen' {
         InModuleScope SoftwareInventory {
             Get-RegistryBackupFileName -ActionId 'id' -Name 'Jan 0.5.16' | Should -Be 'id_Jan_0.5.16.reg'
