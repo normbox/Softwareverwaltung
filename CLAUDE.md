@@ -41,3 +41,12 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 ## Fahrplan
 
 Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Etappe 3 (Oberfläche) ist fertig. Aktuell: Etappe 4 (KI-Berater, nur lokal). Fertig sind 4a (Tools, Bereinigung und Einstellungen im Modul) und die Zwischenetappe „Texte auslagern“ (App-Texte in `.resx`, Modulmeldungen mit Codes; noch keine Übersetzung), dazu Zwischenspeicher, Warteschlange, CPE-Zuordnung und CIRCL als zweite Quelle. Fertig ist auch 4b (Freigabestufen, Anbieter-Schnittstelle, Einstellungsseite). Aktuell 4c: Chat-Seitenleiste (4c-1), dann Vorschlagskarten (4c-2). Der lokale Lückenabzug (Offline-Modus) ist geplant, siehe `docs/KONZEPT.md`. Vor dem ersten Release: englische Übersetzung per KI und README auf Englisch.
+
+<!-- BEGIN Claude-Team-Setup -->
+## Arbeitsteilung mit Subagenten (Claude Code)
+
+- Repo-Suchen nicht selbst durchführen: Fragen zu Aufbau und Fundorten gehen an den Subagenten `map`, Aufrufstellen einer Funktion an `callers`.
+- Jeder Testlauf und jede Prüfung von Änderungen geht an `audit`. `audit` sieht nur committete Stände: Gibt es offene Änderungen, frag mich zuerst, ob ich committen will.
+- In der Hauptsitzung nur Dateien lesen, die gleich bearbeitet werden.
+- Das Advisor-Tool von Claude Code (nicht der KI-Berater dieser App) nur nutzen bei der Planung größerer Änderungen, bei Fehlern, die nach zwei Versuchen bleiben, und bevor eine Etappe oder ein größerer Teilschritt als erledigt gilt.
+<!-- END Claude-Team-Setup -->
