@@ -191,18 +191,18 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
         }
 
         It 'bricht ab, wenn sich der Schlüssel in der Begleitdatei nach der Bestätigung ändert' {
-        Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
-        $b = New-TestBackup
-        $plan = Restore-RegistryBackup $b.Id -WhatIf
-        $json = Get-Content -LiteralPath $b.Sidecar -Raw | ConvertFrom-Json
-        $json.NativeKey = "$($json.NativeKey)Anders"
-        $json | ConvertTo-Json | Set-Content -LiteralPath $b.Sidecar
-        $r = Restore-RegistryBackup $b.Id -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
-        $r.Result | Should -Not -Be 'Succeeded'
-        Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
-    }
+            Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
+            $b = New-TestBackup
+            $plan = Restore-RegistryBackup $b.Id -WhatIf
+            $json = Get-Content -LiteralPath $b.Sidecar -Raw | ConvertFrom-Json
+            $json.NativeKey = "$($json.NativeKey)Anders"
+            $json | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $b.Sidecar
+            $r = Restore-RegistryBackup $b.Id -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
+            $r.Result | Should -Not -Be 'Succeeded'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
+        }
 
-    It 'lehnt Einträge für alle Benutzer (HKLM) ab' {
+        It 'lehnt Einträge für alle Benutzer (HKLM) ab' {
             Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
             $b = New-TestBackup -Root $script:MachineRoot
             $r = Restore-RegistryBackup $b.Id -Confirm:$false
