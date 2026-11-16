@@ -34,6 +34,19 @@ Describe 'Texte des Moduls' {
         foreach ($code in $used) { $strings.ContainsKey("Reason$code") | Should -BeTrue -Because "Code '$code' wird im Code verwendet" }
     }
 
+    It 'hat zu jedem Prüfcode der .reg-Sicherung einen Text (Backup<Code>), auch wenn der Helfer ihn nur mit Präfix meldet' {
+        # Der Helfer gibt die Codes von RegistryBackupRules als einfache Zeichenfolgen zurück und meldet sie dem Modul
+        # mit dem Präfix "Backup" (z. B. BackupBadHeader). Der Test oben sieht nur new Problem("…"); dieser prüft die
+        # Codes der gemeinsamen Fälletabelle und die Dateiprobleme gegen die psd1.
+        $table = Get-Content -Raw "$PSScriptRoot/../Data/registry-backup-cases.json" | ConvertFrom-Json
+        $codes = @($table.cases | Where-Object { $_.expected } | ForEach-Object { $_.expected } | Sort-Object -Unique)
+        $codes.Count | Should -BeGreaterThan 8
+        $strings = InModuleScope SoftwareInventory { $script:Strings }
+        foreach ($code in @($codes) + @('Missing', 'TooLarge', 'BadEncoding', 'MetadataMissing', 'MetadataInvalid', 'NotFound')) {
+            $strings.ContainsKey("ReasonBackup$code") | Should -BeTrue -Because "Code 'Backup$code' wird gemeldet, es fehlt der Text ReasonBackup$code"
+        }
+    }
+
     It 'liefert Meldungen mit Code, Args und Text, auch verschachtelt' {
         $m = InModuleScope SoftwareInventory {
             $inner = New-InventoryMessage ServiceDisabled 'NVD'

@@ -13,6 +13,13 @@
 
 $script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\lib\SoftwareInventory.Helper.exe'
 
+# Operationen ohne Prozess und die Helferversion, ab der sie bekannt sind. Nur was hier steht, schickt das Modul an
+# den Helfer; die Mindestversion folgt aus der Tabelle, kein Aufrufer muss sie vergessen können. Neue Operationen
+# hier mit der Version eintragen, die sie einführt (z. B. 5).
+# Exakte Schreibweise wie im Helfer (OperationRules.Known): Ordinal, nicht wie eine Hashtable.
+$script:HelperOperationMinVersion = [System.Collections.Generic.Dictionary[string, int]]::new([StringComparer]::Ordinal)
+$script:HelperOperationMinVersion['ReplaceHelperCopy'] = 0
+
 # Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 
 function New-ResultPipe {
@@ -125,6 +132,40 @@ function Test-ElevationCancelled {
     $false
 }
 
+function Test-HelperVersion {
+    <#
+    .SYNOPSIS
+        Meldet der Helfer mindestens die Version $Minimum? Sonst die Meldung HelperTooOld.
+    .DESCRIPTION
+        Ein älterer Helfer kennt neue Operationen nicht. Fail-closed: Fehlt die Version im Handschlag oder
+        ist sie nicht lesbar, gilt der Helfer als zu alt. $Minimum 0 prüft nichts (Operationen, die jede
+        Version kennt).
+    .OUTPUTS
+        $null, wenn die Version reicht, sonst die Meldung.
+    #>
+    param($Hello, [int] $Minimum)
+    if ($Minimum -le 0) { return $null }
+    $version = if ($Hello -is [System.Collections.IDictionary] -and $Hello.Contains('HelperVersion')) { $Hello['HelperVersion'] }
+    $parsed = 0
+    if ($null -ne $version -and [int]::TryParse([string] $version, [ref] $parsed) -and $parsed -ge $Minimum) { return $null }
+    New-InventoryMessage HelperTooOld @($(if ($null -ne $version) { [string] $version } else { '?' }), $Minimum)
+}
+
+function Test-HelperOperationEcho {
+    <#
+    .SYNOPSIS
+        Nennt das Ergebnis genau die Operation des Plans? Sonst die Meldung HelperOperationMismatch.
+    .DESCRIPTION
+        Nur für Pläne mit Operation und MinHelperVersion > 0 (neue Operationen). Ein Ergebnis ohne oder mit
+        anderer Operation stammt nicht von dieser Aufgabe und zählt nie als Erfolg.
+    #>
+    param([hashtable] $HelperPlan, $Result, [int] $MinHelperVersion)
+    if ($MinHelperVersion -le 0 -or -not $HelperPlan.ContainsKey('Operation') -or -not $HelperPlan['Operation']) { return $null }
+    $echo = if ($Result -is [System.Collections.IDictionary] -and $Result.Contains('Operation')) { $Result['Operation'] }
+    if ($echo -ceq $HelperPlan['Operation']) { return $null }
+    New-InventoryMessage HelperOperationMismatch
+}
+
 function Start-ElevatedHelper {
     <#
     .SYNOPSIS
@@ -137,6 +178,11 @@ function Start-ElevatedHelper {
         Aktionen ohne Adminrechte (HKCU, unbekannter Bereich) über denselben Weg.
     .PARAMETER Control
         Synchronisierte Hashtabelle der App: State = Cancelled bricht ab; Phase und CancelResult schreibt das Modul.
+    .PARAMETER MinHelperVersion
+        Für Operationen, die nur neuere Helfer kennen: Meldet der Helfer weniger, geht „stop“ an ihn und die
+        Aktion läuft nicht (HelperTooOld). Zusätzlich muss das Ergebnis dieselbe Operation nennen, sonst gilt es
+        nicht als Erfolg (HelperOperationMismatch). Die Mindestversion einer Operation steht in
+        $script:HelperOperationMinVersion und gilt automatisch; dieser Parameter kann sie nur erhöhen.
     #>
     param(
         [Parameter(Mandatory)] [hashtable] $HelperPlan,
@@ -144,8 +190,18 @@ function Start-ElevatedHelper {
         [switch] $NoElevation,
         [System.Collections.IDictionary] $Control,
         # Nur für den Austausch der Kopie: genau diese Exe starten, ohne erneut auszuwählen.
-        [string] $HelperPath
+        [string] $HelperPath,
+        [int] $MinHelperVersion = 0
     )
+
+    # Fail-closed: Eine Operation, die das Modul nicht kennt, geht nie an den Helfer; die Mindestversion kommt aus der Tabelle.
+    $operation = if ($HelperPlan.ContainsKey('Operation')) { [string] $HelperPlan['Operation'] }
+    if ($operation) {
+        if (-not $script:HelperOperationMinVersion.ContainsKey($operation)) {
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperUnknownOperation $operation) }
+        }
+        $MinHelperVersion = [Math]::Max($MinHelperVersion, [int] $script:HelperOperationMinVersion[$operation])
+    }
 
     if (Test-ActionCancelRequested $Control) { return @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) } }
 
@@ -204,6 +260,11 @@ function Start-ElevatedHelper {
         # Handschlag: Erst mit dem Plan startet der Helfer etwas; „stop“ beendet ihn ohne Aktion.
         $hello = Receive-HelperLine -Reader $reader -Writer $writer -TimeoutSeconds 60
         if (-not $hello -or $hello.Kind -ne 'Hello') { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) } }
+        $tooOld = Test-HelperVersion -Hello $hello -Minimum $MinHelperVersion
+        if ($tooOld) {
+            try { $writer.WriteLine('stop') } catch { $null = $_ }   # Helfer bereits beendet
+            return @{ Status = 'Failed'; Error = $tooOld }
+        }
         try {
             if (Test-ActionCancelRequested $Control) {
                 $writer.WriteLine('stop')
@@ -219,6 +280,9 @@ function Start-ElevatedHelper {
         $result = Receive-HelperLine -Reader $reader -Writer $writer -Control $Control -TimeoutSeconds ($TimeoutSeconds + 600)
         if (-not $result) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultIncomplete) } }
         if ($result.Nonce -ne $nonce) { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperNonceMismatch) } }
+        # Neue Operationen: Die Antwort muss genau diese Operation nennen, sonst zählt sie nicht als Erfolg.
+        $mismatch = Test-HelperOperationEcho -HelperPlan $HelperPlan -Result $result -MinHelperVersion $MinHelperVersion
+        if ($mismatch) { return @{ Status = 'Failed'; Error = $mismatch } }
         $result.Status = 'Completed'
         # Der Helfer liefert nur Codes; den Text bildet das Modul in der Sprache der Oberfläche.
         $result.RestorePointMessage = if ($result.RestorePointCode) { New-InventoryMessage $result.RestorePointCode @($result.RestorePointArgs) }

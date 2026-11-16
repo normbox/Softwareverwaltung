@@ -191,18 +191,18 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
         }
 
         It 'bricht ab, wenn sich der Schlüssel in der Begleitdatei nach der Bestätigung ändert' {
-        Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
-        $b = New-TestBackup
-        $plan = Restore-RegistryBackup $b.Id -WhatIf
-        $json = Get-Content -LiteralPath $b.Sidecar -Raw | ConvertFrom-Json
-        $json.NativeKey = "$($json.NativeKey)Anders"
-        $json | ConvertTo-Json | Set-Content -LiteralPath $b.Sidecar
-        $r = Restore-RegistryBackup $b.Id -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
-        $r.Result | Should -Not -Be 'Succeeded'
-        Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
-    }
+            Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
+            $b = New-TestBackup
+            $plan = Restore-RegistryBackup $b.Id -WhatIf
+            $json = Get-Content -LiteralPath $b.Sidecar -Raw | ConvertFrom-Json
+            $json.NativeKey = "$($json.NativeKey)Anders"
+            $json | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $b.Sidecar
+            $r = Restore-RegistryBackup $b.Id -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
+            $r.Result | Should -Not -Be 'Succeeded'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
+        }
 
-    It 'lehnt Einträge für alle Benutzer (HKLM) ab' {
+        It 'lehnt Einträge für alle Benutzer (HKLM) ab' {
             Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
             $b = New-TestBackup -Root $script:MachineRoot
             $r = Restore-RegistryBackup $b.Id -Confirm:$false
@@ -350,5 +350,38 @@ Describe 'Sicherungen: .reg und .json in der Selbstbereinigung' {
         Invoke-Cleanup
         Test-Path $fresh | Should -BeTrue
         Test-Path $stale | Should -BeFalse
+    }
+}
+
+Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
+    BeforeDiscovery {
+        $table = Get-Content -Raw "$PSScriptRoot/../Data/registry-backup-cases.json" | ConvertFrom-Json
+        $SharedCases = @($table.cases | ForEach-Object { @{ Name = $_.name; Scope = $_.scope; Key = $_.key; Text = $_.text; Expected = $_.expected } })
+    }
+
+    BeforeAll {
+        $table = Get-Content -Raw "$PSScriptRoot/../Data/registry-backup-cases.json" | ConvertFrom-Json
+        $script:SharedHeader = $table.header
+        $script:SharedPlaceholders = @($table.locations | ForEach-Object { @{ Placeholder = $_.placeholder; Path = $_.nativePath } })
+        $locations = @($table.locations | ForEach-Object { [pscustomobject] @{ NativePath = $_.nativePath; Scope = $_.scope } })
+        $script:SharedUninstallLocations = $locations
+        Mock -ModuleName SoftwareInventory Get-UninstallLocationNative { $script:SharedUninstallLocations }
+        function Expand-CaseText([string] $Text) {
+            $t = $Text.Replace('{H}', $script:SharedHeader)
+            foreach ($p in $script:SharedPlaceholders) { $t = $t.Replace($p.Placeholder, $p.Path) }
+            $t
+        }
+    }
+
+    It 'liefert für "<Name>" das Ergebnis der Tabelle' -ForEach $SharedCases {
+        $text = Expand-CaseText $Text
+        $key = Expand-CaseText $Key
+        $actual = InModuleScope SoftwareInventory -Parameters @{ T = $text; K = $key; S = $Scope } { Test-RegistryBackupContent -Text $T -NativeKey $K -Scope $S }
+        if ($Expected) { $actual | Should -BeExactly $Expected } else { $actual | Should -BeNullOrEmpty }
+    }
+
+    It 'enthält genug Fälle' {
+        $script:SharedPlaceholders.Count | Should -Be 3
+        (Get-Content -Raw "$PSScriptRoot/../Data/registry-backup-cases.json" | ConvertFrom-Json).cases.Count | Should -BeGreaterThan 25
     }
 }

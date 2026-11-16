@@ -15,10 +15,85 @@ Describe 'Start-ElevatedHelper' {
             Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false }
         }
         $r.Status | Should -Be 'Completed'
-        $r.HelperVersion | Should -Be 4
+        $r.HelperVersion | Should -Be 5
         $r.ExitCode | Should -Be 0
         $r.Output | Should -Match 'cmd\.exe'
         $r.Error | Should -BeNullOrEmpty
+    }
+
+    It 'schickt eine dem Modul unbekannte Operation nie an den Helfer (fail-closed)' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'Der Helfer darf nicht gestartet werden' }
+        $r = InModuleScope SoftwareInventory {
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = $null; RestorePoint = $false }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        $r.Error.Args[0] | Should -Be 'GibtEsNicht'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
+    }
+
+    It 'unterscheidet die Schreibweise einer Operation wie der Helfer (ordinal)' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'Der Helfer darf nicht gestartet werden' }
+        $r = InModuleScope SoftwareInventory {
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'replacehelpercopy'; FilePath = $null; RestorePoint = $false }
+        }
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
+    }
+
+    It 'der Helfer lehnt eine unbekannte Operation selbst mit Fehlercode ab, nie mit leerem Erfolg' {
+        # Operation absichtlich in die Tabelle eintragen: So erreicht sie den echten Helfer, der sie nicht kennt.
+        $r = InModuleScope SoftwareInventory {
+            $script:HelperOperationMinVersion['GibtEsNicht'] = 5
+            try { Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = $null; RestorePoint = $false } }
+            finally { $script:HelperOperationMinVersion.Remove('GibtEsNicht') }
+        }
+        $r.Status | Should -Be 'Completed'
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        $r.Error.Args[0] | Should -Be 'GibtEsNicht'
+        $r.Operation | Should -Be 'GibtEsNicht'
+        $r.ExitCode | Should -BeNullOrEmpty
+    }
+
+    It 'der Helfer lehnt auch eine unbekannte Operation neben einem Programm ab' {
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+            $script:HelperOperationMinVersion['GibtEsNicht'] = 5
+            try { Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false } }
+            finally { $script:HelperOperationMinVersion.Remove('GibtEsNicht') }
+        }
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        $r.Output | Should -BeNullOrEmpty -Because 'es wurde nichts gestartet'
+    }
+
+    It 'leitet die Mindestversion einer Operation aus der Tabelle ab, ohne dass der Aufrufer sie nennen muss' {
+        Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
+        $r = InModuleScope SoftwareInventory {
+            $script:HelperOperationMinVersion['NeueOperation'] = 99
+            try { Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'NeueOperation'; FilePath = $null; RestorePoint = $false } }
+            finally { $script:HelperOperationMinVersion.Remove('NeueOperation') }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Error.Code | Should -Be 'HelperTooOld'
+        $r.Error.Args[1] | Should -Be 99
+    }
+
+    It 'lehnt einen Plan ohne jede Aufgabe ab (HelperNoOperation)' {
+        $r = InModuleScope SoftwareInventory {
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ FilePath = $null; RestorePoint = $false }
+        }
+        $r.Error.Code | Should -Be 'HelperNoOperation'
+        $r.ExitCode | Should -BeNullOrEmpty
+    }
+
+    It 'bricht ab, wenn der Helfer älter ist als die Operation verlangt (HelperTooOld), und startet nichts' {
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -MinHelperVersion 99 -HelperPlan @{ Operation = 'ReplaceHelperCopy'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Error.Code | Should -Be 'HelperTooOld'
+        $r.Error.Args[0] | Should -Be '5'
+        $r.Error.Args[1] | Should -Be 99
+        $r.ContainsKey('ExitCode') | Should -BeFalse
     }
 
     It 'meldet den Exit-Code eines fehlschlagenden Programms' {
@@ -227,6 +302,30 @@ Describe 'Update-IncompleteActionLog' {
 }
 
 Describe 'Start-ElevatedHelperBatch' {
+    It 'lehnt Schritte ohne Programm ab, statt sie als Erfolg zu melden' {
+        $r = InModuleScope SoftwareInventory {
+            $seen = [System.Collections.Generic.List[object]]::new()
+            $steps = @(@{ FilePath = $null; MsiLog = $false; TimeoutSeconds = 60 })
+            $batch = Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $true } -AfterStep { param($i, $run) $seen.Add(@{ Index = $i; Code = $run.Error.Code; ExitCode = $run.ExitCode; Output = $run.Output }) }
+            @{ Batch = $batch; Seen = @($seen) }
+        }
+        $r.Batch.Done | Should -Be 1
+        $r.Seen[0].Code | Should -Be 'HelperNoOperation'
+        $r.Seen[0].ExitCode | Should -BeNullOrEmpty
+    }
+
+    It 'startet den Helfer gar nicht erst, wenn ein Schritt eine Operation enthält (keine UAC-Abfrage)' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'Der Helfer darf nicht gestartet werden' }
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+            $steps = @(@{ Operation = 'ReplaceHelperCopy'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; TimeoutSeconds = 60 })
+            Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $true } -AfterStep { param($i, $run) }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Done | Should -Be 0
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
+    }
+
     It 'führt mehrere Schritte in einem Helfer aus und meldet jeden Schritt sofort' {
         $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
             $where = Join-Path $S 'where.exe'
@@ -244,7 +343,7 @@ Describe 'Start-ElevatedHelperBatch' {
         $r.Seen[0].ExitCode | Should -Be 0
         $r.Seen[0].Output | Should -Match 'cmd\.exe'
         $r.Seen[1].ExitCode | Should -Not -Be 0
-        $r.Seen[0].HelperVersion | Should -Be 4
+        $r.Seen[0].HelperVersion | Should -Be 5
     }
 
     It 'beendet den Stapel, wenn vor einem Schritt abgebrochen wird' {
@@ -302,5 +401,62 @@ Describe 'Hinweis auf den beschreibbaren Ordner' {
         Mock -ModuleName SoftwareInventory Get-InstalledState { $userState }
         Mock -ModuleName SoftwareInventory Test-HelperInWritableFolder { $true }
         (InModuleScope SoftwareInventory -Parameters @{ R = $record } { New-ActionPlan -Action Update -Record $R }).HelperInWritableFolder | Should -BeFalse
+    }
+}
+
+Describe 'Test-HelperVersion und Test-HelperOperationEcho (fail-closed)' {
+    It 'akzeptiert nur Helfer ab der verlangten Version; fehlende oder unlesbare Version gilt als zu alt' -TestCases @(
+        @{ Hello = @{ Kind = 'Hello'; HelperVersion = 5 }; Minimum = 5; Code = $null }
+        @{ Hello = @{ Kind = 'Hello'; HelperVersion = 6 }; Minimum = 5; Code = $null }
+        @{ Hello = @{ Kind = 'Hello'; HelperVersion = 4 }; Minimum = 5; Code = 'HelperTooOld' }
+        @{ Hello = @{ Kind = 'Hello' }; Minimum = 5; Code = 'HelperTooOld' }
+        @{ Hello = @{ Kind = 'Hello'; HelperVersion = 'x' }; Minimum = 5; Code = 'HelperTooOld' }
+        @{ Hello = @{ Kind = 'Hello'; HelperVersion = $null }; Minimum = 5; Code = 'HelperTooOld' }
+        @{ Hello = $null; Minimum = 5; Code = 'HelperTooOld' }
+        @{ Hello = @{ Kind = 'Hello' }; Minimum = 0; Code = $null }
+    ) {
+        $m = InModuleScope SoftwareInventory -Parameters @{ H = $Hello; M = $Minimum } { Test-HelperVersion -Hello $H -Minimum $M }
+        if ($Code) { $m.Code | Should -Be $Code } else { $m | Should -BeNullOrEmpty }
+    }
+
+    It 'verlangt bei neuen Operationen, dass die Antwort dieselbe Operation nennt' -TestCases @(
+        @{ Plan = @{ Operation = 'X' }; Result = @{ Operation = 'X' }; Min = 5; Code = $null }
+        @{ Plan = @{ Operation = 'X' }; Result = @{ Operation = 'Y' }; Min = 5; Code = 'HelperOperationMismatch' }
+        @{ Plan = @{ Operation = 'X' }; Result = @{ Operation = 'x' }; Min = 5; Code = 'HelperOperationMismatch' }
+        @{ Plan = @{ Operation = 'X' }; Result = @{ Kind = 'Result' }; Min = 5; Code = 'HelperOperationMismatch' }
+        @{ Plan = @{ Operation = 'X' }; Result = @{ Operation = $null }; Min = 5; Code = 'HelperOperationMismatch' }
+        @{ Plan = @{ Operation = 'X' }; Result = $null; Min = 5; Code = 'HelperOperationMismatch' }
+        @{ Plan = @{ FilePath = 'a' }; Result = @{ Kind = 'Result' }; Min = 5; Code = $null }
+        @{ Plan = @{ Operation = 'ReplaceHelperCopy' }; Result = @{ Kind = 'Result' }; Min = 0; Code = $null }
+    ) {
+        $m = InModuleScope SoftwareInventory -Parameters @{ P = $Plan; R = $Result; M = $Min } { Test-HelperOperationEcho -HelperPlan $P -Result $R -MinHelperVersion $M }
+        if ($Code) { $m.Code | Should -Be $Code } else { $m | Should -BeNullOrEmpty }
+    }
+}
+
+Describe 'Read-HelperRun: ein leeres Ergebnis ist nie ein Erfolg' {
+    It 'wertet ein Ergebnis ohne Exit-Code als Fehler (<Case>), nicht als Exit-Code 0' -TestCases @(
+        @{ Case = 'ExitCode null'; Run = @{ Status = 'Completed'; Error = $null; ExitCode = $null; TimedOut = $false; Cancelled = $false } }
+        @{ Case = 'ExitCode fehlt'; Run = @{ Status = 'Completed'; Error = $null } }
+        @{ Case = 'nur Kopf'; Run = @{ Status = 'Completed'; Error = $null; Kind = 'Result'; Nonce = 'n'; HelperVersion = 5 } }
+    ) {
+        $read = InModuleScope SoftwareInventory -Parameters @{ R = $Run } {
+            $result = [pscustomobject] @{ ExitCode = $null; ExitCodeHex = $null; Output = $null; InstallerLog = $null }
+            $read = Read-HelperRun -Result $result -Run $R -TimeoutMinutes 60
+            @{ Read = $read; Result = $result }
+        }
+        $read.Read.Outcome | Should -BeNullOrEmpty
+        $read.Read.Failure[0] | Should -Be 'Failed'
+        $read.Read.Failure[1].Code | Should -Be 'HelperNoExitCode'
+        $read.Result.ExitCode | Should -BeNullOrEmpty
+    }
+
+    It 'wertet einen echten Exit-Code 0 weiter als Erfolg' {
+        $read = InModuleScope SoftwareInventory {
+            $result = [pscustomobject] @{ ExitCode = $null; ExitCodeHex = $null; Output = $null; InstallerLog = $null }
+            Read-HelperRun -Result $result -Run @{ Status = 'Completed'; Error = $null; ExitCode = 0; TimedOut = $false; Cancelled = $false } -TimeoutMinutes 60
+        }
+        $read.Failure | Should -BeNullOrEmpty
+        $read.Outcome | Should -Not -BeNullOrEmpty
     }
 }

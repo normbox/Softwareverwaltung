@@ -270,7 +270,7 @@ namespace SoftwareInventory.Helper
         {
             using (var channel = new HelperChannel(_pipeName))
             {
-                channel.Write(new Dictionary<string, object?> { ["Kind"] = "Hello", ["HelperVersion"] = 4 });
+                channel.Write(new Dictionary<string, object?> { ["Kind"] = "Hello", ["HelperVersion"] = OperationRules.HelperVersion });
                 var first = channel.ReadLine();
                 if (first is null || first == "stop")
                 {
@@ -302,7 +302,15 @@ namespace SoftwareInventory.Helper
             var result = NewResult(plan, "Result");
             try
             {
-                if (Text(plan, "Operation") == "ReplaceHelperCopy")
+                var operation = Text(plan, "Operation");
+                var invalid = OperationRules.Check(operation, Flag(plan, "RestorePoint"), Text(plan, "FilePath") is not null);
+                if (invalid is not null)
+                {
+                    SetError(result, invalid.Code, invalid.Args);
+                    channel.Write(result);
+                    return;
+                }
+                if (operation == "ReplaceHelperCopy")
                 {
                     ReplaceHelperCopy(plan, result);
                     channel.Write(result);
@@ -355,7 +363,15 @@ namespace SoftwareInventory.Helper
                 result["Index"] = index;
                 try
                 {
-                    RunChecked(channel, step, $"{Text(plan, "Nonce")}-{index}", result);
+                    var invalid = OperationRules.CheckStep(Text(step, "Operation"), Text(step, "FilePath") is not null);
+                    if (invalid is not null)
+                    {
+                        SetError(result, invalid.Code, invalid.Args);
+                    }
+                    else
+                    {
+                        RunChecked(channel, step, $"{Text(plan, "Nonce")}-{index}", result);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -600,7 +616,8 @@ namespace SoftwareInventory.Helper
         {
             ["Kind"] = kind,
             ["Nonce"] = Text(plan, "Nonce"),
-            ["HelperVersion"] = 4,
+            ["HelperVersion"] = OperationRules.HelperVersion,
+            ["Operation"] = Text(plan, "Operation"),
             ["RestorePoint"] = "NotRequested",
             ["RestorePointCode"] = null,
             ["RestorePointArgs"] = new object[0],

@@ -241,7 +241,9 @@ function Read-HelperRun {
     if ($Run.ContainsKey('Cancelled') -and $Run.Cancelled) { return @{ Outcome = $null; Failure = @('Cancelled', (New-InventoryMessage ActionCancelledDuringDownload)) } }
     if ($Run.Status -eq 'ElevationDenied') { return @{ Outcome = $null; Failure = @('ElevationDenied', $Run.Error) } }
     if ($Run.Status -ne 'Completed' -or $Run.Error) { return @{ Outcome = $null; Failure = @('Failed', $Run.Error) } }
-    if ($Run.TimedOut) { return @{ Outcome = $null; Failure = @('Timeout', (New-InventoryMessage ActionTimeout $TimeoutMinutes)) } }
+    if ($Run.ContainsKey('TimedOut') -and $Run.TimedOut) { return @{ Outcome = $null; Failure = @('Timeout', (New-InventoryMessage ActionTimeout $TimeoutMinutes)) } }
+    # Ohne Exit-Code ist nichts gelaufen (leeres Ergebnis): [long] $null wäre 0 und damit „Erfolg“. Nie als Erfolg zählen.
+    if (-not $Run.ContainsKey('ExitCode') -or $null -eq $Run.ExitCode) { return @{ Outcome = $null; Failure = @('Failed', (New-InventoryMessage HelperNoExitCode)) } }
     $Result.ExitCode = [long] $Run.ExitCode
     $outcome = ConvertFrom-ActionExitCode $Run.ExitCode
     $Result.ExitCodeHex = $outcome.Code
