@@ -87,7 +87,7 @@ function New-RemoveEntryPlan {
     }
     if (-not $location) { return & $finish 'Unsupported' (New-InventoryMessage RemoveEntryNotUninstallKey $keyPath) }
     # [ ] oder Steuerzeichen im Namen: nie sicher zu sichern oder zu lesen (Handarbeit); schon die Planung nennt den Grund.
-    if ($keyPath.Substring($keyPath.LastIndexOf('\') + 1) -cmatch '[\[\]\x00-\x1F\x7F-\x9F]') { return & $finish 'Unsupported' (New-InventoryMessage BackupKeyNameUnsafe) }
+    if ($keyPath.Substring($keyPath.LastIndexOf('\') + 1) -cmatch $script:UnsafeKeyNamePattern) { return & $finish 'Unsupported' (New-InventoryMessage BackupKeyNameUnsafe) }
     if ($location.Scope -ne 'User') { return & $finish 'Unsupported' (New-InventoryMessage RemoveEntryMachineNotYet) }
     $key = Get-Item -LiteralPath $keyPath -ErrorAction SilentlyContinue
     if (-not $key) { $plan.State.Present = $false; return & $finish 'NotInstalled' (New-InventoryMessage RemoveEntryKeyGone) }

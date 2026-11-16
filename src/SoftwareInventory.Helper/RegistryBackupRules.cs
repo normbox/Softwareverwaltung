@@ -49,7 +49,7 @@ namespace SoftwareInventory.Helper
         {
             foreach (var c in name)
             {
-                if (c == '[' || c == ']' || c < ' ' || (c >= '\u007f' && c <= '\u009f'))
+                if (c == '[' || c == ']' || c < ' ' || (c >= (char)0x7F && c <= (char)0x9F))
                 {
                     return true;
                 }

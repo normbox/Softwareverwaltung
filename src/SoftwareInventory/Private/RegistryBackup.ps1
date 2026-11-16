@@ -11,6 +11,9 @@ $script:KnownBackupReasonCodes = @('OrphanedEntry', 'NewerInstallNextTo')
 # Ungewöhnliche Zeilenumbrüche: NUL, VT, FF, NEL, U+2028, U+2029 sowie einzelnes CR oder LF. Die Zeichen stehen als
 # Codepunkte, nie als Escape-Text im Quelltext (CLAUDE.md).
 $script:OddLineBreakPattern = '[' + (-join (0x00, 0x0B, 0x0C, 0x85, 0x2028, 0x2029 | ForEach-Object { '\u{0:X4}' -f $_ })) + ']|\r(?!\n)|(?<!\r)\n'
+# Unsichere Zeichen in einem Schlüsselnamen: [ und ] sowie Steuerzeichen (U+0000-U+001F, U+007F-U+009F). Ebenfalls aus
+# Codepunkten gebaut; Modul und Helfer lehnen solche Schlüssel ab (KeyNameUnsafe), sie bleiben Handarbeit.
+$script:UnsafeKeyNamePattern = '[\[\]' + (-join ((0x00, 0x1F), (0x7F, 0x9F) | ForEach-Object { '\u{0:X4}-\u{1:X4}' -f $_[0], $_[1] })) + ']'
 
 function Get-RegistryBackupDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\registry-backup'
@@ -141,7 +144,7 @@ function Test-RegistryBackupContent {
         if ($t.Length -lt 3 -or -not $t.EndsWith(']', [StringComparison]::Ordinal)) { return 'BadKeyLine' }
         $name = $t.Substring(1, $t.Length - 2)
         # [ oder ] oder ein Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) im Namen: nie sicher zu lesen, Handarbeit.
-        if ($name -cmatch '[\[\]\x00-\x1F\x7F-\x9F]') { return 'KeyNameUnsafe' }
+        if ($name -cmatch $script:UnsafeKeyNamePattern) { return 'KeyNameUnsafe' }
         $headers.Add($name)
     }
     if ($headers.Count -eq 0) { return 'KeyNotFound' }
