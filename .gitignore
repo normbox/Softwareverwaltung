@@ -435,3 +435,6 @@ src/SoftwareInventory/lib/
 
 # Claude Code: persönliche Einstellungen
 .claude/settings.local.json
+
+# Lokale Arbeitsdaten (CPE-Prüfung usw.), nicht versionieren
+_arbeit/
