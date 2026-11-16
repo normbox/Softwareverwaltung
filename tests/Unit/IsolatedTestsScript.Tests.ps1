@@ -154,6 +154,19 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         $r.Output | Should -Match $Match
     }
 
+    It 'nimmt den vollen Aufruf ohne Teilmengen-Parameter an und hält ihn für keinen Teillauf (<Case>)' -ForEach @(
+        @{ Case = 'ohne Parameter'; Arguments = @('-ValidateOnly') }
+        @{ Case = '-IncludeIntegration'; Arguments = @('-IncludeIntegration', '-ValidateOnly') }
+        @{ Case = '-PesterOnly'; Arguments = @('-PesterOnly', '-ValidateOnly') }
+        @{ Case = '-XunitOnly'; Arguments = @('-XunitOnly', '-ValidateOnly') }
+        @{ Case = '-PesterOnly mit -IncludeIntegration'; Arguments = @('-PesterOnly', '-IncludeIntegration', '-ValidateOnly') }
+    ) {
+        $r = Invoke-Runner $Arguments
+        $r.Exit | Should -Be 0
+        $r.Output | Should -Match 'ISOLATED-TESTS-EXIT 0'
+        $r.Output | Should -Not -Match 'Abbruch'
+    }
+
     It 'bindet Positionsargumente nicht still an einen Parameter (kein versehentlicher Teillauf)' {
         $r = Invoke-Runner @('tests/Unit/IsolatedTestsScript.Tests.ps1')
         $r.Exit | Should -Not -Be 0

@@ -50,7 +50,8 @@ function Stop-Run([int] $Code, [string] $Message) {
 try {
     $repo = Resolve-Path (Join-Path $PSScriptRoot '..')
     $hasFilter = $PSBoundParameters.ContainsKey('XunitFilter')
-    $pathList = @($PesterPath | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() })
+    # Ohne -PesterPath bleibt die Liste leer (eine Pipeline mit $null ergäbe sonst ein leeres Element).
+    $pathList = if ($PSBoundParameters.ContainsKey('PesterPath')) { @($PesterPath | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() }) } else { @() }
     if ($PesterPath -and $pathList.Count -eq 0) { Stop-Run 2 '-PesterPath ist leer.' }
     $subset = ($pathList.Count -gt 0) -or $hasFilter
     if ($hasFilter -and [string]::IsNullOrWhiteSpace($XunitFilter)) { Stop-Run 2 '-XunitFilter darf nicht leer sein.' }
