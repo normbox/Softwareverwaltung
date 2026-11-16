@@ -432,3 +432,9 @@ tests/Sandbox/out/
 
 # Fertig übersetzte DLL des Moduls (entsteht beim Bauen von src/SoftwareInventory.Native)
 src/SoftwareInventory/lib/
+
+# Claude Code: persönliche Einstellungen
+.claude/settings.local.json
+
+# Lokale Arbeitsdaten (CPE-Prüfung usw.), nicht versionieren
+_arbeit/
