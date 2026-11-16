@@ -262,7 +262,7 @@ function Start-ElevatedHelper {
         if (-not $hello -or $hello.Kind -ne 'Hello') { return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperResultUnreadable) } }
         $tooOld = Test-HelperVersion -Hello $hello -Minimum $MinHelperVersion
         if ($tooOld) {
-            try { $writer.WriteLine('stop') } catch { Write-Verbose 'Helfer bereits beendet.' }
+            try { $writer.WriteLine('stop') } catch { $null = $_ }   # Helfer bereits beendet
             return @{ Status = 'Failed'; Error = $tooOld }
         }
         try {
