@@ -176,7 +176,7 @@ Regeln:
     ReasonOtherPlatformOnly                 = 'Nur für {0}, nicht für Windows'
     ReasonOtherPlatformCve                  = '{0}: nur für {1}'
     ReasonPlanRemoveEntry                   = 'Registry-Eintrag {0} entfernen. Vorher wird er gesichert nach {1}.'
-    ReasonRemoveEntryDone                   = 'Eintrag entfernt. Sicherung: {0} (Zurückspielen per Doppelklick auf die Datei)'
+    ReasonRemoveEntryDone                   = 'Eintrag entfernt. Sicherung: {0} (Zurückspielen in der Ansicht „Sicherungen“)'
     ReasonRemoveEntryBackupInvalid          = 'Sicherung nicht brauchbar ({0}); der Eintrag wurde nicht entfernt'
     ReasonRemoveEntryDeleteFailed           = 'Eintrag konnte nicht entfernt werden: {0}'
     ReasonRemoveEntryNotOrphaned            = 'Der Eintrag ist nicht (mehr) verwaist; er wird nicht entfernt'

@@ -8,11 +8,14 @@ function Remove-OrphanedEntry {
         Uninstall-Zweige liegen, darf kein MSI-Eintrag sein und muss weiterhin verwaist sein. Vorerst nur
         Einträge des aktuellen Benutzers (HKCU, ohne Administratorrechte); Einträge für alle Benutzer (HKLM)
         folgen (RemoveEntryMachineNotYet).
-        Zuerst sichert reg.exe den Schlüssel nach logs\registry-backup\<ActionId>_<Name>.reg. Fehlt die Datei,
-        ist sie leer oder enthält sie den Schlüssel nicht, wird nichts entfernt (RemoveEntryBackupInvalid).
-        Entfernt wird nur dieser Schlüssel, nie ein Ordner oder eine Datei. Zurückspielen: Doppelklick auf die
-        .reg-Datei oder reg import. Sicherungen werden 365 Tage aufbewahrt. Jede Aktion wird protokolliert;
+        Zuerst sichert reg.exe den Schlüssel nach logs\registry-backup\<ActionId>_<Name>.reg und das Modul
+        schreibt daneben <ActionId>_<Name>.json (Name, Schlüssel, Gründe als Codes). Fehlt die .reg-Datei, ist
+        sie leer oder besteht sie die strenge Prüfung (Test-RegistryBackupContent) nicht, wird nichts entfernt
+        (RemoveEntryBackupInvalid); ebenso, wenn die .json nicht geschrieben werden kann.
+        Entfernt wird nur dieser Schlüssel samt Unterschlüsseln, nie ein Ordner oder eine Datei. Zurückspielen:
+        Restore-RegistryBackup. Sicherungen werden 365 Tage aufbewahrt. Jede Aktion wird protokolliert;
         -WhatIf liefert den Plan (Result Planned).
+        Gründe (Reasons am Eingabeobjekt) übernimmt das Modul nur, wenn der Code bekannt ist.
     .PARAMETER ConfirmedCommandLine
         CommandLine aus dem -WhatIf-Ergebnis (der Schlüssel). Weicht sie ab, wird nichts entfernt (Cancelled).
     .PARAMETER LogNotExecutable
@@ -39,7 +42,7 @@ function Remove-OrphanedEntry {
                 Write-Error (Get-LocalizedString 'ErrorNotInventoryRecord')
                 continue
             }
-            $plan = New-RemoveEntryPlan -Record $record
+            $plan = New-RemoveEntryPlan -Record $record -Reasons (Get-RecordValue $item 'Reasons')
             if (-not $plan.Result -and $ConfirmedCommandLine -and $plan.CommandLine -cne $ConfirmedCommandLine) {
                 $plan.Result = 'Cancelled'
                 $plan.Message = New-InventoryMessage CommandChanged $plan.CommandLine
@@ -65,7 +68,7 @@ function Remove-OrphanedEntry {
 
 function New-RemoveEntryPlan {
     # Plan mit erneuter Prüfung des Schlüssels; Result gesetzt, wenn nichts zu entfernen ist.
-    param($Record)
+    param($Record, $Reasons)
     $actionId = [guid]::NewGuid().ToString()
     $keyPath = Get-RecordValue $Record 'RegistryKey'
     $plan = [ordered]@{
@@ -73,7 +76,7 @@ function New-RemoveEntryPlan {
         WingetId = $null; WingetSource = $null; RegistryKey = $keyPath; ProductCode = $null; PackageFullName = $null
         Scope = Get-RecordValue $Record 'Scope'; Method = 'RegistryKey'; FilePath = $null; Arguments = $null; CommandLine = $null
         Elevated = $false; RestorePoint = $false; Result = $null; Message = $null; NextMethod = $null; VendorUrl = $null
-        BackupFile = $null; NativeKey = $null
+        BackupFile = $null; NativeKey = $null; Reasons = @()
         State = [pscustomobject] @{ Present = $true; Version = $Record.Version }
     }
     $finish = { param($Result, $Message) $plan.Result = $Result; $plan.Message = $Message; [pscustomobject] $plan }
@@ -93,6 +96,10 @@ function New-RemoveEntryPlan {
     }
     $plan.NativeKey = $key.Name
     $plan.CommandLine = $key.Name
+    # Nur bekannte Gründe; die erneute Prüfung oben hat Orphaned bestätigt, der Grund steht also immer dabei.
+    $known = @(ConvertTo-KnownBackupReason $Reasons)
+    if (-not ($known | Where-Object { $_.Code -ceq 'OrphanedEntry' })) { $known = @([ordered]@{ Code = 'OrphanedEntry'; Args = @() }) + $known }
+    $plan.Reasons = $known
     $plan.BackupFile = Join-Path (Get-RegistryBackupDirectory) (Get-RegistryBackupFileName -ActionId $actionId -Name $Record.Name)
     [pscustomobject] $plan
 }
@@ -107,9 +114,14 @@ function Invoke-RemoveEntryPlan {
         $exit = Invoke-RegExport -NativeKey $Plan.NativeKey -File $Plan.BackupFile
         $Result.ExitCode = $exit
         $problem = Test-RegistryBackup -File $Plan.BackupFile -NativeKey $Plan.NativeKey
+        if ($exit -eq 0 -and -not $problem) {
+            # Die Begleitdatei kommt vor dem Löschen; ohne sie ließe sich später nichts prüfen oder zurückspielen.
+            try { Write-RegistryBackupSidecar -File $Plan.BackupFile -ActionId $Plan.ActionId -Name $Plan.Name -NativeKey $Plan.NativeKey -Scope $Plan.Scope -Reasons $Plan.Reasons }
+            catch { $problem = 'MetadataWrite' }
+        }
         if ($exit -ne 0 -or $problem) {
             # Unbrauchbare Sicherung nicht liegen lassen; der Schlüssel bleibt unberührt.
-            Remove-Item -LiteralPath $Plan.BackupFile -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $Plan.BackupFile, (Get-RegistryBackupSidecarPath $Plan.BackupFile) -Force -ErrorAction SilentlyContinue
             $Result.Result = 'Failed'
             $Result.Message = New-InventoryMessage RemoveEntryBackupInvalid $(if ($problem) { $problem } else { "Exit $exit" })
             $Result.BackupFile = $null

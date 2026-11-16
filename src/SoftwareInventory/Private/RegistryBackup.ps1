@@ -1,28 +1,59 @@
 # Sicherung von Registry-Schlüsseln vor dem Entfernen verwaister Einträge (Remove-OrphanedEntry).
 # Liegt unter logs\registry-backup\ und hat eine eigene Frist (365 Tage), unabhängig von der normalen
-# Selbstbereinigung und nicht in deren Größengrenze.
+# Selbstbereinigung und nicht in deren Größengrenze. Je Sicherung gibt es zwei Dateien mit gleichem Namen:
+# <ActionId>_<Name>.reg (reg export) und <ActionId>_<Name>.json (Angaben zur Sicherung, nur Codes, nie Text).
 
 $script:RegistryBackupRetentionDays = 365
+$script:RegistryBackupMaxBytes = 16MB
+$script:RegistryBackupSidecarMaxBytes = 64KB
+# Nur diese Gründe übernimmt das Modul in die Begleitdatei; alles andere wird verworfen.
+$script:KnownBackupReasonCodes = @('OrphanedEntry', 'NewerInstallNextTo')
 
 function Get-RegistryBackupDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\registry-backup'
 }
 
 function Get-RegistryBackupFileName {
-    # <ActionId>_<bereinigter Programmname>.reg; Name ohne Sonderzeichen, höchstens 60 Zeichen.
+    # <ActionId>_<bereinigter Programmname>.reg; Name ohne Pfadzeichen, ohne "..", ohne reservierte
+    # Gerätenamen, höchstens 60 Zeichen.
     param([string] $ActionId, [string] $Name)
-    $clean = ($Name -replace '[^\w.\-]+', '_').Trim('_', '.')
+    $clean = ($Name -replace '[^\w.\-]+', '_')
+    $clean = ($clean -replace '\.{2,}', '.').Trim('_', '.')
     if ($clean.Length -gt 60) { $clean = $clean.Substring(0, 60).TrimEnd('_', '.') }
     if (-not $clean) { $clean = 'Eintrag' }
+    if ($clean -match '^(?i:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])(\..*)?$') { $clean = "_$clean" }
     "${ActionId}_$clean.reg"
+}
+
+function Get-RegistryBackupId {
+    # Die Kennung einer Sicherung ist die ActionId (GUID) am Anfang des Dateinamens; sonst $null.
+    param([string] $File)
+    $name = [System.IO.Path]::GetFileName($File)
+    if ($name -match '^(?<id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})_') { $Matches.id.ToLowerInvariant() }
+}
+
+function Get-RegistryBackupSidecarPath {
+    param([string] $File)
+    [System.IO.Path]::ChangeExtension($File, '.json')
 }
 
 function Invoke-RegExport {
     # reg.exe aus System32 (fester Pfad, nie über PATH): exportiert den Schlüssel; liefert den Exit-Code.
     param([Parameter(Mandatory)] [string] $NativeKey, [Parameter(Mandatory)] [string] $File)
+    Invoke-RegTool -Argument 'export', $NativeKey, $File, '/y'
+}
+
+function Invoke-RegImport {
+    # reg.exe aus System32: spielt genau diese (vorher geprüfte) Datei zurück; liefert den Exit-Code.
+    param([Parameter(Mandatory)] [string] $File)
+    Invoke-RegTool -Argument 'import', $File
+}
+
+function Invoke-RegTool {
+    param([string[]] $Argument)
     $reg = Join-Path ([Environment]::GetFolderPath('System')) 'reg.exe'
     $info = [System.Diagnostics.ProcessStartInfo]::new($reg)
-    foreach ($a in 'export', $NativeKey, $File, '/y') { $info.ArgumentList.Add($a) }
+    foreach ($a in $Argument) { $info.ArgumentList.Add($a) }
     $info.UseShellExecute = $false
     $info.CreateNoWindow = $true
     $info.RedirectStandardOutput = $true
@@ -36,31 +67,180 @@ function Invoke-RegExport {
     finally { $process.Dispose() }
 }
 
-function Test-RegistryBackup {
+function ConvertTo-NativeRegistryPath {
+    # HKCU:\... bzw. ein Laufwerk wie TestRegistry:\... als nativer Pfad (HKEY_CURRENT_USER\...).
+    param([string] $Path)
+    $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if ($item) { return $item.Name }
+    $Path -replace '^HKCU:', 'HKEY_CURRENT_USER' -replace '^HKLM:', 'HKEY_LOCAL_MACHINE'
+}
+
+function Get-UninstallLocationNative {
+    # Die Uninstall-Zweige mit nativem Pfad, wie ihn reg export in die Datei schreibt.
+    foreach ($location in Get-DefaultUninstallLocation) {
+        [pscustomobject] @{ NativePath = (ConvertTo-NativeRegistryPath $location.Path); Scope = $location.Scope }
+    }
+}
+
+function Get-RegistryBackupText {
     <#
     .SYNOPSIS
-        Ist die Sicherung brauchbar? Datei vorhanden, nicht leer und mit der Zeile [<Schlüssel>].
+        Liest die .reg-Datei genau einmal; liefert die Bytes und den daraus gelesenen Text.
     .OUTPUTS
-        $null, wenn sie passt; sonst der Grund: Missing, Empty oder KeyNotFound.
+        @{ Bytes; Text } oder @{ Problem } mit Missing, Empty, TooLarge oder BadEncoding. reg export schreibt
+        immer UTF-16 (Little Endian) mit Bytefolge FF FE am Anfang; alles andere gilt nicht als Sicherung.
     #>
-    param([string] $File, [string] $NativeKey)
-    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return 'Missing' }
-    if ((Get-Item -LiteralPath $File).Length -eq 0) { return 'Empty' }
-    # reg export schreibt UTF-16 mit BOM; Get-Content erkennt das.
-    $text = Get-Content -LiteralPath $File -Raw
-    if (-not $text -or $text.IndexOf("[$NativeKey]", [StringComparison]::OrdinalIgnoreCase) -lt 0) { return 'KeyNotFound' }
+    param([string] $File)
+    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return @{ Problem = 'Missing' } }
+    if ((Get-Item -LiteralPath $File).Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge' } }
+    $bytes = [System.IO.File]::ReadAllBytes($File)
+    if ($bytes.Length -eq 0) { return @{ Problem = 'Empty' } }
+    if ($bytes.Length -lt 2 -or $bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE) { return @{ Problem = 'BadEncoding' } }
+    @{ Bytes = $bytes; Text = [System.Text.Encoding]::Unicode.GetString($bytes, 2, $bytes.Length - 2) }
+}
+
+function Test-RegistryBackupContent {
+    <#
+    .SYNOPSIS
+        Prüft den Inhalt einer .reg-Sicherung streng, bevor sie zurückgespielt wird.
+    .DESCRIPTION
+        Erlaubt ist genau ein Hauptschlüssel (der Schlüssel aus der Begleitdatei) direkt unter einem
+        Uninstall-Zweig des Benutzers; jeder weitere Schlüsselkopf muss mit "<Hauptschlüssel>\" beginnen
+        (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel.
+    .OUTPUTS
+        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadHeader, DeleteLine, BadKeyLine, KeyNotFound,
+        KeyMismatch, KeyOutside, KeyNotUninstall oder MachineNotYet.
+    #>
+    param([string] $Text, [string] $NativeKey)
+    if (-not $Text -or -not $NativeKey) { return 'Empty' }
+    $lines = $Text -split "\r?\n"
+    if ($lines[0].TrimEnd() -cne 'Windows Registry Editor Version 5.00') { return 'BadHeader' }
+
+    $headers = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in $lines | Select-Object -Skip 1) {
+        $t = $line.Trim()
+        if (-not $t.StartsWith('[')) { continue }
+        if ($t.StartsWith('[-')) { return 'DeleteLine' }
+        if ($t -notmatch '^\[(?<key>.+)\]$') { return 'BadKeyLine' }
+        $headers.Add($Matches.key)
+    }
+    if ($headers.Count -eq 0) { return 'KeyNotFound' }
+    if (-not [string]::Equals($headers[0], $NativeKey, [StringComparison]::OrdinalIgnoreCase)) { return 'KeyMismatch' }
+    $prefix = $NativeKey.TrimEnd('\') + '\'
+    for ($i = 1; $i -lt $headers.Count; $i++) {
+        if (-not $headers[$i].StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { return 'KeyOutside' }
+    }
+
+    $cut = $NativeKey.LastIndexOf('\')
+    if ($cut -lt 1) { return 'KeyNotUninstall' }
+    $parent = $NativeKey.Substring(0, $cut)
+    $location = Get-UninstallLocationNative | Where-Object { [string]::Equals($_.NativePath, $parent, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
+    if (-not $location) { return 'KeyNotUninstall' }
+    if ($location.Scope -ne 'User') { return 'MachineNotYet' }
     $null
 }
 
+function Test-RegistryBackup {
+    <#
+    .SYNOPSIS
+        Ist die Sicherung brauchbar? Datei vorhanden, nicht leer, richtig kodiert und streng geprüft.
+    .OUTPUTS
+        $null, wenn sie passt; sonst der Grund (siehe Get-RegistryBackupText und Test-RegistryBackupContent).
+    #>
+    param([string] $File, [string] $NativeKey)
+    $content = Get-RegistryBackupText -File $File
+    if ($content.Problem) { return $content.Problem }
+    Test-RegistryBackupContent -Text $content.Text -NativeKey $NativeKey
+}
+
+function ConvertTo-KnownBackupReason {
+    # Nur bekannte Grund-Codes mit ihren Argumenten (als kurze Texte); alles andere wird verworfen.
+    param($Reasons)
+    foreach ($reason in @($Reasons)) {
+        if ($null -eq $reason) { continue }
+        $code = [string] (Get-RecordValue $reason 'Code')
+        if ($code -cnotin $script:KnownBackupReasonCodes) { continue }
+        $reasonArgs = @(@(Get-RecordValue $reason 'Args') | Where-Object { $null -ne $_ } | Select-Object -First 4 | ForEach-Object {
+                $s = [string] $_
+                if ($s.Length -gt 200) { $s.Substring(0, 200) } else { $s }
+            })
+        [ordered]@{ Code = $code; Args = $reasonArgs }
+    }
+}
+
+function Write-RegistryBackupSidecar {
+    # Begleitdatei neben der .reg: nur Codes und Daten, nie Anzeigetexte (die kommen aus der psd1).
+    param([string] $File, [string] $ActionId, [string] $Name, [string] $NativeKey, [string] $Scope, $Reasons)
+    $data = [ordered]@{
+        SchemaVersion = 1
+        ActionId      = $ActionId
+        CreatedAt     = [datetime]::UtcNow.ToString('o')
+        Name          = $Name
+        NativeKey     = $NativeKey
+        Scope         = $Scope
+        Reasons       = @(ConvertTo-KnownBackupReason $Reasons)
+    }
+    [System.IO.File]::WriteAllText((Get-RegistryBackupSidecarPath $File), ($data | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+}
+
+function Read-RegistryBackupSidecar {
+    <#
+    .SYNOPSIS
+        Liest und prüft die Begleitdatei einer Sicherung.
+    .OUTPUTS
+        @{ Data } mit ActionId, Name, NativeKey, Scope, CreatedAt (UTC) und Reasons (Code, Args), oder
+        @{ Problem } mit MetadataMissing oder MetadataInvalid.
+    #>
+    param([string] $File)
+    $path = Get-RegistryBackupSidecarPath $File
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @{ Problem = 'MetadataMissing' } }
+    if ((Get-Item -LiteralPath $path).Length -gt $script:RegistryBackupSidecarMaxBytes) { return @{ Problem = 'MetadataInvalid' } }
+    try { $d = [System.IO.File]::ReadAllText($path) | ConvertFrom-Json -ErrorAction Stop }
+    catch { return @{ Problem = 'MetadataInvalid' } }
+    if ($d -isnot [pscustomobject]) { return @{ Problem = 'MetadataInvalid' } }
+    $id = [string] (Get-RecordValue $d 'ActionId')
+    $name = [string] (Get-RecordValue $d 'Name')
+    $key = [string] (Get-RecordValue $d 'NativeKey')
+    $created = Get-RecordValue $d 'CreatedAt'
+    $createdAt = [datetime]::MinValue
+    if ($created -is [datetime]) { $createdAt = $created.ToUniversalTime() }
+    elseif (-not [datetime]::TryParse([string] $created, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal, [ref] $createdAt)) {
+        return @{ Problem = 'MetadataInvalid' }
+    }
+    if ((Get-RecordValue $d 'SchemaVersion') -ne 1 -or -not $id -or -not $name -or -not $key -or $id -ine (Get-RegistryBackupId $File)) {
+        return @{ Problem = 'MetadataInvalid' }
+    }
+    @{
+        Data = [pscustomobject] @{
+            ActionId = $id; Name = $name; NativeKey = $key; Scope = [string] (Get-RecordValue $d 'Scope'); CreatedAt = $createdAt
+            Reasons  = @(ConvertTo-KnownBackupReason (Get-RecordValue $d 'Reasons'))
+        }
+    }
+}
+
 function Remove-ExpiredRegistryBackup {
-    # Löscht Sicherungen älter als 365 Tage; Anzahl gelöschter Dateien.
+    # Löscht Sicherungen älter als 365 Tage. .reg und .json gehören zusammen: Das Alter bestimmt die .reg,
+    # beide Dateien gehen gemeinsam. Eine .json ohne .reg (Rest) geht nach einem Tag. Anzahl gelöschter Dateien.
     param([string] $Root = (Get-AppDataDirectory), [int] $RetentionDays = $script:RegistryBackupRetentionDays)
     $directory = Join-Path $Root 'logs\registry-backup'
     if (-not (Test-Path -LiteralPath $directory)) { return 0 }
     $cutoff = [datetime]::UtcNow.AddDays(-$RetentionDays)
+    $orphanCutoff = [datetime]::UtcNow.AddDays(-1)
     $deleted = 0
+    $gone = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($f in Get-ChildItem -LiteralPath $directory -File -Force -ErrorAction SilentlyContinue) {
-        if ($f.LastWriteTimeUtc -lt $cutoff -and (Remove-CleanupFile $f)) { $deleted++ }
+        if ($gone.Contains($f.FullName)) { continue }
+        if ($f.Extension -ieq '.json') {
+            if (Test-Path -LiteralPath ([System.IO.Path]::ChangeExtension($f.FullName, '.reg')) -PathType Leaf) { continue }
+            if ($f.LastWriteTimeUtc -lt $orphanCutoff -and (Remove-CleanupFile $f)) { $deleted++ }
+            continue
+        }
+        if ($f.LastWriteTimeUtc -ge $cutoff) { continue }
+        if (Remove-CleanupFile $f) { $deleted++ }
+        if ($f.Extension -ieq '.reg') {
+            $sidecar = Get-Item -LiteralPath ([System.IO.Path]::ChangeExtension($f.FullName, '.json')) -ErrorAction SilentlyContinue
+            if ($sidecar -and (Remove-CleanupFile $sidecar)) { $deleted++; $null = $gone.Add($sidecar.FullName) }
+        }
     }
     $deleted
 }
