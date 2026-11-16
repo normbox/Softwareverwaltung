@@ -7,6 +7,7 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 - Antworte auf Deutsch. Code, Bezeichner und Commit-Messages auf Englisch, Kommentare und Doku für Nutzer auf Deutsch.
 - Bei Mehrdeutigkeit kurz nachfragen statt raten.
 - Pflegeaufwand gering halten: neue Abhängigkeiten nur mit Begründung, Langzeitversionen bevorzugen.
+- **Quelldateien ändern:** `.ps1`, `.psd1`, `.cs`, `.xaml`, `.resx`, `.md` und `.json` nur mit den Werkzeugen Edit und Write ändern, nie per Heredoc, `sed` oder `echo` in der Shell (die Shell verändert Backslashes und Escape-Folgen und hat schon Steuerzeichen in den Code geschrieben). Längere Hilfsskripte (z. B. für viele Ersetzungen) als Datei im Scratchpad mit Write anlegen und dann ausführen. Steuerzeichen im Code nur als Escape schreiben (`[char]0x1F`, `"\u001F"`), nie roh. Der Test `tests/Unit/SourceFiles.Tests.ps1` prüft alle Quelldateien auf rohe Steuerzeichen (außer Tab, CR und LF).
 
 ## Architektur (verbindlich)
 
