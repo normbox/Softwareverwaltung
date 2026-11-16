@@ -1,15 +1,24 @@
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
-    # Zeichen, die in Quelldateien nie roh stehen dürfen (als Escape schreiben: PowerShell [char]0x1F, C# und JSON "\u001F",
-    # XAML und resx &#x1F;). Das Muster steht hier absichtlich als Regex-Escape, damit diese Datei selbst sauber bleibt:
+    # Zeichen, die in Quelldateien nie roh stehen dürfen. Sie gehören als Escape geschrieben: in PowerShell [char]0x1F,
+    # in C# und JSON ein Backslash-u mit vier Hexziffern, in XAML und resx &#x1F;.
+    # Die Zeichenklasse wird hier aus Codepunkten gebaut und nicht als Text mit Backslash-u-Escapes hingeschrieben:
+    # Ein Werkzeug, das solche Escapes beim Schreiben auflöst, würde die rohen Zeichen sonst in diese Datei setzen.
     #   U+0000-U+0008, U+000B, U+000C, U+000E-U+001F   Steuerzeichen (erlaubt sind nur Tab, CR und LF)
     #   U+007F-U+009F                                   DEL und die C1-Zeichen (darunter NEL, U+0085)
     #   U+200B-U+200D, U+2060                           Zero-Width-Zeichen und Word Joiner (unsichtbar)
     #   U+2028, U+2029                                  Zeilentrenner (C# beendet damit einen Kommentar: "Trojan Source")
     #   U+202A-U+202E, U+2066-U+2069                    Bidi-Steuerzeichen (ordnen die Anzeige um: "Trojan Source")
     #   U+FEFF                                          BOM mitten in der Datei (am Anfang erlaubt, wird vorher abgeschnitten)
-    $script:ControlPattern = [regex]::new('[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F​-‍  ‪-‮⁠⁦-⁩﻿]')
+    $ranges = @(
+        @(0x0000, 0x0008), @(0x000B, 0x000C), @(0x000E, 0x001F), @(0x007F, 0x009F), @(0x200B, 0x200D), @(0x2028, 0x2029),
+        @(0x202A, 0x202E), @(0x2060, 0x2060), @(0x2066, 0x2069), @(0xFEFF, 0xFEFF)
+    )
+    $class = -join ($ranges | ForEach-Object {
+            if ($_[0] -eq $_[1]) { '\u{0:X4}' -f $_[0] } else { '\u{0:X4}-\u{1:X4}' -f $_[0], $_[1] }
+        })
+    $script:ControlPattern = [regex]::new('[' + $class + ']')
     $script:StrictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
 
     function Find-RawControlCharacter {
@@ -65,6 +74,14 @@ Describe 'Quelldateien ohne rohe Steuerzeichen' {
         }
     }
 
+    It 'lässt häufige erlaubte Zeichen zu (Umlaute, typografische Striche und Anführungszeichen, Pfeile, NBSP, Soft Hyphen)' {
+        $file = Join-Path $TestDrive 'allowed.ps1'
+        # Codepunkte statt roher Zeichen: ä ö ü ß, En- und Em-Dash, typografische Anführungszeichen, Pfeil, NBSP, Soft Hyphen
+        $text = -join ([char[]] @(0xE4, 0xF6, 0xFC, 0xDF, 0x2013, 0x2014, 0x201E, 0x201C, 0x2192, 0xA0, 0xAD))
+        [System.IO.File]::WriteAllText($file, "# $text`n")
+        @(Find-RawControlCharacter $file) | Should -BeNullOrEmpty
+    }
+
     It 'zählt die Zeile bei CRLF, CR und LF' {
         $file = Join-Path $TestDrive 'lines.ps1'
         foreach ($newline in "`r`n", "`r", "`n") {
@@ -101,6 +118,6 @@ Describe 'Quelldateien ohne rohe Steuerzeichen' {
                 '{0}:{1} {2}' -f $hit.Path.Substring($script:RepoRoot.Length + 1), $hit.Line, $hit.Code
             }
         }
-        $problems | Should -BeNullOrEmpty -Because ("rohe Steuerzeichen als Escape schreiben ([char]0x1F, \u001F):`n" + (@($problems) -join "`n"))
+        $problems | Should -BeNullOrEmpty -Because ("rohe Steuerzeichen als Escape schreiben ([char]0x1F in PowerShell):`n" + (@($problems) -join "`n"))
     }
 }
