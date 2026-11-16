@@ -47,6 +47,7 @@ Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Etappe 
 
 - Repo-Suchen nicht selbst durchführen: Fragen zu Aufbau und Fundorten gehen an den Subagenten `map`, Aufrufstellen einer Funktion an `callers`.
 - Jeder Testlauf und jede Prüfung von Änderungen geht an `audit`. `audit` sieht nur committete Stände: Gibt es offene Änderungen, frag mich zuerst, ob ich committen will.
+- **Testumfang:** Während der Arbeit laufen nur die betroffenen Tests, gezielt einzelne Pester-Dateien bzw. `dotnet test --filter`, nicht die ganze Reihe. Der volle Lauf mit `tests/Invoke-IsolatedTests.ps1` kommt nur vor dem Abschluss (Commit) eines Teilschritts und vor dem PR (dort mit `-IncludeIntegration`). Auch gezielte Läufe gehen an `audit` und nutzen das eigene APPDATA/LOCALAPPDATA des Skripts, nie `Invoke-Pester` oder `dotnet test` direkt gegen den echten App-Ordner.
 - Vor jedem PR läuft der Subagent `reviewer` (Sicherheit, Fehler, Projektregeln; nur lesend, sieht wie `audit` nur committete Stände). Kritische Funde werden behoben und der `reviewer` danach erneut gestartet, bevor der PR geöffnet wird. Den Bericht fasse ich kurz zusammen; nicht behobene mittlere und geringe Funde stehen mit Begründung in der PR-Beschreibung.
 - In der Hauptsitzung nur Dateien lesen, die gleich bearbeitet werden.
 - Das Advisor-Tool von Claude Code (nicht der KI-Berater dieser App) nur nutzen bei der Planung größerer Änderungen, bei Fehlern, die nach zwei Versuchen bleiben, und bevor eine Etappe oder ein größerer Teilschritt als erledigt gilt.
