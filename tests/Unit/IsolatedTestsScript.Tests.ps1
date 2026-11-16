@@ -1,12 +1,20 @@
 BeforeAll {
     $script:RunnerScript = Join-Path $PSScriptRoot '..\Invoke-IsolatedTests.ps1'
     $script:Cmd = Join-Path $env:SystemRoot 'System32\cmd.exe'
+    $script:Pwsh = (Get-Process -Id $PID).Path
+    $script:Prefix = '__isotest-'
     function Invoke-Runner {
         # Startet das Testskript in einem eigenen Prozess. Die geprüften Fälle brechen vor dem Bauen und vor dem
         # Umlenken von APPDATA/LOCALAPPDATA ab oder enden mit -ValidateOnly; es läuft also nie ein Test. Geprüft wird
         # auf ASCII-Wörter der Meldungen, weil die Konsolencodierung Umlaute verändern kann.
+        # Jeder Kindprozess bekommt -ValidateOnly und die Sperre SWV_ISOLATED_TESTS_CHILD: Auch bei einem Rückschritt in der
+        # Prüfung baut oder startet er nie etwas (keine Rekursion). Dieselbe pwsh wie der laufende Prozess.
         param([string[]] $Arguments)
-        $output = & pwsh -NoProfile -File $script:RunnerScript @Arguments 2>&1 | Out-String
+        $env:SWV_ISOLATED_TESTS_CHILD = '1'
+        $all = @($Arguments)
+        if ($all -notcontains '-ValidateOnly') { $all += '-ValidateOnly' }   # ein Schalter darf nicht doppelt stehen
+        try { $output = & $script:Pwsh -NoProfile -File $script:RunnerScript @all 2>&1 | Out-String }
+        finally { Remove-Item Env:\SWV_ISOLATED_TESTS_CHILD -ErrorAction SilentlyContinue }
         @{ Output = $output; Exit = $LASTEXITCODE }
     }
     function New-Junction([string] $Link, [string] $Target) {
@@ -14,7 +22,7 @@ BeforeAll {
     }
     function Remove-Leftovers {
         # Reste abgebrochener Läufe: erst Junctions (nur den Link, nie das Ziel), dann die Ordner.
-        foreach ($item in Get-ChildItem -LiteralPath $PSScriptRoot -Filter '__*' -Force -ErrorAction SilentlyContinue) {
+        foreach ($item in Get-ChildItem -LiteralPath $PSScriptRoot -Filter "$($script:Prefix)*" -Force -ErrorAction SilentlyContinue) {
             if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { [System.IO.Directory]::Delete($item.FullName) }
             elseif ($item.PSIsContainer) {
                 foreach ($inner in Get-ChildItem -LiteralPath $item.FullName -Force -ErrorAction SilentlyContinue) {
@@ -48,6 +56,8 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         @{ Path = 'tests/Unit/../Sandbox/Start-ActionSandbox.ps1' }
         @{ Path = 'tests\Unit\..\Integration' }
         @{ Path = 'tests/Unit-fremd' }
+        @{ Path = 'tests/Unit/IsolatedTestsScript.Tests.ps1,tests/Sandbox/Start-ActionSandbox.ps1' }
+        @{ Path = '\\?\C:\Windows' }
     ) {
         $r = Invoke-Runner @('-PesterPath', $Path)
         $r.Exit | Should -Be 2
@@ -61,6 +71,8 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         @{ Path = 'tests/Unit/GibtEsNicht.Tests.ps1'; Match = 'existiert nicht' }
         @{ Path = 'tests/Unit/*.Tests.ps1'; Match = 'Platzhalter' }
         @{ Path = ' '; Match = 'leer' }
+        @{ Path = 'tests/Unit/IsolatedTestsScript.Tests.ps1::$DATA'; Match = 'Doppelpunkt' }
+        @{ Path = 'tests/Unit/IsolatedTestsScript.Tests.ps1:strom.Tests.ps1'; Match = 'Doppelpunkt' }
     ) {
         $r = Invoke-Runner @('-PesterPath', $Path)
         $r.Exit | Should -Be 2
@@ -69,7 +81,7 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
     }
 
     It 'nimmt in tests/Unit keine .ps1 an, die keine *.Tests.ps1-Datei ist' {
-        $plain = Join-Path $PSScriptRoot "__plain-$([guid]::NewGuid().ToString('N').Substring(0, 8)).ps1"
+        $plain = Join-Path $PSScriptRoot "$($script:Prefix)plain-$([guid]::NewGuid().ToString('N').Substring(0, 8)).ps1"
         'Write-Output "darf nie laufen"' | Set-Content -LiteralPath $plain
         try {
             $r = Invoke-Runner @('-PesterPath', "tests/Unit/$(Split-Path -Leaf $plain)")
@@ -81,7 +93,7 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
     }
 
     It 'bricht ab, wenn der Pfad selbst eine Junction ist' {
-        $name = "__link-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+        $name = "$($script:Prefix)link-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
         $target = Join-Path $TestDrive 'ausserhalb'
         New-Item -ItemType Directory -Path $target -Force | Out-Null
         New-Junction (Join-Path $PSScriptRoot $name) $target
@@ -95,7 +107,7 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
     }
 
     It 'bricht ab, wenn in einem angegebenen Ordner eine Junction liegt (Pester würde hineinsteigen)' {
-        $name = "__dir-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+        $name = "$($script:Prefix)dir-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
         $folder = Join-Path $PSScriptRoot $name
         $target = Join-Path $TestDrive 'ausserhalb2'
         New-Item -ItemType Directory -Path $folder, $target -Force | Out-Null
@@ -147,6 +159,9 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         @{ Case = '-XunitFilter mit -IncludeIntegration'; Arguments = @('-XunitFilter', 'Name~X', '-IncludeIntegration'); Match = 'nur im vollen Lauf' }
         @{ Case = '-PesterPath mit -XunitOnly'; Arguments = @('-PesterPath', 'tests/Unit', '-XunitOnly'); Match = 'sich aus' }
         @{ Case = '-XunitFilter mit -PesterOnly'; Arguments = @('-XunitFilter', 'Name~X', '-PesterOnly'); Match = 'sich aus' }
+        @{ Case = '-PesterOnly mit -XunitOnly'; Arguments = @('-PesterOnly', '-XunitOnly'); Match = 'sich aus' }
+        @{ Case = 'Tippfehler im Parameternamen'; Arguments = @('-PesterPaht', 'tests/Unit'); Match = 'Unbekannte' }
+        @{ Case = 'Positionsargument'; Arguments = @('tests/Unit/IsolatedTestsScript.Tests.ps1'); Match = 'Unbekannte' }
     ) {
         $r = Invoke-Runner $Arguments
         $r.Exit | Should -Be 2
@@ -165,12 +180,5 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         $r.Exit | Should -Be 0
         $r.Output | Should -Match 'ISOLATED-TESTS-EXIT 0'
         $r.Output | Should -Not -Match 'Abbruch'
-    }
-
-    It 'bindet Positionsargumente nicht still an einen Parameter (kein versehentlicher Teillauf)' {
-        $r = Invoke-Runner @('tests/Unit/IsolatedTestsScript.Tests.ps1')
-        $r.Exit | Should -Not -Be 0
-        $r.Output | Should -Not -Match 'TEILLAUF'
-        $r.Output | Should -Not -Match 'Pester:'
     }
 }

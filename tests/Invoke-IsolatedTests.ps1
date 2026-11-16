@@ -36,7 +36,9 @@ param(
     [string[]] $PesterPath,
     [string] $XunitFilter,
     [switch] $Analyzer,
-    [switch] $ValidateOnly
+    [switch] $ValidateOnly,
+    # Fängt Tippfehler (-PesterPaht) und Positionsargumente ab: Abbruch mit Abschlusszeile statt stiller Bindung.
+    [Parameter(ValueFromRemainingArguments = $true)] [string[]] $Unexpected
 )
 
 function Stop-Run([int] $Code, [string] $Message) {
@@ -49,6 +51,8 @@ function Stop-Run([int] $Code, [string] $Message) {
 # --- Parameter prüfen, bevor etwas gebaut oder verändert wird -------------------------------------------------
 try {
     $repo = Resolve-Path (Join-Path $PSScriptRoot '..')
+    if ($Unexpected) { Stop-Run 2 ('Unbekannte oder zusätzliche Argumente: ' + ($Unexpected -join ' ') + ' (Parameter siehe Kopf des Skripts).') }
+    if ($PesterOnly -and $XunitOnly) { Stop-Run 2 '-PesterOnly und -XunitOnly schließen sich aus.' }
     $hasFilter = $PSBoundParameters.ContainsKey('XunitFilter')
     # Ohne -PesterPath bleibt die Liste leer (eine Pipeline mit $null ergäbe sonst ein leeres Element).
     $pathList = if ($PSBoundParameters.ContainsKey('PesterPath')) { @($PesterPath | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() }) } else { @() }
@@ -66,6 +70,8 @@ try {
     $pesterTargets = @()
     foreach ($path in $pathList) {
         if ([string]::IsNullOrWhiteSpace($path) -or [WildcardPattern]::ContainsWildcardCharacters($path)) { Stop-Run 2 "Ungültiger Pfad '$path' (leer oder mit Platzhaltern)." }
+        # Ein Doppelpunkt nach dem Laufwerk (C:) wäre ein NTFS-Stream (datei.ps1:name) oder ein Gerätepfad.
+        if ($path.Substring([Math]::Min(2, $path.Length)).Contains(':')) { Stop-Run 2 "Ungültiger Pfad '$path' (Doppelpunkt nach dem Laufwerk, Stream oder Gerätepfad)." }
         $full = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($path)) { $path } else { Join-Path $repo $path })).TrimEnd('\')
         # Nur tests/Unit: tests/Sandbox startet echte Installationen, tests/Integration liest das echte System.
         if (-not (($full + '\').StartsWith($unitRoot, [StringComparison]::OrdinalIgnoreCase))) { Stop-Run 2 "Der Pfad '$path' liegt nicht innerhalb von tests/Unit/." }
@@ -90,7 +96,9 @@ catch {
     'ISOLATED-TESTS-EXIT 3'
     exit 3
 }
-if ($ValidateOnly) {
+# SWV_ISOLATED_TESTS_CHILD=1 setzen die Tests dieses Skripts für ihre Kindprozesse: Sie enden nach der Prüfung, bauen und
+# starten nie etwas (sonst könnte ein Rückschritt in der Prüfung eine Rekursion auslösen).
+if ($ValidateOnly -or $env:SWV_ISOLATED_TESTS_CHILD -eq '1') {
     'Parameterprüfung bestanden (-ValidateOnly): Es wurde nichts gebaut oder ausgeführt.'
     'ISOLATED-TESTS-EXIT 0'
     exit 0
@@ -101,22 +109,26 @@ $runXunit = if ($subset) { $hasFilter } else { -not $PesterOnly }
 $runAnalyzer = if ($subset) { $Analyzer -and $runPester } else { $runPester }
 
 $root = Join-Path ([System.IO.Path]::GetTempPath()) "softwareverwaltung-tests-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
-$userCircl = Join-Path $env:LOCALAPPDATA 'SoftwareInventory\cache\CIRCL'
-$before = @(Get-ChildItem -LiteralPath $userCircl -File -ErrorAction SilentlyContinue).Count
 $saved = @{ APPDATA = $env:APPDATA; LOCALAPPDATA = $env:LOCALAPPDATA }
-New-Item -ItemType Directory -Path "$root\Roaming", "$root\Local" -Force | Out-Null
-$env:APPDATA = "$root\Roaming"; $env:LOCALAPPDATA = "$root\Local"
-Set-Location $repo
+$userCircl = $null
+$before = 0
 $exitCode = 0
 $notRun = $false
 try {
+    # Alles, was fehlschlagen kann, steht im try: Auch dann kommt die Abschlusszeile, und das finally setzt APPDATA zurück.
+    $userCircl = Join-Path $env:LOCALAPPDATA 'SoftwareInventory\cache\CIRCL'
+    $before = @(Get-ChildItem -LiteralPath $userCircl -File -ErrorAction SilentlyContinue).Count
+    New-Item -ItemType Directory -Path "$root\Roaming", "$root\Local" -Force | Out-Null
+    $env:APPDATA = "$root\Roaming"; $env:LOCALAPPDATA = "$root\Local"
+    Set-Location $repo
     if ($subset) { 'TEILLAUF (Teilmenge): ersetzt nie den vollen Lauf vor Abschluss eines Teilschritts und vor dem PR.' }
     # Das Modul lädt lib\SoftwareInventory.Native.dll (RequiredAssemblies); vor Pester bauen.
     $buildOutput = @(dotnet build src/SoftwareInventory.Native -nologo -v q 2>&1)
     if ($LASTEXITCODE -ne 0) { $exitCode = 1 }
     $buildOutput | Select-String -Pattern ' error ' | Select-Object -First 5
     if ($runPester) {
-        $paths = if ($subset) { $pesterTargets } else { $p = @('tests/Unit'); if ($IncludeIntegration) { $p += 'tests/Integration' }; $p }
+        # Relativ zum Repo (der Arbeitsordner ist das Repo): Ein Repo-Pfad mit [ ] würde von Pester sonst als Platzhalter gelesen.
+        $paths = if ($subset) { @($pesterTargets | ForEach-Object { $_.Substring($repo.Path.Length).TrimStart('\') }) } else { $p = @('tests/Unit'); if ($IncludeIntegration) { $p += 'tests/Integration' }; $p }
         $r = Invoke-Pester -Path $paths -Output None -PassThru
         'Pester: {0} bestanden, {1} fehlgeschlagen' -f $r.PassedCount, $r.FailedCount
         # Ein Syntaxfehler in einer Testdatei oder ein Fehler in BeforeAll/BeforeDiscovery zählt nicht als fehlgeschlagener
@@ -163,7 +175,7 @@ finally {
     $env:APPDATA = $saved.APPDATA; $env:LOCALAPPDATA = $saved.LOCALAPPDATA
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
 }
-$after = @(Get-ChildItem -LiteralPath $userCircl -File -ErrorAction SilentlyContinue).Count
+$after = if ($userCircl) { @(Get-ChildItem -LiteralPath $userCircl -File -ErrorAction SilentlyContinue).Count } else { 0 }
 "CIRCL-Bestände beim Benutzer vorher/nachher: $before / $after (müssen gleich bleiben)"
 if ($before -ne $after -and $exitCode -eq 0) { $exitCode = 1 }
 if ($notRun -and $exitCode -eq 0) { $exitCode = 4; 'Nicht alles Angeforderte wurde ausgeführt (Exit 4, kein "bestanden").' }
