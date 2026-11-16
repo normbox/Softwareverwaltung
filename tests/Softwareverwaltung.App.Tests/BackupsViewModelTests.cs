@@ -150,6 +150,31 @@ public sealed class BackupsViewModelTests
     });
 
     [Fact]
+    public void ReloadingWhileAnActionRunsDoesNotReleaseTheBusyFlag() => RunOnDispatcher(async () =>
+    {
+        var (vm, _, actions, confirm) = Create(true, Backup("id-1", "Jan"));
+        actions.Plan = Planned("RemoveBackup", "id-1");
+        actions.Hold = new TaskCompletionSource();
+        await vm.LoadAsync();
+        vm.SelectedItem = vm.Items[0];
+
+        var running = vm.DeleteCommand.ExecuteAsync(null);
+        while (!actions.Calls.Contains("Execute:RemoveBackup:id-1"))
+        {
+            await Task.Delay(10);
+        }
+        Assert.True(vm.IsBusy);
+        await vm.LoadAsync();
+        Assert.True(vm.IsBusy, "Neu laden (z. B. beim Seitenwechsel) darf die laufende Aktion nicht freigeben");
+        Assert.False(vm.DeleteCommand.CanExecute(null));
+
+        actions.Hold.SetResult();
+        await running;
+        Assert.False(vm.IsBusy);
+        Assert.Single(confirm.Shown);
+    });
+
+    [Fact]
     public void ConfirmationDialogShowsTheDescriptionInsteadOfTheBackupId()
     {
         var restore = Planned("RestoreBackup", "00000000-0000-0000-0000-000000000001");
@@ -195,6 +220,7 @@ public sealed class BackupsViewModelTests
         public ActionOutcome Plan { get; set; } = Planned("RemoveBackup", "id-1");
         public ActionOutcome Outcome { get; set; } = new() { Action = "RemoveBackup", Name = "Jan", Result = "Succeeded" };
         public Exception? PlanFailure { get; set; }
+        public TaskCompletionSource? Hold { get; set; }
         public List<string> Calls { get; } = [];
 
         public async Task<ActionOutcome> PlanAsync(SoftwareActionKind kind, PSObject? source, string method = "Auto", CancellationToken cancellationToken = default)
@@ -208,6 +234,10 @@ public sealed class BackupsViewModelTests
         {
             await Task.Yield();
             Calls.Add($"Execute:{kind}:{confirmedPlan.CommandLine}");
+            if (Hold is not null)
+            {
+                await Hold.Task;
+            }
             return Outcome;
         }
 

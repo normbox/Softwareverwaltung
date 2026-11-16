@@ -70,12 +70,13 @@ function Get-RegistryBackupInfo {
 }
 
 function New-BackupActionPlan {
-    # Gemeinsamer Plan für Restore-/Remove-RegistryBackup. CommandLine ist die Sicherungs-ID (wird bestätigt).
+    # Gemeinsamer Plan für Restore-/Remove-RegistryBackup. CommandLine (wird bestätigt) ist die Sicherungs-ID und
+    # der Schlüssel: Ändert sich die .json nach der Bestätigung, weicht sie ab und nichts wird ausgeführt.
     param([string] $Action, [string] $Name, [string] $BackupId, [string] $NativeKey, [string] $BackupFile, [string] $Method)
     [ordered]@{
         PSTypeName = 'SoftwareInventory.ActionPlan'; ActionId = [guid]::NewGuid().ToString(); Action = $Action; Name = $Name
         WingetId = $null; WingetSource = $null; RegistryKey = $NativeKey; ProductCode = $null; PackageFullName = $null
-        Scope = 'User'; Method = $Method; FilePath = $null; Arguments = $null; CommandLine = $BackupId
+        Scope = 'User'; Method = $Method; FilePath = $null; Arguments = $null; CommandLine = (@($BackupId, $NativeKey) | Where-Object { $_ }) -join ' '
         Elevated = $false; RestorePoint = $false; Result = $null; Message = $null; NextMethod = $null; VendorUrl = $null
         BackupFile = $BackupFile; NativeKey = $NativeKey; BackupId = $BackupId
         State = [pscustomobject] @{ Present = $true; Version = $null }

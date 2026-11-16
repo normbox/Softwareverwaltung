@@ -407,6 +407,18 @@ Describe 'Test-RegistryBackupContent (strenge Prüfung)' {
         Test-Content '' $key | Should -Be 'Empty'
     }
 
+    It 'lehnt ungewöhnliche Zeilenumbrüche ab (<Case>), damit sich keine Schlüsselzeile verstecken kann' -TestCases @(
+        @{ Case = 'einzelnes CR'; Sep = "`r" }
+        @{ Case = 'einzelnes LF'; Sep = "`n" }
+        @{ Case = 'NUL'; Sep = "`0" }
+        @{ Case = 'Zeilentrenner U+2028'; Sep = [string][char]0x2028 }
+        @{ Case = 'Zeilentrenner U+0085'; Sep = [string][char]0x0085 }
+    ) {
+        $key = "$($script:UserNative)\App"
+        $hidden = "$($script:UserNative)\Run"
+        Test-Content ((New-RegText $key) + $Sep + "[$hidden]`r`n") $key | Should -Be 'BadLineBreak'
+    }
+
     It 'Groß-/Kleinschreibung des Schlüssels spielt keine Rolle' {
         $key = "$($script:UserNative)\App"
         Test-Content (New-RegText $key.ToUpperInvariant()) $key | Should -BeNullOrEmpty

@@ -50,6 +50,11 @@ public sealed partial class BackupsViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanLoad))]
     public async Task LoadAsync()
     {
+        // Beim Öffnen der Seite gerufen, auch während eine Aktion läuft: dann nichts tun und IsBusy nicht freigeben.
+        if (IsBusy)
+        {
+            return;
+        }
         IsBusy = true;
         try
         {

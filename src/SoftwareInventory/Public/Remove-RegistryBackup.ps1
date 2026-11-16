@@ -84,7 +84,7 @@ function Invoke-RemoveBackupPlan {
         $left = @($Plan.BackupFile, (Get-RegistryBackupSidecarPath $Plan.BackupFile) | Where-Object { Test-Path -LiteralPath $_ })
         $Result.PresentAfter = $left.Count -gt 0
         $Result.Result = if ($left.Count -eq 0) { 'Succeeded' } else { 'Failed' }
-        $Result.Message = if ($left.Count -eq 0) { New-InventoryMessage RemoveBackupDone } else { New-InventoryMessage RemoveBackupFailed '' }
+        $Result.Message = if ($left.Count -eq 0) { New-InventoryMessage RemoveBackupDone } else { New-InventoryMessage RemoveBackupFailed (($left | ForEach-Object { Split-Path -Leaf $_ }) -join ', ') }
     }
     $Result.CompletedAt = [datetime]::UtcNow
     Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $Result)

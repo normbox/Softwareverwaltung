@@ -108,12 +108,15 @@ function Test-RegistryBackupContent {
         Uninstall-Zweig des Benutzers; jeder weitere Schlüsselkopf muss mit "<Hauptschlüssel>\" beginnen
         (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel.
     .OUTPUTS
-        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadHeader, DeleteLine, BadKeyLine, KeyNotFound,
+        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, DeleteLine, BadKeyLine, KeyNotFound,
         KeyMismatch, KeyOutside, KeyNotUninstall oder MachineNotYet.
     #>
     param([string] $Text, [string] $NativeKey)
     if (-not $Text -or -not $NativeKey) { return 'Empty' }
-    $lines = $Text -split "\r?\n"
+    # reg export schreibt nur CRLF. Einzelne CR/LF, NUL oder andere Zeilentrenner lehnen wir ab: Würde reg.exe
+    # dort anders trennen als diese Prüfung, könnte sich eine Schlüsselzeile an der Prüfung vorbeischmuggeln.
+    if ($Text -match "[\x00\x0B\x0C\u0085\u2028\u2029]|\r(?!\n)|(?<!\r)\n") { return 'BadLineBreak' }
+    $lines = $Text -split "\r\n"
     if ($lines[0].TrimEnd() -cne 'Windows Registry Editor Version 5.00') { return 'BadHeader' }
 
     $headers = [System.Collections.Generic.List[string]]::new()

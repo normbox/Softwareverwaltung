@@ -196,6 +196,7 @@ Regeln:
     ReasonBackupTooLarge                    = 'Die Sicherungsdatei ist zu groß'
     ReasonBackupBadEncoding                 = 'Die Sicherungsdatei hat nicht das Format von reg export (UTF-16)'
     ReasonBackupBadHeader                   = 'Die Sicherungsdatei beginnt nicht mit dem erwarteten Kopf'
+    ReasonBackupBadLineBreak                = 'Die Sicherungsdatei enthält ungewöhnliche Zeilenumbrüche und wird nicht zurückgespielt'
     ReasonBackupDeleteLine                  = 'Die Sicherungsdatei enthält Löschzeilen und wird nicht zurückgespielt'
     ReasonBackupBadKeyLine                  = 'Die Sicherungsdatei enthält eine unlesbare Schlüsselzeile'
     ReasonBackupKeyNotFound                 = 'Die Sicherungsdatei enthält keinen Schlüssel'
