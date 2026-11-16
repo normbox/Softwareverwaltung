@@ -111,23 +111,50 @@ function Get-PathDriveType {
     try { [string] ([System.IO.DriveInfo]::new($Root)).DriveType } catch { $null }
 }
 
+function Get-PathExistence {
+    <#
+    .SYNOPSIS
+        Exists, Missing oder Unknown: „Zugriff verweigert“ und andere Fehler sind nicht „fehlt“.
+    .DESCRIPTION
+        Test-Path liefert auch bei verweigertem Zugriff $false. Hier zählt nur „Datei oder Pfad nicht gefunden“ als
+        Missing; jeder andere Fehler (Zugriff verweigert, ungültiger Name, E/A-Fehler) ist Unknown.
+    #>
+    param([string] $Path)
+    try {
+        $null = [System.IO.File]::GetAttributes($Path)
+        'Exists'
+    }
+    catch [System.IO.FileNotFoundException] { 'Missing' }
+    catch [System.IO.DirectoryNotFoundException] { 'Missing' }
+    catch { 'Unknown' }
+}
+
 function Get-PathState {
     <#
     .SYNOPSIS
         Exists, Missing oder Unknown für einen Pfad aus der Registry (Anführungszeichen und Umgebungsvariablen erlaubt).
     .DESCRIPTION
-        Unknown bei leeren Angaben, Netzwerkpfaden, Laufwerken, die gerade nicht erreichbar sind, und Laufwerken,
-        die keine festen lokalen sind (Netzlaufwerk, USB-Stick, CD): Dort lässt sich nicht sagen, ob etwas fehlt.
+        Unknown bei leeren Angaben, Netzwerkpfaden, Pfaden ohne Wurzel der Form X:\ (auch C:datei.exe, \datei.exe,
+        \\?\...), Laufwerken, die gerade nicht erreichbar sind, allen Laufwerken außer dem Systemlaufwerk (auch ein
+        zweites festes Laufwerk kann eine externe USB-Platte sein, deren Buchstabe wechselt) und Pfaden, deren Zugriff
+        verweigert wird. Bei 32-Bit-Einträgen (Architecture X86) ist ein Pfad unter dem 64-Bit-Programmordner
+        Unknown: Eine Variable wie %ProgramFiles% löst sich hier zum falschen Ordner auf.
         Dieselben Regeln gelten im Helfer (OrphanRules.cs, gemeinsame Tabelle tests/Data/registry-orphan-cases.json).
     #>
-    param([string] $Path)
+    param([string] $Path, [string] $Architecture)
     if ([string]::IsNullOrWhiteSpace($Path)) { return 'Unknown' }
     $p = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"').Trim())
-    if (-not $p -or $p.StartsWith('\\') -or -not [System.IO.Path]::IsPathRooted($p)) { return 'Unknown' }
+    if (-not $p -or $p.StartsWith('\\') -or $p -notmatch '^[A-Za-z]:\\') { return 'Unknown' }
     if (-not (Test-PathRootReachable $p)) { return 'Unknown' }
     $root = try { [System.IO.Path]::GetPathRoot($p) } catch { $null }
-    if (-not $root -or (Get-PathDriveType $root) -ne 'Fixed') { return 'Unknown' }
-    if (Test-Path -LiteralPath $p) { 'Exists' } else { 'Missing' }
+    $systemRoot = try { [System.IO.Path]::GetPathRoot([Environment]::SystemDirectory) } catch { $null }
+    if (-not $root -or -not $systemRoot -or $root -ne $systemRoot -or (Get-PathDriveType $root) -ne 'Fixed') { return 'Unknown' }
+    if ($Architecture -eq 'X86') {
+        foreach ($native in $env:ProgramW6432, $env:CommonProgramW6432) {
+            if ($native -and $p.StartsWith($native.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { return 'Unknown' }
+        }
+    }
+    Get-PathExistence -Path $p
 }
 
 function Test-OrphanedRegistryEntry {
@@ -141,12 +168,14 @@ function Test-OrphanedRegistryEntry {
         und Ordner selbst, nicht übergeordnete Ordner (bei Jan 0.5.16 gibt es …\Programs\jan noch, weil es der
         Ordner der neuen Installation ist). Nie verwaist: MSI-Einträge (entscheidet Windows Installer), Einträge
         ohne Deinstallationsbefehl, nicht auswertbare Befehle, Systemwerkzeuge (rundll32, msiexec …),
-        Netzwerkpfade, nicht erreichbare Laufwerke und Laufwerke, die keine festen lokalen sind.
+        Netzwerkpfade, nicht erreichbare Laufwerke, alle Laufwerke außer dem Systemlaufwerk, Pfade ohne Wurzel X:\,
+        Pfade mit verweigertem Zugriff und bei 32-Bit-Einträgen Pfade unter dem 64-Bit-Programmordner.
     #>
     param($Record, [bool] $IsMsi)
     if ($IsMsi) { return $false }
     # Ohne UninstallString (auch wenn es nur einen QuietUninstallString gibt) ist nichts auswertbar: nie verwaist.
     if (-not $Record.UninstallString) { return $false }
+    $architecture = [string] $Record.Architecture
     $commands = @($Record.UninstallString, $Record.QuietUninstallString) | Where-Object { $_ }
     $system = @([Environment]::GetFolderPath('System'), [Environment]::GetFolderPath('SystemX86'), $env:WINDIR) |
         Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') + '\' }
@@ -154,11 +183,11 @@ function Test-OrphanedRegistryEntry {
         $parts = Split-CommandLine $command
         if ($parts.Error -or -not $parts.FilePath) { return $false }
         if ($system | Where-Object { $parts.FilePath.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }) { return $false }
-        if ((Get-PathState $parts.FilePath) -ne 'Missing') { return $false }
+        if ((Get-PathState $parts.FilePath -Architecture $architecture) -ne 'Missing') { return $false }
     }
     foreach ($path in $Record.InstallLocation, $Record.DisplayIcon) {
         if ([string]::IsNullOrWhiteSpace($path)) { continue }
-        if ((Get-PathState $path) -ne 'Missing') { return $false }
+        if ((Get-PathState $path -Architecture $architecture) -ne 'Missing') { return $false }
     }
     $true
 }

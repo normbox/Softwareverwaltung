@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
@@ -55,12 +56,67 @@ namespace SoftwareInventory.Helper
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool GetFileInformationByHandle(SafeFileHandle file, out ByHandleFileInformation information);
 
+        [DllImport("kernel32.dll")]
+        private static extern uint GetFileType(SafeFileHandle file);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFinalPathNameByHandleW(SafeFileHandle file, StringBuilder buffer, uint bufferLength, uint flags);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetLongPathNameW(string shortPath, StringBuilder longPath, uint length);
+
+        private const uint FileTypeDisk = 1;
+        private const uint FinalPathBufferLength = 2048;
+
+        /// <summary>
+        /// Nur ein einfacher Pfad der Form X:\... ist erlaubt: kein \\?\ oder \\.\ (Geräte), kein Doppelpunkt hinter dem
+        /// Laufwerk (alternative Datenströme wie datei.reg:strom) und keine Platzhalter.
+        /// </summary>
+        public static bool IsPlainDrivePath(string path)
+        {
+            return path != null && path.Length >= 4 && char.IsLetter(path[0]) && path[0] < 128 && path[1] == ':' && path[2] == '\\'
+                && path.IndexOf(':', 2) < 0 && path.IndexOfAny(new[] { '?', '*', '\0' }) < 0;
+        }
+
+        /// <summary>
+        /// Stimmt das geöffnete Ziel mit dem angegebenen Pfad überein? Ein 8.3-Kurzname, ein Ordner-Link (Junction), ein
+        /// Datenstrom oder ein abgeschnittener Name (Punkt, Leerzeichen am Ende) ergeben einen anderen aufgelösten Pfad.
+        /// </summary>
+        private static bool TargetMatches(SafeFileHandle handle, string path)
+        {
+            // Path.GetFullPath löst Kurznamen selbst auf und würde sie nicht auffallen lassen: Der angegebene Pfad muss
+            // schon in der langen Schreibweise vorliegen (GetLongPathName ändert ihn nicht, abgesehen von der Groß-/Kleinschreibung).
+            var longForm = new StringBuilder((int)FinalPathBufferLength);
+            var longLength = GetLongPathNameW(path, longForm, FinalPathBufferLength);
+            if (longLength == 0 || longLength >= FinalPathBufferLength || !string.Equals(longForm.ToString(), path, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            var buffer = new StringBuilder((int)FinalPathBufferLength);
+            var length = GetFinalPathNameByHandleW(handle, buffer, FinalPathBufferLength, 0);
+            if (length == 0 || length >= FinalPathBufferLength)
+            {
+                return false;
+            }
+            var final = buffer.ToString();
+            if (final.StartsWith(@"\\?\", StringComparison.Ordinal) && !final.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+            {
+                final = final.Substring(4);
+            }
+            return string.Equals(final, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Liest die Datei. Wirft FileNotFoundException, UnauthorizedAccessException oder IOException, wenn sie sich nicht
         /// öffnen lässt: Der Aufrufer behandelt das als „nicht lesbar“ und lehnt ab.
         /// </summary>
         public BackupFileRead Read(string path)
         {
+            // Ohne Text: Der Aufrufer bildet jede Ausnahme auf BackupFileUnreadable ab.
+            if (!IsPlainDrivePath(path))
+            {
+                throw new IOException();
+            }
             var handle = CreateFileW(path, GenericRead, FileShareRead, IntPtr.Zero, OpenExisting, FileFlagOpenReparsePoint, IntPtr.Zero);
             if (handle.IsInvalid)
             {
@@ -84,6 +140,10 @@ namespace SoftwareInventory.Helper
                 {
                     throw new IOException("Die Dateiangaben lassen sich nicht lesen.", Marshal.GetLastWin32Error());
                 }
+                if (GetFileType(handle) != FileTypeDisk)
+                {
+                    throw new IOException();
+                }
                 var info = new BackupFileInfo
                 {
                     IsReparsePoint = (raw.FileAttributes & FileAttributeReparsePoint) != 0,
@@ -93,6 +153,10 @@ namespace SoftwareInventory.Helper
                 if (info.IsReparsePoint)
                 {
                     return result;
+                }
+                if (!TargetMatches(handle, path))
+                {
+                    throw new IOException();
                 }
 
                 stream = new FileStream(handle, FileAccess.Read, 4096, false);

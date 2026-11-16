@@ -160,7 +160,8 @@ try {
             $testOutput = @(& dotnet @testArguments 2>&1)
             $testExit = $LASTEXITCODE
             if ($testExit -ne 0) { $exitCode = 1 }
-            $summary = @($testOutput | Select-String -Pattern 'Bestanden!|Fehler!|error|No test|Keine Tests' | Select-Object -First 10)
+            # Zusammenfassung plus bei Fehlschlägen Testname und Meldung (Zeilen "Fehler <Test>", "Failed <Test>", Assert-Texte).
+            $summary = @($testOutput | Select-String -Pattern 'Bestanden!|Fehler!|error|No test|Keine Tests|^\s*(Fehler|Failed)\s+\S|Assert\.|Expected|Actual|Exception' | Select-Object -First 40)
             $summary
             if ($subset -and $summary.Count -eq 0) { 'WARNUNG: xUnit meldete keine Zusammenfassung (Filter ohne Treffer?).'; $notRun = $true }
             if ($subset -and ($testOutput | Select-String -Pattern 'No test matches|Keine Tests')) { $notRun = $true }

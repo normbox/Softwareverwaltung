@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace SoftwareInventory.Helper
 {
@@ -11,7 +12,31 @@ namespace SoftwareInventory.Helper
     {
         public string ExpandVariables(string text) => Environment.ExpandEnvironmentVariables(text);
 
-        public bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFileAttributesW(string fileName);
+
+        private const uint InvalidFileAttributes = 0xFFFFFFFF;
+        private const int ErrorFileNotFound = 2;
+        private const int ErrorPathNotFound = 3;
+
+        /// <summary>Nur „Datei oder Pfad nicht gefunden“ ist Missing; Zugriff verweigert und alles andere ist Unknown.</summary>
+        public PathState PathStatus(string path)
+        {
+            if (GetFileAttributesW(path) != InvalidFileAttributes)
+            {
+                return PathState.Exists;
+            }
+            var error = Marshal.GetLastWin32Error();
+            return error == ErrorFileNotFound || error == ErrorPathNotFound ? PathState.Missing : PathState.Unknown;
+        }
+
+        public string SystemDriveRoot => Path.GetPathRoot(Environment.SystemDirectory);
+
+        public IReadOnlyList<string> NativeProgramFolders => new[]
+        {
+            Environment.GetEnvironmentVariable("ProgramW6432"),
+            Environment.GetEnvironmentVariable("CommonProgramW6432"),
+        }.Where(folder => !string.IsNullOrEmpty(folder)).ToList();
 
         public bool FileExists(string path) => File.Exists(path);
 

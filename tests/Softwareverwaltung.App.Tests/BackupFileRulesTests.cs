@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Text;
 using SoftwareInventory.Helper;
 
 namespace Softwareverwaltung.App.Tests;
@@ -196,6 +198,100 @@ public sealed class BackupFileRulesTests
         }
         finally
         {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Theory]
+    [InlineData(@"\\.\NUL")]
+    [InlineData(@"\\?\C:\Windows\win.ini")]
+    [InlineData(@"\\server\share\a.reg")]
+    [InlineData(@"C:a.reg")]
+    [InlineData(@"\a.reg")]
+    [InlineData(@"a.reg")]
+    [InlineData(@"C:\folder\a.reg:stream")]
+    [InlineData(@"C:\folder\*.reg")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void TheReaderRefusesPathsThatAreNotAPlainDrivePath(string? path)
+    {
+        Assert.False(WindowsBackupFileReader.IsPlainDrivePath(path!));
+        Assert.ThrowsAny<IOException>(() => new WindowsBackupFileReader().Read(path!));
+    }
+
+    [Fact]
+    public void TheReaderRefusesADeviceNameInsideAFolder()
+    {
+        // C:\...\NUL öffnet das Gerät NUL, keine Datei: GetFileType ist nicht FILE_TYPE_DISK.
+        var path = Path.Combine(Path.GetTempPath(), "NUL");
+        Assert.ThrowsAny<IOException>(() => new WindowsBackupFileReader().Read(path));
+    }
+
+    [Fact]
+    public void TheReaderRefusesAnAlternateDataStream()
+    {
+        var folder = NewTempFolder();
+        try
+        {
+            var file = Path.Combine(folder, "a.reg");
+            File.WriteAllBytes(file, [0xFF, 0xFE]);
+            RunCmd($"echo x > \"{file}:strom\"");
+            Assert.ThrowsAny<IOException>(() => new WindowsBackupFileReader().Read(file + ":strom"));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetShortPathNameW(string longPath, StringBuilder shortPath, uint length);
+
+    [Fact]
+    public void TheReaderRefusesAnEightDotThreeNameAndAcceptsTheLongName()
+    {
+        var folder = NewTempFolder();
+        try
+        {
+            var file = Path.Combine(folder, "backup-with-a-long-name.reg");
+            File.WriteAllBytes(file, [0xFF, 0xFE]);
+            Assert.Equal(2, new WindowsBackupFileReader().Read(file).Bytes!.Length);
+            var buffer = new StringBuilder(1024);
+            var length = GetShortPathNameW(file, buffer, 1024);
+            if (length == 0 || string.Equals(buffer.ToString(), file, StringComparison.OrdinalIgnoreCase))
+            {
+                return; // 8.3-Namen sind auf diesem Laufwerk abgeschaltet: der Fall lässt sich nicht nachstellen.
+            }
+            Assert.ThrowsAny<IOException>(() => new WindowsBackupFileReader().Read(buffer.ToString()));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void TheReaderRefusesAFolderLinkInTheMiddleOfThePath()
+    {
+        var folder = NewTempFolder();
+        try
+        {
+            var real = Path.Combine(folder, "real");
+            Directory.CreateDirectory(real);
+            File.WriteAllBytes(Path.Combine(real, "a.reg"), [0xFF, 0xFE]);
+            var junction = Path.Combine(folder, "link");
+            RunCmd($"mklink /J \"{junction}\" \"{real}\"");
+            if (!Directory.Exists(junction))
+            {
+                return;
+            }
+            Assert.ThrowsAny<IOException>(() => new WindowsBackupFileReader().Read(Path.Combine(junction, "a.reg")));
+            Assert.Equal(2, new WindowsBackupFileReader().Read(Path.Combine(real, "a.reg")).Bytes!.Length);
+        }
+        finally
+        {
+            // rmdir entfernt nur die Junction, nicht ihr Ziel; danach lässt sich der Ordner löschen.
+            RunCmd($"rmdir \"{Path.Combine(folder, "link")}\"");
             Directory.Delete(folder, true);
         }
     }

@@ -16,8 +16,16 @@ namespace SoftwareInventory.Helper
         /// <summary>Umgebungsvariablen wie %ProgramFiles% einsetzen.</summary>
         string ExpandVariables(string text);
 
-        /// <summary>Gibt es die Datei oder den Ordner (Test-Path -LiteralPath)?</summary>
-        bool PathExists(string path);
+        /// <summary>
+        /// Gibt es die Datei oder den Ordner? Nur „nicht gefunden“ ist Missing; Zugriff verweigert und andere Fehler sind Unknown.
+        /// </summary>
+        PathState PathStatus(string path);
+
+        /// <summary>Wurzel des Systemlaufwerks (z. B. C:\): nur dort lässt sich „fehlt“ sicher beurteilen.</summary>
+        string SystemDriveRoot { get; }
+
+        /// <summary>Die 64-Bit-Programmordner (ProgramW6432, CommonProgramW6432); bei 32-Bit-Einträgen lösen Variablen dort falsch auf.</summary>
+        IReadOnlyList<string> NativeProgramFolders { get; }
 
         /// <summary>Gibt es die Datei (Test-Path -PathType Leaf)?</summary>
         bool FileExists(string path);
@@ -51,7 +59,8 @@ namespace SoftwareInventory.Helper
     /// Verwaist nur, wenn die Datei im Deinstallationsbefehl fehlt (der UninstallString ist Pflicht, ein QuietUninstallString
     /// wird zusätzlich geprüft, wenn es ihn gibt) und InstallLocation sowie DisplayIcon fehlen oder ins Leere zeigen.
     /// Nie verwaist: MSI-Einträge, Einträge ohne UninstallString, nicht auswertbare Befehle, Systemwerkzeuge, Netzwerkpfade,
-    /// nicht erreichbare Laufwerke und Laufwerke, die keine festen lokalen sind. Was sich nicht sicher beurteilen lässt
+    /// nicht erreichbare Laufwerke, alle Laufwerke außer dem Systemlaufwerk, Pfade ohne Wurzel X:\, Pfade mit verweigertem
+    /// Zugriff und bei 32-Bit-Einträgen Pfade unter dem 64-Bit-Programmordner. Was sich nicht sicher beurteilen lässt
     /// (Unknown), zählt wie „vorhanden“: Der Helfer lehnt ab.
     /// </summary>
     public static class OrphanRules
@@ -62,7 +71,11 @@ namespace SoftwareInventory.Helper
         /// null, wenn der Eintrag verwaist ist; sonst der Grund, warum nicht: Msi, NoUninstallString, CommandUnparseable,
         /// SystemPath, PathExists oder PathUnknown.
         /// </summary>
-        public static string Check(bool isMsi, string uninstallString, string quietUninstallString, string installLocation, string displayIcon, IOrphanEnvironment env)
+        public static string Check(bool isMsi, string uninstallString, string quietUninstallString, string installLocation, string displayIcon, IOrphanEnvironment env) =>
+            Check(isMsi, uninstallString, quietUninstallString, installLocation, displayIcon, null, env);
+
+        /// <summary>Wie oben; <paramref name="architecture"/> ist X86 für Einträge unter WOW6432Node (sonst beliebig oder null).</summary>
+        public static string Check(bool isMsi, string uninstallString, string quietUninstallString, string installLocation, string displayIcon, string architecture, IOrphanEnvironment env)
         {
             try
             {
@@ -93,7 +106,7 @@ namespace SoftwareInventory.Helper
                     {
                         return "SystemPath";
                     }
-                    var state = GetPathState(filePath, env);
+                    var state = GetPathState(filePath, architecture, env);
                     if (state != PathState.Missing)
                     {
                         return state == PathState.Exists ? "PathExists" : "PathUnknown";
@@ -105,7 +118,7 @@ namespace SoftwareInventory.Helper
                     {
                         continue;
                     }
-                    var state = GetPathState(path, env);
+                    var state = GetPathState(path, architecture, env);
                     if (state != PathState.Missing)
                     {
                         return state == PathState.Exists ? "PathExists" : "PathUnknown";
@@ -124,20 +137,26 @@ namespace SoftwareInventory.Helper
             }
         }
 
-        /// <summary>Exists, Missing oder Unknown für einen Pfad aus der Registry (Anführungszeichen und Umgebungsvariablen erlaubt).</summary>
-        public static PathState GetPathState(string path, IOrphanEnvironment env)
+        /// <summary>
+        /// Exists, Missing oder Unknown für einen Pfad aus der Registry (Anführungszeichen und Umgebungsvariablen erlaubt).
+        /// Unknown: leer, Netzwerkpfad, Wurzel nicht der Form X:\ (auch C:datei.exe, \datei.exe, \\?\...), Laufwerk nicht
+        /// erreichbar oder nicht das feste Systemlaufwerk (ein zweites festes Laufwerk kann eine externe USB-Platte sein),
+        /// Profilpfad (im erhöhten Helfer), Zugriff verweigert und bei 32-Bit-Einträgen Pfade unter dem 64-Bit-Programmordner.
+        /// </summary>
+        public static PathState GetPathState(string path, string architecture, IOrphanEnvironment env)
         {
             if (string.IsNullOrWhiteSpace(path))
             {
                 return PathState.Unknown;
             }
             var p = env.ExpandVariables(path.Trim().Trim('"').Trim());
-            if (string.IsNullOrEmpty(p) || p.StartsWith("\\\\", StringComparison.Ordinal) || !Path.IsPathRooted(p))
+            if (string.IsNullOrEmpty(p) || !Regex.IsMatch(p, @"^[A-Za-z]:\\"))
             {
                 return PathState.Unknown;
             }
             var root = Path.GetPathRoot(p);
-            if (string.IsNullOrEmpty(root) || !env.RootReachable(root) || env.DriveType(root) != "Fixed")
+            if (string.IsNullOrEmpty(root) || !env.RootReachable(root)
+                || !string.Equals(root, env.SystemDriveRoot, IgnoreCase) || env.DriveType(root) != "Fixed")
             {
                 return PathState.Unknown;
             }
@@ -145,8 +164,15 @@ namespace SoftwareInventory.Helper
             {
                 return PathState.Unknown;
             }
-            return env.PathExists(p) ? PathState.Exists : PathState.Missing;
+            if (string.Equals(architecture, "X86", IgnoreCase)
+                && env.NativeProgramFolders.Any(f => !string.IsNullOrEmpty(f) && p.StartsWith(f.TrimEnd('\\') + "\\", IgnoreCase)))
+            {
+                return PathState.Unknown;
+            }
+            return env.PathStatus(p);
         }
+
+        public static PathState GetPathState(string path, IOrphanEnvironment env) => GetPathState(path, null, env);
 
         /// <summary>Datei im Befehl (wie Split-CommandLine im Modul): mit Anführungszeichen bis zum nächsten, sonst bis zur .exe; null, wenn nicht auswertbar.</summary>
         public static string SplitFilePath(string commandLine, IOrphanEnvironment env)
