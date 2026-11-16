@@ -369,7 +369,8 @@ Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
         function Expand-CaseText([string] $Text) {
             $t = $Text.Replace('{H}', $script:SharedHeader)
             foreach ($p in $script:SharedPlaceholders) { $t = $t.Replace($p.Placeholder, $p.Path) }
-            $t
+            # {U+XXXX} wird zum Zeichen mit diesem Codepunkt (unsichtbare Zeichen stehen in der Tabelle nie als Escape-Text).
+            [regex]::Replace($t, '\{U\+([0-9A-Fa-f]{4})\}', { param($m) [string] [char] [Convert]::ToInt32($m.Groups[1].Value, 16) })
         }
     }
 

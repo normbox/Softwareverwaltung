@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using SoftwareInventory.Helper;
 
 namespace Softwareverwaltung.App.Tests;
@@ -21,7 +22,11 @@ public sealed class RegistryBackupRulesTests
         var locations = root.GetProperty("locations").EnumerateArray()
             .Select(l => (Placeholder: l.GetProperty("placeholder").GetString()!, Location: new UninstallLocation(l.GetProperty("nativePath").GetString()!, l.GetProperty("scope").GetString()!)))
             .ToList();
-        string Expand(string text) => locations.Aggregate(text.Replace("{H}", header), (t, l) => t.Replace(l.Placeholder, l.Location.NativePath));
+        // {U+XXXX} wird zum Zeichen mit diesem Codepunkt (unsichtbare Zeichen stehen in der Tabelle nie als Escape-Text).
+        string Expand(string text) => Regex.Replace(
+            locations.Aggregate(text.Replace("{H}", header), (t, l) => t.Replace(l.Placeholder, l.Location.NativePath)),
+            @"\{U\+([0-9A-Fa-f]{4})\}",
+            m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
 
         var cases = root.GetProperty("cases").EnumerateArray().ToList();
         Assert.True(cases.Count > 25);
