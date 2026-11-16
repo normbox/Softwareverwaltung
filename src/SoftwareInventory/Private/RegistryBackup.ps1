@@ -105,13 +105,15 @@ function Test-RegistryBackupContent {
         Prüft den Inhalt einer .reg-Sicherung streng, bevor sie zurückgespielt wird.
     .DESCRIPTION
         Erlaubt ist genau ein Hauptschlüssel (der Schlüssel aus der Begleitdatei) direkt unter einem
-        Uninstall-Zweig des Benutzers; jeder weitere Schlüsselkopf muss mit "<Hauptschlüssel>\" beginnen
+        Uninstall-Zweig des erlaubten Bereichs (-Scope, Vorgabe User); jeder weitere Schlüsselkopf muss mit "<Hauptschlüssel>\" beginnen
         (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel.
     .OUTPUTS
         $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, DeleteLine, BadKeyLine, KeyNotFound,
-        KeyMismatch, KeyOutside, KeyNotUninstall oder MachineNotYet.
+        KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur User erlaubt) oder WrongScope
+        (HKCU, aber nur Machine erlaubt). Der Helfer prüft mit denselben Regeln (RegistryBackupRules.cs); beide
+        gegen tests/Data/registry-backup-cases.json.
     #>
-    param([string] $Text, [string] $NativeKey)
+    param([string] $Text, [string] $NativeKey, [ValidateSet('User', 'Machine')] [string] $Scope = 'User')
     if (-not $Text -or -not $NativeKey) { return 'Empty' }
     # reg export schreibt nur CRLF. Einzelne CR/LF, NUL oder andere Zeilentrenner lehnen wir ab: Würde reg.exe
     # dort anders trennen als diese Prüfung, könnte sich eine Schlüsselzeile an der Prüfung vorbeischmuggeln.
@@ -139,7 +141,7 @@ function Test-RegistryBackupContent {
     $parent = $NativeKey.Substring(0, $cut)
     $location = Get-UninstallLocationNative | Where-Object { [string]::Equals($_.NativePath, $parent, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
     if (-not $location) { return 'KeyNotUninstall' }
-    if ($location.Scope -ne 'User') { return 'MachineNotYet' }
+    if ($location.Scope -ne $Scope) { return $(if ($location.Scope -eq 'Machine') { 'MachineNotYet' } else { 'WrongScope' }) }
     $null
 }
 

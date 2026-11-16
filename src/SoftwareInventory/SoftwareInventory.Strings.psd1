@@ -204,6 +204,7 @@ Regeln:
     ReasonBackupKeyOutside                  = 'Die Sicherungsdatei enthält Schlüssel außerhalb des gesicherten Eintrags'
     ReasonBackupKeyNotUninstall             = 'Der Schlüssel liegt nicht direkt unter einem Uninstall-Zweig'
     ReasonBackupMachineNotYet               = 'Zurückspielen bei Einträgen für alle Benutzer folgt in einem späteren Schritt'
+    ReasonBackupWrongScope                  = 'Der Schlüssel gehört nicht zum Bereich dieser Sicherung (Benutzer oder alle Benutzer)'
     ReasonBackupMetadataMissing             = 'Ältere Sicherung ohne Begleitdatei: Zurückspielen nicht möglich, Löschen schon'
     ReasonBackupMetadataInvalid             = 'Die Begleitdatei der Sicherung ist unlesbar oder passt nicht zur Sicherung'
     ReasonOrphanedEntry                     = 'Programm nicht mehr vorhanden, nur Restanzeige in Windows'
