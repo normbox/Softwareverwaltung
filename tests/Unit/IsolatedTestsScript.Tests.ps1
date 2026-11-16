@@ -57,7 +57,6 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         @{ Path = 'tests\Unit\..\Integration' }
         @{ Path = 'tests/Unit-fremd' }
         @{ Path = 'tests/Unit/IsolatedTestsScript.Tests.ps1,tests/Sandbox/Start-ActionSandbox.ps1' }
-        @{ Path = '\\?\C:\Windows' }
     ) {
         $r = Invoke-Runner @('-PesterPath', $Path)
         $r.Exit | Should -Be 2
@@ -71,6 +70,7 @@ Describe 'Invoke-IsolatedTests.ps1: Teilmengen (-PesterPath, -XunitFilter, -Anal
         @{ Path = 'tests/Unit/GibtEsNicht.Tests.ps1'; Match = 'existiert nicht' }
         @{ Path = 'tests/Unit/*.Tests.ps1'; Match = 'Platzhalter' }
         @{ Path = ' '; Match = 'leer' }
+        @{ Path = '\\?\C:\Windows'; Match = 'Platzhalter' }   # das ? ist ein Platzhalterzeichen
         @{ Path = 'tests/Unit/IsolatedTestsScript.Tests.ps1::$DATA'; Match = 'Doppelpunkt' }
         @{ Path = 'tests/Unit/IsolatedTestsScript.Tests.ps1:strom.Tests.ps1'; Match = 'Doppelpunkt' }
     ) {
