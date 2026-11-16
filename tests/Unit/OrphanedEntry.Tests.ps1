@@ -221,7 +221,7 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         $r.Message.Code | Should -Be 'RemoveEntryDone'
         Test-Path "$($script:User)\janold" | Should -BeFalse
         Test-Path $script:Programs | Should -BeTrue -Because 'Ordner werden nie gelöscht'
-        $backup = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File
+        $backup = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File -Filter '*.reg'
         $backup.Name | Should -Be "$($r.ActionId)_Jan_0.5.16.reg"
         $r.BackupFile | Should -Be $backup.FullName
         $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }

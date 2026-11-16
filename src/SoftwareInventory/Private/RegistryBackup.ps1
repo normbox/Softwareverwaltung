@@ -87,16 +87,16 @@ function Get-RegistryBackupText {
     .SYNOPSIS
         Liest die .reg-Datei genau einmal; liefert die Bytes und den daraus gelesenen Text.
     .OUTPUTS
-        @{ Bytes; Text } oder @{ Problem } mit Missing, Empty, TooLarge oder BadEncoding. reg export schreibt
+        @{ Problem; Bytes; Text } (Problem ist $null, wenn alles passt; sonst Missing, Empty, TooLarge oder BadEncoding. reg export schreibt
         immer UTF-16 (Little Endian) mit Bytefolge FF FE am Anfang; alles andere gilt nicht als Sicherung.
     #>
     param([string] $File)
-    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return @{ Problem = 'Missing' } }
-    if ((Get-Item -LiteralPath $File).Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge' } }
+    if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return @{ Problem = 'Missing'; Bytes = $null; Text = $null } }
+    if ((Get-Item -LiteralPath $File).Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge'; Bytes = $null; Text = $null } }
     $bytes = [System.IO.File]::ReadAllBytes($File)
-    if ($bytes.Length -eq 0) { return @{ Problem = 'Empty' } }
-    if ($bytes.Length -lt 2 -or $bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE) { return @{ Problem = 'BadEncoding' } }
-    @{ Bytes = $bytes; Text = [System.Text.Encoding]::Unicode.GetString($bytes, 2, $bytes.Length - 2) }
+    if ($bytes.Length -eq 0) { return @{ Problem = 'Empty'; Bytes = $null; Text = $null } }
+    if ($bytes.Length -lt 2 -or $bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE) { return @{ Problem = 'BadEncoding'; Bytes = $null; Text = $null } }
+    @{ Problem = $null; Bytes = $bytes; Text = [System.Text.Encoding]::Unicode.GetString($bytes, 2, $bytes.Length - 2) }
 }
 
 function Test-RegistryBackupContent {
@@ -156,11 +156,13 @@ function Test-RegistryBackup {
 function ConvertTo-KnownBackupReason {
     # Nur bekannte Grund-Codes mit ihren Argumenten (als kurze Texte); alles andere wird verworfen.
     param($Reasons)
+    # Gründe sind Objekte (Meldungen, aus JSON) oder Dictionaries (aus dem Plan).
+    $field = { param($o, $n) if ($o -is [System.Collections.IDictionary]) { if ($o.Contains($n)) { $o[$n] } } else { Get-RecordValue $o $n } }
     foreach ($reason in @($Reasons)) {
         if ($null -eq $reason) { continue }
-        $code = [string] (Get-RecordValue $reason 'Code')
+        $code = [string] (& $field $reason 'Code')
         if ($code -cnotin $script:KnownBackupReasonCodes) { continue }
-        $reasonArgs = @(@(Get-RecordValue $reason 'Args') | Where-Object { $null -ne $_ } | Select-Object -First 4 | ForEach-Object {
+        $reasonArgs = @(@(& $field $reason 'Args') | Where-Object { $null -ne $_ } | Select-Object -First 4 | ForEach-Object {
                 $s = [string] $_
                 if ($s.Length -gt 200) { $s.Substring(0, 200) } else { $s }
             })
@@ -188,16 +190,16 @@ function Read-RegistryBackupSidecar {
     .SYNOPSIS
         Liest und prüft die Begleitdatei einer Sicherung.
     .OUTPUTS
-        @{ Data } mit ActionId, Name, NativeKey, Scope, CreatedAt (UTC) und Reasons (Code, Args), oder
-        @{ Problem } mit MetadataMissing oder MetadataInvalid.
+        @{ Problem; Data }: Data mit ActionId, Name, NativeKey, Scope, CreatedAt (UTC) und Reasons (Code, Args),
+        oder Problem mit MetadataMissing oder MetadataInvalid. Beide Schlüssel sind immer da (StrictMode).
     #>
     param([string] $File)
     $path = Get-RegistryBackupSidecarPath $File
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @{ Problem = 'MetadataMissing' } }
-    if ((Get-Item -LiteralPath $path).Length -gt $script:RegistryBackupSidecarMaxBytes) { return @{ Problem = 'MetadataInvalid' } }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @{ Problem = 'MetadataMissing'; Data = $null } }
+    if ((Get-Item -LiteralPath $path).Length -gt $script:RegistryBackupSidecarMaxBytes) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
     try { $d = [System.IO.File]::ReadAllText($path) | ConvertFrom-Json -ErrorAction Stop }
-    catch { return @{ Problem = 'MetadataInvalid' } }
-    if ($d -isnot [pscustomobject]) { return @{ Problem = 'MetadataInvalid' } }
+    catch { return @{ Problem = 'MetadataInvalid'; Data = $null } }
+    if ($d -isnot [pscustomobject]) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
     $id = [string] (Get-RecordValue $d 'ActionId')
     $name = [string] (Get-RecordValue $d 'Name')
     $key = [string] (Get-RecordValue $d 'NativeKey')
@@ -205,13 +207,14 @@ function Read-RegistryBackupSidecar {
     $createdAt = [datetime]::MinValue
     if ($created -is [datetime]) { $createdAt = $created.ToUniversalTime() }
     elseif (-not [datetime]::TryParse([string] $created, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal, [ref] $createdAt)) {
-        return @{ Problem = 'MetadataInvalid' }
+        return @{ Problem = 'MetadataInvalid'; Data = $null }
     }
     if ((Get-RecordValue $d 'SchemaVersion') -ne 1 -or -not $id -or -not $name -or -not $key -or $id -ine (Get-RegistryBackupId $File)) {
-        return @{ Problem = 'MetadataInvalid' }
+        return @{ Problem = 'MetadataInvalid'; Data = $null }
     }
     @{
-        Data = [pscustomobject] @{
+        Problem = $null
+        Data    = [pscustomobject] @{
             ActionId = $id; Name = $name; NativeKey = $key; Scope = [string] (Get-RecordValue $d 'Scope'); CreatedAt = $createdAt
             Reasons  = @(ConvertTo-KnownBackupReason (Get-RecordValue $d 'Reasons'))
         }
@@ -236,7 +239,8 @@ function Remove-ExpiredRegistryBackup {
             continue
         }
         if ($f.LastWriteTimeUtc -ge $cutoff) { continue }
-        if (Remove-CleanupFile $f) { $deleted++ }
+        if (-not (Remove-CleanupFile $f)) { continue }   # gesperrt: Paar bleibt ganz
+        $deleted++
         if ($f.Extension -ieq '.reg') {
             $sidecar = Get-Item -LiteralPath ([System.IO.Path]::ChangeExtension($f.FullName, '.json')) -ErrorAction SilentlyContinue
             if ($sidecar -and (Remove-CleanupFile $sidecar)) { $deleted++; $null = $gone.Add($sidecar.FullName) }
