@@ -1,6 +1,6 @@
 ---
 name: audit
-description: Prüft Änderungen (Diff) und führt die Tests aus, in einer eigenen Kopie des Repositorys. Nutze ihn für jeden Testlauf und zur Prüfung vor jedem Pull Request.
+description: Prüft Änderungen (Diff) und führt die Tests aus, in einer eigenen Kopie des Repositorys. Nur für Ausnahmefälle (saubere Kopie des committeten Stands auf ausdrücklichen Wunsch); normale Testläufe startet die Hauptsitzung selbst.
 tools: Read, Grep, Glob, Bash, PowerShell
 model: haiku
 isolation: worktree
