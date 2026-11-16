@@ -8,6 +8,9 @@ $script:RegistryBackupMaxBytes = 16MB
 $script:RegistryBackupSidecarMaxBytes = 64KB
 # Nur diese Gründe übernimmt das Modul in die Begleitdatei; alles andere wird verworfen.
 $script:KnownBackupReasonCodes = @('OrphanedEntry', 'NewerInstallNextTo')
+# Ungewöhnliche Zeilenumbrüche: NUL, VT, FF, NEL, U+2028, U+2029 sowie einzelnes CR oder LF. Die Zeichen stehen als
+# Codepunkte, nie als Escape-Text im Quelltext (CLAUDE.md).
+$script:OddLineBreakPattern = '[' + (-join (0x00, 0x0B, 0x0C, 0x85, 0x2028, 0x2029 | ForEach-Object { '\u{0:X4}' -f $_ })) + ']|\r(?!\n)|(?<!\r)\n'
 
 function Get-RegistryBackupDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\registry-backup'
@@ -118,7 +121,7 @@ function Test-RegistryBackupContent {
     if (-not $Text -or -not $NativeKey) { return 'Empty' }
     # reg export schreibt nur CRLF. Einzelne CR/LF, NUL oder andere Zeilentrenner lehnen wir ab: Würde reg.exe
     # dort anders trennen als diese Prüfung, könnte sich eine Schlüsselzeile an der Prüfung vorbeischmuggeln.
-    if ($Text -match "[\x00\x0B\x0C\u0085\u2028\u2029]|\r(?!\n)|(?<!\r)\n") { return 'BadLineBreak' }
+    if ($Text -match $script:OddLineBreakPattern) { return 'BadLineBreak' }
     $lines = $Text -split "\r\n"
     $blanks = [char[]] @(' ', "`t")
     if (-not [string]::Equals($lines[0].TrimEnd($blanks), 'Windows Registry Editor Version 5.00', [StringComparison]::Ordinal)) { return 'BadHeader' }
