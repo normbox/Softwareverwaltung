@@ -162,6 +162,12 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
             case SoftwareActionKind.RemoveEntry:
                 command.AddCommand("Remove-OrphanedEntry").AddParameter("InputObject", Required(source));
                 break;
+            case SoftwareActionKind.RestoreBackup:
+                command.AddCommand("Restore-RegistryBackup").AddParameter("InputObject", Required(source));
+                break;
+            case SoftwareActionKind.RemoveBackup:
+                command.AddCommand("Remove-RegistryBackup").AddParameter("InputObject", Required(source));
+                break;
             default:
                 command.AddCommand("Install-WingetPackageManager");
                 break;

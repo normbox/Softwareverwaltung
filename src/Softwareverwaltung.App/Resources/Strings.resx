@@ -184,6 +184,69 @@
   <data name="NavSettings" xml:space="preserve">
     <value>Einstellungen</value>
   </data>
+  <data name="NavBackups" xml:space="preserve">
+    <value>Sicherungen</value>
+  </data>
+  <data name="BackupsTitle" xml:space="preserve">
+    <value>Sicherungen entfernter Einträge</value>
+  </data>
+  <data name="BackupsIntro" xml:space="preserve">
+    <value>Vor dem Entfernen eines verwaisten Eintrags legt die App eine Sicherung als .reg-Datei an. Hier lassen sich Sicherungen löschen und, für Einträge des aktuellen Benutzers, zurückspielen. Sicherungen werden 365 Tage aufbewahrt.</value>
+  </data>
+  <data name="BackupsListName" xml:space="preserve">
+    <value>Liste der Sicherungen</value>
+  </data>
+  <data name="ColumnBackupName" xml:space="preserve">
+    <value>Programm</value>
+  </data>
+  <data name="ColumnBackupDate" xml:space="preserve">
+    <value>Gesichert am</value>
+  </data>
+  <data name="ColumnBackupReasons" xml:space="preserve">
+    <value>Grund</value>
+  </data>
+  <data name="ColumnBackupKey" xml:space="preserve">
+    <value>Registry-Schlüssel</value>
+  </data>
+  <data name="ColumnBackupStatus" xml:space="preserve">
+    <value>Zurückspielen</value>
+  </data>
+  <data name="BackupsEmpty" xml:space="preserve">
+    <value>Es gibt keine Sicherungen. Sie entstehen, wenn Sie in der Programmliste einen verwaisten Eintrag entfernen.</value>
+  </data>
+  <data name="BackupsRefresh" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="BackupsRestore" xml:space="preserve">
+    <value>Wiederherstellen</value>
+  </data>
+  <data name="BackupsRestoreTooltip" xml:space="preserve">
+    <value>Schreibt den gesicherten Eintrag zurück in die Registry. Vorher prüft die App die Sicherung streng; die Sicherung bleibt erhalten. Der Eintrag erscheint beim nächsten Scan wieder in der Liste.</value>
+  </data>
+  <data name="BackupsDelete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="BackupsDeleteTooltip" xml:space="preserve">
+    <value>Löscht die Sicherung (beide Dateien). Der Registry-Eintrag selbst bleibt unberührt.</value>
+  </data>
+  <data name="BackupsLegacyReason" xml:space="preserve">
+    <value>Ältere Sicherung</value>
+  </data>
+  <data name="BackupsRestorable" xml:space="preserve">
+    <value>Kann zurückgespielt werden</value>
+  </data>
+  <data name="BackupsCount" xml:space="preserve">
+    <value>Sicherungen: {0}</value>
+  </data>
+  <data name="BackupsLoadFailed" xml:space="preserve">
+    <value>Die Sicherungen konnten nicht gelesen werden: {0}</value>
+  </data>
+  <data name="ActionRestoreBackup" xml:space="preserve">
+    <value>Sicherung wiederherstellen</value>
+  </data>
+  <data name="ActionRemoveBackup" xml:space="preserve">
+    <value>Sicherung löschen</value>
+  </data>
   <data name="ProgramsScan" xml:space="preserve">
     <value>Scannen</value>
   </data>
@@ -263,7 +326,7 @@
     <value>Eintrag entfernen</value>
   </data>
   <data name="ActionRemoveEntryTooltip" xml:space="preserve">
-    <value>Entfernt nur den verwaisten Eintrag aus der Programmliste von Windows. Vorher wird er als .reg-Datei gesichert (Zurückspielen per Doppelklick). Dateien und Ordner bleiben unberührt.</value>
+    <value>Entfernt nur den verwaisten Eintrag aus der Programmliste von Windows. Vorher wird er als .reg-Datei gesichert (Zurückspielen unter „Sicherungen“). Dateien und Ordner bleiben unberührt.</value>
   </data>
   <data name="RemoveEntryLaterHint" xml:space="preserve">
     <value>Entfernen bei Einträgen für alle Benutzer folgt in einem späteren Schritt.</value>

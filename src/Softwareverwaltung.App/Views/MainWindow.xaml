@@ -111,6 +111,15 @@
                 </TabItem.Header>
                 <views:SettingsView DataContext="{Binding Settings}" />
             </TabItem>
+            <TabItem Visibility="{Binding Backups, Converter={StaticResource NullToVisibility}}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Archive24" Margin="0,0,6,0" />
+                        <TextBlock Text="{loc:Text NavBackups}" />
+                    </StackPanel>
+                </TabItem.Header>
+                <views:BackupsView DataContext="{Binding Backups}" />
+            </TabItem>
         </TabControl>
             <!-- Knopf rechts neben den Seitenreitern -->
             <ui:Button Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,16,0"

@@ -25,7 +25,8 @@ public partial class App : Application
         var programs = new MainViewModel(new InventoryService(_host), new ActionService(_host), new ConfirmationService(), shell: new ShellService(), cpe: new CpeService(_host), ui: ui);
         var advisor = new AdvisorService(new AdvisorModule(_host));
         var settings = new SettingsViewModel(new SettingsService(_host), new FolderPicker(), advisor);
-        var viewModel = new ShellViewModel(programs, settings, new AdvisorChatViewModel(advisor, programs, settings, ui));
+        var backups = new BackupsViewModel(new BackupService(_host), new ActionService(_host), new ConfirmationService());
+        var viewModel = new ShellViewModel(programs, settings, new AdvisorChatViewModel(advisor, programs, settings, ui), backups);
         var window = new MainWindow { DataContext = viewModel };
         // Laufwerke und USB-Sticks live: die Liste in den Einstellungen folgt ohne Neustart.
         var drives = new DriveChangeWatcher();

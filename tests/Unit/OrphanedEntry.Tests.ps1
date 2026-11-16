@@ -189,6 +189,9 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
                 'Good' { "Windows Registry Editor Version 5.00`r`n`r`n[$NativeKey]`r`n`"DisplayName`"=`"Jan 0.5.16`"`r`n" | Set-Content -LiteralPath $File -Encoding Unicode; 0 }
                 'Empty' { [System.IO.File]::WriteAllBytes($File, [byte[]] @()); 0 }
                 'WrongKey' { "Windows Registry Editor Version 5.00`r`n`r`n[HKEY_CURRENT_USER\Other]`r`n" | Set-Content -LiteralPath $File -Encoding Unicode; 0 }
+                'Subkey' { "Windows Registry Editor Version 5.00`r`n`r`n[$NativeKey]`r`n`"DisplayName`"=`"Jan 0.5.16`"`r`n`r`n[$NativeKey\Sub]`r`n`"A`"=`"1`"`r`n" | Set-Content -LiteralPath $File -Encoding Unicode; 0 }
+                'ForeignSub' { "Windows Registry Editor Version 5.00`r`n`r`n[$NativeKey]`r`n`r`n[${NativeKey}X]`r`n" | Set-Content -LiteralPath $File -Encoding Unicode; 0 }
+                'Ansi' { "Windows Registry Editor Version 5.00`r`n`r`n[$NativeKey]`r`n" | Set-Content -LiteralPath $File -Encoding ascii; 0 }
                 'None' { 0 }
                 'ExitCode' { 1 }
             }
@@ -218,7 +221,7 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         $r.Message.Code | Should -Be 'RemoveEntryDone'
         Test-Path "$($script:User)\janold" | Should -BeFalse
         Test-Path $script:Programs | Should -BeTrue -Because 'Ordner werden nie gelöscht'
-        $backup = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File
+        $backup = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File -Filter '*.reg'
         $backup.Name | Should -Be "$($r.ActionId)_Jan_0.5.16.reg"
         $r.BackupFile | Should -Be $backup.FullName
         $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
@@ -229,7 +232,9 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
 
     It 'entfernt nichts, wenn die Sicherung nicht passt (<Mode>)' -TestCases @(
         @{ Mode = 'Empty'; Expected = 'Empty' }
-        @{ Mode = 'WrongKey'; Expected = 'KeyNotFound' }
+        @{ Mode = 'WrongKey'; Expected = 'KeyMismatch' }
+        @{ Mode = 'ForeignSub'; Expected = 'KeyOutside' }
+        @{ Mode = 'Ansi'; Expected = 'BadEncoding' }
         @{ Mode = 'None'; Expected = 'Missing' }
         @{ Mode = 'ExitCode'; Expected = 'Missing' }
     ) {
@@ -271,6 +276,55 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         Test-Path "$($script:User)\janold" | Should -BeTrue
     }
 
+    It 'schreibt neben die Sicherung eine Begleitdatei mit Codes statt Texten' {
+        $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Succeeded'
+        $sidecar = [System.IO.Path]::ChangeExtension($r.BackupFile, '.json')
+        Test-Path -LiteralPath $sidecar | Should -BeTrue
+        $raw = Get-Content -LiteralPath $sidecar -Raw
+        $raw | Should -Not -Match '"Text"'
+        $json = $raw | ConvertFrom-Json
+        $json.SchemaVersion | Should -Be 1
+        $json.ActionId | Should -Be $r.ActionId
+        $json.Name | Should -Be 'Jan 0.5.16'
+        $json.NativeKey | Should -BeLike 'HKEY_CURRENT_USER\*\RemoveUser\janold'
+        $json.Scope | Should -Be 'User'
+        @($json.Reasons.Code) | Should -Be @('OrphanedEntry')
+    }
+
+    It 'übernimmt nur bekannte Gründe vom Eingabeobjekt' {
+        $rating = [pscustomobject] @{
+            Record  = Get-Orphan
+            Reasons = @(
+                [pscustomobject] @{ Code = 'NewerInstallNextTo'; Args = @('Jan', '0.8.8') }
+                [pscustomobject] @{ Code = 'Unbekannt'; Args = @('x') }
+            )
+        }
+        $r = $rating | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Succeeded'
+        $json = Get-Content -LiteralPath ([System.IO.Path]::ChangeExtension($r.BackupFile, '.json')) -Raw | ConvertFrom-Json
+        @($json.Reasons.Code) | Should -Be @('OrphanedEntry', 'NewerInstallNextTo')
+        @($json.Reasons[1].Args) | Should -Be @('Jan', '0.8.8')
+    }
+
+    It 'entfernt auch einen Schlüssel mit Unterschlüsseln, wenn die Sicherung ihn vollständig enthält' {
+        New-Item -Path "$($script:User)\janold\Sub" -Force | Out-Null
+        $script:ExportMode = 'Subkey'
+        $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Succeeded'
+        Test-Path "$($script:User)\janold" | Should -BeFalse
+    }
+
+    It 'entfernt nichts, wenn die Begleitdatei nicht geschrieben werden kann' {
+        Mock -ModuleName SoftwareInventory Write-RegistryBackupSidecar { throw 'Datenträger voll' }
+        $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryBackupInvalid'
+        $r.Message.Args[0] | Should -Be 'MetadataWrite'
+        Test-Path "$($script:User)\janold" | Should -BeTrue
+        @(Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -File -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
+    }
+
     It 'bildet den Dateinamen aus ActionId und bereinigtem Programmnamen' {
         InModuleScope SoftwareInventory {
             Get-RegistryBackupFileName -ActionId 'id' -Name 'Jan 0.5.16' | Should -Be 'id_Jan_0.5.16.reg'
@@ -278,17 +332,147 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
             Get-RegistryBackupFileName -ActionId 'id' -Name '???' | Should -Be 'id_Eintrag.reg'
         }
     }
+
+    It 'härtet den Dateinamen: keine Pfadzeichen, kein "..", keine reservierten Namen, begrenzte Länge' -TestCases @(
+        @{ Name = '..\..\evil'; Expected = 'id_evil.reg' }
+        @{ Name = '../../Windows/x'; Expected = 'id_Windows_x.reg' }
+        @{ Name = 'a..b'; Expected = 'id_a.b.reg' }
+        @{ Name = 'C:\Temp\x'; Expected = 'id_C_Temp_x.reg' }
+        @{ Name = 'CON'; Expected = 'id__CON.reg' }
+        @{ Name = 'nul.txt'; Expected = 'id__nul.txt.reg' }
+        @{ Name = 'COM1'; Expected = 'id__COM1.reg' }
+        @{ Name = ('a' * 200); Expected = "id_$('a' * 60).reg" }
+    ) {
+        InModuleScope SoftwareInventory -Parameters @{ N = $Name; E = $Expected } {
+            $f = Get-RegistryBackupFileName -ActionId 'id' -Name $N
+            $f | Should -Be $E
+            $f | Should -Not -Match '[\\/:]'
+            $f | Should -Not -Match '\.\.'
+        }
+    }
+}
+
+Describe 'Test-RegistryBackupContent (strenge Prüfung)' {
+    BeforeAll {
+        New-Item -Path 'TestRegistry:\ValUser', 'TestRegistry:\ValMachine', 'TestRegistry:\ValElsewhere' -Force | Out-Null
+        $script:UserNative = (Get-Item 'TestRegistry:\ValUser').Name
+        $script:MachineNative = (Get-Item 'TestRegistry:\ValMachine').Name
+        $script:ElsewhereNative = (Get-Item 'TestRegistry:\ValElsewhere').Name
+        Mock -ModuleName SoftwareInventory Get-DefaultUninstallLocation {
+            @(@{ Path = 'TestRegistry:\ValMachine'; Scope = 'Machine'; Architecture = 'X64' }, @{ Path = 'TestRegistry:\ValUser'; Scope = 'User'; Architecture = $null })
+        }
+        function New-RegText([string[]] $Keys, [string] $Header = 'Windows Registry Editor Version 5.00') {
+            "$Header`r`n`r`n" + (($Keys | ForEach-Object { "[$_]`r`n`"DisplayName`"=`"x`"`r`n" }) -join "`r`n")
+        }
+        function Test-Content([string] $Text, [string] $Key) {
+            InModuleScope SoftwareInventory -Parameters @{ T = $Text; K = $Key } { Test-RegistryBackupContent -Text $T -NativeKey $K }
+        }
+    }
+
+    It 'akzeptiert genau einen Hauptschlüssel unter dem Uninstall-Zweig des Benutzers' {
+        $key = "$($script:UserNative)\App"
+        Test-Content (New-RegText $key) $key | Should -BeNullOrEmpty
+    }
+
+    It 'akzeptiert Unterschlüssel des Hauptschlüssels, auch tief verschachtelt' {
+        $key = "$($script:UserNative)\App"
+        Test-Content (New-RegText $key, "$key\Sub", "$key\Sub\Deep") $key | Should -BeNullOrEmpty
+    }
+
+    It 'lehnt ab: <Case>' -TestCases @(
+        @{ Case = 'Schlüssel außerhalb des Hauptschlüssels'; Zone = 'User'; Keys = @('App', 'Other'); Main = 'App'; Expected = 'KeyOutside' }
+        @{ Case = 'Präfix-Trick (App gegen AppX)'; Zone = 'User'; Keys = @('App', 'AppX'); Main = 'App'; Expected = 'KeyOutside' }
+        @{ Case = 'Hauptschlüssel zweimal'; Zone = 'User'; Keys = @('App', 'App'); Main = 'App'; Expected = 'KeyOutside' }
+        @{ Case = 'anderer Schlüssel zuerst'; Zone = 'User'; Keys = @('Other', 'App'); Main = 'App'; Expected = 'KeyMismatch' }
+        @{ Case = 'Hauptschlüssel außerhalb der Uninstall-Zweige'; Zone = 'Elsewhere'; Keys = @('App'); Main = 'App'; Expected = 'KeyNotUninstall' }
+        @{ Case = 'Eintrag für alle Benutzer (HKLM)'; Zone = 'Machine'; Keys = @('App'); Main = 'App'; Expected = 'MachineNotYet' }
+        @{ Case = 'Hauptschlüssel eine Ebene zu tief'; Zone = 'User'; Keys = @('App\Sub'); Main = 'App\Sub'; Expected = 'KeyNotUninstall' }
+    ) {
+        $base = switch ($Zone) { 'User' { $script:UserNative } 'Machine' { $script:MachineNative } default { $script:ElsewhereNative } }
+        $keys = @($Keys | ForEach-Object { "$base\$_" })
+        Test-Content (New-RegText $keys) "$base\$Main" | Should -Be $Expected
+    }
+
+    It 'lehnt Löschzeilen ab, auch mit Leerzeichen davor' {
+        $key = "$($script:UserNative)\App"
+        Test-Content ((New-RegText $key) + "`r`n[-$($script:UserNative)\Anderes]`r`n") $key | Should -Be 'DeleteLine'
+        Test-Content ((New-RegText $key) + "`r`n  [-$($script:UserNative)\Anderes]`r`n") $key | Should -Be 'DeleteLine'
+    }
+
+    It 'lehnt einen falschen Kopf, fehlende Schlüssel und kaputte Schlüsselzeilen ab' {
+        $key = "$($script:UserNative)\App"
+        Test-Content (New-RegText $key 'REGEDIT4') $key | Should -Be 'BadHeader'
+        Test-Content "Windows Registry Editor Version 5.00`r`n`r`n`"A`"=`"1`"`r`n" $key | Should -Be 'KeyNotFound'
+        Test-Content "Windows Registry Editor Version 5.00`r`n`r`n[$key" $key | Should -Be 'BadKeyLine'
+        Test-Content '' $key | Should -Be 'Empty'
+    }
+
+    It 'lehnt ungewöhnliche Zeilenumbrüche ab (<Case>), damit sich keine Schlüsselzeile verstecken kann' -TestCases @(
+        @{ Case = 'einzelnes CR'; Sep = "`r" }
+        @{ Case = 'einzelnes LF'; Sep = "`n" }
+        @{ Case = 'NUL'; Sep = "`0" }
+        @{ Case = 'Zeilentrenner U+2028'; Sep = [string][char]0x2028 }
+        @{ Case = 'Zeilentrenner U+0085'; Sep = [string][char]0x0085 }
+    ) {
+        $key = "$($script:UserNative)\App"
+        $hidden = "$($script:UserNative)\Run"
+        Test-Content ((New-RegText $key) + $Sep + "[$hidden]`r`n") $key | Should -Be 'BadLineBreak'
+    }
+
+    It 'Groß-/Kleinschreibung des Schlüssels spielt keine Rolle' {
+        $key = "$($script:UserNative)\App"
+        Test-Content (New-RegText $key.ToUpperInvariant()) $key | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Begleitdatei einer Sicherung' {
+    BeforeEach {
+        $script:Dir = Join-Path $TestDrive "backup-$([guid]::NewGuid().ToString('N').Substring(0, 6))"
+        New-Item -ItemType Directory -Path $script:Dir | Out-Null
+        $script:Id = [guid]::NewGuid().ToString()
+        $script:Reg = Join-Path $script:Dir "$($script:Id)_Jan.reg"
+        'x' | Set-Content -LiteralPath $script:Reg
+    }
+
+    It 'wird geschrieben und gelesen; unbekannte Gründe fallen weg, Args werden gekürzt' {
+        InModuleScope SoftwareInventory -Parameters @{ F = $script:Reg; I = $script:Id } {
+            $reasons = @(
+                [pscustomobject] @{ Code = 'OrphanedEntry'; Args = @() }
+                [pscustomobject] @{ Code = 'NewerInstallNextTo'; Args = @('Jan', ('9' * 500)) }
+                [pscustomobject] @{ Code = 'Boese'; Args = @('x') }
+            )
+            Write-RegistryBackupSidecar -File $F -ActionId $I -Name 'Jan' -NativeKey 'HKEY_CURRENT_USER\x' -Scope 'User' -Reasons $reasons
+            $read = Read-RegistryBackupSidecar -File $F
+            $read.Problem | Should -BeNullOrEmpty
+            $read.Data.Name | Should -Be 'Jan'
+            $read.Data.CreatedAt.Kind | Should -Be 'Utc'
+            @($read.Data.Reasons.Code) | Should -Be @('OrphanedEntry', 'NewerInstallNextTo')
+            $read.Data.Reasons[1].Args[1].Length | Should -Be 200
+        }
+    }
+
+    It 'meldet fehlende, kaputte und nicht zur Datei passende Begleitdateien' {
+        InModuleScope SoftwareInventory -Parameters @{ F = $script:Reg; I = $script:Id } {
+            (Read-RegistryBackupSidecar -File $F).Problem | Should -Be 'MetadataMissing'
+            $json = [System.IO.Path]::ChangeExtension($F, '.json')
+            'kein json {' | Set-Content -LiteralPath $json
+            (Read-RegistryBackupSidecar -File $F).Problem | Should -Be 'MetadataInvalid'
+            Write-RegistryBackupSidecar -File $F -ActionId ([guid]::NewGuid().ToString()) -Name 'Jan' -NativeKey 'K' -Scope 'User' -Reasons @()
+            (Read-RegistryBackupSidecar -File $F).Problem | Should -Be 'MetadataInvalid' -Because 'ActionId passt nicht zum Dateinamen'
+        }
+    }
 }
 
 Describe 'Sicherung mit dem echten reg.exe' {
     It 'erkennt eine echte reg-export-Datei als brauchbar' {
+        Mock -ModuleName SoftwareInventory Get-DefaultUninstallLocation { @(@{ Path = 'TestRegistry:\RealExport'; Scope = 'User'; Architecture = $null }) }
         $key = New-Item -Path 'TestRegistry:\RealExport\janold' -Force
         New-ItemProperty -Path $key.PSPath -Name DisplayName -Value 'Jan 0.5.16' | Out-Null
         $file = Join-Path $TestDrive 'real.reg'
         InModuleScope SoftwareInventory -Parameters @{ K = $key.Name; F = $file } {
             Invoke-RegExport -NativeKey $K -File $F | Should -Be 0
             Test-RegistryBackup -File $F -NativeKey $K | Should -BeNullOrEmpty
-            Test-RegistryBackup -File $F -NativeKey 'HKEY_CURRENT_USER\Software\Anderer' | Should -Be 'KeyNotFound'
+            Test-RegistryBackup -File $F -NativeKey 'HKEY_CURRENT_USER\Software\Anderer' | Should -Be 'KeyMismatch'
         }
     }
 }

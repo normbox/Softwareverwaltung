@@ -10,6 +10,10 @@ public enum SoftwareActionKind
     InstallWinget,
     /// <summary>Verwaisten Uninstall-Eintrag entfernen (Remove-OrphanedEntry), vorerst nur HKCU.</summary>
     RemoveEntry,
+    /// <summary>Registry-Sicherung zurückspielen (Restore-RegistryBackup), nur HKCU.</summary>
+    RestoreBackup,
+    /// <summary>Registry-Sicherung löschen (Remove-RegistryBackup).</summary>
+    RemoveBackup,
 }
 
 /// <summary>
@@ -46,6 +50,8 @@ public sealed record ActionOutcome
     public bool OfferRecheck => MessageCode is "NotVerifiedInstallerBusy" or "NotVerifiedWaitCancelled";
     /// <summary>Bei abgelehnter UAC-Abfrage lief nichts; die Zeile „Kein Wiederherstellungspunkt“ sagt dann nichts aus.</summary>
     public bool ShowRestorePoint => !(Result == "ElevationDenied" && RestorePoint is null or "NotRequested");
+    /// <summary>Was der Bestätigungsdialog als „Befehl“ zeigt: bei Sicherungen die Beschreibung statt der Kennung.</summary>
+    public string ConfirmText => Action is "RestoreBackup" or "RemoveBackup" ? Message ?? CommandLine ?? "" : CommandLine ?? "";
     public bool IsSuccess => Result is "Succeeded" or "SucceededRebootRequired";
     /// <summary>Store-Paket (Quelle „msstore“) ohne bestätigte Store-Vereinbarung: erst zustimmen lassen.</summary>
     public bool IsStoreAgreementRequired => Result == "StoreAgreementRequired";
