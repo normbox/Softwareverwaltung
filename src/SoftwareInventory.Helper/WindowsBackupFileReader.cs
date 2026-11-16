@@ -2,10 +2,10 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using Microsoft.Win32.SafeHandles;
+using FileTime = System.Runtime.InteropServices.ComTypes.FILETIME;
 
 namespace SoftwareInventory.Helper
 {
@@ -38,9 +38,9 @@ namespace SoftwareInventory.Helper
         private struct ByHandleFileInformation
         {
             public uint FileAttributes;
-            public FILETIME CreationTime;
-            public FILETIME LastAccessTime;
-            public FILETIME LastWriteTime;
+            public FileTime CreationTime;
+            public FileTime LastAccessTime;
+            public FileTime LastWriteTime;
             public uint VolumeSerialNumber;
             public uint FileSizeHigh;
             public uint FileSizeLow;
