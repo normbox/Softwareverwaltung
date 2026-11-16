@@ -1,42 +1,62 @@
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
-    # Rohe Steuerzeichen in Quelldateien: U+0000-U+0008, U+000B, U+000C, U+000E-U+001F, U+007F und die C1-Zeichen
-    # U+0080-U+009F. Erlaubt sind nur Tab, CR und LF. Steuerzeichen gehören im Code als Escape geschrieben
-    # ([char]0x1F, "\u001F"), nie roh; die Shell hat so etwas schon einmal still in eine Datei geschrieben.
-    # Das Muster steht hier absichtlich als Escape, damit diese Datei selbst sauber bleibt.
-    $script:ControlPattern = [regex]::new('[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]')
+    # Zeichen, die in Quelldateien nie roh stehen dürfen (als Escape schreiben: PowerShell [char]0x1F, C# und JSON "\u001F",
+    # XAML und resx &#x1F;). Das Muster steht hier absichtlich als Regex-Escape, damit diese Datei selbst sauber bleibt:
+    #   U+0000-U+0008, U+000B, U+000C, U+000E-U+001F   Steuerzeichen (erlaubt sind nur Tab, CR und LF)
+    #   U+007F-U+009F                                   DEL und die C1-Zeichen (darunter NEL, U+0085)
+    #   U+200B-U+200D, U+2060                           Zero-Width-Zeichen und Word Joiner (unsichtbar)
+    #   U+2028, U+2029                                  Zeilentrenner (C# beendet damit einen Kommentar: "Trojan Source")
+    #   U+202A-U+202E, U+2066-U+2069                    Bidi-Steuerzeichen (ordnen die Anzeige um: "Trojan Source")
+    #   U+FEFF                                          BOM mitten in der Datei (am Anfang erlaubt, wird vorher abgeschnitten)
+    $script:ControlPattern = [regex]::new('[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F​-‍  ‪-‮⁠⁦-⁩﻿]')
+    $script:StrictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
 
     function Find-RawControlCharacter {
-        # Liefert je Fund Datei, Zeile und Zeichencode (nur die ersten fünf je Datei).
+        # Liefert je Fund Datei, Zeile und Zeichencode (höchstens fünf je Datei). Die Datei muss gültiges UTF-8 sein
+        # (mit oder ohne BOM): Eine andere Kodierung (z. B. CP1252 von einer Shell) ist selbst ein Fund.
         param([string] $Path)
-        $text = [System.IO.File]::ReadAllText($Path)
-        $found = $script:ControlPattern.Matches($text)
-        foreach ($match in $found | Select-Object -First 5) {
-            $line = 1 + ($text.Substring(0, $match.Index).Split("`n").Count - 1)
+        try { $bytes = [System.IO.File]::ReadAllBytes($Path) }
+        catch { return [pscustomobject] @{ Path = $Path; Line = 0; Code = 'nicht lesbar' } }
+        $offset = if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { 3 } else { 0 }
+        try { $text = $script:StrictUtf8.GetString($bytes, $offset, $bytes.Length - $offset) }
+        catch { return [pscustomobject] @{ Path = $Path; Line = 0; Code = 'kein gültiges UTF-8' } }
+        foreach ($match in $script:ControlPattern.Matches($text) | Select-Object -First 5) {
+            # Zeilenumbrüche CRLF, CR und LF zählen, nicht nur LF.
+            $line = 1 + [regex]::Matches($text.Substring(0, $match.Index), "\r\n|\r|\n").Count
             [pscustomobject] @{ Path = $Path; Line = $line; Code = 'U+{0:X4}' -f [int] $match.Value[0] }
         }
     }
 
     function Get-SourceFile {
-        $extensions = '.ps1', '.psm1', '.psd1', '.cs', '.xaml', '.resx', '.md', '.json', '.csproj', '.props'
-        # Ohne Build-Ausgaben, Arbeitskopien der Subagenten, das Git-Verzeichnis und lokale Arbeitsordner.
-        $skip = '\\(bin|obj|\.git|\.vs|node_modules|TestResults|worktrees|_arbeit)\\'
-        # Nur der Pfad relativ zum Repository-Ordner zählt: Liegt die Kopie selbst unter .claude\worktrees\ (Arbeitskopie
-        # eines Subagenten), würde der absolute Pfad sonst jede Datei ausschließen und die Prüfung liefe ins Leere.
-        Get-ChildItem -LiteralPath $script:RepoRoot -Recurse -File -Force -ErrorAction SilentlyContinue |
-            Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() -and $_.FullName.Substring($script:RepoRoot.Length) -notmatch $skip }
+        # Die Dateiliste kommt von git (verfolgte und neue, nicht ignorierte Dateien): Build-Ausgaben, Arbeitskopien und
+        # lokale Dateien sind damit ausgeschlossen, ohne dass ein Ordnername etwas verdeckt. Ohne git scheitert der Test.
+        $git = Get-Command git -ErrorAction SilentlyContinue
+        if (-not $git) { throw 'git wurde nicht gefunden: Die Dateiliste kommt aus git ls-files.' }
+        $listing = & $git.Source -C $script:RepoRoot ls-files -z --cached --others --exclude-standard
+        if ($LASTEXITCODE -ne 0) { throw 'git ls-files ist fehlgeschlagen.' }
+        $extensions = '.ps1', '.psm1', '.psd1', '.cs', '.xaml', '.resx', '.md', '.json', '.csproj', '.props', '.targets',
+        '.config', '.xml', '.manifest', '.yml', '.yaml', '.cmd', '.bat', '.sln', '.slnx', '.txt', '.editorconfig',
+        '.gitattributes', '.gitignore'
+        foreach ($relative in ($listing -join '').Split([char] 0, [System.StringSplitOptions]::RemoveEmptyEntries)) {
+            if ($extensions -notcontains [System.IO.Path]::GetExtension($relative).ToLowerInvariant()) { continue }
+            $full = Join-Path $script:RepoRoot $relative
+            # Eine verfolgte, aber gelöschte Datei (noch nicht committet) gibt es nicht mehr.
+            if (Test-Path -LiteralPath $full -PathType Leaf) { $full }
+        }
     }
 }
 
 Describe 'Quelldateien ohne rohe Steuerzeichen' {
-    It 'erkennt rohe Steuerzeichen, auch C1, und lässt Tab, CR und LF zu' {
+    It 'erkennt rohe Steuerzeichen, Trennzeichen, Bidi- und Zero-Width-Zeichen und lässt Tab, CR, LF und die BOM am Anfang zu' {
         $file = Join-Path $TestDrive 'probe.ps1'
-        $clean = "a`tb`r`nc`n"
-        [System.IO.File]::WriteAllText($file, $clean)
+        [System.IO.File]::WriteAllText($file, "a`tb`r`nc`n")
         @(Find-RawControlCharacter $file) | Should -BeNullOrEmpty
+        [System.IO.File]::WriteAllText($file, "a`r`n", [System.Text.UTF8Encoding]::new($true))
+        @(Find-RawControlCharacter $file) | Should -BeNullOrEmpty -Because 'eine BOM am Dateianfang ist erlaubt'
 
-        foreach ($code in 0x00, 0x01, 0x08, 0x0B, 0x0C, 0x0E, 0x1B, 0x1F, 0x7F, 0x80, 0x9F) {
+        foreach ($code in 0x00, 0x01, 0x08, 0x0B, 0x0C, 0x0E, 0x1B, 0x1F, 0x7F, 0x80, 0x85, 0x9F, 0x200B, 0x200C, 0x200D,
+            0x2028, 0x2029, 0x202A, 0x202E, 0x2060, 0x2066, 0x2069, 0xFEFF) {
             [System.IO.File]::WriteAllText($file, "x`ny" + [char] $code + "z`n")
             $hit = @(Find-RawControlCharacter $file)
             $hit.Count | Should -Be 1 -Because ('U+{0:X4} muss gefunden werden' -f $code)
@@ -45,16 +65,39 @@ Describe 'Quelldateien ohne rohe Steuerzeichen' {
         }
     }
 
+    It 'zählt die Zeile bei CRLF, CR und LF' {
+        $file = Join-Path $TestDrive 'lines.ps1'
+        foreach ($newline in "`r`n", "`r", "`n") {
+            [System.IO.File]::WriteAllText($file, "a$($newline)b$($newline)c" + [char] 1)
+            (Find-RawControlCharacter $file).Line | Should -Be 3
+        }
+    }
+
+    It 'meldet eine Datei, die kein gültiges UTF-8 ist (UTF-16 mit BOM, CP1252-Umlaut)' {
+        $file = Join-Path $TestDrive 'encoding.ps1'
+        [System.IO.File]::WriteAllText($file, 'abc', [System.Text.Encoding]::Unicode)
+        (Find-RawControlCharacter $file).Code | Should -Be 'kein gültiges UTF-8'
+        [System.IO.File]::WriteAllBytes($file, [byte[]] @(0x61, 0xE4, 0x62))
+        (Find-RawControlCharacter $file).Code | Should -Be 'kein gültiges UTF-8'
+    }
+
+    It 'meldet eine Datei, die sich nicht lesen lässt' {
+        (Find-RawControlCharacter (Join-Path $TestDrive 'gibt-es-nicht.ps1')).Code | Should -Be 'nicht lesbar'
+    }
+
     It 'findet in der Repository-Struktur Quelldateien (Prüfung läuft nicht ins Leere)' {
         $files = @(Get-SourceFile)
         $files.Count | Should -BeGreaterThan 100
-        ($files.Extension | Sort-Object -Unique) | Should -Contain '.ps1'
-        ($files.Extension | Sort-Object -Unique) | Should -Contain '.cs'
+        $extensions = $files | ForEach-Object { [System.IO.Path]::GetExtension($_).ToLowerInvariant() } | Sort-Object -Unique
+        $extensions | Should -Contain '.ps1'
+        $extensions | Should -Contain '.cs'
+        $extensions | Should -Contain '.json'
+        $extensions | Should -Contain '.manifest'
     }
 
-    It 'enthält keine Quelldatei rohe Steuerzeichen' {
+    It 'enthält keine Quelldatei rohe Steuerzeichen oder ungültiges UTF-8' {
         $problems = foreach ($file in Get-SourceFile) {
-            foreach ($hit in Find-RawControlCharacter $file.FullName) {
+            foreach ($hit in Find-RawControlCharacter $file) {
                 '{0}:{1} {2}' -f $hit.Path.Substring($script:RepoRoot.Length + 1), $hit.Line, $hit.Code
             }
         }

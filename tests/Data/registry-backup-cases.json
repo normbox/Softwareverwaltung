@@ -33,8 +33,8 @@
     { "name": "versteckte Schlüsselzeile nach einzelnem CR", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\r[HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run]\r\n", "expected": "BadLineBreak" },
     { "name": "versteckte Schlüsselzeile nach einzelnem LF", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\n[HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run]\r\n", "expected": "BadLineBreak" },
     { "name": "NUL im Text", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\u0000[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
-    { "name": "Zeilentrenner U+2028", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App] [HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
-    { "name": "Zeilentrenner U+2029", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App] [HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
+    { "name": "Zeilentrenner U+2028", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\u2028[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
+    { "name": "Zeilentrenner U+2029", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\u2029[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
     { "name": "Zeilentrenner U+0085", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\u0085[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
     { "name": "Vertikaltabulator", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\u000b[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
     { "name": "Seitenvorschub", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\u000c[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLineBreak" },
