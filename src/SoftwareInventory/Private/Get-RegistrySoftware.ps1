@@ -105,19 +105,28 @@ function ConvertFrom-DisplayIcon {
     [Environment]::ExpandEnvironmentVariables($text)
 }
 
+function Get-PathDriveType {
+    # Art des Laufwerks zu einer Wurzel wie C:\ (Fixed, Removable, Network, CDRom, Ram, ...); $null, wenn sie sich nicht bestimmen lässt.
+    param([string] $Root)
+    try { [string] ([System.IO.DriveInfo]::new($Root)).DriveType } catch { $null }
+}
+
 function Get-PathState {
     <#
     .SYNOPSIS
         Exists, Missing oder Unknown für einen Pfad aus der Registry (Anführungszeichen und Umgebungsvariablen erlaubt).
     .DESCRIPTION
-        Unknown bei leeren Angaben, Netzwerkpfaden und Laufwerken, die gerade nicht erreichbar sind: Dort lässt
-        sich nicht sagen, ob etwas fehlt.
+        Unknown bei leeren Angaben, Netzwerkpfaden, Laufwerken, die gerade nicht erreichbar sind, und Laufwerken,
+        die keine festen lokalen sind (Netzlaufwerk, USB-Stick, CD): Dort lässt sich nicht sagen, ob etwas fehlt.
+        Dieselben Regeln gelten im Helfer (OrphanRules.cs, gemeinsame Tabelle tests/Data/registry-orphan-cases.json).
     #>
     param([string] $Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return 'Unknown' }
     $p = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"').Trim())
     if (-not $p -or $p.StartsWith('\\') -or -not [System.IO.Path]::IsPathRooted($p)) { return 'Unknown' }
     if (-not (Test-PathRootReachable $p)) { return 'Unknown' }
+    $root = try { [System.IO.Path]::GetPathRoot($p) } catch { $null }
+    if (-not $root -or (Get-PathDriveType $root) -ne 'Fixed') { return 'Unknown' }
     if (Test-Path -LiteralPath $p) { 'Exists' } else { 'Missing' }
 }
 
@@ -126,17 +135,19 @@ function Test-OrphanedRegistryEntry {
     .SYNOPSIS
         Ist der Uninstall-Eintrag nur noch ein Rest ohne Programm?
     .DESCRIPTION
-        Verwaist nur, wenn die Datei im Deinstallationsbefehl (UninstallString und QuietUninstallString) fehlt
-        und InstallLocation sowie DisplayIcon fehlen oder ins Leere zeigen. Geprüft werden die genannten Dateien
+        Verwaist nur, wenn die Datei im Deinstallationsbefehl fehlt (der UninstallString ist Pflicht; ein
+        QuietUninstallString wird zusätzlich geprüft, wenn es ihn gibt) und InstallLocation sowie DisplayIcon fehlen
+        oder ins Leere zeigen. Geprüft werden die genannten Dateien
         und Ordner selbst, nicht übergeordnete Ordner (bei Jan 0.5.16 gibt es …\Programs\jan noch, weil es der
         Ordner der neuen Installation ist). Nie verwaist: MSI-Einträge (entscheidet Windows Installer), Einträge
         ohne Deinstallationsbefehl, nicht auswertbare Befehle, Systemwerkzeuge (rundll32, msiexec …),
-        Netzwerkpfade und nicht erreichbare Laufwerke.
+        Netzwerkpfade, nicht erreichbare Laufwerke und Laufwerke, die keine festen lokalen sind.
     #>
     param($Record, [bool] $IsMsi)
     if ($IsMsi) { return $false }
+    # Ohne UninstallString (auch wenn es nur einen QuietUninstallString gibt) ist nichts auswertbar: nie verwaist.
+    if (-not $Record.UninstallString) { return $false }
     $commands = @($Record.UninstallString, $Record.QuietUninstallString) | Where-Object { $_ }
-    if (-not $commands) { return $false }
     $system = @([Environment]::GetFolderPath('System'), [Environment]::GetFolderPath('SystemX86'), $env:WINDIR) |
         Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') + '\' }
     foreach ($command in $commands) {

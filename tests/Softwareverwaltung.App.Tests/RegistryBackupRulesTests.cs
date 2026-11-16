@@ -51,4 +51,37 @@ public sealed class RegistryBackupRulesTests
         Assert.Equal("Empty", RegistryBackupRules.CheckContent(null!, "x", "User", none));
         Assert.Equal("Empty", RegistryBackupRules.CheckContent("x", "", "User", none));
     }
+
+    [Fact]
+    public void ReadsTheBytesOfABackupLikeTheModule()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(TestFolder(), "Data", "registry-backup-cases.json")));
+        var cases = doc.RootElement.GetProperty("fileCases").EnumerateArray().ToList();
+        Assert.True(cases.Count > 8);
+        var wrong = new List<string>();
+        foreach (var c in cases)
+        {
+            var bytes = Convert.FromHexString(c.GetProperty("hex").GetString()!);
+            var code = BackupFileRules.DecodeText(bytes, out var text);
+            var expectedCode = c.GetProperty("expectedCode").ValueKind == JsonValueKind.Null ? null : c.GetProperty("expectedCode").GetString();
+            var expectedText = c.TryGetProperty("expectedText", out var t)
+                ? Regex.Replace(t.GetString()!, @"\{U\+([0-9A-Fa-f]{4})\}", m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString())
+                : null;
+            if (code != expectedCode || (expectedCode is null && text != expectedText))
+            {
+                wrong.Add($"{c.GetProperty("name").GetString()}: erwartet {expectedCode ?? "null"}/{expectedText}, war {code ?? "null"}/{text}");
+            }
+        }
+        Assert.Empty(wrong);
+    }
+
+    [Fact]
+    public void RefusesABackupOver16MegabytesEvenWithAValidByteOrderMark()
+    {
+        var big = new byte[BackupFileRules.MaxBytes + 2];
+        big[0] = 0xFF;
+        big[1] = 0xFE;
+        Assert.Equal("TooLarge", BackupFileRules.DecodeText(big, out var text));
+        Assert.Null(text);
+    }
 }

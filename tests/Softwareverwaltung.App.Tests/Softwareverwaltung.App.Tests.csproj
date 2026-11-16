@@ -33,6 +33,10 @@
     <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryBackupRules.cs" Link="Helper\RegistryBackupRules.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\BackupFolderRules.cs" Link="Helper\BackupFolderRules.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\WindowsDirectoryInspector.cs" Link="Helper\WindowsDirectoryInspector.cs" />
+    <Compile Include="..\..\src\SoftwareInventory.Helper\BackupFileRules.cs" Link="Helper\BackupFileRules.cs" />
+    <Compile Include="..\..\src\SoftwareInventory.Helper\WindowsBackupFileReader.cs" Link="Helper\WindowsBackupFileReader.cs" />
+    <Compile Include="..\..\src\SoftwareInventory.Helper\OrphanRules.cs" Link="Helper\OrphanRules.cs" />
+    <Compile Include="..\..\src\SoftwareInventory.Helper\WindowsOrphanEnvironment.cs" Link="Helper\WindowsOrphanEnvironment.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Native\InstallerActivity.cs" Link="Native\InstallerActivity.cs" />
   </ItemGroup>
 

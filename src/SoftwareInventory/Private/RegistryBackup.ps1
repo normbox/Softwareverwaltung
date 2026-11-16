@@ -99,10 +99,27 @@ function Get-RegistryBackupText {
     param([string] $File)
     if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return @{ Problem = 'Missing'; Bytes = $null; Text = $null } }
     if ((Get-Item -LiteralPath $File).Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge'; Bytes = $null; Text = $null } }
-    $bytes = [System.IO.File]::ReadAllBytes($File)
-    if ($bytes.Length -eq 0) { return @{ Problem = 'Empty'; Bytes = $null; Text = $null } }
-    if ($bytes.Length -lt 2 -or $bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE) { return @{ Problem = 'BadEncoding'; Bytes = $null; Text = $null } }
-    @{ Problem = $null; Bytes = $bytes; Text = [System.Text.Encoding]::Unicode.GetString($bytes, 2, $bytes.Length - 2) }
+    ConvertFrom-RegistryBackupBytes -Bytes ([System.IO.File]::ReadAllBytes($File))
+}
+
+function ConvertFrom-RegistryBackupBytes {
+    <#
+    .SYNOPSIS
+        Prüft die Bytes einer .reg-Sicherung und liest daraus den Text.
+    .DESCRIPTION
+        Dieselben Regeln wie BackupFileRules.DecodeText im Helfer (gemeinsame Tabelle
+        tests/Data/registry-backup-cases.json, fileCases): leer, zu groß (über 16 MB), und UTF-16 Little Endian mit der
+        Bytefolge FF FE am Anfang und gerader Anzahl Bytes danach, wie reg export sie schreibt.
+    .OUTPUTS
+        @{ Problem; Bytes; Text } (Problem $null, wenn alles passt; sonst Empty, TooLarge oder BadEncoding).
+    #>
+    param($Bytes)
+    if ($null -eq $Bytes -or $Bytes.Length -eq 0) { return @{ Problem = 'Empty'; Bytes = $null; Text = $null } }
+    if ($Bytes.Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge'; Bytes = $null; Text = $null } }
+    if ($Bytes.Length -lt 2 -or $Bytes[0] -ne 0xFF -or $Bytes[1] -ne 0xFE -or (($Bytes.Length - 2) % 2) -ne 0) {
+        return @{ Problem = 'BadEncoding'; Bytes = $null; Text = $null }
+    }
+    @{ Problem = $null; Bytes = $Bytes; Text = [System.Text.Encoding]::Unicode.GetString($Bytes, 2, $Bytes.Length - 2) }
 }
 
 function Test-RegistryBackupContent {

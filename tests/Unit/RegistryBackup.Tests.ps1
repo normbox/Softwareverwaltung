@@ -385,4 +385,25 @@ Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
         $script:SharedPlaceholders.Count | Should -Be 3
         (Get-Content -Raw "$PSScriptRoot/../Data/registry-backup-cases.json" | ConvertFrom-Json).cases.Count | Should -BeGreaterThan 25
     }
+
+    It 'liest die Bytes einer Sicherung wie der Helfer (fileCases der Tabelle)' {
+        $table = Get-Content -Raw "$PSScriptRoot/../Data/registry-backup-cases.json" | ConvertFrom-Json
+        $table.fileCases.Count | Should -BeGreaterThan 8
+        foreach ($case in $table.fileCases) {
+            $bytes = [byte[]] [System.Convert]::FromHexString([string] $case.hex)
+            $result = InModuleScope SoftwareInventory -Parameters @{ B = $bytes } { ConvertFrom-RegistryBackupBytes -Bytes $B }
+            $expectedCode = if ($case.PSObject.Properties['expectedCode']) { $case.expectedCode }
+            if ($expectedCode) { $result.Problem | Should -BeExactly $expectedCode -Because $case.name }
+            else {
+                $result.Problem | Should -BeNullOrEmpty -Because $case.name
+                $result.Text | Should -BeExactly (Expand-CaseText ([string] $case.expectedText)) -Because $case.name
+            }
+        }
+    }
+
+    It 'lehnt eine Sicherung über 16 MB ab, auch mit gültiger BOM' {
+        $big = [byte[]]::new(16MB + 2)
+        $big[0] = 0xFF; $big[1] = 0xFE
+        (InModuleScope SoftwareInventory -Parameters @{ B = $big } { ConvertFrom-RegistryBackupBytes -Bytes $B }).Problem | Should -Be 'TooLarge'
+    }
 }
