@@ -21,6 +21,9 @@ public sealed class BackupFolderRulesTests
     {
         public Dictionary<string, (bool Reparse, string? Owner, string[] Writers)> Dirs { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>Wird beim Lesen des Besitzers geworfen (Rechte nicht lesbar).</summary>
+        public Exception? Failure { get; set; }
+
         public static FakeInspector Trusted()
         {
             var fake = new FakeInspector();
@@ -33,7 +36,7 @@ public sealed class BackupFolderRulesTests
 
         public bool Exists(string path) => Dirs.ContainsKey(path);
         public bool IsReparsePoint(string path) => Dirs[path].Reparse;
-        public string OwnerSid(string path) => Dirs[path].Owner!;
+        public string OwnerSid(string path) => Failure is null ? Dirs[path].Owner! : throw Failure;
         public IReadOnlyList<string> WriteAccessSids(string path) => Dirs[path].Writers;
     }
 
@@ -113,6 +116,30 @@ public sealed class BackupFolderRulesTests
         var problem = BackupFolderRules.Check(Folder, ProgramFiles, fake);
         Assert.Equal("BackupFolderWritable", problem!.Code);
         Assert.Equal(sid, problem.Args[1]);
+    }
+
+    [Fact]
+    public void RefusesAnAceTheCheckCannotEvaluate()
+    {
+        var fake = FakeInspector.Trusted();
+        fake.Dirs[Folder] = (false, BackupFolderRules.AdministratorsSid, [BackupFolderRules.AdministratorsSid, AclRules.UnsupportedAce]);
+        var problem = BackupFolderRules.Check(Folder, ProgramFiles, fake);
+        Assert.Equal("BackupFolderWritable", problem!.Code);
+        Assert.Equal(AclRules.UnsupportedAce, problem.Args[1]);
+    }
+
+    [Theory]
+    [InlineData(typeof(UnauthorizedAccessException))]
+    [InlineData(typeof(IOException))]
+    [InlineData(typeof(InvalidOperationException))]
+    [InlineData(typeof(System.Security.SecurityException))]
+    public void RefusesWhenTheRightsCannotBeRead(Type exception)
+    {
+        var fake = FakeInspector.Trusted();
+        fake.Failure = (Exception)Activator.CreateInstance(exception)!;
+        var problem = BackupFolderRules.Check(Folder, ProgramFiles, fake);
+        Assert.Equal("BackupFolderUnreadable", problem!.Code);
+        Assert.Equal(@"C:\Program Files\Softwareverwaltung", problem.Args[0]);
     }
 
     [Fact]

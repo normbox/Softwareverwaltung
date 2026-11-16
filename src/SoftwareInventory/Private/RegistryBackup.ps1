@@ -106,9 +106,10 @@ function Test-RegistryBackupContent {
     .DESCRIPTION
         Erlaubt ist genau ein Hauptschlüssel (der Schlüssel aus der Begleitdatei) direkt unter einem
         Uninstall-Zweig des erlaubten Bereichs (-Scope, Vorgabe User); jeder weitere Schlüsselkopf muss mit "<Hauptschlüssel>\" beginnen
-        (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel.
+        (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel, nur bekannte Zeilenformate (Wert,
+        Kommentar, Hex-Fortsetzung; sonst BadLine).
     .OUTPUTS
-        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, DeleteLine, BadKeyLine, KeyNotFound,
+        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNotFound,
         KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur User erlaubt) oder WrongScope
         (HKCU, aber nur Machine erlaubt). Der Helfer prüft mit denselben Regeln (RegistryBackupRules.cs); beide
         gegen tests/Data/registry-backup-cases.json.
@@ -119,21 +120,33 @@ function Test-RegistryBackupContent {
     # dort anders trennen als diese Prüfung, könnte sich eine Schlüsselzeile an der Prüfung vorbeischmuggeln.
     if ($Text -match "[\x00\x0B\x0C\u0085\u2028\u2029]|\r(?!\n)|(?<!\r)\n") { return 'BadLineBreak' }
     $lines = $Text -split "\r\n"
-    if ($lines[0].TrimEnd() -cne 'Windows Registry Editor Version 5.00') { return 'BadHeader' }
+    $blanks = [char[]] @(' ', "`t")
+    if (-not [string]::Equals($lines[0].TrimEnd($blanks), 'Windows Registry Editor Version 5.00', [StringComparison]::Ordinal)) { return 'BadHeader' }
 
     $headers = [System.Collections.Generic.List[string]]::new()
     foreach ($line in $lines | Select-Object -Skip 1) {
-        $t = $line.Trim()
-        if (-not $t.StartsWith('[')) { continue }
-        if ($t.StartsWith('[-')) { return 'DeleteLine' }
+        # Nur Leerzeichen und Tabulator werden abgeschnitten (nicht von der Laufzeit abhängig): Eine Zeile mit einem
+        # anderen führenden Zeichen, auch unsichtbaren wie U+00AD oder U+200B, ist kein bekanntes Format.
+        $t = $line.Trim($blanks)
+        if ($t.Length -eq 0) { continue }
+        if (-not $t.StartsWith('[', [StringComparison]::Ordinal)) {
+            # Wertzeilen ("Name"=..., @=...), Kommentare und Hex-Fortsetzungen; alles andere ist unbekannt.
+            if ($t[0] -ceq '"' -or $t[0] -ceq '@' -or $t[0] -ceq ';' -or $t -cmatch '^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$') { continue }
+            return 'BadLine'
+        }
+        if ($t.StartsWith('[-', [StringComparison]::Ordinal)) { return 'DeleteLine' }
         if ($t -notmatch '^\[(?<key>.+)\]$') { return 'BadKeyLine' }
         $headers.Add($Matches.key)
     }
     if ($headers.Count -eq 0) { return 'KeyNotFound' }
     if (-not [string]::Equals($headers[0], $NativeKey, [StringComparison]::OrdinalIgnoreCase)) { return 'KeyMismatch' }
-    $prefix = $NativeKey.TrimEnd('\') + '\'
+    # Ein Hauptschlüssel mit \ am Ende oder leerer Komponente (\\) wäre der Zweig selbst: Der Präfix ließe dann jeden
+    # Schlüssel darunter zu.
+    if ($NativeKey.EndsWith('\', [StringComparison]::Ordinal) -or $NativeKey.Contains('\\')) { return 'KeyNotUninstall' }
+    $prefix = $NativeKey + '\'
     for ($i = 1; $i -lt $headers.Count; $i++) {
-        if (-not $headers[$i].StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { return 'KeyOutside' }
+        $h = $headers[$i]
+        if (-not $h.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -or $h.EndsWith('\', [StringComparison]::Ordinal) -or $h.Contains('\\')) { return 'KeyOutside' }
     }
 
     $cut = $NativeKey.LastIndexOf('\')

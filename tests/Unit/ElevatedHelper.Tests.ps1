@@ -21,22 +21,51 @@ Describe 'Start-ElevatedHelper' {
         $r.Error | Should -BeNullOrEmpty
     }
 
-    It 'lehnt eine unbekannte Operation mit Fehlercode ab, nie mit leerem Erfolg' {
+    It 'schickt eine dem Modul unbekannte Operation nie an den Helfer (fail-closed)' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'Der Helfer darf nicht gestartet werden' }
         $r = InModuleScope SoftwareInventory {
             Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = $null; RestorePoint = $false }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        $r.Error.Args[0] | Should -Be 'GibtEsNicht'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
+    }
+
+    It 'der Helfer lehnt eine unbekannte Operation selbst mit Fehlercode ab, nie mit leerem Erfolg' {
+        # Operation absichtlich in die Tabelle eintragen: So erreicht sie den echten Helfer, der sie nicht kennt.
+        $r = InModuleScope SoftwareInventory {
+            $script:HelperOperationMinVersion['GibtEsNicht'] = 5
+            try { Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = $null; RestorePoint = $false } }
+            finally { $script:HelperOperationMinVersion.Remove('GibtEsNicht') }
         }
         $r.Status | Should -Be 'Completed'
         $r.Error.Code | Should -Be 'HelperUnknownOperation'
         $r.Error.Args[0] | Should -Be 'GibtEsNicht'
+        $r.Operation | Should -Be 'GibtEsNicht'
         $r.ExitCode | Should -BeNullOrEmpty
     }
 
-    It 'lehnt auch eine unbekannte Operation neben einem Programm ab' {
+    It 'der Helfer lehnt auch eine unbekannte Operation neben einem Programm ab' {
         $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
-            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false }
+            $script:HelperOperationMinVersion['GibtEsNicht'] = 5
+            try { Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false } }
+            finally { $script:HelperOperationMinVersion.Remove('GibtEsNicht') }
         }
         $r.Error.Code | Should -Be 'HelperUnknownOperation'
         $r.Output | Should -BeNullOrEmpty -Because 'es wurde nichts gestartet'
+    }
+
+    It 'leitet die Mindestversion einer Operation aus der Tabelle ab, ohne dass der Aufrufer sie nennen muss' {
+        Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
+        $r = InModuleScope SoftwareInventory {
+            $script:HelperOperationMinVersion['NeueOperation'] = 99
+            try { Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'NeueOperation'; FilePath = $null; RestorePoint = $false } }
+            finally { $script:HelperOperationMinVersion.Remove('NeueOperation') }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Error.Code | Should -Be 'HelperTooOld'
+        $r.Error.Args[1] | Should -Be 99
     }
 
     It 'lehnt einen Plan ohne jede Aufgabe ab (HelperNoOperation)' {
@@ -56,15 +85,6 @@ Describe 'Start-ElevatedHelper' {
         $r.Error.Args[0] | Should -Be '5'
         $r.Error.Args[1] | Should -Be 99
         $r.ContainsKey('ExitCode') | Should -BeFalse
-    }
-
-    It 'meldet bei neuer Operation den Fehlercode des Helfers und prüft, dass die Antwort zur Operation gehört' {
-        $r = InModuleScope SoftwareInventory {
-            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -MinHelperVersion 5 -HelperPlan @{ Operation = 'GibtEsNicht'; FilePath = $null; RestorePoint = $false }
-        }
-        $r.Status | Should -Be 'Completed'
-        $r.Error.Code | Should -Be 'HelperUnknownOperation'
-        $r.Operation | Should -Be 'GibtEsNicht'
     }
 
     It 'meldet den Exit-Code eines fehlschlagenden Programms' {

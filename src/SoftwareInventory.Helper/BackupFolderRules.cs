@@ -28,6 +28,20 @@ namespace SoftwareInventory.Helper
         IReadOnlyList<string> WriteAccessSids(string path);
     }
 
+    /// <summary>Welche Zugriffsrechte als „Schreiben“ zählen, und der Platzhalter für nicht auswertbare Einträge.</summary>
+    public static class AclRules
+    {
+        /// <summary>Erlauben-Eintrag, den die Prüfung nicht einfach auswerten kann (Objekt, Callback, Compound): zählt als Schreibrecht.</summary>
+        public const string UnsupportedAce = "unsupported-ace";
+
+        // FILE_WRITE_DATA/ADD_FILE 0x2, FILE_APPEND_DATA/ADD_SUBDIRECTORY 0x4, FILE_WRITE_EA 0x10, FILE_DELETE_CHILD 0x40,
+        // FILE_WRITE_ATTRIBUTES 0x100, DELETE 0x10000, WRITE_DAC 0x40000, WRITE_OWNER 0x80000 und die ungemappten
+        // Sammelrechte GENERIC_ALL 0x10000000, GENERIC_WRITE 0x40000000, MAXIMUM_ALLOWED 0x02000000.
+        private const uint WriteMask = 0x2 | 0x4 | 0x10 | 0x40 | 0x100 | 0x10000 | 0x40000 | 0x80000 | 0x10000000 | 0x40000000 | 0x02000000;
+
+        public static bool IsWriteMask(uint mask) => (mask & WriteMask) != 0;
+    }
+
     /// <summary>
     /// Der Ordner für HKLM-Sicherungen (Program Files\Softwareverwaltung\RegistryBackup) darf nur von Administratoren
     /// beschrieben werden. Ein Programm ohne Adminrechte kann unter Program Files nichts anlegen; geprüft wird trotzdem
@@ -49,7 +63,8 @@ namespace SoftwareInventory.Helper
         /// <summary>
         /// null, wenn der Ordner und jede Komponente darüber (unterhalb von Program Files) die Regeln erfüllen. Sonst:
         /// BackupFolderOutsideRoot, BackupFolderMissing, BackupFolderReparsePoint, BackupFolderBadOwner oder
-        /// BackupFolderWritable (Args: Pfad, bei Besitzer/Schreibrecht die SID).
+        /// BackupFolderWritable (Args: Pfad, bei Besitzer/Schreibrecht die SID) oder BackupFolderUnreadable (Rechte nicht lesbar:
+        /// fail-closed).
         /// </summary>
         public static Problem Check(string folder, string programFiles, IDirectoryInspector fs)
         {
@@ -68,24 +83,41 @@ namespace SoftwareInventory.Helper
             foreach (var part in full.Substring(root.Length + 1).Split('\\'))
             {
                 current += "\\" + part;
-                if (!fs.Exists(current))
+                try
                 {
-                    return new Problem("BackupFolderMissing", current);
+                    var problem = CheckComponent(current, fs);
+                    if (problem is not null)
+                    {
+                        return problem;
+                    }
                 }
-                if (fs.IsReparsePoint(current))
+                catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException || ex is InvalidOperationException || ex is System.Security.SecurityException || ex is ArgumentException)
                 {
-                    return new Problem("BackupFolderReparsePoint", current);
+                    return new Problem("BackupFolderUnreadable", current);
                 }
-                var owner = fs.OwnerSid(current);
-                if (!IsTrusted(owner))
-                {
-                    return new Problem("BackupFolderBadOwner", current, owner ?? "");
-                }
-                var writer = fs.WriteAccessSids(current).FirstOrDefault(sid => !IsTrusted(sid));
-                if (writer is not null)
-                {
-                    return new Problem("BackupFolderWritable", current, writer);
-                }
+            }
+            return null;
+        }
+
+        private static Problem CheckComponent(string current, IDirectoryInspector fs)
+        {
+            if (!fs.Exists(current))
+            {
+                return new Problem("BackupFolderMissing", current);
+            }
+            if (fs.IsReparsePoint(current))
+            {
+                return new Problem("BackupFolderReparsePoint", current);
+            }
+            var owner = fs.OwnerSid(current);
+            if (!IsTrusted(owner))
+            {
+                return new Problem("BackupFolderBadOwner", current, owner ?? "");
+            }
+            var writer = fs.WriteAccessSids(current).FirstOrDefault(sid => !IsTrusted(sid));
+            if (writer is not null)
+            {
+                return new Problem("BackupFolderWritable", current, writer);
             }
             return null;
         }

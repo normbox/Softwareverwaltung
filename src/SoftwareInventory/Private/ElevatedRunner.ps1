@@ -13,6 +13,11 @@
 
 $script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\lib\SoftwareInventory.Helper.exe'
 
+# Operationen ohne Prozess und die Helferversion, ab der sie bekannt sind. Nur was hier steht, schickt das Modul an
+# den Helfer; die Mindestversion folgt aus der Tabelle, kein Aufrufer muss sie vergessen können. Neue Operationen
+# hier mit der Version eintragen, die sie einführt (z. B. 5).
+$script:HelperOperationMinVersion = @{ ReplaceHelperCopy = 0 }
+
 # Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 
 function New-ResultPipe {
@@ -172,9 +177,10 @@ function Start-ElevatedHelper {
     .PARAMETER Control
         Synchronisierte Hashtabelle der App: State = Cancelled bricht ab; Phase und CancelResult schreibt das Modul.
     .PARAMETER MinHelperVersion
-        Für Operationen, die nur neuere Helfer kennen (Plan mit Operation): Meldet der Helfer weniger, geht
-        „stop“ an ihn und die Aktion läuft nicht (HelperTooOld). Zusätzlich muss das Ergebnis dieselbe
-        Operation nennen, sonst gilt es nicht als Erfolg (HelperOperationMismatch). 0 = keine Prüfung.
+        Für Operationen, die nur neuere Helfer kennen: Meldet der Helfer weniger, geht „stop“ an ihn und die
+        Aktion läuft nicht (HelperTooOld). Zusätzlich muss das Ergebnis dieselbe Operation nennen, sonst gilt es
+        nicht als Erfolg (HelperOperationMismatch). Die Mindestversion einer Operation steht in
+        $script:HelperOperationMinVersion und gilt automatisch; dieser Parameter kann sie nur erhöhen.
     #>
     param(
         [Parameter(Mandatory)] [hashtable] $HelperPlan,
@@ -185,6 +191,15 @@ function Start-ElevatedHelper {
         [string] $HelperPath,
         [int] $MinHelperVersion = 0
     )
+
+    # Fail-closed: Eine Operation, die das Modul nicht kennt, geht nie an den Helfer; die Mindestversion kommt aus der Tabelle.
+    $operation = if ($HelperPlan.ContainsKey('Operation')) { [string] $HelperPlan['Operation'] }
+    if ($operation) {
+        if (-not $script:HelperOperationMinVersion.ContainsKey($operation)) {
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperUnknownOperation $operation) }
+        }
+        $MinHelperVersion = [Math]::Max($MinHelperVersion, [int] $script:HelperOperationMinVersion[$operation])
+    }
 
     if (Test-ActionCancelRequested $Control) { return @{ Status = 'Cancelled'; Error = (New-InventoryMessage ActionCancelledBeforeStart) } }
 

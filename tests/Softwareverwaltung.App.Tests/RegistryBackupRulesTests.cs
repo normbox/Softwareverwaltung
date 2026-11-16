@@ -30,7 +30,7 @@ public sealed class RegistryBackupRulesTests
         {
             var expected = c.GetProperty("expected").ValueKind == JsonValueKind.Null ? null : c.GetProperty("expected").GetString();
             var actual = RegistryBackupRules.CheckContent(
-                Expand(c.GetProperty("text").GetString()!), Expand(c.GetProperty("key").GetString()!), c.GetProperty("scope").GetString()!, locations.Select(l => l.Location))?.Code;
+                Expand(c.GetProperty("text").GetString()!), Expand(c.GetProperty("key").GetString()!), c.GetProperty("scope").GetString()!, locations.Select(l => l.Location));
             if (actual != expected)
             {
                 wrong.Add($"{c.GetProperty("name").GetString()}: erwartet {expected ?? "null"}, war {actual ?? "null"}");
@@ -43,7 +43,7 @@ public sealed class RegistryBackupRulesTests
     public void NullOrEmptyInputIsRefused()
     {
         var none = Array.Empty<UninstallLocation>();
-        Assert.Equal("Empty", RegistryBackupRules.CheckContent(null!, "x", "User", none)!.Code);
-        Assert.Equal("Empty", RegistryBackupRules.CheckContent("x", "", "User", none)!.Code);
+        Assert.Equal("Empty", RegistryBackupRules.CheckContent(null!, "x", "User", none));
+        Assert.Equal("Empty", RegistryBackupRules.CheckContent("x", "", "User", none));
     }
 }
