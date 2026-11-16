@@ -43,9 +43,15 @@
     { "name": "Hauptschlüssel mit leerer Komponente", "scope": "Machine", "key": "{M}\\\\App", "text": "{H}\r\n\r\n[{M}\\\\App]\r\n", "expected": "KeyNotUninstall" },
     { "name": "Unterschlüssel mit leerer Komponente", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\\\Sub]\r\n", "expected": "KeyOutside" },
     { "name": "Unterschlüssel endet auf Backslash", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\]\r\n", "expected": "KeyOutside" },
-    { "name": "Schlüsselname mit ] ist unklar", "scope": "User", "key": "{U}\\App [x]", "text": "{H}\r\n\r\n[{U}\\App [x]]\r\n", "expected": "BadKeyLine" },
-    { "name": "Unterschlüssel mit ] im Namen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\Sub]x]\r\n", "expected": "BadKeyLine" },
-    { "name": "Schlüsselname mit [ ist erlaubt", "scope": "User", "key": "{U}\\App [x", "text": "{H}\r\n\r\n[{U}\\App [x]\r\n", "expected": null },
+    { "name": "Schlüsselname mit ] ist unsicher", "scope": "User", "key": "{U}\\App [x]", "text": "{H}\r\n\r\n[{U}\\App [x]]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "Unterschlüssel mit ] im Namen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\Sub]x]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "Schlüsselname mit [ ist unsicher", "scope": "User", "key": "{U}\\App [x", "text": "{H}\r\n\r\n[{U}\\App [x]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "Tabulator im Hauptschlüsselnamen", "scope": "User", "key": "{U}\\App\tX", "text": "{H}\r\n\r\n[{U}\\App\tX]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "U+0001 im Unterschlüsselnamen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\S{U+0001}ub]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "U+007F im Namen", "scope": "Machine", "key": "{M}\\App", "text": "{H}\r\n\r\n[{M}\\Ap{U+007F}p]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "C1-Steuerzeichen U+0080 im Namen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\Ap{U+0080}p]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "[ im Unterschlüsselnamen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\S[ub]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "leere Schlüsselzeile", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[]\r\n", "expected": "BadKeyLine" },
     { "name": "Wertzeile mit Backslash am Ende, danach eine Schlüsselzeile (bleibt Schlüsselkopf)", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\"Blob\"=hex:01,\\\r\n[{U}\\Fremd]\r\n", "expected": "KeyOutside" },
     { "name": "hex(2) mit Fortsetzung in Großbuchstaben", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\"Path\"=hex(2):25,00,\\\r\n  5C,00,0A,FF\r\n", "expected": null },
     { "name": "unsichtbares Zeichen U+00AD vor einer Schlüsselzeile", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n{U+00AD}[HKEY_CURRENT_USER\\Run]\r\n", "expected": "BadLine" },
@@ -57,5 +63,18 @@
     { "name": "Kopf mit Leerzeichen und Tabulator am Ende", "scope": "User", "key": "{U}\\App", "text": "{H} \t\r\n\r\n[{U}\\App]\r\n", "expected": null },
     { "name": "Schlüsselzeile mit Leerzeichen und Tabulator davor", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n \t[{U}\\App]\r\n", "expected": null },
     { "name": "Wertzeilen, Standardwert, Hex-Fortsetzung und Kommentar", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n@=\"x\"\r\n\"Blob\"=hex:01,02,\\\r\n  03,04,\\\r\n  0A,ff\r\n;[HKEY_CURRENT_USER\\Run]\r\n", "expected": null }
+  ],
+  "fileCasesComment": "Bytes einer .reg-Sicherung: Modul (ConvertFrom-RegistryBackupByte) und Helfer (BackupFileRules.DecodeText) müssen beide dasselbe Ergebnis liefern. hex = die Bytes als Hexziffern; expectedCode = null (passt) oder Empty, BadEncoding; expectedText = der gelesene Text ({U+XXXX} = Zeichen mit diesem Codepunkt).",
+  "fileCases": [
+    { "name": "leer", "hex": "", "expectedCode": "Empty" },
+    { "name": "nur ein Byte", "hex": "FF", "expectedCode": "BadEncoding" },
+    { "name": "nur die BOM", "hex": "FFFE", "expectedCode": null, "expectedText": "" },
+    { "name": "BOM und Text AB", "hex": "FFFE41004200", "expectedCode": null, "expectedText": "AB" },
+    { "name": "Umlaut", "hex": "FFFEE400", "expectedCode": null, "expectedText": "{U+00E4}" },
+    { "name": "ungerade Anzahl Bytes nach der BOM", "hex": "FFFE410042", "expectedCode": "BadEncoding" },
+    { "name": "UTF-8 mit BOM", "hex": "EFBBBF41", "expectedCode": "BadEncoding" },
+    { "name": "UTF-16 Big Endian mit BOM", "hex": "FEFF0041", "expectedCode": "BadEncoding" },
+    { "name": "UTF-16 ohne BOM", "hex": "41004200", "expectedCode": "BadEncoding" },
+    { "name": "BOM nur halb", "hex": "FF41", "expectedCode": "BadEncoding" }
   ]
 }

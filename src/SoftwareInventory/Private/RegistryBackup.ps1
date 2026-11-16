@@ -11,6 +11,9 @@ $script:KnownBackupReasonCodes = @('OrphanedEntry', 'NewerInstallNextTo')
 # Ungewöhnliche Zeilenumbrüche: NUL, VT, FF, NEL, U+2028, U+2029 sowie einzelnes CR oder LF. Die Zeichen stehen als
 # Codepunkte, nie als Escape-Text im Quelltext (CLAUDE.md).
 $script:OddLineBreakPattern = '[' + (-join (0x00, 0x0B, 0x0C, 0x85, 0x2028, 0x2029 | ForEach-Object { '\u{0:X4}' -f $_ })) + ']|\r(?!\n)|(?<!\r)\n'
+# Unsichere Zeichen in einem Schlüsselnamen: [ und ] sowie Steuerzeichen (U+0000-U+001F, U+007F-U+009F). Ebenfalls aus
+# Codepunkten gebaut; Modul und Helfer lehnen solche Schlüssel ab (KeyNameUnsafe), sie bleiben Handarbeit.
+$script:UnsafeKeyNamePattern = '[\[\]' + (-join ((0x00, 0x1F), (0x7F, 0x9F) | ForEach-Object { '\u{0:X4}-\u{1:X4}' -f $_[0], $_[1] })) + ']'
 
 function Get-RegistryBackupDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\registry-backup'
@@ -96,10 +99,27 @@ function Get-RegistryBackupText {
     param([string] $File)
     if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return @{ Problem = 'Missing'; Bytes = $null; Text = $null } }
     if ((Get-Item -LiteralPath $File).Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge'; Bytes = $null; Text = $null } }
-    $bytes = [System.IO.File]::ReadAllBytes($File)
-    if ($bytes.Length -eq 0) { return @{ Problem = 'Empty'; Bytes = $null; Text = $null } }
-    if ($bytes.Length -lt 2 -or $bytes[0] -ne 0xFF -or $bytes[1] -ne 0xFE) { return @{ Problem = 'BadEncoding'; Bytes = $null; Text = $null } }
-    @{ Problem = $null; Bytes = $bytes; Text = [System.Text.Encoding]::Unicode.GetString($bytes, 2, $bytes.Length - 2) }
+    ConvertFrom-RegistryBackupByte -Bytes ([System.IO.File]::ReadAllBytes($File))
+}
+
+function ConvertFrom-RegistryBackupByte {
+    <#
+    .SYNOPSIS
+        Prüft die Bytes einer .reg-Sicherung und liest daraus den Text.
+    .DESCRIPTION
+        Dieselben Regeln wie BackupFileRules.DecodeText im Helfer (gemeinsame Tabelle
+        tests/Data/registry-backup-cases.json, fileCases): leer, zu groß (über 16 MB), und UTF-16 Little Endian mit der
+        Bytefolge FF FE am Anfang und gerader Anzahl Bytes danach, wie reg export sie schreibt.
+    .OUTPUTS
+        @{ Problem; Bytes; Text } (Problem $null, wenn alles passt; sonst Empty, TooLarge oder BadEncoding).
+    #>
+    param($Bytes)
+    if ($null -eq $Bytes -or $Bytes.Length -eq 0) { return @{ Problem = 'Empty'; Bytes = $null; Text = $null } }
+    if ($Bytes.Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge'; Bytes = $null; Text = $null } }
+    if ($Bytes.Length -lt 2 -or $Bytes[0] -ne 0xFF -or $Bytes[1] -ne 0xFE -or (($Bytes.Length - 2) % 2) -ne 0) {
+        return @{ Problem = 'BadEncoding'; Bytes = $null; Text = $null }
+    }
+    @{ Problem = $null; Bytes = $Bytes; Text = [System.Text.Encoding]::Unicode.GetString($Bytes, 2, $Bytes.Length - 2) }
 }
 
 function Test-RegistryBackupContent {
@@ -112,7 +132,7 @@ function Test-RegistryBackupContent {
         (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel, nur bekannte Zeilenformate (Wert,
         Kommentar, Hex-Fortsetzung; sonst BadLine).
     .OUTPUTS
-        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNotFound,
+        $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe, KeyNotFound,
         KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur User erlaubt) oder WrongScope
         (HKCU, aber nur Machine erlaubt). Der Helfer prüft mit denselben Regeln (RegistryBackupRules.cs); beide
         gegen tests/Data/registry-backup-cases.json.
@@ -138,9 +158,11 @@ function Test-RegistryBackupContent {
             return 'BadLine'
         }
         if ($t.StartsWith('[-', [StringComparison]::Ordinal)) { return 'DeleteLine' }
-        # Ein ] im Schlüsselnamen ist unklar (reg.exe könnte am ersten statt am letzten ] trennen): nicht zulassen.
-        if ($t -notmatch '^\[(?<key>[^\]]+)\]$') { return 'BadKeyLine' }
-        $headers.Add($Matches.key)
+        if ($t.Length -lt 3 -or -not $t.EndsWith(']', [StringComparison]::Ordinal)) { return 'BadKeyLine' }
+        $name = $t.Substring(1, $t.Length - 2)
+        # [ oder ] oder ein Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) im Namen: nie sicher zu lesen, Handarbeit.
+        if ($name -cmatch $script:UnsafeKeyNamePattern) { return 'KeyNameUnsafe' }
+        $headers.Add($name)
     }
     if ($headers.Count -eq 0) { return 'KeyNotFound' }
     if (-not [string]::Equals($headers[0], $NativeKey, [StringComparison]::OrdinalIgnoreCase)) { return 'KeyMismatch' }

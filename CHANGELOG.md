@@ -4,6 +4,17 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Schlüsselnamen mit [ ] oder Steuerzeichen
+
+- Ein Uninstall-Schlüssel, dessen Name `[`, `]` oder ein Steuerzeichen enthält, wird nicht automatisch gesichert, entfernt oder zurückgespielt (`KeyNameUnsafe`), auch nicht für HKCU: Solche Schlüssel sind extrem selten und bleiben Handarbeit. „Eintrag entfernen“ nennt den Grund schon bei der Planung (`BackupKeyNameUnsafe`); beide Prüfungen (Modul und Helfer) nutzen dieselbe Fälletabelle.
+
+### Verwaist-Prüfung: strenger (Grundlage für HKLM)
+
+- Ein Eintrag gilt nur noch als verwaist, wenn er einen UninstallString hat (ein Eintrag nur mit QuietUninstallString ist nie verwaist) und die Dateien, auf die er zeigt, auf dem **Systemlaufwerk** nachweislich fehlen. Alles, was sich nicht sicher beurteilen lässt, zählt als „nicht auswertbar“ und verhindert die Verwaisung: andere Laufwerke (auch ein zweites festes Laufwerk, das eine externe USB-Platte sein kann), Netzlaufwerke, USB-Sticks, CD-Laufwerke, nicht erreichbare Laufwerke, Pfade ohne Wurzel `X:\` (`C:datei.exe`, `\datei.exe`, `\\?\…`), Pfade mit verweigertem Zugriff („Zugriff verweigert“ ist nicht „fehlt“) und bei 32-Bit-Einträgen (WOW6432Node) Pfade unter dem 64-Bit-Programmordner (dort löst sich `%ProgramFiles%` zum falschen Ordner auf). Das macht die Erkennung strenger (weniger Einträge gelten als verwaist), nie lockerer; Einträge auf einem zweiten Laufwerk bleiben ein Fall für Handarbeit.
+- Dieselbe Prüfung gibt es jetzt im Helfer (`OrphanRules.cs`, mit Adapter für Dateisystem und Laufwerke); Modul und Helfer prüfen gegen dieselbe Fälletabelle `tests/Data/registry-orphan-cases.json`. Im erhöhten Helfer zählen außerdem Pfade unter `C:\Users` als nicht auswertbar (bei einer UAC-Abfrage mit fremdem Administratorkonto zeigen die Profilvariablen auf ein anderes Profil).
+- Einzelprüfung einer Sicherungsdatei im Admin-Ordner (`BackupFileRules`, `WindowsBackupFileReader`): kein Link, genau ein Hardlink, Besitzer Administratoren, SYSTEM oder TrustedInstaller, kein Schreibrecht für andere; die Datei wird genau einmal über ein Handle gelesen (ohne einem Link zu folgen). Das geöffnete Ziel wird geprüft: nur Pfade der Form `X:\…` (kein `\\?\`, `\\.\`, kein Datenstrom `datei:strom`), eine Datei auf einem Datenträger (keine Geräte wie `NUL`), der Pfad liegt in der langen Schreibweise vor (kein 8.3-Kurzname) und stimmt mit dem vom Handle aufgelösten Pfad überein (kein Ordner-Link in der Mitte). Das Dekodieren der Bytes (nur UTF-16 mit BOM, gerade Anzahl Bytes) ist in Modul und Helfer gleich und steht in der gemeinsamen Tabelle.
+- Noch nicht verdrahtet: Das Entfernen von HKLM-Einträgen folgt in einem weiteren Schritt.
+
 ### Erhöhter Helfer: fail-closed (Grundlage für HKLM-Sicherungen)
 
 - Der Helfer (Version 5) lehnt unbekannte Operationen und Pläne ohne Aufgabe mit Fehlercode ab (`HelperUnknownOperation`, `HelperNoOperation`), auch bei Stapelschritten; ein leeres Ergebnis ist nie ein Erfolg. Ein Plan ohne Programm und ohne Operation meldet jetzt `HelperNoOperation` statt `HelperPathNotAbsolute`.
