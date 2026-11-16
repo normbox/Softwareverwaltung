@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Erhöhter Helfer: fail-closed (Grundlage für HKLM-Sicherungen)
+
+- Der Helfer (Version 5) lehnt unbekannte Operationen und Pläne ohne Aufgabe mit Fehlercode ab (`HelperUnknownOperation`, `HelperNoOperation`), auch bei Stapelschritten; ein leeres Ergebnis ist nie ein Erfolg. Ein Plan ohne Programm und ohne Operation meldet jetzt `HelperNoOperation` statt `HelperPathNotAbsolute`.
+- Das Modul kann für neue Operationen eine Mindestversion verlangen (`HelperTooOld`) und prüft, dass die Antwort zur Operation gehört (`HelperOperationMismatch`). Ein Ergebnis ohne Exit-Code zählt nie als Erfolg (`HelperNoExitCode`; vorher wurde `[long] $null` zu 0).
+- Vorbereitet für das Entfernen und Wiederherstellen von HKLM-Einträgen (folgt): die strenge `.reg`-Prüfung im Helfer mit gemeinsamer Fälletabelle für Modul und Helfer, `Test-RegistryBackupContent -Scope`, und die Ordnerregeln für `Program Files\Softwareverwaltung\RegistryBackup` (nur Administratoren, bei jeder Nutzung geprüft).
+
 ### Verwaiste Uninstall-Einträge
 
 - **Neu: „Eintrag entfernen“** in den Details verwaister Einträge des aktuellen Benutzers (z. B. Jan 0.5.16). Vorher sichert die App den Registry-Schlüssel als `.reg`-Datei unter `logs\registry-backup\` und prüft die Sicherung streng (Kopf, genau ein Hauptschlüssel, Unterschlüssel nur darunter, keine Löschzeilen); daneben steht eine `.json` mit Name, Schlüssel und Gründen als Codes. Besteht die Prüfung nicht, wird nichts entfernt. Entfernt wird nur der Eintrag samt Unterschlüsseln, keine Dateien oder Ordner. Sicherungen werden 365 Tage aufbewahrt (`.reg` und `.json` immer gemeinsam), unabhängig von der normalen Bereinigung. Für Einträge aller Benutzer folgt das Entfernen später.
