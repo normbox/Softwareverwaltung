@@ -64,7 +64,7 @@
     { "name": "Schlüsselzeile mit Leerzeichen und Tabulator davor", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n \t[{U}\\App]\r\n", "expected": null },
     { "name": "Wertzeilen, Standardwert, Hex-Fortsetzung und Kommentar", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n@=\"x\"\r\n\"Blob\"=hex:01,02,\\\r\n  03,04,\\\r\n  0A,ff\r\n;[HKEY_CURRENT_USER\\Run]\r\n", "expected": null }
   ],
-  "fileCasesComment": "Bytes einer .reg-Sicherung: Modul (ConvertFrom-RegistryBackupBytes) und Helfer (BackupFileRules.DecodeText) müssen beide dasselbe Ergebnis liefern. hex = die Bytes als Hexziffern; expectedCode = null (passt) oder Empty, BadEncoding; expectedText = der gelesene Text ({U+XXXX} = Zeichen mit diesem Codepunkt).",
+  "fileCasesComment": "Bytes einer .reg-Sicherung: Modul (ConvertFrom-RegistryBackupByte) und Helfer (BackupFileRules.DecodeText) müssen beide dasselbe Ergebnis liefern. hex = die Bytes als Hexziffern; expectedCode = null (passt) oder Empty, BadEncoding; expectedText = der gelesene Text ({U+XXXX} = Zeichen mit diesem Codepunkt).",
   "fileCases": [
     { "name": "leer", "hex": "", "expectedCode": "Empty" },
     { "name": "nur ein Byte", "hex": "FF", "expectedCode": "BadEncoding" },

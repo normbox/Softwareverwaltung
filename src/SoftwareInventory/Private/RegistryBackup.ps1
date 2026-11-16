@@ -99,10 +99,10 @@ function Get-RegistryBackupText {
     param([string] $File)
     if (-not (Test-Path -LiteralPath $File -PathType Leaf)) { return @{ Problem = 'Missing'; Bytes = $null; Text = $null } }
     if ((Get-Item -LiteralPath $File).Length -gt $script:RegistryBackupMaxBytes) { return @{ Problem = 'TooLarge'; Bytes = $null; Text = $null } }
-    ConvertFrom-RegistryBackupBytes -Bytes ([System.IO.File]::ReadAllBytes($File))
+    ConvertFrom-RegistryBackupByte -Bytes ([System.IO.File]::ReadAllBytes($File))
 }
 
-function ConvertFrom-RegistryBackupBytes {
+function ConvertFrom-RegistryBackupByte {
     <#
     .SYNOPSIS
         Prüft die Bytes einer .reg-Sicherung und liest daraus den Text.

@@ -391,7 +391,7 @@ Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
         $table.fileCases.Count | Should -BeGreaterThan 8
         foreach ($case in $table.fileCases) {
             $bytes = [byte[]] [System.Convert]::FromHexString([string] $case.hex)
-            $result = InModuleScope SoftwareInventory -Parameters @{ B = $bytes } { ConvertFrom-RegistryBackupBytes -Bytes $B }
+            $result = InModuleScope SoftwareInventory -Parameters @{ B = $bytes } { ConvertFrom-RegistryBackupByte -Bytes $B }
             $expectedCode = if ($case.PSObject.Properties['expectedCode']) { $case.expectedCode }
             if ($expectedCode) { $result.Problem | Should -BeExactly $expectedCode -Because $case.name }
             else {
@@ -404,6 +404,6 @@ Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
     It 'lehnt eine Sicherung über 16 MB ab, auch mit gültiger BOM' {
         $big = [byte[]]::new(16MB + 2)
         $big[0] = 0xFF; $big[1] = 0xFE
-        (InModuleScope SoftwareInventory -Parameters @{ B = $big } { ConvertFrom-RegistryBackupBytes -Bytes $B }).Problem | Should -Be 'TooLarge'
+        (InModuleScope SoftwareInventory -Parameters @{ B = $big } { ConvertFrom-RegistryBackupByte -Bytes $B }).Problem | Should -Be 'TooLarge'
     }
 }
