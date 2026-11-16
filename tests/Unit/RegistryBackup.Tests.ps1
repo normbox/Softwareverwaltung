@@ -377,7 +377,7 @@ Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
         $text = Expand-CaseText $Text
         $key = Expand-CaseText $Key
         $actual = InModuleScope SoftwareInventory -Parameters @{ T = $text; K = $key; S = $Scope } { Test-RegistryBackupContent -Text $T -NativeKey $K -Scope $S }
-        if ($Expected) { $actual | Should -Be $Expected } else { $actual | Should -BeNullOrEmpty }
+        if ($Expected) { $actual | Should -BeExactly $Expected } else { $actual | Should -BeNullOrEmpty }
     }
 
     It 'enthält genug Fälle' {

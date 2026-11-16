@@ -135,7 +135,8 @@ function Test-RegistryBackupContent {
             return 'BadLine'
         }
         if ($t.StartsWith('[-', [StringComparison]::Ordinal)) { return 'DeleteLine' }
-        if ($t -notmatch '^\[(?<key>.+)\]$') { return 'BadKeyLine' }
+        # Ein ] im Schlüsselnamen ist unklar (reg.exe könnte am ersten statt am letzten ] trennen): nicht zulassen.
+        if ($t -notmatch '^\[(?<key>[^\]]+)\]$') { return 'BadKeyLine' }
         $headers.Add($Matches.key)
     }
     if ($headers.Count -eq 0) { return 'KeyNotFound' }

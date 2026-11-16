@@ -42,6 +42,8 @@ public sealed class AclRulesTests
 
     [Theory]
     [InlineData("D:(A;;GA;;;WD)", Everyone)]
+    [InlineData("D:(A;CIIO;GW;;;BU)", Users)]
+    [InlineData("D:(A;;GA;;;OW)", "S-1-3-4")]
     [InlineData("D:(A;;0x40000000;;;BU)", Users)]
     [InlineData("D:(A;;GW;;;BU)", Users)]
     [InlineData("D:(A;;0x2;;;AU)", AuthenticatedUsers)]
@@ -64,6 +66,32 @@ public sealed class AclRulesTests
     public void IgnoresEntriesWithoutWriteAccess(string sddl)
     {
         Assert.Empty(WindowsDirectoryInspector.WriteSidsFromDescriptor(new RawSecurityDescriptor(sddl)));
+    }
+
+    [Fact]
+    public void ADirectCreatorOwnerEntryCountsButTheInheritedPlaceholderDoesNot()
+    {
+        var sids = WindowsDirectoryInspector.WriteSidsFromDescriptor(new RawSecurityDescriptor("D:(A;;GA;;;CO)(A;OICIIO;GA;;;CO)"));
+        Assert.Equal(["S-1-3-0"], sids);
+    }
+
+    [Fact]
+    public void TheDefaultAclOfAProgramFilesSubfolderYieldsOnlyTrustedWriters()
+    {
+        const string ti = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
+        var sddl = $"D:PAI(A;;FA;;;{ti})(A;CIIO;GA;;;{ti})(A;;0x1301bf;;;SY)(A;OICIIO;GA;;;SY)(A;;0x1301bf;;;BA)(A;OICIIO;GA;;;BA)"
+            + "(A;;0x1200a9;;;BU)(A;OICIIO;GXGR;;;BU)(A;OICIIO;GA;;;CO)(A;;0x1200a9;;;S-1-15-2-1)(A;OICIIO;GXGR;;;S-1-15-2-1)";
+        var writers = WindowsDirectoryInspector.WriteSidsFromDescriptor(new RawSecurityDescriptor(sddl));
+        Assert.NotEmpty(writers);
+        Assert.All(writers, sid => Assert.Contains(sid, BackupFolderRules.TrustedSids));
+    }
+
+    [Fact]
+    public void ACompoundAllowEntryCountsAsWriteAccess()
+    {
+        var compound = new RawAcl(GenericAcl.AclRevisionDS, 1);
+        compound.InsertAce(0, new CompoundAce(AceFlags.None, 0x2, CompoundAceType.Impersonation, new SecurityIdentifier(Users)));
+        Assert.Equal([AclRules.UnsupportedAce], WindowsDirectoryInspector.WriteSidsFromDescriptor(new RawSecurityDescriptor(ControlFlags.DiscretionaryAclPresent, null, null, null, compound)));
     }
 
     [Fact]

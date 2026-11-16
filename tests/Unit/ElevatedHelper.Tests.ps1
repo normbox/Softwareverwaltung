@@ -32,6 +32,15 @@ Describe 'Start-ElevatedHelper' {
         Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
     }
 
+    It 'unterscheidet die Schreibweise einer Operation wie der Helfer (ordinal)' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'Der Helfer darf nicht gestartet werden' }
+        $r = InModuleScope SoftwareInventory {
+            Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ Operation = 'replacehelpercopy'; FilePath = $null; RestorePoint = $false }
+        }
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
+    }
+
     It 'der Helfer lehnt eine unbekannte Operation selbst mit Fehlercode ab, nie mit leerem Erfolg' {
         # Operation absichtlich in die Tabelle eintragen: So erreicht sie den echten Helfer, der sie nicht kennt.
         $r = InModuleScope SoftwareInventory {
@@ -293,22 +302,28 @@ Describe 'Update-IncompleteActionLog' {
 }
 
 Describe 'Start-ElevatedHelperBatch' {
-    It 'lehnt Schritte ohne Programm und Schritte mit Operation ab, statt sie als Erfolg zu melden' {
-        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+    It 'lehnt Schritte ohne Programm ab, statt sie als Erfolg zu melden' {
+        $r = InModuleScope SoftwareInventory {
             $seen = [System.Collections.Generic.List[object]]::new()
-            $steps = @(
-                @{ FilePath = $null; MsiLog = $false; TimeoutSeconds = 60 }
-                @{ Operation = 'GibtEsNicht'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; TimeoutSeconds = 60 }
-            )
+            $steps = @(@{ FilePath = $null; MsiLog = $false; TimeoutSeconds = 60 })
             $batch = Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $true } -AfterStep { param($i, $run) $seen.Add(@{ Index = $i; Code = $run.Error.Code; ExitCode = $run.ExitCode; Output = $run.Output }) }
             @{ Batch = $batch; Seen = @($seen) }
         }
-        $r.Batch.Done | Should -Be 2
+        $r.Batch.Done | Should -Be 1
         $r.Seen[0].Code | Should -Be 'HelperNoOperation'
-        $r.Seen[1].Code | Should -Be 'HelperUnknownOperation'
-        $r.Seen[1].Output | Should -BeNullOrEmpty
         $r.Seen[0].ExitCode | Should -BeNullOrEmpty
-        $r.Seen[1].ExitCode | Should -BeNullOrEmpty
+    }
+
+    It 'startet den Helfer gar nicht erst, wenn ein Schritt eine Operation enthält (keine UAC-Abfrage)' {
+        Mock -ModuleName SoftwareInventory Start-ElevatedProcess { throw 'Der Helfer darf nicht gestartet werden' }
+        $r = InModuleScope SoftwareInventory -Parameters @{ S = $System } {
+            $steps = @(@{ Operation = 'ReplaceHelperCopy'; FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; TimeoutSeconds = 60 })
+            Start-ElevatedHelperBatch -NoElevation -Steps $steps -BeforeStep { param($i) $true } -AfterStep { param($i, $run) }
+        }
+        $r.Status | Should -Be 'Failed'
+        $r.Done | Should -Be 0
+        $r.Error.Code | Should -Be 'HelperUnknownOperation'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedProcess -Times 0 -Exactly
     }
 
     It 'führt mehrere Schritte in einem Helfer aus und meldet jeden Schritt sofort' {

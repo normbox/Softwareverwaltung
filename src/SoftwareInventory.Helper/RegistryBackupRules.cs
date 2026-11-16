@@ -34,7 +34,7 @@ namespace SoftwareInventory.Helper
         // reg export schreibt nur CRLF. Einzelne CR/LF, NUL oder andere Zeilentrenner lehnen wir ab: Würde reg.exe
         // dort anders trennen als diese Prüfung, könnte sich eine Schlüsselzeile an der Prüfung vorbeischmuggeln.
         private static readonly Regex OddLineBreaks = new Regex("[\\x00\\x0B\\x0C\\u0085\\u2028\\u2029]|\\r(?!\\n)|(?<!\\r)\\n", RegexOptions.Compiled);
-        private static readonly Regex KeyLine = new Regex(@"^\[(?<key>.+)\]$", RegexOptions.Compiled);
+        private static readonly Regex KeyLine = new Regex(@"^\[(?<key>[^\]]+)\]$", RegexOptions.Compiled);
         // Fortsetzungszeile eines Hex-Werts (reg export: "  01,02,\").
         private static readonly Regex HexLine = new Regex(@"^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$", RegexOptions.Compiled);
         private static readonly char[] Blanks = { ' ', '\t' };

@@ -13,7 +13,25 @@ namespace SoftwareInventory.Helper
         private const string CreatorOwner = "S-1-3-0";
         private const string CreatorGroup = "S-1-3-1";
 
-        public bool Exists(string path) => Directory.Exists(path);
+        /// <summary>
+        /// Gibt es den Ordner? Directory.Exists liefert bei fehlendem Zugriff false; hier wirft GetAttributes dann eine
+        /// Ausnahme (Rechte nicht lesbar), und nur ein wirklich fehlender Pfad ergibt false.
+        /// </summary>
+        public bool Exists(string path)
+        {
+            try
+            {
+                return (File.GetAttributes(path) & FileAttributes.Directory) != 0;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return false;
+            }
+        }
 
         public bool IsReparsePoint(string path) => (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
 

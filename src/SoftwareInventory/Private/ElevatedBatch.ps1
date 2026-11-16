@@ -34,6 +34,12 @@ function Start-ElevatedHelperBatch {
         [switch] $NoElevation,
         [System.Collections.IDictionary] $Control
     )
+    # Schritte sind nur Programme. Eine Operation gehört nicht in einen Stapel: gar nicht erst den Helfer starten (keine UAC-Abfrage).
+    foreach ($step in $Steps) {
+        if ($step.ContainsKey('Operation') -and $step['Operation']) {
+            return @{ Status = 'Failed'; Error = (New-InventoryMessage HelperUnknownOperation ([string] $step['Operation'])); Done = 0 }
+        }
+    }
     $resolved = Resolve-ElevatedHelperPath -NoElevation:$NoElevation -Control $Control
     if ($resolved.ContainsKey('Status')) { return $resolved + @{ Done = 0 } }
     $helper = $resolved.Path

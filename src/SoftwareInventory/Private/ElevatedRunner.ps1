@@ -16,7 +16,9 @@ $script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\lib\SoftwareInventory.H
 # Operationen ohne Prozess und die Helferversion, ab der sie bekannt sind. Nur was hier steht, schickt das Modul an
 # den Helfer; die Mindestversion folgt aus der Tabelle, kein Aufrufer muss sie vergessen können. Neue Operationen
 # hier mit der Version eintragen, die sie einführt (z. B. 5).
-$script:HelperOperationMinVersion = @{ ReplaceHelperCopy = 0 }
+# Exakte Schreibweise wie im Helfer (OperationRules.Known): Ordinal, nicht wie eine Hashtable.
+$script:HelperOperationMinVersion = [System.Collections.Generic.Dictionary[string, int]]::new([StringComparer]::Ordinal)
+$script:HelperOperationMinVersion['ReplaceHelperCopy'] = 0
 
 # Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 
