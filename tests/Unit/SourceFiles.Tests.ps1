@@ -22,8 +22,10 @@ BeforeAll {
         $extensions = '.ps1', '.psm1', '.psd1', '.cs', '.xaml', '.resx', '.md', '.json', '.csproj', '.props'
         # Ohne Build-Ausgaben, Arbeitskopien der Subagenten, das Git-Verzeichnis und lokale Arbeitsordner.
         $skip = '\\(bin|obj|\.git|\.vs|node_modules|TestResults|worktrees|_arbeit)\\'
+        # Nur der Pfad relativ zum Repository-Ordner zählt: Liegt die Kopie selbst unter .claude\worktrees\ (Arbeitskopie
+        # eines Subagenten), würde der absolute Pfad sonst jede Datei ausschließen und die Prüfung liefe ins Leere.
         Get-ChildItem -LiteralPath $script:RepoRoot -Recurse -File -Force -ErrorAction SilentlyContinue |
-            Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() -and $_.FullName -notmatch $skip }
+            Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() -and $_.FullName.Substring($script:RepoRoot.Length) -notmatch $skip }
     }
 }
 
