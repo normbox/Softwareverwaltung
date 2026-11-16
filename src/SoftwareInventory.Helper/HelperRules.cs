@@ -42,6 +42,39 @@ namespace SoftwareInventory.Helper
         };
     }
 
+    /// <summary>
+    /// Welche Operationen der Helfer kennt. Alles andere ist ein Fehler mit Code, nie ein leeres „Erfolgreich“:
+    /// Ein Plan ohne erkennbare Aufgabe darf nicht wie ein ausgeführter aussehen.
+    /// </summary>
+    public static class OperationRules
+    {
+        /// <summary>Stand des Handschlags (Hello und Ergebnisse). Das Modul lehnt neue Operationen bei einem älteren Helfer ab.</summary>
+        public const int HelperVersion = 5;
+
+        /// <summary>Operationen ohne Prozess. Plan ohne Operation: Wiederherstellungspunkt und/oder Programm (FilePath).</summary>
+        public static readonly string[] Known = { "ReplaceHelperCopy" };
+
+        /// <summary>Einzelaufruf: <c>HelperUnknownOperation</c> bei unbekannter Operation, <c>HelperNoOperation</c> ohne jede Aufgabe.</summary>
+        public static Problem Check(string operation, bool restorePoint, bool hasFilePath)
+        {
+            if (!string.IsNullOrEmpty(operation))
+            {
+                return Array.IndexOf(Known, operation) >= 0 ? null : new Problem("HelperUnknownOperation", operation);
+            }
+            return restorePoint || hasFilePath ? null : new Problem("HelperNoOperation");
+        }
+
+        /// <summary>Schritt eines Stapels: nur Programme (FilePath); eine Operation gibt es dort nicht.</summary>
+        public static Problem CheckStep(string operation, bool hasFilePath)
+        {
+            if (!string.IsNullOrEmpty(operation))
+            {
+                return new Problem("HelperUnknownOperation", operation);
+            }
+            return hasFilePath ? null : new Problem("HelperNoOperation");
+        }
+    }
+
     /// <summary>Letzte Prüfungen, die der Helfer selbst vornimmt. Dem Plan wird nicht blind geglaubt.</summary>
     public static class HelperRules
     {
