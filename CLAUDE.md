@@ -48,7 +48,7 @@ Die Hooks erzwingen Regeln dieser Datei. Sie sind Leitplanken, keine Garantie, u
 - `block-git-risks`: blockiert `git commit/push/merge` auf `main` (und einen Push mit Ziel `main`), `push --force`/`-f`/`--force-with-lease`, `reset --hard`, `clean -f` und `gh pr merge` (Merge macht der Benutzer). `git checkout -- <Pfad>` gibt nur einen Hinweis.
 - `check-control-chars`: prüft jede mit Edit/Write geänderte Quelldatei im Repository sofort auf rohe Steuerzeichen und ungültiges UTF-8 und meldet Zeile und Codepunkt.
 - Die Zeichenbereiche und die Quelldatei-Endungen stehen einmal in `tests/Data/unsafe-chars.json` (Dezimal-Codepunkte); `SourceFiles.Tests.ps1` und der Hook `check-control-chars` lesen dieselbe Tabelle.
-- Bewusst umgehen: den Hook für die Sitzung in `.claude/settings.local.json` überschreiben (die Datei ist nicht im Repository) und im PR begründen.
+- Bewusst umgehen: Einzelne Hooks lassen sich nicht per `.claude/settings.local.json` überschreiben, dort geht nur `"disableAllHooks": true` (schaltet alle Hooks ab; die Datei ist nicht im Repository). Nur für die Sitzung setzen, danach wieder entfernen, und im PR begründen.
 
 ## Skills (`.claude/skills/`)
 

@@ -1,6 +1,7 @@
 ---
 name: pr-bereit
 description: Bereitet den Pull Request des aktuellen Branches vor: Vollauf (oder bei reinen Doku-/Regel-PRs der Teillauf), reviewer einmal, PR-Text mit Attribution, Push und PR öffnen. Nutze es, wenn ein Teilschritt fertig und committet ist.
+disable-model-invocation: true
 ---
 
 # PR vorbereiten (CLAUDE.md, Git-Arbeitsweise und Arbeitsteilung)
