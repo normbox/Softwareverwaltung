@@ -48,6 +48,7 @@
     <Compile Include="..\Softwareverwaltung.App.Tests\HelperCopyRulesTests.cs" Link="Shared\HelperCopyRulesTests.cs" />
     <Compile Include="..\Softwareverwaltung.App.Tests\RegistryRemovalTests.cs" Link="Shared\RegistryRemovalTests.cs" />
     <Compile Include="..\Softwareverwaltung.App.Tests\MachineFoldersTests.cs" Link="Shared\MachineFoldersTests.cs" />
+    <Compile Include="..\Softwareverwaltung.App.Tests\BackupSecurityTests.cs" Link="Shared\BackupSecurityTests.cs" />
   </ItemGroup>
 
 </Project>

@@ -328,6 +328,7 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
     It 'lehnt Schlüsselnamen mit [ ] oder Steuerzeichen schon bei der Planung ab (<Name>)' -ForEach @(
         @{ Name = 'eckige Klammern'; Leaf = 'jan[1]' }
         @{ Name = 'nur ]'; Leaf = 'jan]' }
+        @{ Name = 'Anführungszeichen'; Leaf = 'jan"x' }
         @{ Name = 'Tabulator'; Leaf = "jan`tx" }
         @{ Name = 'U+0001'; Leaf = "jan$([char] 1)x" }
         @{ Name = 'U+007F'; Leaf = "jan$([char] 127)x" }

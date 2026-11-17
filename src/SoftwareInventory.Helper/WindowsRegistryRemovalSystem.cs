@@ -15,23 +15,7 @@ namespace SoftwareInventory.Helper
     /// </summary>
     internal sealed class WindowsRegistryRemovalSystem : IRegistryRemovalSystem
     {
-        /// <summary>
-        /// Program Files\Softwareverwaltung, nur wenn er fehlt: Besitzer Administratoren, die Rechte erbt er unverändert von
-        /// Program Files (keine eigenen Einträge, auch keine zusätzlichen für Benutzer).
-        /// </summary>
-        internal const string ParentSddl = "O:BAG:SY";
-
-        /// <summary>
-        /// RegistryBackup und alles darin: Besitzer Administratoren, geschützte DACL. SYSTEM und Administratoren Vollzugriff,
-        /// Benutzer nur Lesen und Ausführen (0x1200a9). OWNER RIGHTS ebenfalls nur Lesen und Ausführen: Eine Datei, die
-        /// reg.exe unter dem Standardbesitzer des Tokens anlegt (je nach Richtlinie der Benutzer), lässt sich dann von diesem
-        /// Besitzer nicht über die Rechte ändern.
-        /// </summary>
-        internal const string FolderSddl = "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)(A;OICI;0x1200a9;;;OW)";
-
-        /// <summary>Eine Sicherungsdatei, die der Helfer selbst schreibt: wie der Ordner, ohne Vererbung nach unten.</summary>
-        internal const string FileSddl = "O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;BU)";
-
+        // Die Rechte (SDDL) stehen in BackupFolderRules, damit die Tests sie ohne Adminrechte prüfen können.
         private const int ErrorAlreadyExists = 183;
         private const int ExportTimeoutMilliseconds = 60000;
 
@@ -100,7 +84,11 @@ namespace SoftwareInventory.Helper
         public Problem CreateBackupFolderIfMissing()
         {
             var parent = Path.GetDirectoryName(BackupFolder);
-            return CreateIfMissing(parent, ParentSddl) ?? CreateIfMissing(BackupFolder, FolderSddl);
+            // Einen bestehenden Elternordner erst prüfen, dann darunter anlegen: sonst entstünde der Ordner bei einem Link am Ziel.
+            var parentProblem = Directory.Exists(parent)
+                ? BackupFolderRules.Check(parent, _paths.ProgramFiles, new WindowsDirectoryInspector())
+                : CreateIfMissing(parent, BackupFolderRules.ParentSddl);
+            return parentProblem ?? CreateIfMissing(BackupFolder, BackupFolderRules.FolderSddl);
         }
 
         /// <summary>Legt den Ordner mit genau diesen Rechten an; gibt es ihn schon, bleibt er, wie er ist (geprüft wird danach).</summary>
@@ -130,7 +118,25 @@ namespace SoftwareInventory.Helper
             }
         }
 
-        public Problem CheckBackupFolder() => BackupFolderRules.Check(BackupFolder, _paths.ProgramFiles, new WindowsDirectoryInspector());
+        public Problem CheckBackupFolder()
+        {
+            var problem = BackupFolderRules.Check(BackupFolder, _paths.ProgramFiles, new WindowsDirectoryInspector());
+            if (problem is not null)
+            {
+                return problem;
+            }
+            try
+            {
+                var bytes = new DirectoryInfo(BackupFolder).GetAccessControl(AccessControlSections.Access).GetSecurityDescriptorBinaryForm();
+                return BackupFolderRules.LimitsOwnerRightsOfNewFiles(new RawSecurityDescriptor(bytes, 0))
+                    ? null
+                    : new Problem("BackupFolderOwnerRightsMissing", BackupFolder);
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException || ex is InvalidOperationException)
+            {
+                return new Problem("BackupFolderUnreadable", BackupFolder);
+            }
+        }
 
         /// <summary>reg.exe aus System32 mit festem Arbeitsordner und 64-Bit-Ansicht; Name und Pfad enthalten kein Anführungszeichen.</summary>
         public int ExportKey(string nativeKey, string file)
@@ -156,7 +162,20 @@ namespace SoftwareInventory.Helper
                     _ = process.StandardError.ReadToEndAsync();
                     if (!process.WaitForExit(ExportTimeoutMilliseconds))
                     {
-                        process.Kill();
+                        try
+                        {
+                            process.Kill();
+                            // Kurz warten, damit reg.exe die Zwischendatei freigibt und das Aufräumen sie löschen kann.
+                            process.WaitForExit(5000);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Inzwischen von selbst beendet.
+                        }
+                        catch (Win32Exception)
+                        {
+                            // Lässt sich nicht beenden; das Ergebnis bleibt „gescheitert“.
+                        }
                         return -1;
                     }
                     process.WaitForExit();
@@ -174,10 +193,24 @@ namespace SoftwareInventory.Helper
         public void WriteNewFile(string path, byte[] bytes)
         {
             var security = new FileSecurity();
-            security.SetSecurityDescriptorSddlForm(FileSddl);
-            using (var stream = new FileStream(path, FileMode.CreateNew, FileSystemRights.Write, FileShare.None, 4096, FileOptions.WriteThrough, security))
+            security.SetSecurityDescriptorSddlForm(BackupFolderRules.FileSddl);
+            var created = false;
+            try
             {
-                stream.Write(bytes, 0, bytes.Length);
+                using (var stream = new FileStream(path, FileMode.CreateNew, FileSystemRights.Write, FileShare.None, 4096, FileOptions.WriteThrough, security))
+                {
+                    created = true;
+                    stream.Write(bytes, 0, bytes.Length);
+                }
+            }
+            catch
+            {
+                // Eine selbst angelegte, unvollständige Datei (z. B. Datenträger voll) nicht liegen lassen; eine fremde nie anfassen.
+                if (created)
+                {
+                    DeleteFile(path);
+                }
+                throw;
             }
         }
 

@@ -110,11 +110,14 @@ namespace SoftwareInventory.Helper
         };
 
         private static readonly Regex MachineKey = new Regex(
-            @"^HKLM:\\SOFTWARE\\(?<wow>WOW6432Node\\)?Microsoft\\Windows\\CurrentVersion\\Uninstall\\(?<name>[^\\]+)$",
+            @"^HKLM:\\SOFTWARE\\(?<wow>WOW6432Node\\)?Microsoft\\Windows\\CurrentVersion\\Uninstall\\(?<name>[^\\]+)\z",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static readonly Regex ActionIdPattern = new Regex(
-            "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            @"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        /// <summary>Längster Programmname in der Begleitdatei (wie die Args); hält sie weit unter der Grenze des Moduls (64 KB).</summary>
+        public const int MaxNameLength = 200;
 
         /// <summary>
         /// Prüft, sichert und entfernt. Codes: RemoveEntryNotElevated, RemoveEntryBadActionId, RemoveEntryNotUninstallKey,
@@ -179,7 +182,13 @@ namespace SoftwareInventory.Helper
             var staged = Path.Combine(system.BackupFolder, id + ".tmp");
             var final = Path.Combine(system.BackupFolder, id + ".reg");
             var sidecar = Path.Combine(system.BackupFolder, id + ".json");
-            var backupProblem = WriteBackup(system, nativeKey, staged, final, sidecar, entry.DisplayName ?? name, id, reasons);
+            // Das Modul liest eine Begleitdatei ohne Namen als ungültig: notfalls der Schlüsselname, immer gekürzt.
+            var displayName = string.IsNullOrWhiteSpace(entry.DisplayName) ? name : entry.DisplayName.Trim();
+            if (displayName.Length > MaxNameLength)
+            {
+                displayName = displayName.Substring(0, MaxNameLength);
+            }
+            var backupProblem = WriteBackup(system, nativeKey, staged, final, sidecar, displayName, id, reasons);
             if (backupProblem is not null)
             {
                 outcome.Problem = backupProblem;
@@ -213,6 +222,7 @@ namespace SoftwareInventory.Helper
         {
             var createdFinal = false;
             var createdSidecar = false;
+            var succeeded = false;
             Problem problem = null;
             try
             {
@@ -253,12 +263,14 @@ namespace SoftwareInventory.Helper
                 {
                     return problem = new Problem("RemoveEntryBackupWriteFailed", sidecar);
                 }
+                succeeded = true;
                 return null;
             }
             finally
             {
                 system.DeleteFile(staged);
-                if (problem is not null)
+                // Auch bei einer unerwarteten Ausnahme (nicht nur bei einem Problem): keine halbe Sicherung liegen lassen.
+                if (!succeeded)
                 {
                     if (createdSidecar)
                     {

@@ -41,6 +41,7 @@ public sealed class RegistryRemovalTests
         public bool DeleteKeyThrows { get; set; }
         public bool KeyStaysAfterDelete { get; set; }
         public bool SidecarWriteFails { get; set; }
+        public bool ReadingTheFinalFileThrowsUnexpectedly { get; set; }
 
         public UninstallEntry ReadEntry(string nativeKey)
         {
@@ -77,6 +78,10 @@ public sealed class RegistryRemovalTests
         public BackupFileRead ReadFile(string path)
         {
             Calls.Add("Read " + Path.GetFileName(path));
+            if (ReadingTheFinalFileThrowsUnexpectedly && path.EndsWith(".reg", StringComparison.Ordinal))
+            {
+                throw new NotSupportedException();
+            }
             if (!Files.TryGetValue(path, out var bytes))
             {
                 throw new FileNotFoundException();
@@ -428,6 +433,51 @@ public sealed class RegistryRemovalTests
         Assert.Equal("RemoveEntryBackupWriteFailed", Run(system).Problem!.Code);
         Assert.Empty(system.Files);
         Assert.Single(system.Keys);
+    }
+
+    [Fact]
+    public void AnUnexpectedErrorAfterWritingTheBackupLeavesNoHalfBackupAndTheKey()
+    {
+        var system = SystemWithOrphan();
+        system.ReadingTheFinalFileThrowsUnexpectedly = true;
+        Assert.Throws<NotSupportedException>(() => Run(system));
+        Assert.Empty(system.Files);
+        Assert.Single(system.Keys);
+    }
+
+    [Theory]
+    [InlineData(null, "OldApp")]
+    [InlineData("   ", "OldApp")]
+    [InlineData(" Old App ", "Old App")]
+    public void TheSidecarAlwaysHasAName(string? displayName, string expected)
+    {
+        var system = SystemWithOrphan();
+        system.Keys[Machine + @"\OldApp"].DisplayName = displayName!;
+        Run(system);
+        using var doc = JsonDocument.Parse(system.Files[Path.Combine(Folder, Id + ".json")]);
+        Assert.Equal(expected, doc.RootElement.GetProperty("Name").GetString());
+    }
+
+    [Fact]
+    public void ALongNameIsShortenedSoTheSidecarStaysSmall()
+    {
+        var system = SystemWithOrphan();
+        system.Keys[Machine + @"\OldApp"].DisplayName = new string((char)0x00E4, 5000);
+        Run(system);
+        var bytes = system.Files[Path.Combine(Folder, Id + ".json")];
+        using var doc = JsonDocument.Parse(bytes);
+        Assert.Equal(RegistryRemoval.MaxNameLength, doc.RootElement.GetProperty("Name").GetString()!.Length);
+        Assert.True(bytes.Length < 64 * 1024);
+    }
+
+    [Fact]
+    public void ALineBreakAfterTheIdOrKeyIsNotAccepted()
+    {
+        var system = SystemWithOrphan();
+        Assert.Equal("RemoveEntryBadActionId", Run(system, id: Id + "\n").Problem!.Code);
+        // Mit \z gehört der Zeilenumbruch zum Namen und ist dort ein Steuerzeichen.
+        Assert.Equal("BackupKeyNameUnsafe", Run(system, PlanKey + "\n").Problem!.Code);
+        Assert.Empty(system.Calls);
     }
 
     [Fact]
