@@ -1,4 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Content *)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
