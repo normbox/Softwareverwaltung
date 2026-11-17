@@ -153,7 +153,11 @@ try {
             $notRun = $true
         }
         else {
-            $testArguments = @('test', 'tests/Softwareverwaltung.App.Tests')
+            # Eigener Ausgabeordner (im Temp-Ordner des Laufs, das finally räumt ihn auf): VS Code/C# Dev Kit baut das
+            # WPF-Projekt parallel im selben obj-Ordner und verursachte sporadisch CS2001, BG1002 und MSB3061.
+            # Bekannte Grenzen: Der Bau von SoftwareInventory.Native oben nutzt weiter das obj des Repos (klein, selten betroffen);
+            # jeder Lauf baut kalt (neuer Restore mit dem Temp-APPDATA, also ohne die NuGet.Config des Benutzers).
+            $testArguments = @('test', 'tests/Softwareverwaltung.App.Tests', '--artifacts-path', "$root\artifacts")
             if ($subset) { $testArguments += @('--filter', $XunitFilter) }
             # Erst die ganze Ausgabe einsammeln und den Exit-Code sichern, dann filtern: Ein vorzeitig beendetes
             # Select-Object darf $LASTEXITCODE nicht verfälschen und dotnet nicht abbrechen.
@@ -175,6 +179,12 @@ catch {
 finally {
     $env:APPDATA = $saved.APPDATA; $env:LOCALAPPDATA = $saved.LOCALAPPDATA
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $root) {
+        # Eine kurz noch gesperrte Datei (testhost, Virenscanner): einmal nach kurzer Pause erneut versuchen, sonst melden.
+        Start-Sleep -Seconds 3
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path -LiteralPath $root) { "WARNUNG: Temp-Ordner des Laufs konnte nicht entfernt werden: $root" }
+    }
 }
 $after = if ($userCircl) { @(Get-ChildItem -LiteralPath $userCircl -File -ErrorAction SilentlyContinue).Count } else { 0 }
 "CIRCL-Bestände beim Benutzer vorher/nachher: $before / $after (müssen gleich bleiben)"
