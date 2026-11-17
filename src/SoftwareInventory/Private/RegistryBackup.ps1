@@ -147,6 +147,21 @@ function ConvertFrom-RegistryBackupByte {
     @{ Problem = $null; Bytes = $Bytes; Text = [System.Text.Encoding]::Unicode.GetString($Bytes, 2, $Bytes.Length - 2) }
 }
 
+function Get-RegistryValueData {
+    # Daten einer Wertzeile (alles nach dem = hinter dem Namen); $null ohne vollständigen Namen mit =.
+    # Name: @ oder "..." mit \" und \\ als Escape. Dieselbe Zerlegung wie RegistryBackupRules.ValueData im Helfer.
+    param([string] $Line)
+    $index = 1
+    if ($Line[0] -cne '@') {
+        while ($index -lt $Line.Length -and $Line[$index] -cne '"') { $index += $(if ($Line[$index] -ceq '\') { 2 } else { 1 }) }
+        if ($index -ge $Line.Length) { return $null }
+        $index++
+    }
+    while ($index -lt $Line.Length -and ($Line[$index] -ceq ' ' -or $Line[$index] -ceq "`t")) { $index++ }
+    if ($index -lt $Line.Length -and $Line[$index] -ceq '=') { return $Line.Substring($index + 1) }
+    $null
+}
+
 function Test-RegistryBackupContent {
     <#
     .SYNOPSIS
@@ -178,10 +193,16 @@ function Test-RegistryBackupContent {
         $t = $line.Trim($blanks)
         if ($t.Length -eq 0) { continue }
         if (-not $t.StartsWith('[', [StringComparison]::Ordinal)) {
-            # Wertzeilen ("Name"=..., @=...), Kommentare und Hex-Fortsetzungen; alles andere ist unbekannt.
-            # Eine Wertzeile, die auf =- endet ("Name"=-, @=-), löscht beim Import einen Wert: wie [-...] abgelehnt.
-            if (($t[0] -ceq '"' -or $t[0] -ceq '@') -and $t -cmatch '=[ \t]*-$') { return 'DeleteLine' }
-            if ($t[0] -ceq '"' -or $t[0] -ceq '@' -or $t[0] -ceq ';' -or $t -cmatch '^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$') { continue }
+            # Wertzeilen ("Name"=..., @=...): Name zerlegen; beginnen die Daten mit - ("Name"=-, @=-, auch mit Kommentar
+            # dahinter), löscht reg import einen Wert: wie [-...] abgelehnt. Ohne vollständigen Namen mit = unbekannt.
+            if ($t[0] -ceq '"' -or $t[0] -ceq '@') {
+                $data = Get-RegistryValueData $t
+                if ($null -eq $data) { return 'BadLine' }
+                if ($data.TrimStart($blanks).StartsWith('-', [StringComparison]::Ordinal)) { return 'DeleteLine' }
+                continue
+            }
+            # Kommentare und Hex-Fortsetzungen; alles andere ist unbekannt.
+            if ($t[0] -ceq ';' -or $t -cmatch '^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$') { continue }
             return 'BadLine'
         }
         if ($t.StartsWith('[-', [StringComparison]::Ordinal)) { return 'DeleteLine' }

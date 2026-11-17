@@ -67,6 +67,9 @@ namespace SoftwareInventory.Helper
         public bool Done { get; set; }
         public string NativeKey { get; set; }
         public int Deleted { get; set; }
+
+        /// <summary>Eine eigene Zwischendatei, die sich nicht löschen ließ (räumt die Bereinigung später).</summary>
+        public string LeftOver { get; set; }
     }
 
     /// <summary>
@@ -82,23 +85,24 @@ namespace SoftwareInventory.Helper
         /// <summary>Eine Begleitdatei ohne Sicherung gilt nach dieser Zeit als Rest.</summary>
         public static readonly TimeSpan OrphanSidecarAge = TimeSpan.FromDays(1);
 
-        /// <summary>Zwischendateien (.tmp, .import.tmp) gibt es nur während eines Laufs; danach sind sie Reste.</summary>
+        /// <summary>Zwischendateien (.tmp, .import.reg) gibt es nur während eines Laufs; danach sind sie Reste.</summary>
         public static readonly TimeSpan TempFileAge = TimeSpan.FromHours(1);
 
         private static readonly Regex Id = new Regex(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static readonly Regex FileName = new Regex(
-            @"^(?<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(?<ext>reg|json|tmp|import\.tmp)\z",
+            @"^(?<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.(?<ext>reg|json|tmp|import\.reg)\z",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        private static readonly string[] OwnExtensions = { ".reg", ".json", ".tmp", ".import.tmp" };
+        private static readonly string[] OwnExtensions = { ".reg", ".json", ".tmp", ".import.reg" };
 
         /// <summary>
         /// Spielt die Sicherung &lt;Id&gt;.reg zurück. Codes: BackupNotElevated, BackupBadId, die Ordnercodes,
         /// BackupNotFound, BackupFile*, BackupMetadataMissing, BackupMetadataInvalid, BackupKeyNameUnsafe,
         /// Backup&lt;Code&gt; der Inhaltsprüfung (nur der Schlüssel aus der .json und seine Unterschlüssel unter einem
         /// HKLM-Uninstall-Zweig, keine Löschzeilen), RestoreKeyExists, BackupImportWriteFailed, BackupFileMismatch,
-        /// RestoreBackupFailed.
+        /// RestoreBackupFailed (Arg: Exit-Code), RestorePartial (Import gescheitert, Schlüssel aber angelegt; Args: Schlüssel,
+        /// Exit-Code), RestoreKeyMissing (Exit 0, Schlüssel fehlt trotzdem).
         /// </summary>
         public static BackupStoreOutcome Restore(string id, IRegistryBackupSystem system)
         {
@@ -146,7 +150,7 @@ namespace SoftwareInventory.Helper
             }
 
             // Genau diese Bytes in eine eigene Datei im Admin-Ordner schreiben, erneut lesen und vergleichen, dann importieren.
-            var import = Path.Combine(system.BackupFolder, id + ".import.tmp");
+            var import = Path.Combine(system.BackupFolder, id + ".import.reg");
             var created = false;
             try
             {
@@ -172,9 +176,17 @@ namespace SoftwareInventory.Helper
                     return outcome;
                 }
                 var exit = system.ImportFile(import);
-                if (exit != 0 || !system.KeyExists(nativeKey))
+                var present = system.KeyExists(nativeKey);
+                if (exit != 0)
                 {
-                    outcome.Problem = new Problem("RestoreBackupFailed", "Exit " + exit);
+                    // Der Schlüssel war vorher nicht da: Gibt es ihn jetzt, ist er nur teilweise importiert. Nichts automatisch
+                    // entfernen; die Meldung nennt den Schlüssel, damit der Benutzer entscheidet.
+                    outcome.Problem = present ? new Problem("RestorePartial", nativeKey, exit) : new Problem("RestoreBackupFailed", exit);
+                    return outcome;
+                }
+                if (!present)
+                {
+                    outcome.Problem = new Problem("RestoreKeyMissing", nativeKey);
                     return outcome;
                 }
                 outcome.Done = true;
@@ -185,6 +197,11 @@ namespace SoftwareInventory.Helper
                 if (created)
                 {
                     system.DeleteFile(import);
+                    // Hält reg.exe die Datei noch (z. B. nach einem Abbruch), bleibt sie; die Bereinigung entfernt sie nach einer Stunde.
+                    if (system.FileExists(import))
+                    {
+                        outcome.LeftOver = import;
+                    }
                 }
             }
         }

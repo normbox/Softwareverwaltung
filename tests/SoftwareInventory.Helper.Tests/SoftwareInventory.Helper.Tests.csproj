@@ -23,6 +23,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageReference Include="System.Text.Json" Version="10.0.0" />
     <Reference Include="System.Management" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +38,8 @@
     <Compile Include="..\..\src\SoftwareInventory.Helper\WindowsOrphanEnvironment.cs" Link="Helper\WindowsOrphanEnvironment.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryRemoval.cs" Link="Helper\RegistryRemoval.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryBackupStore.cs" Link="Helper\RegistryBackupStore.cs" />
+    <!-- Nur hier (nicht im .NET-10-Projekt): braucht JavaScriptSerializer aus System.Web.Extensions wie der Helfer. -->
+    <Compile Include="..\..\src\SoftwareInventory.Helper\SidecarParser.cs" Link="Helper\SidecarParser.cs" />
   </ItemGroup>
 
   <ItemGroup>

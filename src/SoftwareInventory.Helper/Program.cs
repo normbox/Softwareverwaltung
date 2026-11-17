@@ -452,12 +452,8 @@ namespace SoftwareInventory.Helper
         }
 
         /// <summary>
-        /// Verwaisten HKLM-Eintrag sichern und entfernen. Aus dem Plan zählen nur RegistryKey, ActionId und Reasons; alles
-        /// andere prüft <see cref="RegistryRemoval"/> selbst. Ergebnis: Removed, BackupFile, NativeKey oder ErrorCode/ErrorArgs.
-        /// </summary>
-        /// <summary>
         /// HKLM-Sicherung zurückspielen, löschen oder abgelaufene bereinigen. Aus dem Plan zählt nur BackupId (Kennung);
-        /// Ordner, Frist und Dateinamen stehen fest im Helfer. Ergebnis: Done, NativeKey, Deleted oder ErrorCode/ErrorArgs.
+        /// Ordner, Frist und Dateinamen stehen fest im Helfer. Ergebnis: Done, NativeKey, Deleted, LeftOver oder ErrorCode/ErrorArgs.
         /// </summary>
         private static void RunBackupStore(string operation, Dictionary<string, object?> plan, Dictionary<string, object?> result, WindowsRegistryRemovalSystem system)
         {
@@ -467,12 +463,17 @@ namespace SoftwareInventory.Helper
             result["Done"] = outcome.Done;
             result["NativeKey"] = outcome.NativeKey;
             result["Deleted"] = outcome.Deleted;
+            result["LeftOver"] = outcome.LeftOver;
             if (outcome.Problem is not null)
             {
                 SetError(result, outcome.Problem.Code, outcome.Problem.Args);
             }
         }
 
+        /// <summary>
+        /// Verwaisten HKLM-Eintrag sichern und entfernen. Aus dem Plan zählen nur RegistryKey, ActionId und Reasons; alles
+        /// andere prüft <see cref="RegistryRemoval"/> selbst. Ergebnis: Removed, BackupFile, NativeKey oder ErrorCode/ErrorArgs.
+        /// </summary>
         private void RemoveRegistryEntry(Dictionary<string, object?> plan, Dictionary<string, object?> result, WindowsRegistryRemovalSystem system)
         {
             var reasons = new List<BackupReason>();

@@ -7,8 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
-using System.Text;
-using System.Web.Script.Serialization;
 using Microsoft.Win32;
 
 namespace SoftwareInventory.Helper
@@ -187,35 +185,8 @@ namespace SoftwareInventory.Helper
             {
                 return null;
             }
-            if (read.Bytes is null || read.Bytes.Length == 0 || read.Bytes.Length > SidecarMaxBytes)
-            {
-                return null;
-            }
-            string json;
-            try
-            {
-                json = new UTF8Encoding(false, true).GetString(read.Bytes);
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-            if (!(new JavaScriptSerializer().DeserializeObject(json) is Dictionary<string, object> data))
-            {
-                return null;
-            }
-            string Text(string name) => data.TryGetValue(name, out var value) ? value as string : null;
-            return new BackupSidecar
-            {
-                SchemaVersion = data.TryGetValue("SchemaVersion", out var version) && version is int number ? number : 0,
-                ActionId = Text("ActionId"),
-                NativeKey = Text("NativeKey"),
-                Scope = Text("Scope"),
-            };
+            return SidecarParser.Parse(read.Bytes);
         }
-
-        /// <summary>Größte erlaubte Begleitdatei (wie $script:RegistryBackupSidecarMaxBytes im Modul).</summary>
-        private const int SidecarMaxBytes = 64 * 1024;
 
         private int RunReg(string arguments)
         {

@@ -86,10 +86,17 @@ public sealed class RegistryBackupStoreTests
 
         public bool FileExists(string path) => Files.ContainsKey(path);
 
+        public bool ImportThrows { get; set; }
+        public bool ImportLeavesPartialKey { get; set; }
+
         public int ImportFile(string path)
         {
             Calls.Add("Import " + Path.GetFileName(path));
-            if (ImportExit == 0 && ImportCreatesKey)
+            if (ImportThrows)
+            {
+                throw new System.ComponentModel.Win32Exception(2);
+            }
+            if ((ImportExit == 0 && ImportCreatesKey) || ImportLeavesPartialKey)
             {
                 Keys.Add(Machine + @"\App");
                 Keys.Add(Machine32 + @"\App");
@@ -132,9 +139,9 @@ public sealed class RegistryBackupStoreTests
         Assert.True(outcome.Done);
         Assert.Equal(Machine + @"\App", outcome.NativeKey);
         Assert.Equal(
-            new[] { "Read " + Id + ".reg", "Write " + Id + ".import.tmp", "Read " + Id + ".import.tmp", "Import " + Id + ".import.tmp", "Delete " + Id + ".import.tmp" },
+            new[] { "Read " + Id + ".reg", "Write " + Id + ".import.reg", "Read " + Id + ".import.reg", "Import " + Id + ".import.reg", "Delete " + Id + ".import.reg" },
             system.Calls);
-        Assert.False(system.FileExists(P(Id + ".import.tmp")));
+        Assert.False(system.FileExists(P(Id + ".import.reg")));
         Assert.True(system.FileExists(P(Id + ".reg")), "die Sicherung bleibt erhalten");
     }
 
@@ -230,26 +237,60 @@ public sealed class RegistryBackupStoreTests
     {
         var system = WithBackup();
         system.ImportExit = 1;
-        Assert.Equal("RestoreBackupFailed", RegistryBackupStore.Restore(Id, system).Problem!.Code);
-        Assert.False(system.FileExists(P(Id + ".import.tmp")));
+        var failed = RegistryBackupStore.Restore(Id, system).Problem!;
+        Assert.Equal("RestoreBackupFailed", failed.Code);
+        Assert.Equal(new object[] { 1 }, failed.Args);
+        Assert.False(system.FileExists(P(Id + ".import.reg")));
 
         system = WithBackup();
         system.ImportCreatesKey = false;
-        Assert.Equal("RestoreBackupFailed", RegistryBackupStore.Restore(Id, system).Problem!.Code);
+        Assert.Equal("RestoreKeyMissing", RegistryBackupStore.Restore(Id, system).Problem!.Code);
 
         system = WithBackup();
         system.AfterWrite = _ => Reg("[" + Machine + "\\App]\r\n\"UninstallString\"=\"evil.exe\"\r\n");
         Assert.Equal("BackupFileMismatch", RegistryBackupStore.Restore(Id, system).Problem!.Code);
-        Assert.False(system.FileExists(P(Id + ".import.tmp")));
+        Assert.False(system.FileExists(P(Id + ".import.reg")));
+    }
+
+    [Fact]
+    public void AFailedImportThatLeftTheKeyBehindIsReportedAsPartialAndNotUndone()
+    {
+        var system = WithBackup();
+        system.ImportExit = -1;
+        system.ImportLeavesPartialKey = true;
+        var problem = RegistryBackupStore.Restore(Id, system).Problem!;
+        Assert.Equal("RestorePartial", problem.Code);
+        Assert.Equal(new object[] { Machine + @"\App", -1 }, problem.Args);
+        Assert.True(system.KeyExists(Machine + @"\App"), "der Helfer entfernt nichts von selbst");
+        Assert.False(system.FileExists(P(Id + ".import.reg")));
+    }
+
+    [Fact]
+    public void TheImportFileIsRemovedEvenIfTheImportThrows()
+    {
+        var system = WithBackup();
+        system.ImportThrows = true;
+        Assert.Throws<System.ComponentModel.Win32Exception>(() => RegistryBackupStore.Restore(Id, system));
+        Assert.False(system.FileExists(P(Id + ".import.reg")));
+    }
+
+    [Fact]
+    public void AnImportFileThatCannotBeDeletedIsNamedAsLeftover()
+    {
+        var system = WithBackup();
+        system.Undeletable.Add(P(Id + ".import.reg"));
+        var outcome = RegistryBackupStore.Restore(Id, system);
+        Assert.True(outcome.Done);
+        Assert.Equal(P(Id + ".import.reg"), outcome.LeftOver);
     }
 
     [Fact]
     public void AnImportFileThatAlreadyExistsIsNotTouched()
     {
         var system = WithBackup();
-        system.Files[P(Id + ".import.tmp")] = new byte[] { 9 };
+        system.Files[P(Id + ".import.reg")] = new byte[] { 9 };
         Assert.Equal("BackupImportWriteFailed", RegistryBackupStore.Restore(Id, system).Problem!.Code);
-        Assert.Equal(new byte[] { 9 }, system.Files[P(Id + ".import.tmp")]);
+        Assert.Equal(new byte[] { 9 }, system.Files[P(Id + ".import.reg")]);
     }
 
     [Theory]
@@ -337,7 +378,7 @@ public sealed class RegistryBackupStoreTests
         Add(lonely + ".json", TimeSpan.FromDays(2));            // ohne .reg, älter als ein Tag
         Add(lonelyNew + ".json", TimeSpan.FromHours(2));        // ohne .reg, noch jung
         Add(fresh + ".tmp", TimeSpan.FromHours(2));             // Rest eines Laufs
-        Add(fresh + ".import.tmp", TimeSpan.FromMinutes(10));  // läuft vielleicht gerade
+        Add(fresh + ".import.reg", TimeSpan.FromMinutes(10));  // läuft vielleicht gerade
         Add(linked + ".reg", TimeSpan.FromDays(900), link: true);
         Add("fremd.reg", TimeSpan.FromDays(900));
         Add("desktop.ini", TimeSpan.FromDays(900));
@@ -346,7 +387,7 @@ public sealed class RegistryBackupStoreTests
         Assert.True(outcome.Done);
         Assert.Equal(4, outcome.Deleted);
         Assert.Equal(
-            new[] { fresh + ".reg", fresh + ".json", lonelyNew + ".json", fresh + ".import.tmp", linked + ".reg", "fremd.reg", "desktop.ini" }.OrderBy(n => n, StringComparer.Ordinal),
+            new[] { fresh + ".reg", fresh + ".json", lonelyNew + ".json", fresh + ".import.reg", linked + ".reg", "fremd.reg", "desktop.ini" }.OrderBy(n => n, StringComparer.Ordinal),
             system.Files.Keys.Select(Path.GetFileName).OrderBy(n => n, StringComparer.Ordinal));
     }
 
