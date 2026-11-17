@@ -13,4 +13,5 @@ Argument: `$ARGUMENTS` (Pester-Pfade unter `tests/Unit/` und/oder ein xUnit-Filt
    - Nur Pester: `-PesterOnly`; nur xUnit: `-XunitOnly`.
    - Der volle Lauf (mit `-IncludeIntegration`) gehört nicht hierher, sondern in `/pr-bereit`.
 3. **Warten mit Frist**, höchstens 10 Minuten (`timeout 590`): nur auf die Abschlusszeile `ISOLATED-TESTS-EXIT <Code>` im Log. Nie auf `dotnet`-Prozesse warten, nie ohne Timeout. Fehlt die Zeile nach der Frist: „Lauf nicht beendet“ melden.
-4. **Ergebnis kurz berichten:** Exit-Code (0 bestanden, 1 Fehlschlag, 2 Parameterfehler, 3 unerwarteter Fehler, 4 nichts oder nicht alles ausgeführt), Zahlen für Pester und xUnit und bei Fehlschlägen die Namen mit der Meldung.5. Skripte aus `tests/Sandbox` nie starten. Keine echten Aktionen (Updates, Deinstallationen) auslösen.
+4. **Ergebnis kurz berichten:** Exit-Code (0 bestanden, 1 Fehlschlag, 2 Parameterfehler, 3 unerwarteter Fehler, 4 nichts oder nicht alles ausgeführt), Zahlen für Pester und xUnit und bei Fehlschlägen die Namen mit der Meldung.
+5. Skripte aus `tests/Sandbox` nie starten. Keine echten Aktionen (Updates, Deinstallationen) auslösen.
