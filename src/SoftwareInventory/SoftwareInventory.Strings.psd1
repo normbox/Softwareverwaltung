@@ -201,6 +201,12 @@ Regeln:
     ReasonRestoreKeyExists                  = 'Der Eintrag {0} existiert bereits; die Sicherung wird nicht zurückgespielt'
     ReasonPlanRemoveBackup                  = 'Sicherung „{0}“ löschen ({1}). Der Registry-Eintrag selbst bleibt unberührt.'
     ReasonRemoveBackupDone                  = 'Sicherung gelöscht'
+    ReasonPlanRestoreBackupMachine          = 'Sicherung „{0}“ für alle Benutzer zurückspielen (Administratorrechte nötig): Der Registry-Eintrag {1} wird wieder angelegt.'
+    ReasonPlanRemoveBackupMachine           = 'Sicherung „{0}“ für alle Benutzer löschen (Administratorrechte nötig, {1}). Der Registry-Eintrag selbst bleibt unberührt.'
+    ReasonBackupResultNotVerified           = 'Der Helfer meldet Erfolg, die Prüfung danach bestätigt ihn aber nicht; das Ergebnis gilt nicht als Erfolg'
+    ReasonPlanClearExpiredBackups           = '{0} Sicherung(en) für alle Benutzer, älter als {1} Tage, löschen (Administratorrechte nötig). Die Registry-Einträge bleiben unberührt.'
+    ReasonClearExpiredBackupsNothing        = 'Es gibt keine abgelaufenen Sicherungen für alle Benutzer'
+    ReasonClearExpiredBackupsDone           = 'Abgelaufene Sicherungen aufgeräumt ({0} Dateien gelöscht)'
     ReasonRemoveBackupFailed                = 'Sicherung konnte nicht gelöscht werden: {0}'
     ReasonBackupNotFound                    = 'Die Sicherung gibt es nicht (mehr)'
     ReasonBackupNotElevated                 = 'Sicherungen für alle Benutzer lassen sich nur mit Administratorrechten zurückspielen, löschen oder aufräumen; es wurde nichts geändert'
@@ -463,6 +469,7 @@ Die Zustimmung wird gespeichert und gilt für alle Store-Pakete. Ohne Zustimmung
 '@
 
     # Fehler (Get-LocalizedString)
+    BackupsMachineName                      = 'Sicherungen für alle Benutzer'
     ErrorNotInventoryRecord                 = 'Eingabe ist kein Inventar-Datensatz (SoftwareRecord, SecurityRating oder UpdateStatus).'
 
     # Warnungen, Fehler und Bestätigungen (Get-LocalizedString)

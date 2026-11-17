@@ -32,8 +32,23 @@ public sealed partial class BackupsViewModel : ObservableObject
     private RegistryBackupItem? _selectedItem;
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RestoreCommand), nameof(DeleteCommand), nameof(LoadCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RestoreCommand), nameof(DeleteCommand), nameof(LoadCommand), nameof(ClearExpiredCommand))]
     private bool _isBusy;
+
+    /// <summary>Zustand des Admin-Ordners (HKLM-Sicherungen): abgelaufene Sicherungen, nicht lesbarer Ordner.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MachineNotice), nameof(ShowMachineNotice), nameof(ShowClearExpired))]
+    [NotifyCanExecuteChangedFor(nameof(ClearExpiredCommand))]
+    private RegistryBackupStatus _status = new();
+
+    /// <summary>Hinweis über der Liste: abgelaufene HKLM-Sicherungen oder ein nicht lesbarer Admin-Ordner.</summary>
+    public string? MachineNotice => Status.MachineFolderState == "Unreadable"
+        ? AppText.Format("BackupsMachineUnreadable", Status.MachineFolder ?? "")
+        : Status.ExpiredMachineCount > 0 ? AppText.Format("BackupsExpiredNotice", Status.ExpiredMachineCount) : null;
+
+    public bool ShowMachineNotice => MachineNotice is not null;
+
+    public bool ShowClearExpired => Status.MachineFolderState == "Readable" && Status.ExpiredMachineCount > 0;
 
     [ObservableProperty]
     private string _statusText = "";
@@ -74,6 +89,10 @@ public sealed partial class BackupsViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private Task DeleteAsync() => RunAsync(SoftwareActionKind.RemoveBackup);
 
+    /// <summary>Abgelaufene HKLM-Sicherungen aufräumen (nur auf Klick, mit Bestätigung und UAC-Abfrage).</summary>
+    [RelayCommand(CanExecute = nameof(CanClearExpired))]
+    private Task ClearExpiredAsync() => RunAsync(SoftwareActionKind.ClearExpiredBackups);
+
     [RelayCommand]
     private void DismissOutcome() => LastOutcome = null;
 
@@ -81,11 +100,14 @@ public sealed partial class BackupsViewModel : ObservableObject
 
     private bool CanDelete() => !IsBusy && SelectedItem is { Source: not null };
 
+    private bool CanClearExpired() => !IsBusy && ShowClearExpired;
+
     /// <summary>Plan holen, Bestätigung zeigen, genau diesen Plan ausführen, danach die Liste neu lesen.</summary>
     private async Task RunAsync(SoftwareActionKind kind)
     {
-        var item = SelectedItem;
-        if (item?.Source is null)
+        // Aufräumen betrifft den ganzen Admin-Ordner, keine einzelne Sicherung.
+        var item = kind == SoftwareActionKind.ClearExpiredBackups ? null : SelectedItem;
+        if (kind != SoftwareActionKind.ClearExpiredBackups && item?.Source is null)
         {
             return;
         }
@@ -93,7 +115,7 @@ public sealed partial class BackupsViewModel : ObservableObject
         StatusText = AppText.Get("StatusPlanning");
         try
         {
-            var plan = await _actions.PlanAsync(kind, item.Source);
+            var plan = await _actions.PlanAsync(kind, item?.Source);
             if (!plan.IsPlanned)
             {
                 LastOutcome = plan;
@@ -106,14 +128,14 @@ public sealed partial class BackupsViewModel : ObservableObject
                 return;
             }
             StatusText = AppText.Format("StatusActionRunning", plan.ActionText, plan.Name);
-            var outcome = await _actions.ExecuteAsync(kind, item.Source, plan);
+            var outcome = await _actions.ExecuteAsync(kind, item?.Source, plan);
             LastOutcome = outcome;
             StatusText = AppText.Format("StatusActionResult", outcome.ActionText, outcome.ResultText);
             await ReloadAsync(keepStatus: true);
         }
         catch (Exception ex)
         {
-            LastOutcome = new ActionOutcome { Action = kind.ToString(), Name = item.Name, Result = "Failed", Message = ex.Message };
+            LastOutcome = new ActionOutcome { Action = kind.ToString(), Name = item?.Name ?? "", Result = "Failed", Message = ex.Message };
             StatusText = AppText.Get("StatusActionFailed");
         }
         finally
@@ -127,6 +149,7 @@ public sealed partial class BackupsViewModel : ObservableObject
         try
         {
             var list = await _backups.GetBackupsAsync();
+            Status = await _backups.GetStatusAsync();
             var selectedId = SelectedItem?.Id;
             Items.Clear();
             foreach (var backup in list)

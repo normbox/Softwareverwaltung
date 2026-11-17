@@ -57,10 +57,40 @@ function Get-RegistryBackupFileName {
 }
 
 function Get-RegistryBackupId {
-    # Die Kennung einer Sicherung ist die ActionId (GUID) am Anfang des Dateinamens; sonst $null.
+    # Die Kennung einer Sicherung ist die ActionId (GUID) am Anfang des Dateinamens: <Id>_<Name>.reg (HKCU) oder genau
+    # <Id>.reg bzw. <Id>.json (HKLM, vom Helfer); sonst $null. <Id>.import.reg (Zwischendatei des Helfers) ist keine Sicherung.
     param([string] $File)
     $name = [System.IO.Path]::GetFileName($File)
-    if ($name -match '^(?<id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})_') { $Matches.id.ToLowerInvariant() }
+    if ($name -match '^(?<id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})(?:_|\.(?:reg|json)\z)') { $Matches.id.ToLowerInvariant() }
+}
+
+function Get-RegistryBackupFile {
+    <#
+    .SYNOPSIS
+        Alle Sicherungsdateien (.reg) beider Orte mit ihrem Bereich (Eigenschaft BackupScope).
+    .DESCRIPTION
+        User: logs\registry-backup (<Id>_<Name>.reg). Machine: der Admin-Ordner unter Program Files, nur Dateien genau
+        <Id>.reg, keine Links. Nur lesend; der Admin-Ordner ist für Benutzer lesbar. Ist er nicht lesbar, fehlen seine
+        Sicherungen hier (Get-RegistryBackupStatus meldet das).
+    #>
+    $places = @(
+        @{ Path = (Get-RegistryBackupDirectory); Scope = 'User' }
+        @{ Path = (Get-RegistryBackupMachineDirectory); Scope = 'Machine' }
+    )
+    foreach ($place in $places) {
+        if (-not (Test-Path -LiteralPath $place.Path -PathType Container)) { continue }
+        foreach ($file in Get-ChildItem -LiteralPath $place.Path -File -Force -ErrorAction SilentlyContinue) {
+            if ($file.Extension -ine '.reg' -or -not (Get-RegistryBackupId $file.Name)) { continue }
+            if ($place.Scope -eq 'Machine' -and ($file.Name -notmatch '^[0-9a-fA-F-]{36}\.reg\z' -or ($file.Attributes -band [System.IO.FileAttributes]::ReparsePoint))) { continue }
+            $file | Add-Member -NotePropertyName BackupScope -NotePropertyValue $place.Scope -Force -PassThru
+        }
+    }
+}
+
+function Test-RegistryBackupExpired {
+    # Älter als die Frist (365 Tage) nach der Änderungszeit der .reg, wie die Bereinigung in Modul und Helfer.
+    param([System.IO.FileInfo] $File)
+    $File.LastWriteTimeUtc -lt [datetime]::UtcNow.AddDays(-$script:RegistryBackupRetentionDays)
 }
 
 function Get-RegistryBackupSidecarPath {

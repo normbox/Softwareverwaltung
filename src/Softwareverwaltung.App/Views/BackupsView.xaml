@@ -32,6 +32,19 @@
             <TextBlock Text="{loc:Text BackupsTitle}" FontSize="20" FontWeight="SemiBold" />
             <TextBlock Text="{loc:Text BackupsIntro}" TextWrapping="Wrap" Margin="0,4,0,0"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <!-- Hinweis zu den Sicherungen für alle Benutzer: abgelaufen (Aufräumen nur auf Klick) oder Ordner nicht lesbar -->
+            <Border Margin="0,8,0,0" Padding="12,8" CornerRadius="4" BorderThickness="1"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Visibility="{Binding ShowMachineNotice, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel LastChildFill="True">
+                    <ui:Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center"
+                               Content="{loc:Text BackupsClearExpired}" Icon="{ui:SymbolIcon Shield24}"
+                               Command="{Binding ClearExpiredCommand}"
+                               Visibility="{Binding ShowClearExpired, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding MachineNotice}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+            </Border>
         </StackPanel>
 
         <!-- Ergebnis der letzten Aktion -->
@@ -66,6 +79,7 @@
                       AutomationProperties.Name="{loc:Text BackupsListName}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{loc:Text ColumnBackupName}" Binding="{Binding Name}" Width="2*" ElementStyle="{StaticResource TextCellWithTooltip}" />
+                    <DataGridTextColumn Header="{loc:Text ColumnBackupScope}" Binding="{Binding ScopeText}" Width="110" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTextColumn Header="{loc:Text ColumnBackupDate}" Binding="{Binding WhenText}" SortMemberPath="CreatedAt" Width="160" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTextColumn Header="{loc:Text ColumnBackupReasons}" Binding="{Binding ReasonsText}" Width="2*" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTextColumn Header="{loc:Text ColumnBackupKey}" Binding="{Binding NativeKey}" Width="3*" ElementStyle="{StaticResource TextCellWithTooltip}" />

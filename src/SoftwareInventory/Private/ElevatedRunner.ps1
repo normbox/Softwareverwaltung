@@ -20,6 +20,9 @@ $script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\lib\SoftwareInventory.H
 $script:HelperOperationMinVersion = [System.Collections.Generic.Dictionary[string, int]]::new([StringComparer]::Ordinal)
 $script:HelperOperationMinVersion['ReplaceHelperCopy'] = 0
 $script:HelperOperationMinVersion['RemoveRegistryEntry'] = 6
+$script:HelperOperationMinVersion['RestoreRegistryBackup'] = 7
+$script:HelperOperationMinVersion['RemoveRegistryBackup'] = 7
+$script:HelperOperationMinVersion['CleanupRegistryBackups'] = 7
 
 # Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 
