@@ -50,6 +50,14 @@ Die Hooks erzwingen Regeln dieser Datei. Sie sind Leitplanken, keine Garantie, u
 - Die Zeichenbereiche und die Quelldatei-Endungen stehen einmal in `tests/Data/unsafe-chars.json` (Dezimal-Codepunkte); `SourceFiles.Tests.ps1` und der Hook `check-control-chars` lesen dieselbe Tabelle.
 - Bewusst umgehen: den Hook für die Sitzung in `.claude/settings.local.json` überschreiben (die Datei ist nicht im Repository) und im PR begründen.
 
+## Skills (`.claude/skills/`)
+
+Wiederkehrende Abläufe als Slash-Befehle; sie halten sich an die Regeln dieser Datei, ersetzen sie aber nicht.
+
+- `/etappe-test <Bereich>`: bauen, Teillauf von `tests/Invoke-IsolatedTests.ps1` mit Log und Frist, kurzes Ergebnis.
+- `/pr-bereit`: Voll- bzw. Teillauf je nach Art des PR, `reviewer` einmal, PR-Text, Push und PR öffnen. Merge nie durch Claude.
+- `/uebergabe`: `UEBERGABE.md` und Merk-Notiz am Sitzungsende aktualisieren (reine Doku, Sonnet genügt; Sicherheitslogik nur mit Opus).
+
 ## Fahrplan
 
 Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Etappe 3 (Oberfläche) ist fertig. Aktuell: Etappe 4 (KI-Berater, nur lokal). Fertig sind 4a (Tools, Bereinigung und Einstellungen im Modul) und die Zwischenetappe „Texte auslagern“ (App-Texte in `.resx`, Modulmeldungen mit Codes; noch keine Übersetzung), dazu Zwischenspeicher, Warteschlange, CPE-Zuordnung und CIRCL als zweite Quelle. Fertig ist auch 4b (Freigabestufen, Anbieter-Schnittstelle, Einstellungsseite). Aktuell 4c: Chat-Seitenleiste (4c-1), dann Vorschlagskarten (4c-2). Der lokale Lückenabzug (Offline-Modus) ist geplant, siehe `docs/KONZEPT.md`. Vor dem ersten Release: englische Übersetzung per KI und README auf Englisch.
