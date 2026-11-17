@@ -153,7 +153,9 @@ try {
             $notRun = $true
         }
         else {
-            $testArguments = @('test', 'tests/Softwareverwaltung.App.Tests')
+            # Eigener Ausgabeordner (im Temp-Ordner des Laufs, das finally räumt ihn auf): VS Code/C# Dev Kit baut das
+            # WPF-Projekt parallel im selben obj-Ordner und verursachte sporadisch CS2001, BG1002 und MSB3061.
+            $testArguments = @('test', 'tests/Softwareverwaltung.App.Tests', '--artifacts-path', "$root\artifacts")
             if ($subset) { $testArguments += @('--filter', $XunitFilter) }
             # Erst die ganze Ausgabe einsammeln und den Exit-Code sichern, dann filtern: Ein vorzeitig beendetes
             # Select-Object darf $LASTEXITCODE nicht verfälschen und dotnet nicht abbrechen.
