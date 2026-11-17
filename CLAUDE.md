@@ -74,6 +74,5 @@ Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Etappe 
 - `audit` (`.claude/agents/audit.md`) bleibt als Datei, aber nur für Ausnahmefälle (z. B. Prüfung in einer sauberen Kopie des committeten Stands auf ausdrücklichen Wunsch). Er sieht nur committete Stände.
 - Vor jedem PR läuft der Subagent `reviewer` genau einmal (Sicherheit, Fehler, Projektregeln; nur lesend, sieht nur committete Stände). Nur wenn kritische Funde behoben wurden, läuft er danach erneut, nicht nach mittleren oder geringen. Den Bericht fasse ich kurz zusammen; nicht behobene mittlere und geringe Funde stehen mit Begründung in der PR-Beschreibung.
 - In der Hauptsitzung nur Dateien lesen, die gleich bearbeitet werden.
-- Das Advisor-Tool von Claude Code (nicht der KI-Berater dieser App) nur nutzen bei der Planung größerer Änderungen, bei Fehlern, die nach zwei Versuchen bleiben, und bevor eine Etappe oder ein größerer Teilschritt als erledigt gilt.
 - **Modellwahl:** Für Doku, Umbenennungen und UEBERGABE-Updates genügt Sonnet. Sicherheitslogik (Helfer, Registry, Rechte, Prüfregeln) nur mit Opus. Startet eine Sitzung mit Sonnet eine Aufgabe, die Sicherheitslogik berührt, weist Claude den Benutzer darauf hin und schlägt `/model opus` vor. `reviewer` läuft immer mit Opus.
 <!-- END Claude-Team-Setup -->
