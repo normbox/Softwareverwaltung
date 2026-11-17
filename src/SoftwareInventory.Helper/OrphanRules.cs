@@ -13,7 +13,10 @@ namespace SoftwareInventory.Helper
     /// </summary>
     public interface IOrphanEnvironment
     {
-        /// <summary>Umgebungsvariablen wie %ProgramFiles% einsetzen.</summary>
+        /// <summary>
+        /// Umgebungsvariablen wie %ProgramFiles% einsetzen. null, wenn der Text eine Variable enthält, die sich nicht sicher
+        /// einsetzen lässt (im erhöhten Helfer jede außer den maschinenweiten): Der Pfad gilt dann als nicht auswertbar.
+        /// </summary>
         string ExpandVariables(string text);
 
         /// <summary>
@@ -66,6 +69,9 @@ namespace SoftwareInventory.Helper
     public static class OrphanRules
     {
         private const StringComparison IgnoreCase = StringComparison.OrdinalIgnoreCase;
+
+        /// <summary>Pfade ab dieser Länge sind Unknown (Get-PathState im Modul nutzt denselben Wert).</summary>
+        public const int MaxPath = 260;
 
         /// <summary>
         /// null, wenn der Eintrag verwaist ist; sonst der Grund, warum nicht: Msi, NoUninstallString, CommandUnparseable,
@@ -150,7 +156,9 @@ namespace SoftwareInventory.Helper
                 return PathState.Unknown;
             }
             var p = env.ExpandVariables(path.Trim().Trim('"').Trim());
-            if (string.IsNullOrEmpty(p) || !Regex.IsMatch(p, @"^[A-Za-z]:\\"))
+            // Ab MAX_PATH (260) melden Windows-Funktionen ohne langen Pfad unter Umständen „Pfad nicht gefunden“, obwohl es
+            // die Datei gibt: nie als fehlend werten.
+            if (string.IsNullOrEmpty(p) || p.Length >= MaxPath || !Regex.IsMatch(p, @"^[A-Za-z]:\\"))
             {
                 return PathState.Unknown;
             }
@@ -206,7 +214,8 @@ namespace SoftwareInventory.Helper
             var chosen = candidates[0];
             foreach (var cut in candidates)
             {
-                if (env.FileExists(ResolveCommandPath(env.ExpandVariables(text.Substring(0, cut)), env)))
+                var candidate = ResolveCommandPath(env.ExpandVariables(text.Substring(0, cut)), env);
+                if (candidate is not null && env.FileExists(candidate))
                 {
                     chosen = cut;
                     break;
@@ -215,9 +224,9 @@ namespace SoftwareInventory.Helper
             return ResolveCommandPath(env.ExpandVariables(text.Substring(0, chosen)), env);
         }
 
-        /// <summary>Pfade ohne Wurzel werden an System32 gehängt, nie über PATH gesucht.</summary>
+        /// <summary>Pfade ohne Wurzel werden an System32 gehängt, nie über PATH gesucht; null bleibt null (nicht auswertbar).</summary>
         public static string ResolveCommandPath(string path, IOrphanEnvironment env) =>
-            Path.IsPathRooted(path) ? path : Path.Combine(env.SystemFolder, path);
+            path is null ? null : Path.IsPathRooted(path) ? path : Path.Combine(env.SystemFolder, path);
 
         public static string NullIfEmpty(string value)
         {
@@ -229,7 +238,11 @@ namespace SoftwareInventory.Helper
             return text.Length > 0 ? text : null;
         }
 
-        /// <summary>"C:\Programme\App\app.exe",0 wird zu C:\Programme\App\app.exe.</summary>
+        /// <summary>
+        /// "C:\Programme\App\app.exe",0 wird zu C:\Programme\App\app.exe. Variablen bleiben stehen und werden erst in
+        /// <see cref="GetPathState(string, string, IOrphanEnvironment)"/> eingesetzt: Lässt sich eine nicht einsetzen, ist der
+        /// Pfad dort Unknown (nicht „ohne Symbol“).
+        /// </summary>
         public static string ConvertFromDisplayIcon(string value, IOrphanEnvironment env)
         {
             var text = NullIfEmpty(value);
@@ -237,8 +250,7 @@ namespace SoftwareInventory.Helper
             {
                 return null;
             }
-            text = Regex.Replace(text, @",\s*-?\d+$", "").Trim('"', ' ');
-            return env.ExpandVariables(text);
+            return NullIfEmpty(Regex.Replace(text, @",\s*-?\d+$", "").Trim('"', ' '));
         }
     }
 }

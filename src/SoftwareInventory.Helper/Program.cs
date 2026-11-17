@@ -316,6 +316,12 @@ namespace SoftwareInventory.Helper
                     channel.Write(result);
                     return;
                 }
+                if (operation == OperationRules.RemoveRegistryEntry)
+                {
+                    RemoveRegistryEntry(plan, result);
+                    channel.Write(result);
+                    return;
+                }
                 if (Flag(plan, "RestorePoint"))
                 {
                     AddRestorePoint(result, plan);
@@ -422,6 +428,31 @@ namespace SoftwareInventory.Helper
             File.Delete(target);
             File.Move(temporary, target);
             result["Replaced"] = true;
+        }
+
+        /// <summary>
+        /// Verwaisten HKLM-Eintrag sichern und entfernen. Aus dem Plan zählen nur RegistryKey, ActionId und Reasons; alles
+        /// andere prüft <see cref="RegistryRemoval"/> selbst. Ergebnis: Removed, BackupFile, NativeKey oder ErrorCode/ErrorArgs.
+        /// </summary>
+        private void RemoveRegistryEntry(Dictionary<string, object?> plan, Dictionary<string, object?> result)
+        {
+            var reasons = new List<BackupReason>();
+            if (plan.TryGetValue("Reasons", out var raw) && raw is object[] list)
+            {
+                foreach (var item in list.OfType<Dictionary<string, object?>>())
+                {
+                    var args = item.TryGetValue("Args", out var a) && a is object[] values ? values : new object[0];
+                    reasons.Add(new BackupReason(Text(item, "Code")!, args!));
+                }
+            }
+            var outcome = RegistryRemoval.Run(Text(plan, "RegistryKey")!, Text(plan, "ActionId")!, reasons, new WindowsRegistryRemovalSystem(_paths, _elevated));
+            result["Removed"] = outcome.Removed;
+            result["BackupFile"] = outcome.BackupFile;
+            result["NativeKey"] = outcome.NativeKey;
+            if (outcome.Problem is not null)
+            {
+                SetError(result, outcome.Problem.Code, outcome.Problem.Args);
+            }
         }
 
         /// <summary>Räumt nach einem Austausch auf; der alte Ordner war belegt, solange die alte Exe lief.</summary>

@@ -11,9 +11,9 @@ $script:KnownBackupReasonCodes = @('OrphanedEntry', 'NewerInstallNextTo')
 # Ungewöhnliche Zeilenumbrüche: NUL, VT, FF, NEL, U+2028, U+2029 sowie einzelnes CR oder LF. Die Zeichen stehen als
 # Codepunkte, nie als Escape-Text im Quelltext (CLAUDE.md).
 $script:OddLineBreakPattern = '[' + (-join (0x00, 0x0B, 0x0C, 0x85, 0x2028, 0x2029 | ForEach-Object { '\u{0:X4}' -f $_ })) + ']|\r(?!\n)|(?<!\r)\n'
-# Unsichere Zeichen in einem Schlüsselnamen: [ und ] sowie Steuerzeichen (U+0000-U+001F, U+007F-U+009F). Ebenfalls aus
+# Unsichere Zeichen in einem Schlüsselnamen: [, ] und " sowie Steuerzeichen (U+0000-U+001F, U+007F-U+009F). Ebenfalls aus
 # Codepunkten gebaut; Modul und Helfer lehnen solche Schlüssel ab (KeyNameUnsafe), sie bleiben Handarbeit.
-$script:UnsafeKeyNamePattern = '[\[\]' + (-join ((0x00, 0x1F), (0x7F, 0x9F) | ForEach-Object { '\u{0:X4}-\u{1:X4}' -f $_[0], $_[1] })) + ']'
+$script:UnsafeKeyNamePattern = '[\[\]"' + (-join ((0x00, 0x1F), (0x7F, 0x9F) | ForEach-Object { '\u{0:X4}-\u{1:X4}' -f $_[0], $_[1] })) + ']'
 
 function Get-RegistryBackupDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\registry-backup'

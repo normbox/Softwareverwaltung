@@ -49,17 +49,29 @@ namespace SoftwareInventory.Helper
     public static class OperationRules
     {
         /// <summary>Stand des Handschlags (Hello und Ergebnisse). Das Modul lehnt neue Operationen bei einem älteren Helfer ab.</summary>
-        public const int HelperVersion = 5;
+        public const int HelperVersion = 6;
 
         /// <summary>Operationen ohne Prozess. Plan ohne Operation: Wiederherstellungspunkt und/oder Programm (FilePath).</summary>
-        public static readonly string[] Known = { "ReplaceHelperCopy" };
+        public static readonly string[] Known = { "ReplaceHelperCopy", RemoveRegistryEntry };
 
-        /// <summary>Einzelaufruf: <c>HelperUnknownOperation</c> bei unbekannter Operation, <c>HelperNoOperation</c> ohne jede Aufgabe.</summary>
+        /// <summary>Verwaisten Uninstall-Eintrag unter HKLM sichern und entfernen (ab Version 6).</summary>
+        public const string RemoveRegistryEntry = "RemoveRegistryEntry";
+
+        /// <summary>
+        /// Einzelaufruf: <c>HelperUnknownOperation</c> bei unbekannter Operation, <c>HelperNoOperation</c> ohne jede Aufgabe,
+        /// <c>HelperOperationNotCombinable</c>, wenn zu einer Operation noch ein Wiederherstellungspunkt oder ein Programm
+        /// (FilePath) kommt: Eine Operation ist immer die einzige Aufgabe (bei RemoveRegistryEntry ersetzt die Sicherung den
+        /// Wiederherstellungspunkt).
+        /// </summary>
         public static Problem Check(string operation, bool restorePoint, bool hasFilePath)
         {
             if (!string.IsNullOrEmpty(operation))
             {
-                return Array.IndexOf(Known, operation) >= 0 ? null : new Problem("HelperUnknownOperation", operation);
+                if (Array.IndexOf(Known, operation) < 0)
+                {
+                    return new Problem("HelperUnknownOperation", operation);
+                }
+                return restorePoint || hasFilePath ? new Problem("HelperOperationNotCombinable", operation) : null;
             }
             return restorePoint || hasFilePath ? null : new Problem("HelperNoOperation");
         }

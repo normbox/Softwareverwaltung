@@ -55,7 +55,52 @@ namespace SoftwareInventory.Helper
         public const string AdministratorsSid = "S-1-5-32-544";
         public const string TrustedInstallerSid = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
 
+        public const string OwnerRightsSid = "S-1-3-4";
+
         public static readonly string[] TrustedSids = { SystemSid, AdministratorsSid, TrustedInstallerSid };
+
+        /// <summary>
+        /// Program Files\Softwareverwaltung, nur wenn er fehlt: Besitzer Administratoren, keine eigene DACL; die Rechte erbt er
+        /// unverändert von Program Files (auch keine zusätzlichen für Benutzer).
+        /// </summary>
+        public const string ParentSddl = "O:BAG:SY";
+
+        /// <summary>
+        /// RegistryBackup und alles darin: Besitzer Administratoren, geschützte DACL. SYSTEM und Administratoren Vollzugriff,
+        /// Benutzer nur Lesen und Ausführen (0x1200a9). OWNER RIGHTS ebenfalls nur Lesen und Ausführen: Eine Datei, die
+        /// reg.exe unter dem Standardbesitzer des Tokens anlegt (je nach Richtlinie der Benutzer), erbt diesen Eintrag beim
+        /// Anlegen, und ihr Besitzer kann ihre Rechte nicht ändern (kein implizites WRITE_DAC).
+        /// </summary>
+        public const string FolderSddl = "O:BAG:SYD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)(A;OICI;0x1200a9;;;OW)";
+
+        /// <summary>Eine Sicherungsdatei, die der Helfer selbst schreibt: wie der Ordner, ohne Vererbung nach unten.</summary>
+        public const string FileSddl = "O:BAG:SYD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;BU)";
+
+        /// <summary>
+        /// Gibt der Ordner neuen Dateien einen OWNER-RIGHTS-Eintrag mit (Erlauben, vererbt an Dateien)? Nur dann hat der
+        /// Besitzer einer Datei, die reg.exe dort anlegt, von Anfang an kein implizites Recht, ihre DACL zu ändern. Ohne den
+        /// Eintrag lehnt der Helfer einen bestehenden Ordner ab (BackupFolderOwnerRightsMissing), ändert ihn aber nicht.
+        /// Ob der Eintrag selbst Schreibrecht gibt, prüft die Datei (BackupFileRules.CheckStagedFile).
+        /// </summary>
+        public static bool LimitsOwnerRightsOfNewFiles(System.Security.AccessControl.RawSecurityDescriptor descriptor)
+        {
+            var acl = descriptor.DiscretionaryAcl;
+            if (acl is null)
+            {
+                return false;
+            }
+            foreach (System.Security.AccessControl.GenericAce ace in acl)
+            {
+                if (ace is System.Security.AccessControl.CommonAce common
+                    && ace.AceType == System.Security.AccessControl.AceType.AccessAllowed
+                    && (ace.AceFlags & System.Security.AccessControl.AceFlags.ObjectInherit) != 0
+                    && string.Equals(common.SecurityIdentifier.Value, OwnerRightsSid, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>Der feste Ort: nur unter Program Files, nie unter einem Pfad, den der Plan nennt.</summary>
         public static string FolderPath(HelperPaths paths) => Path.Combine(paths.ProgramFiles, "Softwareverwaltung", "RegistryBackup");

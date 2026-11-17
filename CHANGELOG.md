@@ -4,6 +4,20 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Helfer: HKLM-Einträge sichern und entfernen (noch nicht verdrahtet)
+
+- Neue Operation `RemoveRegistryEntry` im Helfer (Version 6): entfernt einen verwaisten Uninstall-Eintrag unter HKLM nach einer Sicherung im Admin-Ordner `Program Files\Softwareverwaltung\RegistryBackup`. Der Helfer übernimmt aus dem Plan nur Schlüssel, Aktionskennung und Gründe und prüft alles selbst: nur mit Administratorrechten, nur Schlüssel direkt unter den beiden HKLM-Uninstall-Zweigen, sicherer Name, Eintrag neu gelesen (rohe Werte), kein MSI-Eintrag, weiterhin verwaist. Eine Operation lässt sich nicht mit einem Programm oder Wiederherstellungspunkt verbinden (`HelperOperationNotCombinable`).
+- Sicherung: `reg.exe` (System32, 64-Bit-Ansicht) exportiert in eine Zwischendatei im Admin-Ordner, nie nach `%TEMP%`. Deren Bytes werden einmal gelesen und geprüft; die endgültige `<ActionId>.reg` schreibt der Helfer selbst als neue Datei mit Besitzer Administratoren, prüft sie erneut (Datei, Kodierung, Inhalt, gleiche Bytes) und legt `<ActionId>.json` (Format wie bei HKCU, nur bekannte Gründe) daneben. Erst dann wird der Schlüssel gelöscht und das Löschen geprüft. Scheitert etwas vorher, bleibt der Schlüssel unberührt; der Helfer entfernt nur Dateien, die er selbst angelegt hat.
+- Fehlt der Ordner, legt der Helfer ihn in einem Schritt mit festen Rechten an: Besitzer Administratoren, geschützt, SYSTEM und Administratoren Vollzugriff, Benutzer nur Lesen und Ausführen (nur für `RegistryBackup` und seine Dateien). `Program Files\Softwareverwaltung` bekommt beim Anlegen nur den Besitzer Administratoren und erbt die Rechte von `Program Files`. Bestehende Ordner werden nur geprüft und bei Abweichung abgelehnt, nie geändert; ein bestehender `RegistryBackup` muss neuen Dateien den OWNER-RIGHTS-Eintrag (nur Lesen) vererben, sonst könnte der Besitzer der Zwischendatei deren Rechte ändern (`BackupFolderOwnerRightsMissing`).
+- Das Modul ruft die Operation noch nicht auf; Oberfläche und Verdrahtung folgen. Bis dahin (und bis zur Bereinigung nach 365 Tagen) gibt es kein Release.
+
+### Verwaist-Prüfung im Helfer: nur maschinenweite Variablen, lange Pfade
+
+- Der erhöhte Helfer setzt nur noch `%ProgramFiles%`, `%ProgramFiles(x86)%`, `%ProgramW6432%`, `%CommonProgramFiles%` (auch x86/W6432), `%SystemRoot%`, `%windir%`, `%SystemDrive%` und `%ProgramData%` ein, mit Werten aus Windows-Funktionen statt aus der Umgebung des Prozesses (die enthält auch Variablen aus `HKCU\Environment`, die ein Programm ohne Adminrechte setzen kann). Jede andere Variable macht den Pfad nicht auswertbar; ein Eintrag gilt dann nie als verwaist. Auch ein Symbol mit solcher Variable zählt als „nicht auswertbar“, nicht als „ohne Symbol“.
+- Pfade ab 260 Zeichen gelten in Modul und Helfer als nicht auswertbar (ohne lange Pfade kann Windows dort „nicht gefunden“ melden, obwohl es die Datei gibt).
+- Schlüsselnamen mit Anführungszeichen (`"`) gelten wie `[` und `]` als unsicher (`KeyNameUnsafe`).
+- Die Regel-Tests des Helfers laufen zusätzlich unter .NET Framework 4.7.2, wie der Helfer selbst (neues Testprojekt `tests/SoftwareInventory.Helper.Tests`, gestartet von `tests/Invoke-IsolatedTests.ps1`).
+
 ### Schlüsselnamen mit [ ] oder Steuerzeichen
 
 - Ein Uninstall-Schlüssel, dessen Name `[`, `]` oder ein Steuerzeichen enthält, wird nicht automatisch gesichert, entfernt oder zurückgespielt (`KeyNameUnsafe`), auch nicht für HKCU: Solche Schlüssel sind extrem selten und bleiben Handarbeit. „Eintrag entfernen“ nennt den Grund schon bei der Planung (`BackupKeyNameUnsafe`); beide Prüfungen (Modul und Helfer) nutzen dieselbe Fälletabelle.

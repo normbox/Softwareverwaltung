@@ -12,6 +12,10 @@ public sealed class OperationRulesTests
     [InlineData("GibtEsNicht", true, true, "HelperUnknownOperation")]
     [InlineData("replacehelpercopy", false, false, "HelperUnknownOperation")]
     [InlineData("ReplaceHelperCopy ", false, false, "HelperUnknownOperation")]
+    [InlineData("removeregistryentry", false, false, "HelperUnknownOperation")]
+    [InlineData("RemoveRegistryEntry", true, false, "HelperOperationNotCombinable")]
+    [InlineData("RemoveRegistryEntry", false, true, "HelperOperationNotCombinable")]
+    [InlineData("ReplaceHelperCopy", true, false, "HelperOperationNotCombinable")]
     public void RefusesPlansWithoutAKnownTask(string? operation, bool restorePoint, bool hasFilePath, string code)
     {
         var problem = OperationRules.Check(operation, restorePoint, hasFilePath);
@@ -30,6 +34,7 @@ public sealed class OperationRulesTests
     [InlineData(null, false, true)]
     [InlineData(null, true, true)]
     [InlineData("ReplaceHelperCopy", false, false)]
+    [InlineData("RemoveRegistryEntry", false, false)]
     public void AcceptsAKnownTask(string? operation, bool restorePoint, bool hasFilePath)
     {
         Assert.Null(OperationRules.Check(operation, restorePoint, hasFilePath));
@@ -52,8 +57,8 @@ public sealed class OperationRulesTests
     }
 
     [Fact]
-    public void HelperVersionIsFiveSoThatTheModuleCanRefuseOlderHelpers()
+    public void HelperVersionIsSixSoThatTheModuleCanRefuseHelpersWithoutRemoveRegistryEntry()
     {
-        Assert.Equal(5, OperationRules.HelperVersion);
+        Assert.Equal(6, OperationRules.HelperVersion);
     }
 }

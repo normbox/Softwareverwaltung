@@ -60,6 +60,26 @@ namespace SoftwareInventory.Helper
         }
 
         /// <summary>
+        /// Wie <see cref="CheckFile"/>, aber ohne Besitzer: für die Zwischendatei, die reg.exe im Admin-Ordner anlegt. Ihr
+        /// Besitzer ist der Standardbesitzer des erhöhten Tokens (je nach Richtlinie der Benutzer selbst); die geschützte
+        /// DACL des Ordners (mit OWNER RIGHTS nur Lesen) nimmt ihm das Ändern. Verwendet werden nur die gelesenen Bytes, die
+        /// endgültige Datei schreibt der Helfer selbst mit eigenem Besitzer.
+        /// </summary>
+        public static Problem CheckStagedFile(string path, BackupFileInfo info)
+        {
+            if (info.IsReparsePoint)
+            {
+                return new Problem("BackupFileReparsePoint", path);
+            }
+            if (info.LinkCount != 1)
+            {
+                return new Problem("BackupFileHardLinked", path, info.LinkCount);
+            }
+            var writer = info.WriteAccessSids.FirstOrDefault(sid => !IsTrusted(sid));
+            return writer is null ? null : new Problem("BackupFileWritable", path, writer);
+        }
+
+        /// <summary>
         /// Prüft die Bytes und liest daraus den Text (UTF-16 Little Endian mit Bytefolge FF FE wie von reg export, gerade
         /// Anzahl Bytes danach). null, wenn alles passt; sonst der Grund-Code: Empty, TooLarge oder BadEncoding.
         /// </summary>
