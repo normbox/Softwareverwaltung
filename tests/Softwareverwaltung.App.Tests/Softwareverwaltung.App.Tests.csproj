@@ -38,6 +38,7 @@
     <Compile Include="..\..\src\SoftwareInventory.Helper\OrphanRules.cs" Link="Helper\OrphanRules.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\WindowsOrphanEnvironment.cs" Link="Helper\WindowsOrphanEnvironment.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryRemoval.cs" Link="Helper\RegistryRemoval.cs" />
+    <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryBackupStore.cs" Link="Helper\RegistryBackupStore.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Native\InstallerActivity.cs" Link="Native\InstallerActivity.cs" />
   </ItemGroup>
 

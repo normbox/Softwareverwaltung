@@ -40,6 +40,36 @@ namespace SoftwareInventory.Helper
         // Fortsetzungszeile eines Hex-Werts (reg export: "  01,02,\").
         private static readonly Regex HexLine = new Regex(@"^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$", RegexOptions.Compiled);
         private static readonly char[] Blanks = { ' ', '\t' };
+        /// <summary>
+        /// Daten einer Wertzeile (alles nach dem = hinter dem Namen); null, wenn die Zeile kein vollständiger Name mit = ist.
+        /// Name: @ oder "..." mit \" und \\ als Escape. Dieselbe Zerlegung wie Get-RegistryValueData im Modul.
+        /// </summary>
+        public static string ValueData(string line)
+        {
+            int index;
+            if (line[0] == '@')
+            {
+                index = 1;
+            }
+            else
+            {
+                index = 1;
+                while (index < line.Length && line[index] != '"')
+                {
+                    index += line[index] == '\\' ? 2 : 1;
+                }
+                if (index >= line.Length)
+                {
+                    return null;
+                }
+                index++;
+            }
+            while (index < line.Length && (line[index] == ' ' || line[index] == '\t'))
+            {
+                index++;
+            }
+            return index < line.Length && line[index] == '=' ? line.Substring(index + 1) : null;
+        }
 
         /// <summary>
         /// Ein Schlüsselname mit [, ], " oder einem Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) ist nie sicher
@@ -59,7 +89,8 @@ namespace SoftwareInventory.Helper
         }
 
         /// <summary>
-        /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe,
+        /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine ([-…] oder
+        /// "Name"=- / @=-), BadKeyLine, KeyNameUnsafe,
         /// KeyNotFound, KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur Benutzer erlaubt)
         /// oder WrongScope (HKCU, aber nur HKLM erlaubt).
         /// </summary>
@@ -91,6 +122,21 @@ namespace SoftwareInventory.Helper
                 }
                 if (!trimmed.StartsWith("[", StringComparison.Ordinal))
                 {
+                    if (trimmed[0] == '"' || trimmed[0] == '@')
+                    {
+                        // Wertzeile: Name ("..." mit \-Escapes, oder @), dann = und die Daten. Beginnen die Daten mit -
+                        // ("Name"=-, @=-, auch mit Kommentar dahinter), löscht reg import einen Wert: wie [-...] abgelehnt.
+                        var data = ValueData(trimmed);
+                        if (data is null)
+                        {
+                            return "BadLine";
+                        }
+                        if (data.TrimStart(Blanks).StartsWith("-", StringComparison.Ordinal))
+                        {
+                            return "DeleteLine";
+                        }
+                        continue;
+                    }
                     // Wertzeilen ("Name"=..., @=...), Kommentare und Hex-Fortsetzungen; alles andere ist unbekannt.
                     if (trimmed[0] == '"' || trimmed[0] == '@' || trimmed[0] == ';' || HexLine.IsMatch(trimmed))
                     {

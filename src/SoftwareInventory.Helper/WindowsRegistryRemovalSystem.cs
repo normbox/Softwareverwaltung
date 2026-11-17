@@ -1,8 +1,10 @@
 #nullable disable
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using Microsoft.Win32;
@@ -13,7 +15,7 @@ namespace SoftwareInventory.Helper
     /// Die echte Umsetzung von <see cref="IRegistryRemovalSystem"/> im erhöhten Helfer (nur .NET Framework: FileStream mit
     /// FileSecurity). Rechte als SDDL, damit sie beim Anlegen atomar gelten und nie nachträglich geändert werden.
     /// </summary>
-    internal sealed class WindowsRegistryRemovalSystem : IRegistryRemovalSystem
+    internal sealed class WindowsRegistryRemovalSystem : IRegistryRemovalSystem, IRegistryBackupSystem
     {
         // Die Rechte (SDDL) stehen in BackupFolderRules, damit die Tests sie ohne Adminrechte prüfen können.
         private const int ErrorAlreadyExists = 183;
@@ -145,7 +147,50 @@ namespace SoftwareInventory.Helper
             {
                 return -1;
             }
-            var info = new ProcessStartInfo(Path.Combine(_paths.System32, "reg.exe"), "export \"" + nativeKey + "\" \"" + file + "\" /y /reg:64")
+            return RunReg("export \"" + nativeKey + "\" \"" + file + "\" /y /reg:64");
+        }
+
+        /// <summary>reg.exe import genau dieser (vorher geprüften) Datei in der 64-Bit-Ansicht.</summary>
+        public int ImportFile(string path)
+        {
+            if (path.IndexOf('"') >= 0)
+            {
+                return -1;
+            }
+            return RunReg("import \"" + path + "\" /reg:64");
+        }
+
+        public bool BackupFolderExists() => Directory.Exists(BackupFolder);
+
+        public bool FileExists(string path) => File.Exists(path);
+
+        /// <summary>Oberste Ebene des Ordners, ohne Links zu folgen (Attribute aus der Aufzählung selbst).</summary>
+        public IReadOnlyList<BackupFolderEntry> ListFolder() =>
+            new DirectoryInfo(BackupFolder).EnumerateFileSystemInfos("*", SearchOption.TopDirectoryOnly)
+                .Select(info => new BackupFolderEntry
+                {
+                    Name = info.Name,
+                    IsDirectory = (info.Attributes & FileAttributes.Directory) != 0,
+                    IsReparsePoint = (info.Attributes & FileAttributes.ReparsePoint) != 0,
+                    LastWriteUtc = info.LastWriteTimeUtc,
+                })
+                .ToList();
+
+        /// <summary>Begleitdatei wie eine Sicherungsdatei lesen (ein Handle, Besitzer, Schreibrechte), höchstens 64 KB, UTF-8.</summary>
+        public BackupSidecar ReadSidecar(string path, out Problem fileProblem)
+        {
+            var read = new WindowsBackupFileReader().Read(path);
+            fileProblem = BackupFileRules.CheckFile(path, read.Info);
+            if (fileProblem is not null)
+            {
+                return null;
+            }
+            return SidecarParser.Parse(read.Bytes);
+        }
+
+        private int RunReg(string arguments)
+        {
+            var info = new ProcessStartInfo(Path.Combine(_paths.System32, "reg.exe"), arguments)
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
