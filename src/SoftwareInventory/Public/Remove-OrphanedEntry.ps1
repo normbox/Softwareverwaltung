@@ -16,7 +16,7 @@ function Remove-OrphanedEntry {
         erst dann den Schlüssel. Erfolg nur, wenn der Helfer das meldet, die Sicherung am geplanten Ort liegt und der
         Schlüssel in der 64-Bit-Ansicht weg ist. Ein Wiederherstellungspunkt wird nie angelegt (die Sicherung ersetzt ihn).
         Entfernt wird nur dieser Schlüssel samt Unterschlüsseln, nie ein Ordner oder eine Datei. Zurückspielen:
-        Restore-RegistryBackup. Sicherungen werden 365 Tage aufbewahrt. Jede Aktion wird protokolliert;
+        Restore-RegistryBackup; Sicherungen werden 365 Tage aufbewahrt (beides vorerst nur HKCU, HKLM folgt). Jede Aktion wird protokolliert;
         -WhatIf liefert den Plan (Result Planned).
         Gründe (Reasons am Eingabeobjekt) übernimmt das Modul nur, wenn der Code bekannt ist.
     .PARAMETER ConfirmedCommandLine
@@ -139,16 +139,21 @@ function Invoke-RemoveMachineEntryPlan {
         $status = & $field 'Status'
         $helperError = & $field 'Error'
         $backup = [string] (& $field 'BackupFile')
-        $removed = $status -eq 'Completed' -and -not $helperError -and (& $field 'Removed') -eq $true
+        # Exakt $true (bool): ein Text wie 'true' oder ein fehlendes Feld ist kein Erfolg.
+        $removed = $status -eq 'Completed' -and -not $helperError -and (& $field 'Removed') -is [bool] -and (& $field 'Removed')
         $atPlannedPlace = [bool] $backup -and [string]::Equals($backup, $Plan.BackupFile, [StringComparison]::OrdinalIgnoreCase)
-        $present = Test-MachineRegistryKeyPresent -RegistryKey $Plan.RegistryKey
-        $Result.PresentAfter = $present
+        # Gibt es den Schlüssel noch? $true, $false oder $null (nicht lesbar: zählt nie als „weg“).
+        $probe = { try { [bool] (Test-MachineRegistryKeyPresent -RegistryKey $Plan.RegistryKey) } catch { $null } }
         if ($status -eq 'ElevationDenied') {
+            # Der Helfer lief nicht: nichts geändert, keine Sicherung.
             $Result.Result = 'ElevationDenied'
             $Result.Message = $helperError
+            $Result.PresentAfter = $true
             $Result.BackupFile = $null
         }
         elseif (-not $removed) {
+            $present = & $probe
+            $Result.PresentAfter = $present -ne $false
             $Result.Result = 'Failed'
             $Result.Message = if ($helperError) { $helperError } else { New-InventoryMessage HelperResultUnreadable }
             # Die Sicherung bleibt nur, wenn der Helfer sie nennt (Löschen gescheitert, nachdem sie stand).
@@ -156,25 +161,37 @@ function Invoke-RemoveMachineEntryPlan {
             if ($atPlannedPlace -and (& $field 'ErrorCode') -ceq 'RemoveEntryDeleteFailed') {
                 $Result.Message = New-InventoryMessage RemoveEntryDeleteFailedBackupKept $Plan.BackupFile
             }
+            elseif ($status -ne 'Completed' -and $present -eq $false -and (Test-Path -LiteralPath $Plan.BackupFile -PathType Leaf)) {
+                # Antwort verloren (Zeitüberschreitung, Pipe), der Helfer hat aber offenbar gesichert und entfernt: ehrlich
+                # als unklar melden, mit dem Ort der Sicherung, nie als Erfolg.
+                $Result.Message = New-InventoryMessage RemoveEntryResultUnclear $Plan.BackupFile
+                $Result.BackupFile = $Plan.BackupFile
+            }
         }
         elseif (-not $atPlannedPlace) {
+            $Result.PresentAfter = (& $probe) -ne $false
             $Result.Result = 'Failed'
             $Result.Message = New-InventoryMessage RemoveEntryBackupUnexpected $backup
             $Result.BackupFile = $null
         }
-        elseif ($present) {
-            $Result.Result = 'Failed'
-            $Result.Message = New-InventoryMessage RemoveEntryDeleteFailedBackupKept $Plan.BackupFile
-        }
         else {
-            $Result.Result = 'Succeeded'
-            $Result.Message = New-InventoryMessage RemoveEntryDoneMachine $Plan.BackupFile
+            $present = & $probe
+            $Result.PresentAfter = $present -ne $false
+            if ($present -eq $false) {
+                $Result.Result = 'Succeeded'
+                $Result.Message = New-InventoryMessage RemoveEntryDoneMachine $Plan.BackupFile
+            }
+            else {
+                $Result.Result = 'Failed'
+                $Result.Message = New-InventoryMessage RemoveEntryDeleteFailedBackupKept $Plan.BackupFile
+            }
         }
     }
     catch {
+        # Der Helfer ließ sich nicht starten oder warf; eine Sicherung gibt es nur, wenn sie am geplanten Ort liegt.
         $Result.Result = 'Failed'
         $Result.Message = New-InventoryMessage RemoveEntryDeleteFailed $_.Exception.Message
-        $Result.BackupFile = $null
+        $Result.BackupFile = if (Test-Path -LiteralPath $Plan.BackupFile -PathType Leaf) { $Plan.BackupFile }
     }
     $Result.CompletedAt = [datetime]::UtcNow
     Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $Result)

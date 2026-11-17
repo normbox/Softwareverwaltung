@@ -33,6 +33,8 @@ function Test-MachineRegistryKeyPresent {
         könnte einen Schlüssel für „weg“ halten, den der Helfer gar nicht gelöscht hat (oder umgekehrt).
     #>
     param([Parameter(Mandatory)] [string] $RegistryKey)
+    # Fail-closed: Ohne HKLM-Präfix ließe sich „weg“ nicht beurteilen (OpenSubKey liefert sonst einfach $null).
+    if ($RegistryKey -notmatch '^(?i:HKLM:\\|HKEY_LOCAL_MACHINE\\).') { throw [System.ArgumentException]::new("Kein HKLM-Schlüssel: $RegistryKey") }
     $sub = $RegistryKey -replace '^(?i:HKLM:\\|HKEY_LOCAL_MACHINE\\)', ''
     $root = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
     try {

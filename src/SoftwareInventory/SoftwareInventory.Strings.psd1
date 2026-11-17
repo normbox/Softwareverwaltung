@@ -180,6 +180,7 @@ Regeln:
     ReasonRemoveEntryDone                   = 'Eintrag entfernt. Sicherung: {0} (Zurückspielen in der Ansicht „Sicherungen“)'
     ReasonRemoveEntryDoneMachine            = 'Eintrag entfernt. Sicherung: {0}'
     ReasonRemoveEntryDeleteFailedBackupKept = 'Eintrag konnte nicht (vollständig) entfernt werden; die Sicherung bleibt erhalten: {0}'
+    ReasonRemoveEntryResultUnclear          = 'Die Antwort des Helfers ist nicht angekommen; der Eintrag scheint entfernt, eine Sicherung liegt vermutlich unter {0}. Bitte neu scannen.'
     ReasonRemoveEntryBackupUnexpected       = 'Der Helfer meldet eine Sicherung an einem anderen als dem geplanten Ort ({0}); das Ergebnis gilt nicht als Erfolg'
     ReasonRemoveEntryBackupInvalid          = 'Sicherung nicht brauchbar ({0}); der Eintrag wurde nicht entfernt'
     ReasonRemoveEntryDeleteFailed           = 'Eintrag konnte nicht entfernt werden: {0}'

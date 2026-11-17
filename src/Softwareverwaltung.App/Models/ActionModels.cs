@@ -8,7 +8,7 @@ public enum SoftwareActionKind
     Update,
     Uninstall,
     InstallWinget,
-    /// <summary>Verwaisten Uninstall-Eintrag entfernen (Remove-OrphanedEntry), vorerst nur HKCU.</summary>
+    /// <summary>Verwaisten Uninstall-Eintrag entfernen (Remove-OrphanedEntry), HKCU und HKLM (über den Helfer).</summary>
     RemoveEntry,
     /// <summary>Registry-Sicherung zurückspielen (Restore-RegistryBackup), nur HKCU.</summary>
     RestoreBackup,

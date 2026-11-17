@@ -400,6 +400,10 @@ Describe 'Remove-OrphanedEntry für alle Benutzer (HKLM über den Helfer)' {
                 'OtherPath' { Remove-Item -LiteralPath $HelperPlan.RegistryKey -Recurse -Force; @{ Status = 'Completed'; Removed = $true; BackupFile = 'C:\Users\x\evil.reg'; Error = $null } }
                 'ClaimsRemoved' { @{ Status = 'Completed'; Removed = $true; BackupFile = $planned; Error = $null } }
                 'DeleteFailed' { @{ Status = 'Completed'; Removed = $false; BackupFile = $planned; ErrorCode = 'RemoveEntryDeleteFailed'; Error = (& $message 'RemoveEntryDeleteFailed') } }
+                'NoRemovedField' { @{ Status = 'Completed'; BackupFile = $planned; Error = $null } }
+                'RemovedAsText' { @{ Status = 'Completed'; Removed = 'true'; BackupFile = $planned; Error = $null } }
+                'Throws' { throw 'Helfer nicht startbar' }
+                'Lost' { Remove-Item -LiteralPath $HelperPlan.RegistryKey -Recurse -Force; @{ Status = 'Failed'; Error = (& $message 'HelperResultIncomplete') } }
             }
         }
         function Get-MachineOrphan([string] $Root = $script:Machine, [string] $Architecture = 'X64') {
@@ -462,6 +466,53 @@ Describe 'Remove-OrphanedEntry für alle Benutzer (HKLM über den Helfer)' {
         Test-Path "$($script:Machine)\janold" | Should -BeTrue
     }
 
+    It 'zählt ein Ergebnis ohne echtes Removed nie als Erfolg (<Mode>)' -TestCases @(@{ Mode = 'NoRemovedField' }, @{ Mode = 'RemovedAsText' }) {
+        $script:HelperMode = $Mode
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'HelperResultUnreadable'
+        Test-Path "$($script:Machine)\janold" | Should -BeTrue
+    }
+
+    It 'meldet einen Helfer, der nicht startet, als Fehler und protokolliert' {
+        $script:HelperMode = 'Throws'
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryDeleteFailed'
+        $r.BackupFile | Should -BeNullOrEmpty
+        $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+        $log.Phase | Should -Be @('Started', 'Completed')
+    }
+
+    It 'meldet eine verlorene Antwort als unklar mit dem Ort der Sicherung, nie als Erfolg' {
+        $script:HelperMode = 'Lost'
+        # Nur die geplante Sicherung unter Program Files „gibt es“; alle anderen Aufrufe gehen an das echte Test-Path.
+        Mock -ModuleName SoftwareInventory Test-Path { Microsoft.PowerShell.Management\Test-Path @PesterBoundParameters }
+        Mock -ModuleName SoftwareInventory Test-Path { $true } -ParameterFilter { $LiteralPath -like '*\Softwareverwaltung\RegistryBackup\*.reg' }
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryResultUnclear'
+        $r.BackupFile | Should -BeLike "*\RegistryBackup\$($r.ActionId).reg"
+        $r.PresentAfter | Should -BeFalse
+    }
+
+    It 'zählt einen nicht lesbaren Schlüssel danach nie als entfernt' {
+        Mock -ModuleName SoftwareInventory Test-MachineRegistryKeyPresent { throw [System.Security.SecurityException]::new('verweigert') }
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryDeleteFailedBackupKept'
+        $r.BackupFile | Should -BeLike "*\RegistryBackup\$($r.ActionId).reg"
+    }
+
+    It 'reicht HelperInWritableFolder in den Plan weiter' {
+        Mock -ModuleName SoftwareInventory Test-HelperInWritableFolder { $true }
+        (Get-MachineOrphan | Remove-OrphanedEntry -WhatIf).HelperInWritableFolder | Should -BeTrue
+    }
+
+    It 'verlangt für RemoveRegistryEntry mindestens Helferversion 6' {
+        InModuleScope SoftwareInventory { $script:HelperOperationMinVersion['RemoveRegistryEntry'] | Should -Be 6 }
+    }
+
     It 'zählt eine Sicherung an einem anderen als dem geplanten Ort nie als Erfolg' {
         $script:HelperMode = 'OtherPath'
         $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
@@ -476,7 +527,15 @@ Describe 'Test-MachineRegistryKeyPresent (64-Bit-Ansicht wie der Helfer)' {
         InModuleScope SoftwareInventory {
             Test-MachineRegistryKeyPresent -RegistryKey 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' | Should -BeTrue
             Test-MachineRegistryKeyPresent -RegistryKey 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' | Should -BeTrue
-            Test-MachineRegistryKeyPresent -RegistryKey 'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion' | Should -BeTrue
+            Test-MachineRegistryKeyPresent -RegistryKey 'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' | Should -BeTrue
+        }
+    }
+
+    It 'lehnt Pfade ohne HKLM-Präfix ab, statt sie als „nicht vorhanden“ zu werten' {
+        InModuleScope SoftwareInventory {
+            { Test-MachineRegistryKeyPresent -RegistryKey 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' } | Should -Throw
+            { Test-MachineRegistryKeyPresent -RegistryKey 'TestRegistry:\x' } | Should -Throw
+            { Test-MachineRegistryKeyPresent -RegistryKey 'HKLM:\' } | Should -Throw
         }
     }
 
