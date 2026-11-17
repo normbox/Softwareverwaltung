@@ -61,7 +61,9 @@ public sealed class RegistryBackupRulesTests
         var wrong = new List<string>();
         foreach (var c in cases)
         {
-            var bytes = Convert.FromHexString(c.GetProperty("hex").GetString()!);
+            // Ohne Convert.FromHexString: Die Datei läuft auch im net472-Testprojekt (SoftwareInventory.Helper.Tests).
+            var hex = c.GetProperty("hex").GetString()!;
+            var bytes = Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(i * 2, 2), 16)).ToArray();
             var code = BackupFileRules.DecodeText(bytes, out var text);
             var expectedCode = c.GetProperty("expectedCode").ValueKind == JsonValueKind.Null ? null : c.GetProperty("expectedCode").GetString();
             var expectedText = c.TryGetProperty("expectedText", out var t)

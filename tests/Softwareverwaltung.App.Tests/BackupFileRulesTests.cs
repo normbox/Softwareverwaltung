@@ -17,6 +17,10 @@ public sealed class BackupFileRulesTests
     private const string Users = "S-1-5-32-545";
     private const string CurrentUser = "S-1-5-21-1-2-3-1001";
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool CreateSymbolicLinkW(string link, string target, int flags);
+
     private static BackupFileInfo Trusted() => new()
     {
         IsReparsePoint = false,
@@ -161,11 +165,9 @@ public sealed class BackupFileRulesTests
             var target = Path.Combine(folder, "target.reg");
             var link = Path.Combine(folder, "link.reg");
             File.WriteAllBytes(target, [0xFF, 0xFE, 0x41, 0x00]);
-            try
-            {
-                File.CreateSymbolicLink(link, target);
-            }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            // Über die Windows-Funktion statt File.CreateSymbolicLink: Die Datei läuft auch im net472-Testprojekt.
+            // 0x2 = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE (Entwicklermodus).
+            if (!CreateSymbolicLinkW(link, target, 0x2))
             {
                 // Ohne Recht zum Anlegen von Symlinks (Entwicklermodus aus) lässt sich dieser Fall nicht nachstellen.
                 return;

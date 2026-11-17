@@ -42,14 +42,15 @@ namespace SoftwareInventory.Helper
         private static readonly char[] Blanks = { ' ', '\t' };
 
         /// <summary>
-        /// Ein Schlüsselname mit [ oder ] oder einem Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) ist nie sicher
-        /// zu lesen (reg.exe könnte Kopfzeilen anders trennen): Solche Einträge bleiben Handarbeit.
+        /// Ein Schlüsselname mit [, ], " oder einem Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) ist nie sicher
+        /// zu lesen (reg.exe könnte Kopfzeilen anders trennen) und nicht sicher als Argument an reg.exe zu übergeben
+        /// (Anführungszeichen): Solche Einträge bleiben Handarbeit.
         /// </summary>
         public static bool HasUnsafeKeyCharacter(string name)
         {
             foreach (var c in name)
             {
-                if (c == '[' || c == ']' || c < ' ' || (c >= (char)0x7F && c <= (char)0x9F))
+                if (c == '[' || c == ']' || c == '"' || c < ' ' || (c >= (char)0x7F && c <= (char)0x9F))
                 {
                     return true;
                 }

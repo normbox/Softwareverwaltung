@@ -5,6 +5,7 @@
     <Project Path="src/Softwareverwaltung.App/Softwareverwaltung.App.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/SoftwareInventory.Helper.Tests/SoftwareInventory.Helper.Tests.csproj" />
     <Project Path="tests/Softwareverwaltung.App.Tests/Softwareverwaltung.App.Tests.csproj" />
   </Folder>
 </Solution>

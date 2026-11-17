@@ -157,18 +157,25 @@ try {
             # WPF-Projekt parallel im selben obj-Ordner und verursachte sporadisch CS2001, BG1002 und MSB3061.
             # Bekannte Grenzen: Der Bau von SoftwareInventory.Native oben nutzt weiter das obj des Repos (klein, selten betroffen);
             # jeder Lauf baut kalt (neuer Restore mit dem Temp-APPDATA, also ohne die NuGet.Config des Benutzers).
-            $testArguments = @('test', 'tests/Softwareverwaltung.App.Tests', '--artifacts-path', "$root\artifacts")
-            if ($subset) { $testArguments += @('--filter', $XunitFilter) }
-            # Erst die ganze Ausgabe einsammeln und den Exit-Code sichern, dann filtern: Ein vorzeitig beendetes
-            # Select-Object darf $LASTEXITCODE nicht verfälschen und dotnet nicht abbrechen.
-            $testOutput = @(& dotnet @testArguments 2>&1)
-            $testExit = $LASTEXITCODE
-            if ($testExit -ne 0) { $exitCode = 1 }
-            # Zusammenfassung plus bei Fehlschlägen Testname und Meldung (Zeilen "Fehler <Test>", "Failed <Test>", Assert-Texte).
-            $summary = @($testOutput | Select-String -Pattern 'Bestanden!|Fehler!|error|No test|Keine Tests|^\s*(Fehler|Failed)\s+\S|Assert\.|Expected|Actual|Exception' | Select-Object -First 40)
-            $summary
-            if ($subset -and $summary.Count -eq 0) { 'WARNUNG: xUnit meldete keine Zusammenfassung (Filter ohne Treffer?).'; $notRun = $true }
-            if ($subset -and ($testOutput | Select-String -Pattern 'No test matches|Keine Tests')) { $notRun = $true }
+            # Zwei Projekte: die App-Tests (.NET 10) und dieselben Regel-Tests des Helfers unter .NET Framework 4.7.2, wie der
+            # Helfer wirklich läuft. Ein Filter darf nur eines davon treffen; „nicht ausgeführt“ gilt erst, wenn keines lief.
+            $ranAny = $false
+            foreach ($project in 'tests/Softwareverwaltung.App.Tests', 'tests/SoftwareInventory.Helper.Tests') {
+                "xUnit: $project"
+                $testArguments = @('test', $project, '--artifacts-path', "$root\artifacts")
+                if ($subset) { $testArguments += @('--filter', $XunitFilter) }
+                # Erst die ganze Ausgabe einsammeln und den Exit-Code sichern, dann filtern: Ein vorzeitig beendetes
+                # Select-Object darf $LASTEXITCODE nicht verfälschen und dotnet nicht abbrechen.
+                $testOutput = @(& dotnet @testArguments 2>&1)
+                $testExit = $LASTEXITCODE
+                if ($testExit -ne 0) { $exitCode = 1 }
+                # Zusammenfassung plus bei Fehlschlägen Testname und Meldung (Zeilen "Fehler <Test>", "Failed <Test>", Assert-Texte).
+                $summary = @($testOutput | Select-String -Pattern 'Bestanden!|Fehler!|error|No test|Keine Tests|^\s*(Fehler|Failed)\s+\S|Assert\.|Expected|Actual|Exception' | Select-Object -First 40)
+                $summary
+                $noMatch = $testOutput | Select-String -Pattern 'No test matches|Keine Tests'
+                if ($summary.Count -gt 0 -and -not $noMatch) { $ranAny = $true }
+            }
+            if ($subset -and -not $ranAny) { 'WARNUNG: xUnit meldete in keinem Projekt ausgeführte Tests (Filter ohne Treffer?).'; $notRun = $true }
         }
     }
 }

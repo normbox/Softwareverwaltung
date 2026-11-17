@@ -144,7 +144,8 @@ function Get-PathState {
     param([string] $Path, [string] $Architecture)
     if ([string]::IsNullOrWhiteSpace($Path)) { return 'Unknown' }
     $p = [Environment]::ExpandEnvironmentVariables($Path.Trim().Trim('"').Trim())
-    if (-not $p -or $p.StartsWith('\\') -or $p -notmatch '^[A-Za-z]:\\') { return 'Unknown' }
+    # Ab MAX_PATH (260) kann Windows „nicht gefunden“ melden, obwohl es die Datei gibt: nie als fehlend werten (wie OrphanRules.MaxPath).
+    if (-not $p -or $p.Length -ge 260 -or $p.StartsWith('\\') -or $p -notmatch '^[A-Za-z]:\\') { return 'Unknown' }
     if (-not (Test-PathRootReachable $p)) { return 'Unknown' }
     $root = try { [System.IO.Path]::GetPathRoot($p) } catch { $null }
     $systemRoot = try { [System.IO.Path]::GetPathRoot([Environment]::SystemDirectory) } catch { $null }

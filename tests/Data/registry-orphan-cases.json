@@ -54,6 +54,9 @@
     { "name": "Jan-Fall: Ordner der neuen Installation existiert in anderer Schreibweise", "uninstall": "\"{PF}\\Programs\\jan\\Uninstall Jan.exe\" /currentuser", "icon": "{PF}\\Programs\\jan\\uninstallerIcon.ico", "dirs": ["{PF}\\Programs\\Jan"], "orphaned": true },
     { "name": "zwei .exe-Kandidaten, der längere existiert", "uninstall": "{PF}\\Tool.exe --x.exe", "files": ["{PF}\\Tool.exe --x.exe"], "orphaned": false },
     { "name": "zwei .exe-Kandidaten, keiner existiert", "uninstall": "{PF}\\Tool.exe --x.exe", "orphaned": true },
-    { "name": "Zeichen mit Codepunkt im Pfad bleibt auswertbar", "uninstall": "\"{PF}\\Gon{U+00E9}\\unins.exe\"", "orphaned": true }
+    { "name": "Zeichen mit Codepunkt im Pfad bleibt auswertbar", "uninstall": "\"{PF}\\Gon{U+00E9}\\unins.exe\"", "orphaned": true },
+    { "name": "Befehl mit Pfad ab 260 Zeichen ist nie verwaist (lange Pfade)", "uninstall": "\"{PF}\\01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789\\unins.exe\"", "orphaned": false },
+    { "name": "Installationsordner ab 260 Zeichen ist nie fehlend", "uninstall": "\"{PF}\\Gone\\unins.exe\"", "location": "{PF}\\01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789", "orphaned": false },
+    { "name": "Symbol mit unbekannter Variable ist nicht auswertbar", "uninstall": "\"{PF}\\Gone\\unins.exe\"", "icon": "%SWV_GIBT_ES_NICHT_7F3%\\app.ico", "orphaned": false }
   ]
 }

@@ -51,6 +51,8 @@
     { "name": "U+007F im Namen", "scope": "Machine", "key": "{M}\\App", "text": "{H}\r\n\r\n[{M}\\Ap{U+007F}p]\r\n", "expected": "KeyNameUnsafe" },
     { "name": "C1-Steuerzeichen U+0080 im Namen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\Ap{U+0080}p]\r\n", "expected": "KeyNameUnsafe" },
     { "name": "[ im Unterschlüsselnamen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\S[ub]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "Anführungszeichen im Hauptschlüsselnamen (HKLM)", "scope": "Machine", "key": "{M}\\App\"x", "text": "{H}\r\n\r\n[{M}\\App\"x]\r\n", "expected": "KeyNameUnsafe" },
+    { "name": "Anführungszeichen im Unterschlüsselnamen", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\App\\S\"ub]\r\n", "expected": "KeyNameUnsafe" },
     { "name": "leere Schlüsselzeile", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[]\r\n", "expected": "BadKeyLine" },
     { "name": "Wertzeile mit Backslash am Ende, danach eine Schlüsselzeile (bleibt Schlüsselkopf)", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\"Blob\"=hex:01,\\\r\n[{U}\\Fremd]\r\n", "expected": "KeyOutside" },
     { "name": "hex(2) mit Fortsetzung in Großbuchstaben", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\"Path\"=hex(2):25,00,\\\r\n  5C,00,0A,FF\r\n", "expected": null },
