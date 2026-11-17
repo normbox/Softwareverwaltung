@@ -39,6 +39,17 @@ Open-Source-Werkzeug für Windows: installierte Software inventarisieren, neue V
 - Nach jedem fertigen, lauffähigen Teilschritt committen (kleine Commits, Message auf Englisch).
 - Ist die Etappe fertig, per Pull Request auf GitHub in `main` mergen.
 
+## Hooks (Claude Code, `.claude/settings.json`, Skripte in `.claude/hooks/`)
+
+Die Hooks erzwingen Regeln dieser Datei. Sie sind Leitplanken, keine Garantie, und fail-open: Lässt sich die Eingabe nicht lesen, blockieren sie nie. `tests/Unit/Hooks.Tests.ps1` weist für jeden Hook nach, dass er bei Beispielen wirklich blockiert (Exit 2).
+
+- `block-source-via-shell`: blockiert Schreiben auf Quelldateien über die Shell (Umleitung, `tee`, `sed -i`, `Set-Content`/`Out-File`, `WriteAllText`, `open(...).write`). Nur mit Quelldatei-Endung als Ziel; Temp und Scratchpad sind frei.
+- `block-direct-tests`: blockiert `Invoke-Pester`, `dotnet test` und Skripte aus `tests/Sandbox`; erlaubt ist `tests/Invoke-IsolatedTests.ps1`.
+- `block-git-risks`: blockiert `git commit/push/merge` auf `main` (und einen Push mit Ziel `main`), `push --force`/`-f`/`--force-with-lease`, `reset --hard`, `clean -f` und `gh pr merge` (Merge macht der Benutzer). `git checkout -- <Pfad>` gibt nur einen Hinweis.
+- `check-control-chars`: prüft jede mit Edit/Write geänderte Quelldatei im Repository sofort auf rohe Steuerzeichen und ungültiges UTF-8 und meldet Zeile und Codepunkt.
+- Die Zeichenbereiche und die Quelldatei-Endungen stehen einmal in `tests/Data/unsafe-chars.json` (Dezimal-Codepunkte); `SourceFiles.Tests.ps1` und der Hook `check-control-chars` lesen dieselbe Tabelle.
+- Bewusst umgehen: den Hook für die Sitzung in `.claude/settings.local.json` überschreiben (die Datei ist nicht im Repository) und im PR begründen.
+
 ## Fahrplan
 
 Etappenweise vorgehen, siehe `docs/KONZEPT.md` Abschnitt „Fahrplan“. Etappe 3 (Oberfläche) ist fertig. Aktuell: Etappe 4 (KI-Berater, nur lokal). Fertig sind 4a (Tools, Bereinigung und Einstellungen im Modul) und die Zwischenetappe „Texte auslagern“ (App-Texte in `.resx`, Modulmeldungen mit Codes; noch keine Übersetzung), dazu Zwischenspeicher, Warteschlange, CPE-Zuordnung und CIRCL als zweite Quelle. Fertig ist auch 4b (Freigabestufen, Anbieter-Schnittstelle, Einstellungsseite). Aktuell 4c: Chat-Seitenleiste (4c-1), dann Vorschlagskarten (4c-2). Der lokale Lückenabzug (Offline-Modus) ist geplant, siehe `docs/KONZEPT.md`. Vor dem ersten Release: englische Übersetzung per KI und README auf Englisch.

@@ -1,0 +1,12 @@
+{
+  "comment": "Gemeinsame Tabelle für tests/Unit/SourceFiles.Tests.ps1 und den Hook .claude/hooks/check-control-chars.ps1. Bereiche als Dezimal-Codepunkte [von, bis], damit hier nie ein Escape-Text oder ein rohes Zeichen steht. 0-8, 11-12, 14-31: Steuerzeichen (erlaubt nur Tab, CR, LF); 127-159: DEL und C1 (darunter NEL); 8203-8205 und 8288: Zero-Width und Word Joiner; 8232-8233: Zeilentrenner; 8234-8238 und 8294-8297: Bidi-Steuerzeichen; 65279: BOM mitten in der Datei (am Anfang erlaubt).",
+  "ranges": [
+    [0, 8], [11, 12], [14, 31], [127, 159], [8203, 8205], [8232, 8233],
+    [8234, 8238], [8288, 8288], [8294, 8297], [65279, 65279]
+  ],
+  "sourceExtensions": [
+    ".ps1", ".psm1", ".psd1", ".cs", ".xaml", ".resx", ".md", ".json", ".csproj", ".props", ".targets",
+    ".config", ".xml", ".manifest", ".yml", ".yaml", ".cmd", ".bat", ".sln", ".slnx", ".txt", ".editorconfig",
+    ".gitattributes", ".gitignore"
+  ]
+}
