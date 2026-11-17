@@ -154,7 +154,7 @@ function Test-RegistryBackupContent {
     .DESCRIPTION
         Erlaubt ist genau ein Hauptschlüssel (der Schlüssel aus der Begleitdatei) direkt unter einem
         Uninstall-Zweig des erlaubten Bereichs (-Scope, Vorgabe User); jeder weitere Schlüsselkopf muss mit "<Hauptschlüssel>\" beginnen
-        (Unterschlüssel). Keine Löschzeilen ([-...]), keine anderen Schlüssel, nur bekannte Zeilenformate (Wert,
+        (Unterschlüssel). Keine Löschzeilen ([-...] für Schlüssel, "Name"=- und @=- für Werte), keine anderen Schlüssel, nur bekannte Zeilenformate (Wert,
         Kommentar, Hex-Fortsetzung; sonst BadLine).
     .OUTPUTS
         $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe, KeyNotFound,
@@ -179,6 +179,8 @@ function Test-RegistryBackupContent {
         if ($t.Length -eq 0) { continue }
         if (-not $t.StartsWith('[', [StringComparison]::Ordinal)) {
             # Wertzeilen ("Name"=..., @=...), Kommentare und Hex-Fortsetzungen; alles andere ist unbekannt.
+            # Eine Wertzeile, die auf =- endet ("Name"=-, @=-), löscht beim Import einen Wert: wie [-...] abgelehnt.
+            if (($t[0] -ceq '"' -or $t[0] -ceq '@') -and $t -cmatch '=[ \t]*-$') { return 'DeleteLine' }
             if ($t[0] -ceq '"' -or $t[0] -ceq '@' -or $t[0] -ceq ';' -or $t -cmatch '^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$') { continue }
             return 'BadLine'
         }

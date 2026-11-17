@@ -49,13 +49,22 @@ namespace SoftwareInventory.Helper
     public static class OperationRules
     {
         /// <summary>Stand des Handschlags (Hello und Ergebnisse). Das Modul lehnt neue Operationen bei einem älteren Helfer ab.</summary>
-        public const int HelperVersion = 6;
+        public const int HelperVersion = 7;
 
         /// <summary>Operationen ohne Prozess. Plan ohne Operation: Wiederherstellungspunkt und/oder Programm (FilePath).</summary>
-        public static readonly string[] Known = { "ReplaceHelperCopy", RemoveRegistryEntry };
+        public static readonly string[] Known = { "ReplaceHelperCopy", RemoveRegistryEntry, RestoreRegistryBackup, RemoveRegistryBackup, CleanupRegistryBackups };
 
         /// <summary>Verwaisten Uninstall-Eintrag unter HKLM sichern und entfernen (ab Version 6).</summary>
         public const string RemoveRegistryEntry = "RemoveRegistryEntry";
+
+        /// <summary>HKLM-Sicherung aus dem Admin-Ordner zurückspielen (ab Version 7).</summary>
+        public const string RestoreRegistryBackup = "RestoreRegistryBackup";
+
+        /// <summary>HKLM-Sicherung im Admin-Ordner löschen (ab Version 7).</summary>
+        public const string RemoveRegistryBackup = "RemoveRegistryBackup";
+
+        /// <summary>Abgelaufene HKLM-Sicherungen und Reste im Admin-Ordner löschen (ab Version 7).</summary>
+        public const string CleanupRegistryBackups = "CleanupRegistryBackups";
 
         /// <summary>
         /// Einzelaufruf: <c>HelperUnknownOperation</c> bei unbekannter Operation, <c>HelperNoOperation</c> ohne jede Aufgabe,

@@ -15,7 +15,7 @@ Describe 'Start-ElevatedHelper' {
             Start-ElevatedHelper -NoElevation -TimeoutSeconds 60 -HelperPlan @{ FilePath = (Join-Path $S 'where.exe'); Arguments = 'cmd.exe'; MsiLog = $false; RestorePoint = $false }
         }
         $r.Status | Should -Be 'Completed'
-        $r.HelperVersion | Should -Be 6
+        $r.HelperVersion | Should -Be 7
         $r.ExitCode | Should -Be 0
         $r.Output | Should -Match 'cmd\.exe'
         $r.Error | Should -BeNullOrEmpty
@@ -91,7 +91,7 @@ Describe 'Start-ElevatedHelper' {
         }
         $r.Status | Should -Be 'Failed'
         $r.Error.Code | Should -Be 'HelperTooOld'
-        $r.Error.Args[0] | Should -Be '6'
+        $r.Error.Args[0] | Should -Be '7'
         $r.Error.Args[1] | Should -Be 99
         $r.ContainsKey('ExitCode') | Should -BeFalse
     }
@@ -343,7 +343,7 @@ Describe 'Start-ElevatedHelperBatch' {
         $r.Seen[0].ExitCode | Should -Be 0
         $r.Seen[0].Output | Should -Match 'cmd\.exe'
         $r.Seen[1].ExitCode | Should -Not -Be 0
-        $r.Seen[0].HelperVersion | Should -Be 6
+        $r.Seen[0].HelperVersion | Should -Be 7
     }
 
     It 'beendet den Stapel, wenn vor einem Schritt abgebrochen wird' {

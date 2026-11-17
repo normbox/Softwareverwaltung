@@ -36,6 +36,7 @@
     <Compile Include="..\..\src\SoftwareInventory.Helper\OrphanRules.cs" Link="Helper\OrphanRules.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\WindowsOrphanEnvironment.cs" Link="Helper\WindowsOrphanEnvironment.cs" />
     <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryRemoval.cs" Link="Helper\RegistryRemoval.cs" />
+    <Compile Include="..\..\src\SoftwareInventory.Helper\RegistryBackupStore.cs" Link="Helper\RegistryBackupStore.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,6 +50,7 @@
     <Compile Include="..\Softwareverwaltung.App.Tests\RegistryRemovalTests.cs" Link="Shared\RegistryRemovalTests.cs" />
     <Compile Include="..\Softwareverwaltung.App.Tests\MachineFoldersTests.cs" Link="Shared\MachineFoldersTests.cs" />
     <Compile Include="..\Softwareverwaltung.App.Tests\BackupSecurityTests.cs" Link="Shared\BackupSecurityTests.cs" />
+    <Compile Include="..\Softwareverwaltung.App.Tests\RegistryBackupStoreTests.cs" Link="Shared\RegistryBackupStoreTests.cs" />
   </ItemGroup>
 
 </Project>

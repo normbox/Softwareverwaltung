@@ -316,9 +316,30 @@ namespace SoftwareInventory.Helper
                     channel.Write(result);
                     return;
                 }
-                if (operation == OperationRules.RemoveRegistryEntry)
+                if (operation == OperationRules.RemoveRegistryEntry || operation == OperationRules.RestoreRegistryBackup
+                    || operation == OperationRules.RemoveRegistryBackup || operation == OperationRules.CleanupRegistryBackups)
                 {
-                    RemoveRegistryEntry(plan, result);
+                    var system = new WindowsRegistryRemovalSystem(_paths, _elevated);
+                    if (operation == OperationRules.RemoveRegistryEntry)
+                    {
+                        RemoveRegistryEntry(plan, result, system);
+                    }
+                    else
+                    {
+                        RunBackupStore(operation!, plan, result, system);
+                    }
+                    // Bei jeder HKLM-Sicherungsaktion gleich mit aufräumen (ohne eigene UAC-Abfrage); Fehler dabei ändern das Ergebnis nicht.
+                    if (operation != OperationRules.CleanupRegistryBackups)
+                    {
+                        try
+                        {
+                            result["CleanedUp"] = RegistryBackupStore.Cleanup(system).Deleted;
+                        }
+                        catch (Exception)
+                        {
+                            result["CleanedUp"] = 0;
+                        }
+                    }
                     channel.Write(result);
                     return;
                 }
@@ -434,7 +455,25 @@ namespace SoftwareInventory.Helper
         /// Verwaisten HKLM-Eintrag sichern und entfernen. Aus dem Plan zählen nur RegistryKey, ActionId und Reasons; alles
         /// andere prüft <see cref="RegistryRemoval"/> selbst. Ergebnis: Removed, BackupFile, NativeKey oder ErrorCode/ErrorArgs.
         /// </summary>
-        private void RemoveRegistryEntry(Dictionary<string, object?> plan, Dictionary<string, object?> result)
+        /// <summary>
+        /// HKLM-Sicherung zurückspielen, löschen oder abgelaufene bereinigen. Aus dem Plan zählt nur BackupId (Kennung);
+        /// Ordner, Frist und Dateinamen stehen fest im Helfer. Ergebnis: Done, NativeKey, Deleted oder ErrorCode/ErrorArgs.
+        /// </summary>
+        private static void RunBackupStore(string operation, Dictionary<string, object?> plan, Dictionary<string, object?> result, WindowsRegistryRemovalSystem system)
+        {
+            var outcome = operation == OperationRules.RestoreRegistryBackup ? RegistryBackupStore.Restore(Text(plan, "BackupId")!, system)
+                : operation == OperationRules.RemoveRegistryBackup ? RegistryBackupStore.Remove(Text(plan, "BackupId")!, system)
+                : RegistryBackupStore.Cleanup(system);
+            result["Done"] = outcome.Done;
+            result["NativeKey"] = outcome.NativeKey;
+            result["Deleted"] = outcome.Deleted;
+            if (outcome.Problem is not null)
+            {
+                SetError(result, outcome.Problem.Code, outcome.Problem.Args);
+            }
+        }
+
+        private void RemoveRegistryEntry(Dictionary<string, object?> plan, Dictionary<string, object?> result, WindowsRegistryRemovalSystem system)
         {
             var reasons = new List<BackupReason>();
             if (plan.TryGetValue("Reasons", out var raw) && raw is object[] list)
@@ -445,7 +484,7 @@ namespace SoftwareInventory.Helper
                     reasons.Add(new BackupReason(Text(item, "Code")!, args!));
                 }
             }
-            var outcome = RegistryRemoval.Run(Text(plan, "RegistryKey")!, Text(plan, "ActionId")!, reasons, new WindowsRegistryRemovalSystem(_paths, _elevated));
+            var outcome = RegistryRemoval.Run(Text(plan, "RegistryKey")!, Text(plan, "ActionId")!, reasons, system);
             result["Removed"] = outcome.Removed;
             result["BackupFile"] = outcome.BackupFile;
             result["NativeKey"] = outcome.NativeKey;

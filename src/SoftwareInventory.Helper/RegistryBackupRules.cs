@@ -40,6 +40,8 @@ namespace SoftwareInventory.Helper
         // Fortsetzungszeile eines Hex-Werts (reg export: "  01,02,\").
         private static readonly Regex HexLine = new Regex(@"^[0-9A-Fa-f]{2}(,[0-9A-Fa-f]{2})*,?\\?$", RegexOptions.Compiled);
         private static readonly char[] Blanks = { ' ', '\t' };
+        // Wert löschen beim Import: "Name"=- bzw. @=- (Leerzeichen/Tab vor dem - geduldet), am Ende der Zeile.
+        private static readonly Regex ValueDelete = new Regex(@"=[ \t]*-\z", RegexOptions.Compiled);
 
         /// <summary>
         /// Ein Schlüsselname mit [, ], " oder einem Steuerzeichen (U+0000-U+001F, U+007F, U+0080-U+009F) ist nie sicher
@@ -59,7 +61,8 @@ namespace SoftwareInventory.Helper
         }
 
         /// <summary>
-        /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe,
+        /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine ([-…] oder
+        /// "Name"=- / @=-), BadKeyLine, KeyNameUnsafe,
         /// KeyNotFound, KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur Benutzer erlaubt)
         /// oder WrongScope (HKCU, aber nur HKLM erlaubt).
         /// </summary>
@@ -91,6 +94,11 @@ namespace SoftwareInventory.Helper
                 }
                 if (!trimmed.StartsWith("[", StringComparison.Ordinal))
                 {
+                    // Eine Wertzeile, die auf =- endet ("Name"=-, @=-), löscht beim Import einen Wert: wie [-...] abgelehnt.
+                    if ((trimmed[0] == '"' || trimmed[0] == '@') && ValueDelete.IsMatch(trimmed))
+                    {
+                        return "DeleteLine";
+                    }
                     // Wertzeilen ("Name"=..., @=...), Kommentare und Hex-Fortsetzungen; alles andere ist unbekannt.
                     if (trimmed[0] == '"' || trimmed[0] == '@' || trimmed[0] == ';' || HexLine.IsMatch(trimmed))
                     {

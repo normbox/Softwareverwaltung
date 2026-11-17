@@ -35,6 +35,9 @@ public sealed class OperationRulesTests
     [InlineData(null, true, true)]
     [InlineData("ReplaceHelperCopy", false, false)]
     [InlineData("RemoveRegistryEntry", false, false)]
+    [InlineData("RestoreRegistryBackup", false, false)]
+    [InlineData("RemoveRegistryBackup", false, false)]
+    [InlineData("CleanupRegistryBackups", false, false)]
     public void AcceptsAKnownTask(string? operation, bool restorePoint, bool hasFilePath)
     {
         Assert.Null(OperationRules.Check(operation, restorePoint, hasFilePath));
@@ -57,8 +60,8 @@ public sealed class OperationRulesTests
     }
 
     [Fact]
-    public void HelperVersionIsSixSoThatTheModuleCanRefuseHelpersWithoutRemoveRegistryEntry()
+    public void HelperVersionIsSevenSoThatTheModuleCanRefuseHelpersWithoutTheBackupOperations()
     {
-        Assert.Equal(6, OperationRules.HelperVersion);
+        Assert.Equal(7, OperationRules.HelperVersion);
     }
 }
