@@ -46,10 +46,8 @@ public sealed record SoftwareItem
     public bool IsOrphaned { get; init; }
     /// <summary>Bereich laut Modul (User, Machine), unübersetzt.</summary>
     public string? ScopeCode { get; init; }
-    /// <summary>„Eintrag entfernen“ vorerst nur für verwaiste Einträge des aktuellen Benutzers (HKCU).</summary>
-    public bool ShowRemoveEntry => IsOrphaned && ScopeCode == "User";
-    /// <summary>Verwaister Eintrag für alle Benutzer (HKLM): Hinweis, dass das Entfernen später folgt.</summary>
-    public bool ShowRemoveEntryLaterHint => IsOrphaned && ScopeCode != "User";
+    /// <summary>„Eintrag entfernen“ für verwaiste Einträge des Benutzers (HKCU) und für alle Benutzer (HKLM, mit UAC).</summary>
+    public bool ShowRemoveEntry => IsOrphaned && ScopeCode is "User" or "Machine";
     /// <summary>
     /// Portable Programme ohne winget-Paket haben nichts zum Deinstallieren; stattdessen „Ordner öffnen“.
     /// Verwaiste Einträge bekommen weder das eine noch das andere (das Modul lehnt beides ab).

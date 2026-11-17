@@ -19,6 +19,31 @@ function Get-RegistryBackupDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\registry-backup'
 }
 
+function Get-RegistryBackupMachineDirectory {
+    # HKLM-Sicherungen legt nur der erhöhte Helfer an, im Admin-Ordner (BackupFolderRules.FolderPath im Helfer).
+    Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'Softwareverwaltung\RegistryBackup'
+}
+
+function Test-MachineRegistryKeyPresent {
+    <#
+    .SYNOPSIS
+        Gibt es den HKLM-Schlüssel? In der 64-Bit-Ansicht wie der Helfer (WOW6432Node als wörtlicher Pfad).
+    .DESCRIPTION
+        Unabhängig von der Bitness des Prozesses: Ein 32-Bit-Prozess sähe über HKLM:\ sonst die umgeleitete Ansicht und
+        könnte einen Schlüssel für „weg“ halten, den der Helfer gar nicht gelöscht hat (oder umgekehrt).
+    #>
+    param([Parameter(Mandatory)] [string] $RegistryKey)
+    # Fail-closed: Ohne HKLM-Präfix ließe sich „weg“ nicht beurteilen (OpenSubKey liefert sonst einfach $null).
+    if ($RegistryKey -notmatch '^(?i:HKLM:\\|HKEY_LOCAL_MACHINE\\).') { throw [System.ArgumentException]::new("Kein HKLM-Schlüssel: $RegistryKey") }
+    $sub = $RegistryKey -replace '^(?i:HKLM:\\|HKEY_LOCAL_MACHINE\\)', ''
+    $root = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+    try {
+        $key = $root.OpenSubKey($sub, $false)
+        try { $null -ne $key } finally { if ($key) { $key.Dispose() } }
+    }
+    finally { $root.Dispose() }
+}
+
 function Get-RegistryBackupFileName {
     # <ActionId>_<bereinigter Programmname>.reg; Name ohne Pfadzeichen, ohne "..", ohne reservierte
     # Gerätenamen, höchstens 60 Zeichen.

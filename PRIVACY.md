@@ -25,12 +25,13 @@ Nicht verarbeitet werden: Inhalte von Dokumenten, Browserverlauf, E-Mails, Passw
 
 ## 2. Wo die Daten bleiben
 
-Ausschließlich auf dem eigenen Rechner im Benutzerprofil. Einzelheiten in [docs/TECHNIK.md](docs/TECHNIK.md#datenablage).
+Ausschließlich auf dem eigenen Rechner, im Benutzerprofil und (nur für Sicherungen von Einträgen für alle Benutzer) unter `Program Files`. Einzelheiten in [docs/TECHNIK.md](docs/TECHNIK.md#datenablage).
 
 - `%LOCALAPPDATA%\SoftwareInventory`: Aktionsprotokoll, Installer-Logs nach Fehlern, Zwischenspeicher der Online-Abfragen, Fehlerprotokoll, Hinweise zu Fremddaten (`logs\data-notes`), gespeicherte Scans, Sicherungen entfernter Registry-Einträge (`logs\registry-backup`).
 - `%APPDATA%\SoftwareInventory`: Einstellungen (auch Adresse und Modell des KI-Servers), eigene CPE-Zuordnungen und die Fensteranordnung (`app-ui.json`, kein Gesprächsinhalt).
 - **Automatische Bereinigung:** Protokolle und Zwischenspeicher werden beim Start aufgeräumt, höchstens 30 Tage alt und höchstens 100 MB insgesamt (beides einstellbar, Ältestes zuerst). Die CIRCL-Bestände haben eine eigene Grenze (Standard 200 MB). Installer-Logs werden nach erfolgreicher Aktion sofort gelöscht.
 - **Sicherungen entfernter Einträge:** Vor „Eintrag entfernen“ sichert die App den Registry-Schlüssel als `.reg`-Datei unter `logs\registry-backup\` (Dateiname `<Aktions-ID>_<Programmname>.reg`), daneben eine kleine `.json`-Datei mit Programmname, Schlüssel und den Gründen als Codes. Die `.reg`-Datei enthält den gelöschten Eintrag mit allen Werten, darunter Pfade, die den Benutzernamen enthalten können. Unter „Sicherungen“ in der App lassen sich die Sicherungen ansehen, zurückspielen und löschen; beim Zurückspielen liegt der geprüfte Inhalt kurz als temporäre Datei im Temp-Ordner und wird danach gelöscht. Sie bleibt nur auf diesem Rechner, wird nirgendwohin gesendet und **365 Tage** aufbewahrt, unabhängig von der normalen Bereinigung und nicht in deren Größengrenze.
+- **Sicherungen von Einträgen für alle Benutzer (HKLM):** Diese sichert der erhöhte Helfer nach `%ProgramFiles%\Softwareverwaltung\RegistryBackup\` (`<Aktions-ID>.reg` und `.json`, Inhalt wie oben). Schreiben dürfen dort nur Administratoren, damit niemand eine Sicherung unterschieben kann, die später mit Administratorrechten zurückgespielt würde; lesen dürfen alle Benutzer des Rechners. Anzeige, Zurückspielen und das Löschen nach 365 Tagen folgen in einem späteren Schritt; bis dahin lassen sich die Dateien mit Administratorrechten von Hand löschen.
 - **Scans:** Die App speichert keine Scans. Gespeichert wird nur, wer im Modul ausdrücklich `Save-InventorySnapshot` aufruft. Diese Dateien bleiben, bis man sie löscht.
 - API-Schlüssel liegen in der Windows-Anmeldeinformationsverwaltung, nicht in Dateien.
 

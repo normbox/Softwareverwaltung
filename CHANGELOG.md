@@ -4,12 +4,18 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
-### Helfer: HKLM-Einträge sichern und entfernen (noch nicht verdrahtet)
+### „Eintrag entfernen“ auch für alle Benutzer (HKLM)
+
+- Verwaiste Einträge für alle Benutzer (HKLM, auch 32-Bit unter WOW6432Node) lassen sich jetzt entfernen. Die App zeigt „Eintrag entfernen“ auch dort; die Bestätigung nennt die Administratorabfrage (Standard „Abbrechen“). Der Hinweis „folgt in einem späteren Schritt“ entfällt.
+- Das Modul prüft vorab wie bei HKCU und lässt dann den geschützten Helfer sichern und entfernen (`RemoveRegistryEntry`, Helferversion 6; ältere Helfer: `HelperTooOld`). Nie mit Wiederherstellungspunkt. Erfolg nur, wenn der Helfer das meldet, die Sicherung genau unter `Program Files\Softwareverwaltung\RegistryBackup\<ActionId>.reg` liegt und der Schlüssel danach in der 64-Bit-Ansicht fehlt (dieselbe Ansicht wie der Helfer). Meldung: „Eintrag entfernt. Sicherung: …“.
+- Abgelehnte UAC-Abfrage: `ElevationDenied`. Scheitert das Löschen, nachdem die Sicherung steht, bleibt sie erhalten und die Meldung sagt das (`RemoveEntryDeleteFailedBackupKept`).
+- HKLM-Sicherungen erscheinen noch nicht unter „Sicherungen“ und werden noch nicht nach 365 Tagen bereinigt (folgt; bis dahin kein Release).
+
+### Helfer: HKLM-Einträge sichern und entfernen
 
 - Neue Operation `RemoveRegistryEntry` im Helfer (Version 6): entfernt einen verwaisten Uninstall-Eintrag unter HKLM nach einer Sicherung im Admin-Ordner `Program Files\Softwareverwaltung\RegistryBackup`. Der Helfer übernimmt aus dem Plan nur Schlüssel, Aktionskennung und Gründe und prüft alles selbst: nur mit Administratorrechten, nur Schlüssel direkt unter den beiden HKLM-Uninstall-Zweigen, sicherer Name, Eintrag neu gelesen (rohe Werte), kein MSI-Eintrag, weiterhin verwaist. Eine Operation lässt sich nicht mit einem Programm oder Wiederherstellungspunkt verbinden (`HelperOperationNotCombinable`).
 - Sicherung: `reg.exe` (System32, 64-Bit-Ansicht) exportiert in eine Zwischendatei im Admin-Ordner, nie nach `%TEMP%`. Deren Bytes werden einmal gelesen und geprüft; die endgültige `<ActionId>.reg` schreibt der Helfer selbst als neue Datei mit Besitzer Administratoren, prüft sie erneut (Datei, Kodierung, Inhalt, gleiche Bytes) und legt `<ActionId>.json` (Format wie bei HKCU, nur bekannte Gründe) daneben. Erst dann wird der Schlüssel gelöscht und das Löschen geprüft. Scheitert etwas vorher, bleibt der Schlüssel unberührt; der Helfer entfernt nur Dateien, die er selbst angelegt hat.
 - Fehlt der Ordner, legt der Helfer ihn in einem Schritt mit festen Rechten an: Besitzer Administratoren, geschützt, SYSTEM und Administratoren Vollzugriff, Benutzer nur Lesen und Ausführen (nur für `RegistryBackup` und seine Dateien). `Program Files\Softwareverwaltung` bekommt beim Anlegen nur den Besitzer Administratoren und erbt die Rechte von `Program Files`. Bestehende Ordner werden nur geprüft und bei Abweichung abgelehnt, nie geändert; ein bestehender `RegistryBackup` muss neuen Dateien den OWNER-RIGHTS-Eintrag (nur Lesen) vererben, sonst könnte der Besitzer der Zwischendatei deren Rechte ändern (`BackupFolderOwnerRightsMissing`).
-- Das Modul ruft die Operation noch nicht auf; Oberfläche und Verdrahtung folgen. Bis dahin (und bis zur Bereinigung nach 365 Tagen) gibt es kein Release.
 
 ### Verwaist-Prüfung im Helfer: nur maschinenweite Variablen, lange Pfade
 

@@ -19,6 +19,7 @@ $script:ElevatedHelperPath = Join-Path $PSScriptRoot '..\lib\SoftwareInventory.H
 # Exakte Schreibweise wie im Helfer (OperationRules.Known): Ordinal, nicht wie eine Hashtable.
 $script:HelperOperationMinVersion = [System.Collections.Generic.Dictionary[string, int]]::new([StringComparer]::Ordinal)
 $script:HelperOperationMinVersion['ReplaceHelperCopy'] = 0
+$script:HelperOperationMinVersion['RemoveRegistryEntry'] = 6
 
 # Prozess-ID der Pipe-Gegenstelle: [SoftwareInventory.PipeInterop] aus lib\SoftwareInventory.Native.dll.
 

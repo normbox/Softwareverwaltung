@@ -257,12 +257,6 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         Should -Invoke -ModuleName SoftwareInventory Invoke-RegExport -Times 0 -Exactly
     }
 
-    It 'lässt Einträge für alle Benutzer (HKLM) vorerst stehen' {
-        $r = Get-Orphan -Root $script:Machine | Remove-OrphanedEntry -Confirm:$false
-        $r.Result | Should -Be 'Unsupported'
-        $r.Message.Code | Should -Be 'RemoveEntryMachineNotYet'
-        Test-Path "$($script:Machine)\janold" | Should -BeTrue
-    }
 
     It 'lehnt Schlüssel außerhalb der Uninstall-Zweige ab' {
         $record = Get-Orphan
@@ -365,6 +359,191 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
             $f | Should -Be $E
             $f | Should -Not -Match '[\\/:]'
             $f | Should -Not -Match '\.\.'
+        }
+    }
+}
+
+Describe 'Remove-OrphanedEntry für alle Benutzer (HKLM über den Helfer)' {
+    BeforeEach {
+        $script:AppDir = Join-Path $TestDrive "app-$([guid]::NewGuid().ToString('N').Substring(0, 6))"
+        Mock -ModuleName SoftwareInventory Get-AppDataDirectory { $script:AppDir }
+        $script:Programs = Join-Path $TestDrive 'ProgM'
+        New-Item -ItemType Directory -Path $script:Programs -Force | Out-Null
+        # Nachbildung der beiden HKLM-Zweige unter TestRegistry; der 32-Bit-Zweig trägt WOW6432Node im Pfad wie in HKLM.
+        $script:Machine = 'TestRegistry:\M64'
+        $script:Machine32 = 'TestRegistry:\WOW6432Node\M32'
+        Remove-Item -LiteralPath 'TestRegistry:\M64', 'TestRegistry:\WOW6432Node' -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -Path $script:Machine, $script:Machine32 -Force | Out-Null
+        foreach ($root in $script:Machine, $script:Machine32) {
+            New-UninstallKey $root 'janold' @{
+                DisplayName = 'Jan 0.5.16'; DisplayVersion = '0.5.16'; Publisher = 'Jan'
+                UninstallString = "`"$($script:Programs)\Uninstall Jan.exe`" /S"
+            }
+        }
+        Mock -ModuleName SoftwareInventory Get-DefaultUninstallLocation {
+            @(@{ Path = $script:Machine; Scope = 'Machine'; Architecture = 'X64' }, @{ Path = $script:Machine32; Scope = 'Machine'; Architecture = 'X86' })
+        }
+        Mock -ModuleName SoftwareInventory Test-HelperInWritableFolder { $false }
+        Mock -ModuleName SoftwareInventory Invoke-RegExport { throw 'HKLM sichert nur der Helfer' }
+        # Die Prüfung „Schlüssel weg“ liest im Modul HKLM in der 64-Bit-Ansicht; hier gegen die Nachbildung.
+        Mock -ModuleName SoftwareInventory Test-MachineRegistryKeyPresent { Test-Path -LiteralPath $RegistryKey }
+        # Der Helfer: Standard = sichert am geplanten Ort und löscht den Schlüssel.
+        $script:HelperMode = 'Removed'
+        Mock -ModuleName SoftwareInventory Start-ElevatedHelper {
+            $planned = Join-Path ([Environment]::GetFolderPath('ProgramFiles')) "Softwareverwaltung\RegistryBackup\$($HelperPlan.ActionId).reg"
+            $message = { param($Code) [pscustomobject] @{ Code = $Code; Args = @(); Text = $Code } }
+            switch ($script:HelperMode) {
+                'Removed' { Remove-Item -LiteralPath $HelperPlan.RegistryKey -Recurse -Force; @{ Status = 'Completed'; Removed = $true; BackupFile = $planned; Error = $null } }
+                'Denied' { @{ Status = 'ElevationDenied'; Error = (& $message 'ElevationDenied') } }
+                'TooOld' { @{ Status = 'Failed'; Error = (& $message 'HelperTooOld') } }
+                'FolderWritable' { @{ Status = 'Completed'; Removed = $false; BackupFile = $null; ErrorCode = 'BackupFolderWritable'; Error = (& $message 'BackupFolderWritable') } }
+                'OtherPath' { Remove-Item -LiteralPath $HelperPlan.RegistryKey -Recurse -Force; @{ Status = 'Completed'; Removed = $true; BackupFile = 'C:\Users\x\evil.reg'; Error = $null } }
+                'ClaimsRemoved' { @{ Status = 'Completed'; Removed = $true; BackupFile = $planned; Error = $null } }
+                'DeleteFailed' { @{ Status = 'Completed'; Removed = $false; BackupFile = $planned; ErrorCode = 'RemoveEntryDeleteFailed'; Error = (& $message 'RemoveEntryDeleteFailed') } }
+                'NoRemovedField' { @{ Status = 'Completed'; BackupFile = $planned; Error = $null } }
+                'RemovedAsText' { @{ Status = 'Completed'; Removed = 'true'; BackupFile = $planned; Error = $null } }
+                'Throws' { throw 'Helfer nicht startbar' }
+                'Lost' { Remove-Item -LiteralPath $HelperPlan.RegistryKey -Recurse -Force; @{ Status = 'Failed'; Error = (& $message 'HelperResultIncomplete') } }
+            }
+        }
+        function Get-MachineOrphan([string] $Root = $script:Machine, [string] $Architecture = 'X64') {
+            InModuleScope SoftwareInventory -Parameters @{ R = $Root; A = $Architecture } {
+                Get-RegistrySoftware -Location @(@{ Path = $R; Scope = 'Machine'; Architecture = $A })
+            } | Where-Object Name -EQ 'Jan 0.5.16'
+        }
+    }
+
+    It 'plant mit -WhatIf für alle Benutzer: Administratorrechte, Sicherung im Admin-Ordner, kein Helfer' {
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -WhatIf
+        $r.Result | Should -Be 'Planned'
+        $r.Elevated | Should -BeTrue
+        $r.Message.Code | Should -Be 'PlanRemoveEntryMachine'
+        $r.Message.Args[1] | Should -Be (Join-Path ([Environment]::GetFolderPath('ProgramFiles')) "Softwareverwaltung\RegistryBackup\$($r.ActionId).reg")
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 0 -Exactly
+        Test-Path "$($script:Machine)\janold" | Should -BeTrue
+    }
+
+    It 'schickt dem Helfer nur Schlüssel, ActionId und bekannte Gründe, ohne Wiederherstellungspunkt, und meldet Erfolg' {
+        $record = Get-MachineOrphan
+        $record | Add-Member -NotePropertyName Reasons -NotePropertyValue @(@{ Code = 'NewerInstallNextTo'; Args = @('Jan 0.8.8') }, @{ Code = 'Erfunden'; Args = @() }) -Force
+        $r = $record | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Succeeded'
+        $r.Message.Code | Should -Be 'RemoveEntryDoneMachine'
+        $r.BackupFile | Should -BeLike "*\Softwareverwaltung\RegistryBackup\$($r.ActionId).reg"
+        $r.PresentAfter | Should -BeFalse
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -Exactly -ParameterFilter {
+            $HelperPlan.Operation -ceq 'RemoveRegistryEntry' -and $HelperPlan.RestorePoint -eq $false -and -not $HelperPlan.ContainsKey('FilePath') -and
+            $HelperPlan.RegistryKey -eq "$($script:Machine)\janold" -and $HelperPlan.ActionId -match '^[0-9a-f-]{36}$' -and
+            (@($HelperPlan.Reasons.Code) -join ',') -ceq 'OrphanedEntry,NewerInstallNextTo'
+        }
+        Should -Invoke -ModuleName SoftwareInventory Invoke-RegExport -Times 0 -Exactly
+        $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+        $log.Phase | Should -Be @('Started', 'Completed')
+        $log[1].Result | Should -Be 'Succeeded'
+    }
+
+    It 'prüft bei einem 32-Bit-Eintrag (WOW6432Node) genau diesen Schlüssel, wie der Helfer' {
+        $r = Get-MachineOrphan -Root $script:Machine32 -Architecture 'X86' | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Succeeded'
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -Exactly -ParameterFilter { $HelperPlan.RegistryKey -eq "$($script:Machine32)\janold" }
+        Should -Invoke -ModuleName SoftwareInventory Test-MachineRegistryKeyPresent -Times 1 -Exactly -ParameterFilter { $RegistryKey -eq "$($script:Machine32)\janold" }
+        Test-Path "$($script:Machine)\janold" | Should -BeTrue -Because 'der 64-Bit-Eintrag gleichen Namens bleibt unberührt'
+    }
+
+    It 'meldet <Mode> ehrlich und lässt den Schlüssel stehen' -TestCases @(
+        @{ Mode = 'Denied'; Result = 'ElevationDenied'; Code = 'ElevationDenied'; Backup = $false }
+        @{ Mode = 'TooOld'; Result = 'Failed'; Code = 'HelperTooOld'; Backup = $false }
+        @{ Mode = 'FolderWritable'; Result = 'Failed'; Code = 'BackupFolderWritable'; Backup = $false }
+        @{ Mode = 'ClaimsRemoved'; Result = 'Failed'; Code = 'RemoveEntryDeleteFailedBackupKept'; Backup = $true }
+        @{ Mode = 'DeleteFailed'; Result = 'Failed'; Code = 'RemoveEntryDeleteFailedBackupKept'; Backup = $true }
+    ) {
+        $script:HelperMode = $Mode
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be $Result
+        $r.Message.Code | Should -Be $Code
+        [bool] $r.BackupFile | Should -Be $Backup
+        $r.PresentAfter | Should -BeTrue
+        Test-Path "$($script:Machine)\janold" | Should -BeTrue
+    }
+
+    It 'zählt ein Ergebnis ohne echtes Removed nie als Erfolg (<Mode>)' -TestCases @(@{ Mode = 'NoRemovedField' }, @{ Mode = 'RemovedAsText' }) {
+        $script:HelperMode = $Mode
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'HelperResultUnreadable'
+        Test-Path "$($script:Machine)\janold" | Should -BeTrue
+    }
+
+    It 'meldet einen Helfer, der nicht startet, als Fehler und protokolliert' {
+        $script:HelperMode = 'Throws'
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryDeleteFailed'
+        $r.BackupFile | Should -BeNullOrEmpty
+        $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+        $log.Phase | Should -Be @('Started', 'Completed')
+    }
+
+    It 'meldet eine verlorene Antwort als unklar mit dem Ort der Sicherung, nie als Erfolg' {
+        $script:HelperMode = 'Lost'
+        # Nur die geplante Sicherung unter Program Files „gibt es“; alle anderen Aufrufe gehen an das echte Test-Path.
+        Mock -ModuleName SoftwareInventory Test-Path { Microsoft.PowerShell.Management\Test-Path @PesterBoundParameters }
+        Mock -ModuleName SoftwareInventory Test-Path { $true } -ParameterFilter { $LiteralPath -like '*\Softwareverwaltung\RegistryBackup\*.reg' }
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryResultUnclear'
+        $r.BackupFile | Should -BeLike "*\RegistryBackup\$($r.ActionId).reg"
+        $r.PresentAfter | Should -BeFalse
+    }
+
+    It 'zählt einen nicht lesbaren Schlüssel danach nie als entfernt' {
+        Mock -ModuleName SoftwareInventory Test-MachineRegistryKeyPresent { throw [System.Security.SecurityException]::new('verweigert') }
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryDeleteFailedBackupKept'
+        $r.BackupFile | Should -BeLike "*\RegistryBackup\$($r.ActionId).reg"
+    }
+
+    It 'reicht HelperInWritableFolder in den Plan weiter' {
+        Mock -ModuleName SoftwareInventory Test-HelperInWritableFolder { $true }
+        (Get-MachineOrphan | Remove-OrphanedEntry -WhatIf).HelperInWritableFolder | Should -BeTrue
+    }
+
+    It 'verlangt für RemoveRegistryEntry mindestens Helferversion 6' {
+        InModuleScope SoftwareInventory { $script:HelperOperationMinVersion['RemoveRegistryEntry'] | Should -Be 6 }
+    }
+
+    It 'zählt eine Sicherung an einem anderen als dem geplanten Ort nie als Erfolg' {
+        $script:HelperMode = 'OtherPath'
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Failed'
+        $r.Message.Code | Should -Be 'RemoveEntryBackupUnexpected'
+        $r.BackupFile | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Test-MachineRegistryKeyPresent (64-Bit-Ansicht wie der Helfer)' {
+    It 'findet vorhandene Schlüssel im 64-Bit-Zweig und unter WOW6432Node, nur lesend' {
+        InModuleScope SoftwareInventory {
+            Test-MachineRegistryKeyPresent -RegistryKey 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' | Should -BeTrue
+            Test-MachineRegistryKeyPresent -RegistryKey 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' | Should -BeTrue
+            Test-MachineRegistryKeyPresent -RegistryKey 'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' | Should -BeTrue
+        }
+    }
+
+    It 'lehnt Pfade ohne HKLM-Präfix ab, statt sie als „nicht vorhanden“ zu werten' {
+        InModuleScope SoftwareInventory {
+            { Test-MachineRegistryKeyPresent -RegistryKey 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall' } | Should -Throw
+            { Test-MachineRegistryKeyPresent -RegistryKey 'TestRegistry:\x' } | Should -Throw
+            { Test-MachineRegistryKeyPresent -RegistryKey 'HKLM:\' } | Should -Throw
+        }
+    }
+
+    It 'meldet fehlende Schlüssel in beiden Zweigen als nicht vorhanden' {
+        $name = "SWV-gibt-es-nicht-$([guid]::NewGuid().ToString('N'))"
+        InModuleScope SoftwareInventory -Parameters @{ N = $name } {
+            Test-MachineRegistryKeyPresent -RegistryKey "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$N" | Should -BeFalse
+            Test-MachineRegistryKeyPresent -RegistryKey "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$N" | Should -BeFalse
         }
     }
 }

@@ -43,17 +43,17 @@ public sealed class InstallerWaitTests
     }
 
     [Theory]
-    [InlineData("User", true, false)]
-    [InlineData("Machine", false, true)]
-    public void RemoveEntryOnlyForOrphanedUserEntriesForNow(string scope, bool showButton, bool showHint)
+    [InlineData("User", true)]
+    [InlineData("Machine", true)]
+    [InlineData("Unknown", false)]
+    [InlineData(null, false)]
+    public void RemoveEntryForOrphanedUserAndMachineEntries(string? scope, bool showButton)
     {
         var orphan = SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan 0.5.16"),
-            ("Record", TestHelpers.Ps(("Scope", scope), ("Flags", new[] { "Orphaned" })))));
+            ("Record", TestHelpers.Ps(("Scope", scope!), ("Flags", new[] { "Orphaned" })))));
         Assert.Equal(showButton, orphan.ShowRemoveEntry);
-        Assert.Equal(showHint, orphan.ShowRemoveEntryLaterHint);
-        var normal = SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan"), ("Record", TestHelpers.Ps(("Scope", scope)))));
+        var normal = SoftwareItem.FromRating(TestHelpers.Ps(("Name", "Jan"), ("Record", TestHelpers.Ps(("Scope", scope!)))));
         Assert.False(normal.ShowRemoveEntry);
-        Assert.False(normal.ShowRemoveEntryLaterHint);
     }
 
     [Fact]
