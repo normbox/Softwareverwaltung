@@ -21,11 +21,11 @@ Describe 'Texte des Moduls' {
         $errorLog | Should -Match 'ReasonNewerInstallNextTo'
         $errorLog | Should -Not -Match 'Nur eins' -Because 'nur Schlüssel und Anzahl, keine Inhalte'
         InModuleScope SoftwareInventory {
-            Test-InventoryMessageArgs -Code NewerInstallNextTo -Arguments @('Jan', '0.8.8') | Should -BeTrue
-            Test-InventoryMessageArgs -Code NewerInstallNextTo -Arguments @('Jan') | Should -BeFalse
-            Test-InventoryMessageArgs -Code NewerInstallNextTo | Should -BeFalse
-            Test-InventoryMessageArgs -Code OrphanedEntry | Should -BeTrue
-            Test-InventoryMessageArgs -Code GibtEsNicht -Arguments @('x') | Should -BeTrue
+            Test-InventoryMessageArgument -Code NewerInstallNextTo -Arguments @('Jan', '0.8.8') | Should -BeTrue
+            Test-InventoryMessageArgument -Code NewerInstallNextTo -Arguments @('Jan') | Should -BeFalse
+            Test-InventoryMessageArgument -Code NewerInstallNextTo | Should -BeFalse
+            Test-InventoryMessageArgument -Code OrphanedEntry | Should -BeTrue
+            Test-InventoryMessageArgument -Code GibtEsNicht -Arguments @('x') | Should -BeTrue
         }
     }
 

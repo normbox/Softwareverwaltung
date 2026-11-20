@@ -52,7 +52,7 @@ function Format-LocalizedTemplate {
     catch { @{ Ok = $false; Text = $Text } }
 }
 
-function Test-InventoryMessageArgs {
+function Test-InventoryMessageArgument {
     <#
     .SYNOPSIS
         Lassen sich die Argumente in den Text der Meldung mit diesem Code einsetzen (Schlüssel Reason<Code>)?

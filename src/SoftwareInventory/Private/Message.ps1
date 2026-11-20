@@ -82,7 +82,7 @@ function ConvertFrom-MessageData {
     # Passen die gespeicherten Argumente nicht zum Text (beschädigte Zeile, oder der Text verlangt inzwischen mehr), den
     # gespeicherten Text nehmen statt neu zu formatieren; Code und Args bleiben. Ohne gespeicherten Text entsteht die
     # Meldung wie sonst, nur mit dem Text ohne eingesetzte Argumente (Get-LocalizedString wirft nie).
-    if (-not (Test-InventoryMessageArgs -Code $code -Arguments $arguments)) {
+    if (-not (Test-InventoryMessageArgument -Code $code -Arguments $arguments)) {
         $storedText = if ($Value -is [System.Collections.IDictionary]) { $Value['Text'] } else { $Value.PSObject.Properties['Text']?.Value }
         if ($storedText -is [string] -and $storedText) {
             return [pscustomobject] @{ PSTypeName = 'SoftwareInventory.Message'; Code = [string] $code; Args = @($arguments); Text = $storedText }

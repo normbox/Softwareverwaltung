@@ -363,7 +363,7 @@ function Read-RegistryBackupSidecar {
     # abbrechen lassen, sondern nur diese Sicherung als ungültig zeigen (löschbar, nicht zurückspielbar).
     $reasons = @(ConvertTo-KnownBackupReason (Get-RecordValue $d 'Reasons'))
     foreach ($reason in $reasons) {
-        if (-not (Test-InventoryMessageArgs -Code $reason.Code -Arguments @($reason.Args))) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
+        if (-not (Test-InventoryMessageArgument -Code $reason.Code -Arguments @($reason.Args))) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
     }
     @{
         Problem = $null
