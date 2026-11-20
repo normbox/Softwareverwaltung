@@ -135,6 +135,26 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             (Get-RegistryBackup -Id $first.Id).NewerExists | Should -BeTrue -Because 'auch mit -Id über alle Sicherungen verglichen'
         }
 
+        It 'macht eine gültige Sicherung nicht zur älteren, wenn die neuere ungültig ist (<Case>)' -TestCases @(
+            @{ Case = 'ohne Begleitdatei'; Mode = 'Legacy' }
+            @{ Case = '.reg besteht die Prüfung nicht'; Mode = 'BadReg' }
+        ) {
+            $valid = New-TestBackup -Key 'janold'
+            $json = Get-Content -LiteralPath $valid.Sidecar -Raw | ConvertFrom-Json
+            $json.CreatedAt = '2026-01-01T10:00:00.0000000Z'
+            [System.IO.File]::WriteAllText($valid.Sidecar, ($json | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+            $newer = if ($Mode -eq 'Legacy') { New-TestBackup -Key 'janold' -NoSidecar } else { New-TestBackup -Key 'janold' }
+            if ($Mode -eq 'BadReg') {
+                Set-RegFileText $newer.File ("Windows Registry Editor Version 5.00`r`n`r`n[$($newer.Native)]`r`n`r`n[-$($newer.Native)\Sub]`r`n")
+            }
+            $list = @(Get-RegistryBackup)
+            ($list | Where-Object Id -EQ $newer.Id).Problem | Should -Not -BeNullOrEmpty
+            $item = $list | Where-Object Id -EQ $valid.Id
+            $item.NewerExists | Should -BeFalse
+            $item.IsLatest | Should -BeFalse -Because 'sie ist die einzige gültige Sicherung zu diesem Schlüssel'
+            $item.CanRestore | Should -BeTrue
+        }
+
         It 'ignoriert Dateien ohne Kennung im Namen' {
             $dir = Join-Path $script:AppDir 'logs\registry-backup'
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -476,6 +496,7 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             @{ Case = 'NativeKey als Zahl'; From = '"NativeKey": "'; To = '"NativeKey": 1, "Unused": "'; Mode = 'Text'; Valid = $false }
             @{ Case = 'Feldname in anderer Schreibweise'; From = '"NativeKey"'; To = '"nativekey"'; Mode = 'Text'; Valid = $false }
             @{ Case = 'mit BOM'; From = $null; To = $null; Mode = 'Bom'; Valid = $false }
+            @{ Case = 'eckige Klammern um das Objekt'; From = $null; To = $null; Mode = 'Array'; Valid = $false }
             @{ Case = 'ungültiges UTF-8'; From = $null; To = $null; Mode = 'BadUtf8'; Valid = $false }
         ) {
             $machine = New-MachineBackup -Name 'XX-Programm'
@@ -487,6 +508,7 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($text)
             switch ($Mode) {
                 'Bom' { $bytes = [byte[]] (@(0xEF, 0xBB, 0xBF) + $bytes) }
+                'Array' { $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes("[$text]") }
                 'BadUtf8' {
                     # "XX" im Namen durch eine ungültige UTF-8-Folge (C3 28) ersetzen.
                     $at = [System.Text.Encoding]::ASCII.GetString($bytes).IndexOf('XX-Programm')
@@ -577,6 +599,40 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $r.Result | Should -Be 'Cancelled'
             $r.Message.Code | Should -Be 'ActionIdInvalid'
             $script:HelperPlans.Count | Should -Be 0
+        }
+
+        It 'lehnt eine Kennung in anderer GUID-Schreibweise ab (<Form>)' -TestCases @(
+            @{ Form = 'geschweifte Klammern'; Format = 'B' }
+            @{ Form = 'ohne Bindestriche'; Format = 'N' }
+            @{ Form = 'runde Klammern'; Format = 'P' }
+        ) {
+            $machine = New-MachineBackup
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false -ConfirmedActionId ([guid]::NewGuid().ToString($Format))
+            $r.Result | Should -Be 'Cancelled'
+            $r.Message.Code | Should -Be 'ActionIdInvalid'
+            $script:HelperPlans.Count | Should -Be 0
+        }
+
+        It 'nimmt eine Kennung in Großbuchstaben an und führt sie kleingeschrieben aus' {
+            $machine = New-MachineBackup
+            $plan = Restore-RegistryBackup $machine.Id -WhatIf
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false -ConfirmedActionId $plan.ActionId.ToUpperInvariant()
+            $r.Result | Should -Be 'Succeeded'
+            $r.ActionId | Should -BeExactly $plan.ActionId.ToLowerInvariant()
+        }
+
+        It 'lehnt eine Kennung ab, die schon eine Sicherung im Admin-Ordner benennt (<Form>)' -TestCases @(
+            @{ Form = 'wie im Dateinamen'; Upper = $false }
+            @{ Form = 'in Großbuchstaben'; Upper = $true }
+        ) {
+            $machine = New-MachineBackup
+            $other = New-MachineBackup -Key 'zweit'
+            $id = if ($Upper) { $other.Id.ToUpperInvariant() } else { $other.Id }
+            $r = Remove-RegistryBackup $machine.Id -Confirm:$false -ConfirmedActionId $id
+            $r.Result | Should -Be 'Cancelled'
+            $r.Message.Code | Should -Be 'ActionIdUsed'
+            $script:HelperPlans.Count | Should -Be 0
+            Test-Path $machine.File | Should -BeTrue
         }
 
         It 'gilt nicht als Erfolg, wenn der Helfer einen anderen Schlüssel als den bestätigten zurückgespielt hat' {

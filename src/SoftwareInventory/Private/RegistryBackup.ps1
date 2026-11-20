@@ -330,9 +330,11 @@ function Read-RegistryBackupSidecar {
             $bytes = [System.IO.File]::ReadAllBytes($path)
             if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { return $invalid }
             $text = [System.Text.UTF8Encoding]::new($false, $true).GetString($bytes)
+            # -NoEnumerate: Ein Array um das Objekt ([ {...} ]) bleibt ein Array und wird unten abgelehnt, wie beim Helfer
+            # (JavaScriptSerializer liefert dann kein Dictionary). Ohne den Schalter rollte PowerShell es zum Objekt aus.
+            $d = ConvertFrom-Json -InputObject $text -NoEnumerate -ErrorAction Stop
         }
-        else { $text = [System.IO.File]::ReadAllText($path) }
-        $d = $text | ConvertFrom-Json -ErrorAction Stop
+        else { $d = [System.IO.File]::ReadAllText($path) | ConvertFrom-Json -ErrorAction Stop }
     }
     catch { return $invalid }
     if ($d -isnot [pscustomobject]) { return $invalid }
