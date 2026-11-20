@@ -7,6 +7,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 ### Beschädigte Meldungsargumente brechen nichts mehr ab
 
 - **Behoben:** Eine Begleitdatei einer Sicherung, deren Gründe zu wenige Argumente hatten (z. B. `NewerInstallNextTo` mit nur einem), ließ die ganze Liste „Sicherungen“ scheitern. Jetzt gilt nur diese Sicherung als `MetadataInvalid` (löschbar, nicht zurückspielbar), alle anderen laden normal; in beiden Ordnern.
+- Gründe einer Sicherung werden gegen eine feste Argumentzahl je Code geprüft (Modul und Helfer, gemeinsame Tabelle), nicht gegen den Anzeigetext: Ein geänderter oder übersetzter Text macht keine intakte Sicherung ungültig. Unpassende Gründe fallen schon beim Schreiben weg, die Sicherung bleibt zurückspielbar.
 - Texte mit Platzhaltern werfen nie mehr: Passen Argumente nicht (beschädigte Datei, Antwort einer anderen Helferversion), erscheint der Text ohne eingesetzte Argumente und das Fehlerprotokoll des Moduls bekommt einen Eintrag (nur Schlüssel und Anzahl). Im Aktionsprotokoll gilt in diesem Fall der gespeicherte Text der Zeile.
 
 ### Sicherungen: Nacharbeit

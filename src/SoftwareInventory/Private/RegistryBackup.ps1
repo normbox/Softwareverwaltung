@@ -282,8 +282,15 @@ function Get-BackupReasonPart {
     # Code (Zeichenkette) und Args (ohne $null) eines Grundes. Gründe sind Objekte (Meldungen, aus JSON) oder
     # Dictionaries (aus dem Plan).
     param($Reason)
-    $field = { param($n) if ($Reason -is [System.Collections.IDictionary]) { if ($Reason.Contains($n)) { $Reason[$n] } } else { Get-RecordValue $Reason $n } }
-    @{ Code = [string] (& $field 'Code'); Args = @(@(& $field 'Args') | Where-Object { $null -ne $_ }) }
+    if ($Reason -is [System.Collections.IDictionary]) {
+        $code = if ($Reason.Contains('Code')) { $Reason['Code'] }
+        $reasonArgs = if ($Reason.Contains('Args')) { $Reason['Args'] }
+    }
+    else {
+        $code = Get-RecordValue $Reason 'Code'
+        $reasonArgs = Get-RecordValue $Reason 'Args'
+    }
+    @{ Code = [string] $code; Args = @(@($reasonArgs) | Where-Object { $null -ne $_ }) }
 }
 
 function Test-KnownBackupReason {
