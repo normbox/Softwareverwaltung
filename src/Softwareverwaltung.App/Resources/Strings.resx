@@ -191,7 +191,31 @@
     <value>Sicherungen entfernter Einträge</value>
   </data>
   <data name="BackupsIntro" xml:space="preserve">
-    <value>Vor dem Entfernen eines verwaisten Eintrags legt die App eine Sicherung als .reg-Datei an. Hier lassen sich Sicherungen löschen und, für Einträge des aktuellen Benutzers, zurückspielen. Sicherungen werden 365 Tage aufbewahrt.</value>
+    <value>Vor dem Entfernen eines verwaisten Eintrags legt die App eine Sicherung als .reg-Datei an. Hier lassen sich Sicherungen zurückspielen und löschen; bei Einträgen für alle Benutzer fragt Windows nach Administratorrechten. Sicherungen werden 365 Tage aufbewahrt.</value>
+  </data>
+  <data name="ColumnBackupScope" xml:space="preserve">
+    <value>Bereich</value>
+  </data>
+  <data name="BackupsScopeUser" xml:space="preserve">
+    <value>Benutzer</value>
+  </data>
+  <data name="BackupsScopeMachine" xml:space="preserve">
+    <value>Alle Benutzer</value>
+  </data>
+  <data name="BackupsExpired" xml:space="preserve">
+    <value>Älter als 365 Tage</value>
+  </data>
+  <data name="BackupsExpiredNotice" xml:space="preserve">
+    <value>{0} Sicherung(en) für alle Benutzer sind älter als 365 Tage. Sie lassen sich nur mit Administratorrechten aufräumen.</value>
+  </data>
+  <data name="BackupsMachineUnreadable" xml:space="preserve">
+    <value>Der Ordner mit den Sicherungen für alle Benutzer lässt sich nicht lesen ({0}); diese Sicherungen fehlen in der Liste.</value>
+  </data>
+  <data name="BackupsClearExpired" xml:space="preserve">
+    <value>Aufräumen (Administratorrechte)</value>
+  </data>
+  <data name="ActionClearExpiredBackups" xml:space="preserve">
+    <value>Abgelaufene Sicherungen aufräumen</value>
   </data>
   <data name="BackupsListName" xml:space="preserve">
     <value>Liste der Sicherungen</value>
@@ -221,13 +245,19 @@
     <value>Wiederherstellen</value>
   </data>
   <data name="BackupsRestoreTooltip" xml:space="preserve">
-    <value>Schreibt den gesicherten Eintrag zurück in die Registry. Vorher prüft die App die Sicherung streng; die Sicherung bleibt erhalten. Der Eintrag erscheint beim nächsten Scan wieder in der Liste.</value>
+    <value>Schreibt den gesicherten Eintrag zurück in die Registry. Vorher prüft die App die Sicherung streng; die Sicherung bleibt erhalten. Einträge für alle Benutzer schreibt der geschützte Helfer mit Administratorrechten zurück. Der Eintrag erscheint beim nächsten Scan wieder in der Liste.</value>
   </data>
   <data name="BackupsDelete" xml:space="preserve">
     <value>Löschen</value>
   </data>
   <data name="BackupsDeleteTooltip" xml:space="preserve">
     <value>Löscht die Sicherung (beide Dateien). Der Registry-Eintrag selbst bleibt unberührt.</value>
+  </data>
+  <data name="BackupsRestoreTooltipElevated" xml:space="preserve">
+    <value>Sicherung für alle Benutzer: Windows fragt nach Administratorrechten. Der geschützte Helfer prüft die Sicherung erneut und schreibt den Eintrag zurück; die Sicherung bleibt erhalten. Der Eintrag erscheint beim nächsten Scan wieder in der Liste.</value>
+  </data>
+  <data name="BackupsDeleteTooltipElevated" xml:space="preserve">
+    <value>Sicherung für alle Benutzer: Windows fragt nach Administratorrechten. Der geschützte Helfer löscht beide Dateien; der Registry-Eintrag selbst bleibt unberührt.</value>
   </data>
   <data name="BackupsLegacyReason" xml:space="preserve">
     <value>Ältere Sicherung</value>

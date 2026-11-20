@@ -54,6 +54,8 @@
         'Get-RegistryBackup'
         'Restore-RegistryBackup'
         'Remove-RegistryBackup'
+        'Get-RegistryBackupStatus'
+        'Clear-ExpiredRegistryBackup'
         'Install-WingetPackageManager'
         'Get-HelperCopyStatus'
         'Remove-HelperCopy'

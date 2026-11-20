@@ -4,21 +4,26 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
-### Helfer: HKLM-Sicherungen zurückspielen, löschen, bereinigen (noch nicht verdrahtet)
+### „Sicherungen“ auch für alle Benutzer (HKLM)
+
+- Die Ansicht „Sicherungen“ zeigt jetzt auch die Sicherungen für alle Benutzer aus dem Admin-Ordner, mit neuer Spalte „Bereich“ (Benutzer / Alle Benutzer). Dafür sind keine Adminrechte nötig (der Ordner ist lesbar). Zurückspielen und Löschen gehen für beide; bei HKLM-Sicherungen nennt die Bestätigung die Administratorabfrage und der Helfer führt sie aus (`Restore-RegistryBackup`/`Remove-RegistryBackup` mit `RestoreRegistryBackup`/`RemoveRegistryBackup`, Helferversion 7). Erfolg nur, wenn der Helfer das meldet und die eigene Prüfung danach zustimmt (Schlüssel da bzw. Dateien weg, sonst `BackupResultNotVerified`). Nie mit Wiederherstellungspunkt.
+- Sicherungen älter als 365 Tage sind in der Liste markiert. Gibt es abgelaufene HKLM-Sicherungen, erscheint ein Hinweis mit dem Knopf „Aufräumen (Administratorrechte)“ (`Clear-ExpiredRegistryBackup`, Bestätigung mit Standard „Abbrechen“); nie automatisch, weil es eine UAC-Abfrage braucht. Zusätzlich räumt der Helfer bei jeder HKLM-Sicherungsaktion mit auf. Ist der Admin-Ordner nicht lesbar, zeigt die Ansicht einen Hinweis statt eines Fehlers. Das Aufräumen gilt nur als erfolgreich, wenn danach keine abgelaufene `.reg` und keine ihrer `.json` übrig ist. Reste ohne abgelaufene Sicherung (Zwischendateien, Begleitdatei ohne `.reg`) zeigen keinen Knopf; sie verschwinden bei der nächsten HKLM-Aktion.
+- Ist eine Sicherung für alle Benutzer gewählt, zeigen „Wiederherstellen“ und „Löschen“ ein Schild-Symbol und einen Tooltip, dass Windows nach Administratorrechten fragt.
+- Neu im Modul: `Get-RegistryBackupStatus` (Zustand des Admin-Ordners, Zahl abgelaufener Sicherungen) und `Clear-ExpiredRegistryBackup`. `Get-RegistryBackup` liefert zusätzlich `Scope`, `Elevated` und `Expired`; eine Begleitdatei mit anderem Bereich als ihr Ort ist ungültig (`MetadataInvalid`).
+
+### Helfer: HKLM-Sicherungen zurückspielen, löschen, bereinigen
 
 - Helferversion 7 mit drei neuen Operationen für den Admin-Ordner `Program Files\Softwareverwaltung\RegistryBackup`. Dateien werden nur über die feste Ordnerangabe und die Kennung (GUID) gefunden, nie über einen Pfad aus dem Plan; vorher prüft der Helfer den Ordner wie beim Entfernen (Regeln, Besitzer, OWNER-RIGHTS-Eintrag).
   - `RestoreRegistryBackup`: liest `<Id>.reg` einmal über ein Handle und prüft Datei (Besitzer Administratoren), Kodierung, Begleitdatei (SchemaVersion 1, gleiche Kennung, Bereich `Machine`, sicherer Schlüsselname) und Inhalt: nur der Schlüssel aus der `.json` und seine Unterschlüssel unter einem HKLM-Uninstall-Zweig, keine Löschzeilen, keine weiteren Hauptschlüssel. Ein vorhandener Schlüssel wird nie überschrieben. Genau diese Bytes schreibt der Helfer als `<Id>.import.reg` in den Admin-Ordner, liest und vergleicht sie, importiert sie mit `reg.exe import … /reg:64` und löscht die Datei danach (ein Rest, den `reg.exe` noch festhält, wird gemeldet und von der Bereinigung entfernt). Scheitert der Import, nachdem der Schlüssel schon angelegt ist, meldet der Helfer das eigens (`RestorePartial`) und entfernt nichts von selbst. Die Sicherung bleibt.
   - `RemoveRegistryBackup`: löscht `<Id>.reg`, `<Id>.json` und Reste dieser Kennung und prüft, dass nichts übrig ist.
   - `CleanupRegistryBackups`: löscht Sicherungen, deren `.reg` älter als 365 Tage ist (mit `.json`), Begleitdateien ohne Sicherung nach einem Tag und Zwischendateien nach einer Stunde; nur Dateien mit eigenem Namensschema, keine Links, keine Unterordner. Läuft außerdem bei jeder HKLM-Sicherungsaktion mit, ohne eigene UAC-Abfrage.
 - Die `.reg`-Prüfung (Modul und Helfer) zerlegt Wertzeilen jetzt richtig (Name `@` oder `"…"` mit `\"`/`\\`, dann `=`) und lehnt Wert-Löschzeilen ab, deren Daten mit `-` beginnen (`"Name"=-`, `@=-`, auch mit Kommentar dahinter; `DeleteLine`), nicht nur `[-…]`. Eine Wertzeile ohne vollständigen Namen mit `=` ist `BadLine`.
-- Das Modul ruft die neuen Operationen noch nicht auf; Ansicht „Sicherungen“, Zurückspielen, Löschen und Aufräumen für HKLM folgen.
 
 ### „Eintrag entfernen“ auch für alle Benutzer (HKLM)
 
 - Verwaiste Einträge für alle Benutzer (HKLM, auch 32-Bit unter WOW6432Node) lassen sich jetzt entfernen. Die App zeigt „Eintrag entfernen“ auch dort; die Bestätigung nennt die Administratorabfrage (Standard „Abbrechen“). Der Hinweis „folgt in einem späteren Schritt“ entfällt.
 - Das Modul prüft vorab wie bei HKCU und lässt dann den geschützten Helfer sichern und entfernen (`RemoveRegistryEntry`, Helferversion 6; ältere Helfer: `HelperTooOld`). Nie mit Wiederherstellungspunkt. Erfolg nur, wenn der Helfer das meldet, die Sicherung genau unter `Program Files\Softwareverwaltung\RegistryBackup\<ActionId>.reg` liegt und der Schlüssel danach in der 64-Bit-Ansicht fehlt (dieselbe Ansicht wie der Helfer). Meldung: „Eintrag entfernt. Sicherung: …“.
 - Abgelehnte UAC-Abfrage: `ElevationDenied`. Scheitert das Löschen, nachdem die Sicherung steht, bleibt sie erhalten und die Meldung sagt das (`RemoveEntryDeleteFailedBackupKept`).
-- HKLM-Sicherungen erscheinen noch nicht unter „Sicherungen“ und werden noch nicht nach 365 Tagen bereinigt (folgt; bis dahin kein Release).
 
 ### Helfer: HKLM-Einträge sichern und entfernen
 

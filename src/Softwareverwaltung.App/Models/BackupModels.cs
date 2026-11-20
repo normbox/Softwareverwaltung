@@ -24,7 +24,15 @@ public sealed record RegistryBackupItem
     public string? ProblemText { get; init; }
     /// <summary>Gründe aus der Begleitdatei als Meldungstexte des Moduls (z. B. „Neuere Installation daneben: …“).</summary>
     public IReadOnlyList<string> ReasonTexts { get; init; } = [];
+    /// <summary>Bereich laut Modul (User, Machine), unübersetzt.</summary>
+    public string? ScopeCode { get; init; }
+    /// <summary>Zurückspielen und Löschen brauchen Administratorrechte (HKLM, über den Helfer).</summary>
+    public bool Elevated { get; init; }
+    /// <summary>Älter als 365 Tage.</summary>
+    public bool Expired { get; init; }
     public PSObject? Source { get; init; }
+
+    public string ScopeText => AppText.Get(ScopeCode == "Machine" ? "BackupsScopeMachine" : "BackupsScopeUser");
 
     public string WhenText => CreatedAt is { } t
         ? DateTime.SpecifyKind(t, DateTimeKind.Utc).ToLocalTime().ToString("g", CultureInfo.CurrentCulture)
@@ -32,7 +40,14 @@ public sealed record RegistryBackupItem
 
     public string ReasonsText => IsLegacy ? AppText.Get("BackupsLegacyReason") : string.Join("; ", ReasonTexts);
 
-    public string StatusText => CanRestore ? AppText.Get("BackupsRestorable") : ProblemText ?? ProblemCode ?? "";
+    public string StatusText
+    {
+        get
+        {
+            var text = CanRestore ? AppText.Get("BackupsRestorable") : ProblemText ?? ProblemCode ?? "";
+            return Expired ? AppText.Get("BackupsExpired") + (text.Length > 0 ? "; " + text : "") : text;
+        }
+    }
 
     public static RegistryBackupItem FromPs(PSObject obj)
     {
@@ -59,6 +74,9 @@ public sealed record RegistryBackupItem
             ProblemCode = ActionOutcome.Text(obj, "Problem"),
             ProblemText = SoftwareItem.MessageText(obj.Properties["ProblemMessage"]?.Value),
             ReasonTexts = reasons,
+            ScopeCode = ActionOutcome.Text(obj, "Scope"),
+            Elevated = obj.Properties["Elevated"]?.Value is true,
+            Expired = obj.Properties["Expired"]?.Value is true,
             Source = obj,
         };
     }
@@ -70,5 +88,21 @@ public sealed record RegistryBackupItem
         DateTimeOffset o => o.UtcDateTime,
         string s when DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var d) => d,
         _ => null,
+    };
+}
+
+/// <summary>Abbild von SoftwareInventory.RegistryBackupStatus (Get-RegistryBackupStatus): Zustand des Admin-Ordners.</summary>
+public sealed record RegistryBackupStatus
+{
+    /// <summary>Missing, Readable oder Unreadable.</summary>
+    public string MachineFolderState { get; init; } = "Missing";
+    public string? MachineFolder { get; init; }
+    public int ExpiredMachineCount { get; init; }
+
+    public static RegistryBackupStatus FromPs(PSObject obj) => new()
+    {
+        MachineFolderState = ActionOutcome.Text(obj, "MachineFolderState") ?? "Missing",
+        MachineFolder = ActionOutcome.Text(obj, "MachineFolder"),
+        ExpiredMachineCount = obj.Properties["ExpiredMachineCount"]?.Value is int count ? count : 0,
     };
 }

@@ -33,6 +33,9 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
     BeforeEach {
         $script:AppDir = Join-Path $TestDrive "app-$([guid]::NewGuid().ToString('N').Substring(0, 6))"
         Mock -ModuleName SoftwareInventory Get-AppDataDirectory { $script:AppDir }
+        # Nie den echten Admin-Ordner unter Program Files lesen.
+        $script:MachineDir = Join-Path $script:AppDir 'ProgramFiles\Softwareverwaltung\RegistryBackup'
+        Mock -ModuleName SoftwareInventory Get-RegistryBackupMachineDirectory { $script:MachineDir }
         $script:UserRoot = 'TestRegistry:\BackupUser'
         $script:MachineRoot = 'TestRegistry:\BackupMachine'
         Remove-Item -LiteralPath $script:UserRoot, $script:MachineRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -202,7 +205,7 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
         }
 
-        It 'lehnt Einträge für alle Benutzer (HKLM) ab' {
+        It 'lehnt einen HKLM-Schlüssel in einer Sicherung des Benutzers ab (gehört nur in den Admin-Ordner)' {
             Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
             $b = New-TestBackup -Root $script:MachineRoot
             $r = Restore-RegistryBackup $b.Id -Confirm:$false
@@ -299,6 +302,317 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $b = New-TestBackup
             (Remove-RegistryBackup $b.Id -Confirm:$false -ConfirmedCommandLine ([guid]::NewGuid().ToString())).Result | Should -Be 'Cancelled'
             Test-Path $b.File | Should -BeTrue
+        }
+    }
+
+    Context 'Sicherungen für alle Benutzer (HKLM, Admin-Ordner)' {
+        BeforeEach {
+            # Eine Sicherung wie vom Helfer: <Id>.reg und <Id>.json im (umgeleiteten) Admin-Ordner, Bereich Machine.
+            function New-MachineBackup {
+                param([string] $Name = 'Alt-Programm', [string] $Key = 'oldapp', [string] $SidecarScope = 'Machine', [int] $AgeDays = 0)
+                $path = "$($script:MachineRoot)\$Key"
+                New-Item -Path $path -Force | Out-Null
+                New-ItemProperty -Path $path -Name DisplayName -Value $Name | Out-Null
+                $native = (Get-Item -LiteralPath $path).Name
+                $id = [guid]::NewGuid().ToString()
+                New-Item -ItemType Directory -Path $script:MachineDir -Force | Out-Null
+                $file = Join-Path $script:MachineDir "$id.reg"
+                InModuleScope SoftwareInventory -Parameters @{ K = $native; F = $file } { Invoke-RegExport -NativeKey $K -File $F } | Should -Be 0
+                InModuleScope SoftwareInventory -Parameters @{ F = $file; I = $id; N = $Name; K = $native; S = $SidecarScope } {
+                    Write-RegistryBackupSidecar -File $F -ActionId $I -Name $N -NativeKey $K -Scope $S -Reasons @([pscustomobject] @{ Code = 'OrphanedEntry'; Args = @() })
+                }
+                Remove-Item -LiteralPath $path -Recurse -Force
+                if ($AgeDays) { (Get-Item -LiteralPath $file).LastWriteTimeUtc = [datetime]::UtcNow.AddDays(-$AgeDays) }
+                [pscustomobject] @{ Id = $id; File = $file; Native = $native; Path = $path; Sidecar = [System.IO.Path]::ChangeExtension($file, '.json') }
+            }
+            Mock -ModuleName SoftwareInventory Test-HelperInWritableFolder { $false }
+            Mock -ModuleName SoftwareInventory Invoke-RegImport { throw 'HKLM spielt nur der Helfer zurück' }
+            $script:HelperMode = 'Done'
+            $script:HelperPlans = [System.Collections.Generic.List[hashtable]]::new()
+            Mock -ModuleName SoftwareInventory Start-ElevatedHelper {
+                $script:HelperPlans.Add($HelperPlan)
+                $message = { param($Code) [pscustomobject] @{ Code = $Code; Args = @(); Text = $Code } }
+                $own = { param($Id) Get-ChildItem -LiteralPath $script:MachineDir -File | Where-Object { $_.Name -like "$Id.*" } }
+                switch ($script:HelperMode) {
+                    'Done' {
+                        switch ($HelperPlan.Operation) {
+                            'RestoreRegistryBackup' {
+                                # Wie der Helfer: den Schlüssel aus der .json zurückspielen und ihn als NativeKey melden.
+                                $key = (Get-Content -LiteralPath (Join-Path $script:MachineDir "$($HelperPlan.BackupId).json") -Raw | ConvertFrom-Json).NativeKey
+                                New-Item -Path "$($script:MachineRoot)\oldapp" -Force | Out-Null
+                                @{ Status = 'Completed'; Done = $true; NativeKey = $key }
+                            }
+                            'RemoveRegistryBackup' { & $own $HelperPlan.BackupId | Remove-Item -Force; @{ Status = 'Completed'; Done = $true; Deleted = 2 } }
+                            'CleanupRegistryBackups' {
+                                $old = @(Get-ChildItem -LiteralPath $script:MachineDir -File -Filter '*.reg' | Where-Object { $_.LastWriteTimeUtc -lt [datetime]::UtcNow.AddDays(-365) })
+                                foreach ($f in $old) { Remove-Item -LiteralPath $f.FullName, ([System.IO.Path]::ChangeExtension($f.FullName, '.json')) -Force }
+                                @{ Status = 'Completed'; Done = $true; Deleted = 2 * $old.Count }
+                            }
+                        }
+                    }
+                    'ClaimsDone' { @{ Status = 'Completed'; Done = $true } }
+                    'OtherKey' {
+                        # Die .json wurde nach der Bestätigung geändert: Der Helfer spielt einen anderen Schlüssel zurück und meldet ihn;
+                        # der bestätigte Schlüssel existiert trotzdem (zufällig).
+                        New-Item -Path "$($script:MachineRoot)\oldapp" -Force | Out-Null
+                        @{ Status = 'Completed'; Done = $true; NativeKey = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\fremd' }
+                    }
+                    'NoCount' {
+                        # Räumt auf wie 'Done', meldet aber kein Feld Deleted.
+                        $old = @(Get-ChildItem -LiteralPath $script:MachineDir -File -Filter '*.reg' | Where-Object { $_.LastWriteTimeUtc -lt [datetime]::UtcNow.AddDays(-365) })
+                        foreach ($f in $old) { Remove-Item -LiteralPath $f.FullName, ([System.IO.Path]::ChangeExtension($f.FullName, '.json')) -Force }
+                        @{ Status = 'Completed'; Done = $true }
+                    }
+                    'RegOnly' {
+                        # Löscht beim Aufräumen nur die abgelaufenen .reg, nicht ihre .json, und meldet trotzdem Erfolg.
+                        Get-ChildItem -LiteralPath $script:MachineDir -File -Filter '*.reg' | Where-Object { $_.LastWriteTimeUtc -lt [datetime]::UtcNow.AddDays(-365) } | Remove-Item -Force
+                        @{ Status = 'Completed'; Done = $true }
+                    }
+                    'Denied' { @{ Status = 'ElevationDenied'; Error = (& $message 'ElevationDenied') } }
+                    'TooOld' { @{ Status = 'Failed'; Error = (& $message 'HelperTooOld') } }
+                    'Partial' { @{ Status = 'Completed'; Done = $false; ErrorCode = 'RestorePartial'; Error = (& $message 'RestorePartial') } }
+                }
+            }
+        }
+
+        It 'listet beide Orte; HKLM-Sicherungen haben Bereich Machine und brauchen Administratorrechte' {
+            $user = New-TestBackup
+            $machine = New-MachineBackup
+            $list = @(Get-RegistryBackup)
+            $list.Count | Should -Be 2
+            $m = $list | Where-Object Id -EQ $machine.Id
+            $m.Scope | Should -Be 'Machine'
+            $m.Elevated | Should -BeTrue
+            $m.CanRestore | Should -BeTrue
+            $m.Expired | Should -BeFalse
+            ($list | Where-Object Id -EQ $user.Id).Scope | Should -Be 'User'
+            $script:HelperPlans.Count | Should -Be 0 -Because 'die Liste braucht nie eine UAC-Abfrage'
+        }
+
+        It 'ignoriert im Admin-Ordner fremde Namen und die Zwischendateien des Helfers' {
+            $machine = New-MachineBackup
+            $id = [guid]::NewGuid().ToString()
+            Copy-Item -LiteralPath $machine.File -Destination (Join-Path $script:MachineDir "${id}_Name.reg")
+            Copy-Item -LiteralPath $machine.File -Destination (Join-Path $script:MachineDir "$id.import.reg")
+            Copy-Item -LiteralPath $machine.File -Destination (Join-Path $script:MachineDir 'fremd.reg')
+            @(Get-RegistryBackup).Id | Should -Be @($machine.Id)
+        }
+
+        It 'lehnt eine Begleitdatei mit Bereich "<SidecarScope>" im Admin-Ordner ab, ohne den Helfer zu starten' -TestCases @(
+            @{ SidecarScope = 'User' }
+            @{ SidecarScope = '' }
+            @{ SidecarScope = 'machine' }
+        ) {
+            $machine = New-MachineBackup -SidecarScope $SidecarScope
+            $item = Get-RegistryBackup -Id $machine.Id
+            $item.CanRestore | Should -BeFalse
+            $item.Problem | Should -Be 'MetadataInvalid'
+            (Restore-RegistryBackup $machine.Id -Confirm:$false).Result | Should -Be 'Unsupported'
+            $script:HelperPlans.Count | Should -Be 0 -Because 'eine Sicherung, die der Helfer ablehnen würde, braucht keine UAC-Abfrage'
+        }
+
+        It 'überspringt im Admin-Ordner Dateien, die Links (Reparse-Points) sind' {
+            $machine = New-MachineBackup
+            $linkId = [guid]::NewGuid().ToString()
+            $link = [pscustomobject] @{
+                Name = "$linkId.reg"; Extension = '.reg'; FullName = (Join-Path $script:MachineDir "$linkId.reg")
+                Attributes = [System.IO.FileAttributes]::Archive -bor [System.IO.FileAttributes]::ReparsePoint
+            }
+            Mock -ModuleName SoftwareInventory Get-ChildItem { @([System.IO.DirectoryInfo]::new($script:MachineDir).GetFiles()) + $link } -ParameterFilter {
+                $LiteralPath -contains $script:MachineDir -and $PSBoundParameters['ErrorAction'] -ne 'Stop'
+            }
+            @(Get-RegistryBackup).Id | Should -Be @($machine.Id)
+            Should -Invoke -ModuleName SoftwareInventory Get-ChildItem -ParameterFilter { $LiteralPath -contains $script:MachineDir }
+        }
+
+        It 'bricht <Action> ohne Helfer ab, wenn sich die bestätigte Angabe geändert hat' -TestCases @(
+            @{ Action = 'Zurückspielen' }
+            @{ Action = 'Löschen' }
+        ) {
+            $machine = New-MachineBackup
+            $r = if ($Action -eq 'Zurückspielen') {
+                Restore-RegistryBackup $machine.Id -Confirm:$false -ConfirmedCommandLine "$($machine.Id) HKEY_LOCAL_MACHINE\anders"
+            }
+            else { Remove-RegistryBackup $machine.Id -Confirm:$false -ConfirmedCommandLine ([guid]::NewGuid().ToString()) }
+            $r.Result | Should -Be 'Cancelled'
+            $script:HelperPlans.Count | Should -Be 0
+            Test-Path $machine.File | Should -BeTrue
+        }
+
+        It 'gilt nicht als Erfolg, wenn der Helfer einen anderen Schlüssel als den bestätigten zurückgespielt hat' {
+            $machine = New-MachineBackup
+            $plan = Restore-RegistryBackup $machine.Id -WhatIf
+            $script:HelperMode = 'OtherKey'
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
+            $r.Result | Should -Be 'Failed'
+            $r.Message.Code | Should -Be 'BackupResultNotVerified'
+            $r.PresentAfter | Should -BeTrue -Because 'der bestätigte Schlüssel existiert, trotzdem kein Erfolg'
+        }
+
+        It 'erkennt den gemeldeten Schlüssel ohne Rücksicht auf Groß-/Kleinschreibung als den bestätigten' {
+            $machine = New-MachineBackup
+            Mock -ModuleName SoftwareInventory Start-ElevatedHelper {
+                New-Item -Path "$($script:MachineRoot)\oldapp" -Force | Out-Null
+                @{ Status = 'Completed'; Done = $true; NativeKey = $machine.Native.ToUpperInvariant() }
+            }
+            (Restore-RegistryBackup $machine.Id -Confirm:$false).Result | Should -Be 'Succeeded'
+        }
+
+        It 'plant das Zurückspielen erhöht, ohne Wiederherstellungspunkt und ohne Helfer' {
+            $machine = New-MachineBackup
+            $plan = Restore-RegistryBackup $machine.Id -WhatIf
+            $plan.Result | Should -Be 'Planned'
+            $plan.Elevated | Should -BeTrue
+            $plan.Message.Code | Should -Be 'PlanRestoreBackupMachine'
+            $script:HelperPlans.Count | Should -Be 0
+        }
+
+        It 'spielt über den Helfer zurück: nur Operation, Kennung und kein Wiederherstellungspunkt' {
+            $machine = New-MachineBackup
+            $plan = Restore-RegistryBackup $machine.Id -WhatIf
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
+            $r.Result | Should -Be 'Succeeded'
+            $r.Message.Code | Should -Be 'RestoreBackupDone'
+            $r.PresentAfter | Should -BeTrue
+            $script:HelperPlans.Count | Should -Be 1
+            $sent = $script:HelperPlans[0]
+            $sent.Operation | Should -BeExactly 'RestoreRegistryBackup'
+            $sent.BackupId | Should -Be $machine.Id
+            $sent.RestorePoint | Should -BeFalse
+            @($sent.Keys | Sort-Object) | Should -Be @('BackupId', 'Operation', 'RestorePoint')
+            Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
+            $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+            $log.Phase | Should -Be @('Started', 'Completed')
+        }
+
+        It 'meldet <Mode> beim Zurückspielen ehrlich' -TestCases @(
+            @{ Mode = 'Denied'; Result = 'ElevationDenied'; Code = 'ElevationDenied' }
+            @{ Mode = 'TooOld'; Result = 'Failed'; Code = 'HelperTooOld' }
+            @{ Mode = 'Partial'; Result = 'Failed'; Code = 'RestorePartial' }
+            @{ Mode = 'ClaimsDone'; Result = 'Failed'; Code = 'BackupResultNotVerified' }
+        ) {
+            $machine = New-MachineBackup
+            $script:HelperMode = $Mode
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false
+            $r.Result | Should -Be $Result
+            $r.Message.Code | Should -Be $Code
+        }
+
+        It 'spielt nicht zurück, wenn der Schlüssel schon existiert (64-Bit-Prüfung wie der Helfer)' {
+            $machine = New-MachineBackup
+            New-Item -Path $machine.Path -Force | Out-Null
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false
+            $r.Message.Code | Should -Be 'RestoreKeyExists'
+            $script:HelperPlans.Count | Should -Be 0
+        }
+
+        It 'löscht über den Helfer und prüft danach selbst, dass .reg und .json weg sind' {
+            $machine = New-MachineBackup
+            $plan = Remove-RegistryBackup $machine.Id -WhatIf
+            $plan.Message.Code | Should -Be 'PlanRemoveBackupMachine'
+            $r = Remove-RegistryBackup $machine.Id -Confirm:$false
+            $r.Result | Should -Be 'Succeeded'
+            Test-Path $machine.File | Should -BeFalse
+            Test-Path $machine.Sidecar | Should -BeFalse
+            $script:HelperPlans[0].Operation | Should -BeExactly 'RemoveRegistryBackup'
+
+            $machine = New-MachineBackup -Key 'second'
+            $script:HelperMode = 'ClaimsDone'
+            $r = Remove-RegistryBackup $machine.Id -Confirm:$false
+            $r.Result | Should -Be 'Failed'
+            $r.Message.Code | Should -Be 'BackupResultNotVerified'
+        }
+
+        It 'meldet den Zustand des Admin-Ordners und die Zahl abgelaufener Sicherungen' {
+            (Get-RegistryBackupStatus).MachineFolderState | Should -Be 'Missing'
+            $null = New-MachineBackup
+            $null = New-MachineBackup -Key 'alt' -AgeDays 400
+            $status = Get-RegistryBackupStatus
+            $status.MachineFolderState | Should -Be 'Readable'
+            $status.ExpiredMachineCount | Should -Be 1
+            $status.RetentionDays | Should -Be 365
+            (@(Get-RegistryBackup) | Where-Object Expired).Count | Should -Be 1
+            $script:HelperPlans.Count | Should -Be 0 -Because 'Zustand und Liste lesen nur, ohne UAC-Abfrage'
+        }
+
+        It 'meldet einen nicht lesbaren Admin-Ordner und räumt dann nicht auf' {
+            $null = New-MachineBackup -Key 'alt' -AgeDays 400
+            Mock -ModuleName SoftwareInventory Get-ChildItem { throw [System.UnauthorizedAccessException]::new('Zugriff verweigert') } -ParameterFilter {
+                $LiteralPath -contains $script:MachineDir -and $PSBoundParameters['ErrorAction'] -eq 'Stop'
+            }
+            $status = Get-RegistryBackupStatus
+            $status.MachineFolderState | Should -Be 'Unreadable'
+            $status.ExpiredMachineCount | Should -Be 0
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false
+            $r.Result | Should -Be 'Unsupported'
+            $r.Message.Code | Should -Be 'BackupFolderUnreadable'
+            $script:HelperPlans.Count | Should -Be 0
+        }
+
+        It 'meldet ElevationDenied beim <Action> und lässt die Dateien stehen' -TestCases @(
+            @{ Action = 'Löschen' }
+            @{ Action = 'Aufräumen' }
+        ) {
+            $machine = New-MachineBackup -Key 'alt' -AgeDays 400
+            $script:HelperMode = 'Denied'
+            $r = if ($Action -eq 'Löschen') { Remove-RegistryBackup $machine.Id -Confirm:$false } else { Clear-ExpiredRegistryBackup -Confirm:$false }
+            $r.Result | Should -Be 'ElevationDenied'
+            $r.Message.Code | Should -Be 'ElevationDenied'
+            Test-Path $machine.File | Should -BeTrue
+            Test-Path $machine.Sidecar | Should -BeTrue
+        }
+
+        It 'gilt beim Aufräumen nicht als Erfolg, wenn die .json einer abgelaufenen Sicherung übrig bleibt' {
+            $old = New-MachineBackup -Key 'alt' -AgeDays 400
+            $script:HelperMode = 'RegOnly'
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false
+            $r.Result | Should -Be 'Failed'
+            $r.Message.Code | Should -Be 'BackupResultNotVerified'
+            $r.PresentAfter | Should -BeTrue
+            Test-Path $old.Sidecar | Should -BeTrue
+        }
+
+        It 'räumt abgelaufene Sicherungen nur auf Bestätigung über den Helfer auf' {
+            $fresh = New-MachineBackup
+            $old = New-MachineBackup -Key 'alt' -AgeDays 400
+            $plan = Clear-ExpiredRegistryBackup -WhatIf
+            $plan.Result | Should -Be 'Planned'
+            $plan.Elevated | Should -BeTrue
+            $plan.Message.Code | Should -Be 'PlanClearExpiredBackups'
+            $plan.Message.Args[0] | Should -Be 1
+            $script:HelperPlans.Count | Should -Be 0
+
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false -ConfirmedCommandLine $plan.CommandLine
+            $r.Result | Should -Be 'Succeeded'
+            $r.Message.Code | Should -Be 'ClearExpiredBackupsDone'
+            $script:HelperPlans[0].Operation | Should -BeExactly 'CleanupRegistryBackups'
+            @($script:HelperPlans[0].Keys | Sort-Object) | Should -Be @('Operation', 'RestorePoint')
+            Test-Path $old.File | Should -BeFalse
+            Test-Path $fresh.File | Should -BeTrue
+            $entry = @(Get-ActionLog -Action ClearExpiredBackups)
+            $entry.Count | Should -Be 1
+            $entry[0].Result | Should -Be 'Succeeded'
+        }
+
+        It 'meldet beim Aufräumen 0 gelöschte Dateien, wenn der Helfer keine Anzahl liefert' {
+            $null = New-MachineBackup -Key 'alt' -AgeDays 400
+            $script:HelperMode = 'NoCount'
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false
+            $r.Result | Should -Be 'Succeeded'
+            $r.Message.Code | Should -Be 'ClearExpiredBackupsDone'
+            $r.Message.Args[0] | Should -Be 0
+        }
+
+        It 'tut beim Aufräumen nichts, wenn nichts abgelaufen ist, und bricht bei geändertem Ordner ab' {
+            $null = New-MachineBackup
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false
+            $r.Result | Should -Be 'NotInstalled'
+            $r.Message.Code | Should -Be 'ClearExpiredBackupsNothing'
+            $script:HelperPlans.Count | Should -Be 0
+
+            $null = New-MachineBackup -Key 'alt' -AgeDays 400
+            (Clear-ExpiredRegistryBackup -Confirm:$false -ConfirmedCommandLine 'C:\anders').Result | Should -Be 'Cancelled'
+            $script:HelperPlans.Count | Should -Be 0
         }
     }
 }

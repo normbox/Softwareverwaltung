@@ -32,6 +32,19 @@
             <TextBlock Text="{loc:Text BackupsTitle}" FontSize="20" FontWeight="SemiBold" />
             <TextBlock Text="{loc:Text BackupsIntro}" TextWrapping="Wrap" Margin="0,4,0,0"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <!-- Hinweis zu den Sicherungen für alle Benutzer: abgelaufen (Aufräumen nur auf Klick) oder Ordner nicht lesbar -->
+            <Border Margin="0,8,0,0" Padding="12,8" CornerRadius="4" BorderThickness="1"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Visibility="{Binding ShowMachineNotice, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel LastChildFill="True">
+                    <ui:Button DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center"
+                               Content="{loc:Text BackupsClearExpired}" Icon="{ui:SymbolIcon Shield24}"
+                               Command="{Binding ClearExpiredCommand}"
+                               Visibility="{Binding ShowClearExpired, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Text="{Binding MachineNotice}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+            </Border>
         </StackPanel>
 
         <!-- Ergebnis der letzten Aktion -->
@@ -66,6 +79,7 @@
                       AutomationProperties.Name="{loc:Text BackupsListName}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{loc:Text ColumnBackupName}" Binding="{Binding Name}" Width="2*" ElementStyle="{StaticResource TextCellWithTooltip}" />
+                    <DataGridTextColumn Header="{loc:Text ColumnBackupScope}" Binding="{Binding ScopeText}" Width="110" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTextColumn Header="{loc:Text ColumnBackupDate}" Binding="{Binding WhenText}" SortMemberPath="CreatedAt" Width="160" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTextColumn Header="{loc:Text ColumnBackupReasons}" Binding="{Binding ReasonsText}" Width="2*" ElementStyle="{StaticResource TextCellWithTooltip}" />
                     <DataGridTextColumn Header="{loc:Text ColumnBackupKey}" Binding="{Binding NativeKey}" Width="3*" ElementStyle="{StaticResource TextCellWithTooltip}" />
@@ -81,10 +95,19 @@
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                 <ui:Button Content="{loc:Text BackupsRefresh}" Icon="{ui:SymbolIcon ArrowClockwise24}" Margin="0,0,8,0"
                            Command="{Binding LoadCommand}" />
-                <ui:Button Content="{loc:Text BackupsRestore}" Icon="{ui:SymbolIcon ArrowUndo24}" Margin="0,0,8,0" Appearance="Primary"
-                           ToolTip="{loc:Text BackupsRestoreTooltip}" Command="{Binding RestoreCommand}" />
-                <ui:Button Content="{loc:Text BackupsDelete}" Icon="{ui:SymbolIcon Delete24}"
-                           ToolTip="{loc:Text BackupsDeleteTooltip}" Command="{Binding DeleteCommand}" />
+                <!-- Sicherungen für alle Benutzer: Schild statt des üblichen Symbols, weil Windows nach Administratorrechten fragt -->
+                <ui:Button Content="{loc:Text BackupsRestore}" Margin="0,0,8,0" Appearance="Primary"
+                           ToolTip="{Binding RestoreTooltip}" Command="{Binding RestoreCommand}">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="{Binding SelectedNeedsElevation, Converter={StaticResource ElevationSymbol}, ConverterParameter=ArrowUndo24}" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button Content="{loc:Text BackupsDelete}"
+                           ToolTip="{Binding DeleteTooltip}" Command="{Binding DeleteCommand}">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="{Binding SelectedNeedsElevation, Converter={StaticResource ElevationSymbol}, ConverterParameter=Delete24}" />
+                    </ui:Button.Icon>
+                </ui:Button>
             </StackPanel>
             <TextBlock Text="{Binding StatusText}" Margin="16,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </DockPanel>

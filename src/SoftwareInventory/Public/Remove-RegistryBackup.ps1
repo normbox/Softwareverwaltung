@@ -4,7 +4,8 @@ function Remove-RegistryBackup {
         Löscht eine Registry-Sicherung (.reg und .json zusammen). Der Registry-Eintrag selbst bleibt unberührt.
     .DESCRIPTION
         Die Sicherung wird nur über ihre Kennung (Get-RegistryBackup) gefunden, nie über einen Pfad. Auch ältere
-        Sicherungen ohne .json lassen sich löschen. Jede Aktion wird protokolliert (Action RemoveBackup);
+        Sicherungen ohne .json lassen sich löschen. HKLM-Sicherungen im Admin-Ordner löscht der erhöhte Helfer
+        (UAC-Abfrage, Operation RemoveRegistryBackup); Erfolg nur, wenn die Dateien danach fehlen. Jede Aktion wird protokolliert (Action RemoveBackup);
         -WhatIf liefert den Plan (Result Planned).
     .PARAMETER InputObject
         Kennung (GUID) oder ein Objekt von Get-RegistryBackup.
@@ -41,16 +42,37 @@ function Remove-RegistryBackup {
                 $result
                 continue
             }
-            $description = New-InventoryMessage PlanRemoveBackup $plan.Name, $plan.BackupFile
+            $description = if ($plan.Elevated) { New-InventoryMessage PlanRemoveBackupMachine $plan.Name, $plan.BackupFile } else { New-InventoryMessage PlanRemoveBackup $plan.Name, $plan.BackupFile }
             if (-not $PSCmdlet.ShouldProcess($plan.Name, $description.Text)) {
                 $result.Result = if ($WhatIfPreference) { 'Planned' } else { 'Cancelled' }
                 $result.Message = if ($WhatIfPreference) { $description } else { New-InventoryMessage NotConfirmed }
                 $result
                 continue
             }
-            Invoke-RemoveBackupPlan -Plan $plan -Result $result
+            if ($plan.Elevated) { Invoke-RemoveMachineBackupPlan -Plan $plan -Result $result }
+            else { Invoke-RemoveBackupPlan -Plan $plan -Result $result }
         }
     }
+}
+
+function Invoke-RemoveMachineBackupPlan {
+    # HKLM-Sicherung über den Helfer löschen; Erfolg nur, wenn .reg und .json danach fehlen. Protokolliert Start und Ende.
+    param($Plan, $Result)
+    $Result | Add-Member -NotePropertyName BackupFile -NotePropertyValue $Plan.BackupFile -Force
+    Write-ActionLogEntry -Phase Started -Data (ConvertTo-ActionLogData $Result)
+    try {
+        $run = Invoke-BackupHelper -HelperPlan @{ Operation = 'RemoveRegistryBackup'; BackupId = $Plan.BackupId }
+        $left = @($Plan.BackupFile, (Get-RegistryBackupSidecarPath $Plan.BackupFile) | Where-Object { Test-Path -LiteralPath $_ })
+        $Result.PresentAfter = $left.Count -gt 0
+        Complete-BackupHelperResult -Result $Result -Run $run -Verified ($left.Count -eq 0) -SuccessMessage (New-InventoryMessage RemoveBackupDone)
+    }
+    catch {
+        $Result.Result = 'Failed'
+        $Result.Message = New-InventoryMessage RemoveBackupFailed $_.Exception.Message
+    }
+    $Result.CompletedAt = [datetime]::UtcNow
+    Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $Result)
+    $Result
 }
 
 function New-RemoveBackupPlan {
@@ -63,7 +85,7 @@ function New-RemoveBackupPlan {
         return [pscustomobject] $plan
     }
     $info = Get-RegistryBackupInfo -File $file
-    [pscustomobject] (New-BackupActionPlan -Action RemoveBackup -Name $info.Name -BackupId $info.Id -NativeKey $info.NativeKey -BackupFile $file.FullName -Method File)
+    [pscustomobject] (New-BackupActionPlan -Action RemoveBackup -Name $info.Name -BackupId $info.Id -NativeKey $info.NativeKey -BackupFile $file.FullName -Method File -Scope $info.Scope)
 }
 
 function Invoke-RemoveBackupPlan {

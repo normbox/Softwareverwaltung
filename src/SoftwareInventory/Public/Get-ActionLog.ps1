@@ -26,7 +26,7 @@ function Get-ActionLog {
         [datetime] $After,
         [datetime] $Before,
         [string] $Name,
-        [ValidateSet('Update', 'Uninstall', 'InstallWinget', 'RemoveEntry', 'RestoreBackup', 'RemoveBackup')]
+        [ValidateSet('Update', 'Uninstall', 'InstallWinget', 'RemoveEntry', 'RestoreBackup', 'RemoveBackup', 'ClearExpiredBackups')]
         [string] $Action,
         [string[]] $Result,
         [ValidateRange(1, [int]::MaxValue)]

@@ -1,18 +1,23 @@
 function Restore-RegistryBackup {
     <#
     .SYNOPSIS
-        Spielt eine Registry-Sicherung zurück (reg import), nur für Einträge des aktuellen Benutzers (HKCU).
+        Spielt eine Registry-Sicherung zurück (reg import): Einträge des Benutzers (HKCU) direkt, Einträge für alle
+        Benutzer (HKLM) über den erhöhten Helfer (UAC-Abfrage, Operation RestoreRegistryBackup).
     .DESCRIPTION
         Vor dem Zurückspielen prüft das Modul streng: Die .json-Begleitdatei muss vorhanden und lesbar sein
         (sonst BackupMetadataMissing/BackupMetadataInvalid, z. B. bei älteren Sicherungen), die .reg-Datei darf
         genau einen Hauptschlüssel enthalten (der aus der .json, direkt unter einem Uninstall-Zweig des
-        Benutzers); jeder weitere Schlüsselkopf muss ein Unterschlüssel davon sein; keine Löschzeilen. Schlägt
+        passenden Bereichs: Benutzer im Benutzerordner, alle Benutzer im Admin-Ordner); jeder weitere Schlüsselkopf muss ein Unterschlüssel davon sein; keine Löschzeilen. Schlägt
         eine Prüfung fehl, wird nichts importiert, die Aktion wird protokolliert und ein Grund-Code geliefert.
         Existiert der Schlüssel inzwischen wieder, wird ebenfalls nichts importiert (RestoreKeyExists).
         Die Datei wird genau einmal gelesen, dieser Inhalt geprüft, in eine eigene temporäre Datei geschrieben
         und genau diese importiert (kein Austausch zwischen Prüfung und Import); die temporäre Datei wird danach
-        gelöscht. Die Sicherung bleibt erhalten. Einträge für alle Benutzer (HKLM) folgen später
-        (BackupMachineNotYet). Jede Aktion wird protokolliert (Action RestoreBackup); -WhatIf liefert den Plan.
+        gelöscht. Die Sicherung bleibt erhalten.
+        HKLM: Das Modul prüft vorab dasselbe ohne Adminrechte (der Admin-Ordner ist lesbar); der Helfer findet die Datei
+        nur über die Kennung im Admin-Ordner, prüft alles erneut und importiert genau die geprüften Bytes. Erfolg nur,
+        wenn der Helfer das meldet, der von ihm gemeldete Schlüssel der bestätigte ist und dieser danach in der
+        64-Bit-Ansicht existiert. Ein Wiederherstellungspunkt
+        wird nie angelegt. Jede Aktion wird protokolliert (Action RestoreBackup); -WhatIf liefert den Plan.
     .PARAMETER InputObject
         Kennung (GUID) oder ein Objekt von Get-RegistryBackup.
     .PARAMETER ConfirmedCommandLine
@@ -48,22 +53,48 @@ function Restore-RegistryBackup {
                 $result
                 continue
             }
-            $description = New-InventoryMessage PlanRestoreBackup $plan.Name, $plan.NativeKey
+            $description = if ($plan.Elevated) { New-InventoryMessage PlanRestoreBackupMachine $plan.Name, $plan.NativeKey } else { New-InventoryMessage PlanRestoreBackup $plan.Name, $plan.NativeKey }
             if (-not $PSCmdlet.ShouldProcess($plan.Name, $description.Text)) {
                 $result.Result = if ($WhatIfPreference) { 'Planned' } else { 'Cancelled' }
                 $result.Message = if ($WhatIfPreference) { $description } else { New-InventoryMessage NotConfirmed }
                 $result
                 continue
             }
-            Invoke-RestoreBackupPlan -Plan $plan -Result $result
+            if ($plan.Elevated) { Invoke-RestoreMachineBackupPlan -Plan $plan -Result $result }
+            else { Invoke-RestoreBackupPlan -Plan $plan -Result $result }
         }
     }
 }
 
 function Test-RegistryKeyPresent {
     # Gibt es den Schlüssel (nativer Pfad wie HKEY_CURRENT_USER\...)? LiteralPath: keine Platzhalter.
+    # HKLM in der 64-Bit-Ansicht wie der Helfer (WOW6432Node wörtlich).
     param([string] $NativeKey)
+    if ($NativeKey -match '^(?i:HKEY_LOCAL_MACHINE\\)') { return Test-MachineRegistryKeyPresent -RegistryKey $NativeKey }
     Test-Path -LiteralPath "Registry::$NativeKey"
+}
+
+function Invoke-RestoreMachineBackupPlan {
+    # HKLM-Sicherung über den Helfer zurückspielen; Erfolg nur, wenn der Schlüssel danach da ist. Protokolliert Start und Ende.
+    param($Plan, $Result)
+    $Result | Add-Member -NotePropertyName BackupFile -NotePropertyValue $Plan.BackupFile -Force
+    Write-ActionLogEntry -Phase Started -Data (ConvertTo-ActionLogData $Result)
+    try {
+        $run = Invoke-BackupHelper -HelperPlan @{ Operation = 'RestoreRegistryBackup'; BackupId = $Plan.BackupId }
+        $present = if ($run.Status -eq 'Completed') { try { [bool] (Test-RegistryKeyPresent $Plan.NativeKey) } catch { $false } } else { $false }
+        $Result.PresentAfter = $present
+        # Der Helfer liest die .json selbst: Hat er einen anderen Schlüssel zurückgespielt als den bestätigten (die .json
+        # wurde nach der Bestätigung geändert), ist das kein Erfolg, auch wenn der bestätigte Schlüssel zufällig existiert.
+        $sameKey = $run.NativeKey -is [string] -and [string]::Equals($run.NativeKey, [string] $Plan.NativeKey, [StringComparison]::OrdinalIgnoreCase)
+        Complete-BackupHelperResult -Result $Result -Run $run -Verified ($present -and $sameKey) -SuccessMessage (New-InventoryMessage RestoreBackupDone $Plan.NativeKey)
+    }
+    catch {
+        $Result.Result = 'Failed'
+        $Result.Message = New-InventoryMessage RestoreBackupFailed $_.Exception.Message
+    }
+    $Result.CompletedAt = [datetime]::UtcNow
+    Write-ActionLogEntry -Phase Completed -Data (ConvertTo-ActionLogData $Result)
+    $Result
 }
 
 function New-RestoreBackupPlan {
@@ -77,7 +108,7 @@ function New-RestoreBackupPlan {
         return [pscustomobject] $plan
     }
     $info = Get-RegistryBackupInfo -File $file
-    $plan = New-BackupActionPlan -Action RestoreBackup -Name $info.Name -BackupId $info.Id -NativeKey $info.NativeKey -BackupFile $file.FullName -Method RegistryImport
+    $plan = New-BackupActionPlan -Action RestoreBackup -Name $info.Name -BackupId $info.Id -NativeKey $info.NativeKey -BackupFile $file.FullName -Method RegistryImport -Scope $info.Scope
     if ($info.Problem) {
         $plan.Result = 'Unsupported'; $plan.Message = $info.ProblemMessage
     }

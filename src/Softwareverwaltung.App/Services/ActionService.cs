@@ -168,6 +168,9 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
             case SoftwareActionKind.RemoveBackup:
                 command.AddCommand("Remove-RegistryBackup").AddParameter("InputObject", Required(source));
                 break;
+            case SoftwareActionKind.ClearExpiredBackups:
+                command.AddCommand("Clear-ExpiredRegistryBackup");
+                break;
             default:
                 command.AddCommand("Install-WingetPackageManager");
                 break;
