@@ -44,8 +44,10 @@ function Get-RegistryBackupInfo {
     if ($sidecar.Data) {
         $d = $sidecar.Data
         $name = $d.Name; $key = $d.NativeKey; $created = $d.CreatedAt; $reasons = @($d.Reasons)
-        # Der Bereich aus der .json muss zum Ort passen (eine HKLM-Sicherung liegt nur im Admin-Ordner).
-        $problem = if ($d.Scope -and $d.Scope -cne $fileScope) { 'MetadataInvalid' }
+        # Der Bereich aus der .json muss zum Ort passen (eine HKLM-Sicherung liegt nur im Admin-Ordner). Im Admin-Ordner
+        # muss er wie beim Helfer genau "Machine" sein, auch fehlend gilt dort als ungültig (sonst UAC-Klick für eine Ablehnung).
+        $scopeInvalid = if ($fileScope -eq 'Machine') { $d.Scope -cne 'Machine' } else { $d.Scope -and $d.Scope -cne $fileScope }
+        $problem = if ($scopeInvalid) { 'MetadataInvalid' }
         elseif ($content.Problem) { $content.Problem }
         else { Test-RegistryBackupContent -Text $content.Text -NativeKey $key -Scope $fileScope }
     }

@@ -7,7 +7,7 @@ function Restore-RegistryBackup {
         Vor dem Zurückspielen prüft das Modul streng: Die .json-Begleitdatei muss vorhanden und lesbar sein
         (sonst BackupMetadataMissing/BackupMetadataInvalid, z. B. bei älteren Sicherungen), die .reg-Datei darf
         genau einen Hauptschlüssel enthalten (der aus der .json, direkt unter einem Uninstall-Zweig des
-        Benutzers); jeder weitere Schlüsselkopf muss ein Unterschlüssel davon sein; keine Löschzeilen. Schlägt
+        passenden Bereichs: Benutzer im Benutzerordner, alle Benutzer im Admin-Ordner); jeder weitere Schlüsselkopf muss ein Unterschlüssel davon sein; keine Löschzeilen. Schlägt
         eine Prüfung fehl, wird nichts importiert, die Aktion wird protokolliert und ein Grund-Code geliefert.
         Existiert der Schlüssel inzwischen wieder, wird ebenfalls nichts importiert (RestoreKeyExists).
         Die Datei wird genau einmal gelesen, dieser Inhalt geprüft, in eine eigene temporäre Datei geschrieben
@@ -15,7 +15,8 @@ function Restore-RegistryBackup {
         gelöscht. Die Sicherung bleibt erhalten.
         HKLM: Das Modul prüft vorab dasselbe ohne Adminrechte (der Admin-Ordner ist lesbar); der Helfer findet die Datei
         nur über die Kennung im Admin-Ordner, prüft alles erneut und importiert genau die geprüften Bytes. Erfolg nur,
-        wenn der Helfer das meldet und der Schlüssel danach in der 64-Bit-Ansicht existiert. Ein Wiederherstellungspunkt
+        wenn der Helfer das meldet, der von ihm gemeldete Schlüssel der bestätigte ist und dieser danach in der
+        64-Bit-Ansicht existiert. Ein Wiederherstellungspunkt
         wird nie angelegt. Jede Aktion wird protokolliert (Action RestoreBackup); -WhatIf liefert den Plan.
     .PARAMETER InputObject
         Kennung (GUID) oder ein Objekt von Get-RegistryBackup.
@@ -82,7 +83,10 @@ function Invoke-RestoreMachineBackupPlan {
         $run = Invoke-BackupHelper -HelperPlan @{ Operation = 'RestoreRegistryBackup'; BackupId = $Plan.BackupId }
         $present = if ($run.Status -eq 'Completed') { try { [bool] (Test-RegistryKeyPresent $Plan.NativeKey) } catch { $false } } else { $false }
         $Result.PresentAfter = $present
-        Complete-BackupHelperResult -Result $Result -Run $run -Verified $present -SuccessMessage (New-InventoryMessage RestoreBackupDone $Plan.NativeKey)
+        # Der Helfer liest die .json selbst: Hat er einen anderen Schlüssel zurückgespielt als den bestätigten (die .json
+        # wurde nach der Bestätigung geändert), ist das kein Erfolg, auch wenn der bestätigte Schlüssel zufällig existiert.
+        $sameKey = $run.NativeKey -is [string] -and [string]::Equals($run.NativeKey, [string] $Plan.NativeKey, [StringComparison]::OrdinalIgnoreCase)
+        Complete-BackupHelperResult -Result $Result -Run $run -Verified ($present -and $sameKey) -SuccessMessage (New-InventoryMessage RestoreBackupDone $Plan.NativeKey)
     }
     catch {
         $Result.Result = 'Failed'
