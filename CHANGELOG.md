@@ -4,6 +4,11 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Beschädigte Meldungsargumente brechen nichts mehr ab
+
+- **Behoben:** Eine Begleitdatei einer Sicherung, deren Gründe zu wenige Argumente hatten (z. B. `NewerInstallNextTo` mit nur einem), ließ die ganze Liste „Sicherungen“ scheitern. Jetzt gilt nur diese Sicherung als `MetadataInvalid` (löschbar, nicht zurückspielbar), alle anderen laden normal; in beiden Ordnern.
+- Texte mit Platzhaltern werfen nie mehr: Passen Argumente nicht (beschädigte Datei, Antwort einer anderen Helferversion), erscheint der Text ohne eingesetzte Argumente und das Fehlerprotokoll des Moduls bekommt einen Eintrag (nur Schlüssel und Anzahl). Im Aktionsprotokoll gilt in diesem Fall der gespeicherte Text der Zeile.
+
 ### Sicherungen: Nacharbeit
 
 - **Behoben:** „Eintrag entfernen“ legte die Sicherung unter einer anderen Kennung an, als der Bestätigungsdialog nannte (HKCU und HKLM). Jetzt laufen „Eintrag entfernen“, „Zurückspielen“, „Sicherung löschen“ und „Aufräumen“ unter der Kennung aus dem bestätigten Plan (`-ConfirmedActionId`); eine ungültige oder schon benutzte Kennung bricht ab (`ActionIdInvalid`, `ActionIdUsed`).

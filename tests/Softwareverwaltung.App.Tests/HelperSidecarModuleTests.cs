@@ -73,4 +73,31 @@ public sealed class HelperSidecarModuleTests : IAsyncLifetime
         Assert.Equal(name, backup.Properties["Name"]?.Value);
         Assert.Equal(Key, backup.Properties["NativeKey"]?.Value);
     }
+
+    [Fact]
+    public async Task TheListLoadsEvenIfOneBackupHasDamagedReasons()
+    {
+        var good = WriteMachineBackup(Key, [new BackupReason("NewerInstallNextTo", ["Neu", "2.0"])]);
+        // NewerInstallNextTo braucht zwei Argumente; mit einem wäre früher die ganze Liste abgebrochen.
+        var bad = WriteMachineBackup(Key + "Kaputt", [new BackupReason("NewerInstallNextTo", ["Nur eins"])]);
+
+        var list = await new BackupService(_host).GetBackupsAsync();
+
+        Assert.Equal(2, list.Count);
+        var broken = Assert.Single(list, b => b.Id == bad);
+        Assert.Equal("MetadataInvalid", broken.ProblemCode);
+        Assert.False(broken.CanRestore);
+        Assert.True(Assert.Single(list, b => b.Id == good).CanRestore);
+    }
+
+    private string WriteMachineBackup(string key, BackupReason[] reasons)
+    {
+        var id = Guid.NewGuid().ToString();
+        var reg = Encoding.Unicode.GetPreamble()
+            .Concat(Encoding.Unicode.GetBytes($"Windows Registry Editor Version 5.00\r\n\r\n[{key}]\r\n\"DisplayName\"=\"x\"\r\n"))
+            .ToArray();
+        File.WriteAllBytes(Path.Combine(MachineFolder, id + ".reg"), reg);
+        File.WriteAllBytes(Path.Combine(MachineFolder, id + ".json"), RegistryRemoval.BuildSidecar(id, "Alt", key, DateTime.UtcNow, reasons));
+        return id;
+    }
 }

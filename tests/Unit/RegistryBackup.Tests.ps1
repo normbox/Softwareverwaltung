@@ -525,6 +525,36 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             }
         }
 
+        It 'zeigt eine Sicherung mit beschädigten Gründen als ungültig, ohne die Liste abzubrechen (<Folder>)' -TestCases @(
+            @{ Folder = 'Benutzerordner' }
+            @{ Folder = 'Admin-Ordner' }
+        ) {
+            $good = New-TestBackup -Key 'gut'
+            $bad = if ($Folder -eq 'Benutzerordner') { New-TestBackup -Key 'kaputt' } else { New-MachineBackup -Key 'kaputt' }
+            # NewerInstallNextTo braucht zwei Argumente (Name, Version); hier nur eins.
+            $json = Get-Content -LiteralPath $bad.Sidecar -Raw | ConvertFrom-Json
+            $json.Reasons = @([pscustomobject] @{ Code = 'OrphanedEntry'; Args = @() }, [pscustomobject] @{ Code = 'NewerInstallNextTo'; Args = @('Nur eins') })
+            [System.IO.File]::WriteAllText($bad.Sidecar, ($json | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+
+            $list = @(Get-RegistryBackup -ErrorVariable failures)
+            $failures | Should -BeNullOrEmpty
+            $list.Count | Should -Be 2
+            $broken = $list | Where-Object Id -EQ $bad.Id
+            $broken.Problem | Should -Be 'MetadataInvalid'
+            $broken.CanRestore | Should -BeFalse
+            ($list | Where-Object Id -EQ $good.Id).CanRestore | Should -BeTrue
+
+            (Restore-RegistryBackup $bad.Id -Confirm:$false).Result | Should -Be 'Unsupported'
+            $script:HelperPlans.Count | Should -Be 0
+            if ($Folder -eq 'Benutzerordner') {
+                (Remove-RegistryBackup $bad.Id -Confirm:$false).Result | Should -Be 'Succeeded' -Because 'eine beschädigte Sicherung bleibt löschbar'
+                Test-Path $bad.File | Should -BeFalse
+            }
+            else {
+                (Remove-RegistryBackup $bad.Id -WhatIf).Result | Should -Be 'Planned' -Because 'eine beschädigte Sicherung bleibt löschbar (über den Helfer)'
+            }
+        }
+
         It 'bleibt im Benutzerordner bei der bisherigen Prüfung (eine Begleitdatei mit BOM gilt dort weiter)' {
             $b = New-TestBackup
             $text = [System.IO.File]::ReadAllText($b.Sidecar)

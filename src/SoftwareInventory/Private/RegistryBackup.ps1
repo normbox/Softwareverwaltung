@@ -359,11 +359,17 @@ function Read-RegistryBackupSidecar {
     if ((Get-RecordValue $d 'SchemaVersion') -ne 1 -or -not $id -or -not $name -or -not $key -or $id -ine (Get-RegistryBackupId $File)) {
         return @{ Problem = 'MetadataInvalid'; Data = $null }
     }
+    # Gründe mit Argumenten, die nicht zu ihrem Text passen (z. B. zu wenige): Die Datei ist beschädigt. Nie die Liste
+    # abbrechen lassen, sondern nur diese Sicherung als ungültig zeigen (löschbar, nicht zurückspielbar).
+    $reasons = @(ConvertTo-KnownBackupReason (Get-RecordValue $d 'Reasons'))
+    foreach ($reason in $reasons) {
+        if (-not (Test-InventoryMessageArgs -Code $reason.Code -Arguments @($reason.Args))) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
+    }
     @{
         Problem = $null
         Data    = [pscustomobject] @{
             ActionId = $id; Name = $name; NativeKey = $key; Scope = [string] (Get-RecordValue $d 'Scope'); CreatedAt = $createdAt
-            Reasons  = @(ConvertTo-KnownBackupReason (Get-RecordValue $d 'Reasons'))
+            Reasons  = $reasons
         }
     }
 }
