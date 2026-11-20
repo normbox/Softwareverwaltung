@@ -72,6 +72,11 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
             // Entfernen eines Eintrags: CommandLine ist der Schlüssel, wie im Dialog gezeigt.
             command.AddParameter("ConfirmedCommandLine", confirmedPlan.CommandLine);
         }
+        if (UsesConfirmedActionId(kind) && !string.IsNullOrEmpty(confirmedPlan.ActionId))
+        {
+            // Dieselbe Kennung wie im Dialog (z. B. im Dateinamen der Sicherung); das Modul prüft sie.
+            command.AddParameter("ConfirmedActionId", confirmedPlan.ActionId);
+        }
         return await InvokeOutcomeAsync(command, cancellationToken).ConfigureAwait(false);
     }
 
@@ -147,6 +152,10 @@ public sealed class ActionService(IPowerShellHost host) : IActionService
         var result = await host.InvokeAsync(command, cancellationToken: cancellationToken).ConfigureAwait(false);
         return result.Output.Select(ActionHistoryEntry.FromPs).OrderByDescending(e => e.StartedAt).ToList();
     }
+
+    /// <summary>Aktionen, die die Kennung aus dem bestätigten Plan übernehmen (-ConfirmedActionId).</summary>
+    private static bool UsesConfirmedActionId(SoftwareActionKind kind) => kind is SoftwareActionKind.RemoveEntry
+        or SoftwareActionKind.RestoreBackup or SoftwareActionKind.RemoveBackup or SoftwareActionKind.ClearExpiredBackups;
 
     private static PSCommand NewCommand(SoftwareActionKind kind, PSObject? source, string method)
     {

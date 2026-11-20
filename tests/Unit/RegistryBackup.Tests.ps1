@@ -439,6 +439,47 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             Test-Path $machine.File | Should -BeTrue
         }
 
+        It 'führt <Action> unter der Kennung aus dem bestätigten Plan aus und lehnt eine benutzte Kennung ab' -TestCases @(
+            @{ Action = 'Zurückspielen' }
+            @{ Action = 'Löschen' }
+            @{ Action = 'Aufräumen' }
+        ) {
+            $machine = New-MachineBackup -AgeDays 400
+            $run = {
+                param([switch] $WhatIf, [string] $Id, [string] $Line)
+                $common = @{ WhatIf = $WhatIf }
+                if (-not $WhatIf) { $common = @{ Confirm = $false; ConfirmedActionId = $Id; ConfirmedCommandLine = $Line } }
+                switch ($Action) {
+                    'Zurückspielen' { Restore-RegistryBackup $machine.Id @common }
+                    'Löschen' { Remove-RegistryBackup $machine.Id @common }
+                    'Aufräumen' { Clear-ExpiredRegistryBackup @common }
+                }
+            }
+            $plan = & $run -WhatIf
+            $plan.Result | Should -Be 'Planned'
+            $r = & $run -Id $plan.ActionId -Line $plan.CommandLine
+            $r.Result | Should -Be 'Succeeded'
+            $r.ActionId | Should -Be $plan.ActionId
+            $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+            @($log.ActionId | Select-Object -Unique) | Should -Be @($plan.ActionId)
+
+            # Dieselbe Kennung ein zweites Mal: abgebrochen, ohne Helfer.
+            $machine = New-MachineBackup -Key 'zweit' -AgeDays 400
+            $calls = $script:HelperPlans.Count
+            $again = & $run -Id $plan.ActionId
+            $again.Result | Should -Be 'Cancelled'
+            $again.Message.Code | Should -Be 'ActionIdUsed'
+            $script:HelperPlans.Count | Should -Be $calls
+        }
+
+        It 'lehnt eine Kennung ab, die keine GUID ist, ohne den Helfer zu starten' {
+            $machine = New-MachineBackup
+            $r = Restore-RegistryBackup $machine.Id -Confirm:$false -ConfirmedActionId 'C:\x'
+            $r.Result | Should -Be 'Cancelled'
+            $r.Message.Code | Should -Be 'ActionIdInvalid'
+            $script:HelperPlans.Count | Should -Be 0
+        }
+
         It 'gilt nicht als Erfolg, wenn der Helfer einen anderen Schlüssel als den bestätigten zurückgespielt hat' {
             $machine = New-MachineBackup
             $plan = Restore-RegistryBackup $machine.Id -WhatIf

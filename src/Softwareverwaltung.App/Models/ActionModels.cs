@@ -26,6 +26,8 @@ public sealed record ActionOutcome
 {
     public required string Action { get; init; }
     public required string Name { get; init; }
+    /// <summary>Kennung der Aktion aus dem Plan; bei Sicherungen und „Eintrag entfernen“ wird genau sie ausgeführt.</summary>
+    public string? ActionId { get; init; }
     public string? Method { get; init; }
     public string? CommandLine { get; init; }
     public bool Elevated { get; init; }
@@ -83,6 +85,7 @@ public sealed record ActionOutcome
         {
             Action = Text(obj, "Action") ?? "",
             Name = Text(obj, "Name") ?? "",
+            ActionId = Text(obj, "ActionId"),
             Method = Text(obj, "Method"),
             CommandLine = Text(obj, "CommandLine"),
             Elevated = obj.Properties["Elevated"]?.Value is true,

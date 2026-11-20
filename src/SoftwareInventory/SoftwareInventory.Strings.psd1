@@ -300,6 +300,8 @@ Regeln:
     # Aktionen: Ausführung und Ergebnis
     ReasonNotConfirmed                      = 'Nicht bestätigt; es wurde nichts ausgeführt.'
     ReasonCommandChanged                    = 'Der Befehl hat sich seit der Bestätigung geändert; es wurde nichts ausgeführt. Bitte neu bestätigen. Jetzt: {0}'
+    ReasonActionIdInvalid                   = 'Die bestätigte Kennung der Aktion ist ungültig; es wurde nichts ausgeführt. Bitte neu bestätigen.'
+    ReasonActionIdUsed                      = 'Die bestätigte Kennung der Aktion wurde schon benutzt; es wurde nichts ausgeführt. Bitte neu bestätigen.'
     ReasonAppxRemoved                       = 'Store-App entfernt'
     ReasonAppxRemoveFailed                  = 'Store-App konnte nicht entfernt werden: {0}'
     ReasonActionTimeout                     = 'Keine Rückmeldung nach {0} Minuten; das Programm läuft eventuell noch. Zustand später prüfen.'

@@ -92,6 +92,64 @@ function New-BackupActionPlan {
     }
 }
 
+function Resolve-ConfirmedActionId {
+    <#
+    .SYNOPSIS
+        Kennung (ActionId) für den Plan einer Sicherungs- oder Entfernen-Aktion: neu, oder die aus dem -WhatIf-Plan
+        bestätigte, damit Dialog, Dateiname der Sicherung und Protokoll dieselbe Kennung zeigen.
+    .OUTPUTS
+        @{ Id; Problem }: Problem ist $null, ActionIdInvalid (keine GUID im Format D) oder ActionIdUsed (kommt schon im
+        Aktionsprotokoll oder als Sicherungsdatei vor). Mit Problem ist Id eine neue Kennung (für den Protokolleintrag
+        des Abbruchs), nie die abgelehnte.
+    #>
+    param([string] $ConfirmedActionId)
+    $fresh = [guid]::NewGuid().ToString()
+    if (-not $ConfirmedActionId) { return @{ Id = $fresh; Problem = $null } }
+    $guid = [guid]::Empty
+    if (-not [guid]::TryParseExact($ConfirmedActionId, 'D', [ref] $guid)) { return @{ Id = $fresh; Problem = 'ActionIdInvalid' } }
+    $id = $guid.ToString()
+    if (Test-ActionIdUsed -ActionId $id) { return @{ Id = $fresh; Problem = 'ActionIdUsed' } }
+    @{ Id = $id; Problem = $null }
+}
+
+function Test-ActionIdUsed {
+    <#
+    .SYNOPSIS
+        Kommt die Kennung schon vor? Im Text des Aktionsprotokolls (auch als Teil eines Dateinamens) oder als Anfang
+        eines Dateinamens in einem der beiden Sicherungsordner. Eine Protokolldatei, die sich nicht lesen lässt, zählt
+        als „benutzt“ (im Zweifel keine Kennung zweimal vergeben, sie wird Teil eines Dateinamens).
+    #>
+    param([Parameter(Mandatory)] [string] $ActionId)
+    $logs = Get-ActionLogDirectory
+    if (Test-Path -LiteralPath $logs -PathType Container) {
+        foreach ($file in Get-ChildItem -LiteralPath $logs -Filter '*.jsonl' -File -Force -ErrorAction SilentlyContinue) {
+            try {
+                $stream = [System.IO.FileStream]::new($file.FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                try { $content = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8).ReadToEnd() } finally { $stream.Dispose() }
+            }
+            catch { return $true }
+            if ($content.IndexOf($ActionId, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $true }
+        }
+    }
+    foreach ($directory in (Get-RegistryBackupDirectory), (Get-RegistryBackupMachineDirectory)) {
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) { continue }
+        foreach ($item in Get-ChildItem -LiteralPath $directory -Force -ErrorAction SilentlyContinue) {
+            if ($item.Name.StartsWith($ActionId, [StringComparison]::OrdinalIgnoreCase)) { return $true }
+        }
+    }
+    $false
+}
+
+function Set-ConfirmedActionId {
+    # Übernimmt die Kennung in einen Plan (pscustomobject); bei einem Problem wird der Plan abgebrochen (Cancelled).
+    param($Plan, [hashtable] $ActionId)
+    $Plan.ActionId = $ActionId.Id
+    if (-not $Plan.Result -and $ActionId.Problem) {
+        $Plan.Result = 'Cancelled'
+        $Plan.Message = New-InventoryMessage $ActionId.Problem
+    }
+}
+
 function Invoke-BackupHelper {
     <#
     .SYNOPSIS
