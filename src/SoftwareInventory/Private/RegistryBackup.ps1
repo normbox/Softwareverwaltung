@@ -203,7 +203,7 @@ function Test-RegistryBackupContent {
         Kommentar, Hex-Fortsetzung; sonst BadLine).
     .OUTPUTS
         $null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine, BadKeyLine, KeyNameUnsafe, KeyNotFound,
-        KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur User erlaubt) oder WrongScope
+        KeyMismatch, KeyOutside, KeyNotUninstall, MachineKeyInUserBackup (HKLM, aber nur User erlaubt) oder WrongScope
         (HKCU, aber nur Machine erlaubt). Der Helfer prüft mit denselben Regeln (RegistryBackupRules.cs); beide
         gegen tests/Data/registry-backup-cases.json.
     #>
@@ -258,7 +258,7 @@ function Test-RegistryBackupContent {
     $parent = $NativeKey.Substring(0, $cut)
     $location = Get-UninstallLocationNative | Where-Object { [string]::Equals($_.NativePath, $parent, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
     if (-not $location) { return 'KeyNotUninstall' }
-    if ($location.Scope -ne $Scope) { return $(if ($location.Scope -eq 'Machine') { 'MachineNotYet' } else { 'WrongScope' }) }
+    if ($location.Scope -ne $Scope) { return $(if ($location.Scope -eq 'Machine') { 'MachineKeyInUserBackup' } else { 'WrongScope' }) }
     $null
 }
 

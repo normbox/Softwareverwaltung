@@ -650,7 +650,7 @@ Describe 'Test-RegistryBackupContent (strenge Prüfung)' {
         @{ Case = 'Hauptschlüssel zweimal'; Zone = 'User'; Keys = @('App', 'App'); Main = 'App'; Expected = 'KeyOutside' }
         @{ Case = 'anderer Schlüssel zuerst'; Zone = 'User'; Keys = @('Other', 'App'); Main = 'App'; Expected = 'KeyMismatch' }
         @{ Case = 'Hauptschlüssel außerhalb der Uninstall-Zweige'; Zone = 'Elsewhere'; Keys = @('App'); Main = 'App'; Expected = 'KeyNotUninstall' }
-        @{ Case = 'Eintrag für alle Benutzer (HKLM)'; Zone = 'Machine'; Keys = @('App'); Main = 'App'; Expected = 'MachineNotYet' }
+        @{ Case = 'Eintrag für alle Benutzer (HKLM)'; Zone = 'Machine'; Keys = @('App'); Main = 'App'; Expected = 'MachineKeyInUserBackup' }
         @{ Case = 'Hauptschlüssel eine Ebene zu tief'; Zone = 'User'; Keys = @('App\Sub'); Main = 'App\Sub'; Expected = 'KeyNotUninstall' }
     ) {
         $base = switch ($Zone) { 'User' { $script:UserNative } 'Machine' { $script:MachineNative } default { $script:ElsewhereNative } }

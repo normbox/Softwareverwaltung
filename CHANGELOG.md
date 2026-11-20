@@ -4,6 +4,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### Sicherungen: Nacharbeit
+
+- **Behoben:** „Eintrag entfernen“ legte die Sicherung unter einer anderen Kennung an, als der Bestätigungsdialog nannte (HKCU und HKLM). Jetzt laufen „Eintrag entfernen“, „Zurückspielen“, „Sicherung löschen“ und „Aufräumen“ unter der Kennung aus dem bestätigten Plan (`-ConfirmedActionId`); eine ungültige oder schon benutzte Kennung bricht ab (`ActionIdInvalid`, `ActionIdUsed`).
+- Liste „Sicherungen“: Existiert der Eintrag schon wieder, steht dort „Eintrag ist vorhanden“ statt „Kann zurückgespielt werden“ (gelesen ohne UAC). Bei mehreren Sicherungen zum selben Schlüssel sind die älteren als „Ältere Sicherung“ markiert; sie bleiben zurückspielbar. Neue Felder in `Get-RegistryBackup`: `KeyPresent`, `IsLatest`, `NewerExists`.
+- Begleitdateien im Admin-Ordner prüft das Modul jetzt so streng wie der Helfer (UTF-8 ohne BOM, Typen, Feldnamen); eine Sicherung, die der Helfer ablehnen würde, erscheint nicht mehr als zurückspielbar.
+- Der Code `BackupMachineNotYet` heißt jetzt `BackupMachineKeyInUserBackup` (HKLM-Schlüssel in einer Sicherung des Benutzers). Ältere Protokolleinträge mit dem früheren Code behalten ihren Text.
+
 ### „Sicherungen“ auch für alle Benutzer (HKLM)
 
 - Die Ansicht „Sicherungen“ zeigt jetzt auch die Sicherungen für alle Benutzer aus dem Admin-Ordner, mit neuer Spalte „Bereich“ (Benutzer / Alle Benutzer). Dafür sind keine Adminrechte nötig (der Ordner ist lesbar). Zurückspielen und Löschen gehen für beide; bei HKLM-Sicherungen nennt die Bestätigung die Administratorabfrage und der Helfer führt sie aus (`Restore-RegistryBackup`/`Remove-RegistryBackup` mit `RestoreRegistryBackup`/`RemoveRegistryBackup`, Helferversion 7). Erfolg nur, wenn der Helfer das meldet und die eigene Prüfung danach zustimmt (Schlüssel da bzw. Dateien weg, sonst `BackupResultNotVerified`). Nie mit Wiederherstellungspunkt.

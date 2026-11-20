@@ -91,7 +91,7 @@ namespace SoftwareInventory.Helper
         /// <summary>
         /// null, wenn der Inhalt passt; sonst der Grund: Empty, BadLineBreak, BadHeader, BadLine, DeleteLine ([-…] oder
         /// "Name"=- / @=-), BadKeyLine, KeyNameUnsafe,
-        /// KeyNotFound, KeyMismatch, KeyOutside, KeyNotUninstall, MachineNotYet (HKLM, aber nur Benutzer erlaubt)
+        /// KeyNotFound, KeyMismatch, KeyOutside, KeyNotUninstall, MachineKeyInUserBackup (HKLM, aber nur Benutzer erlaubt)
         /// oder WrongScope (HKCU, aber nur HKLM erlaubt).
         /// </summary>
         public static string CheckContent(string text, string nativeKey, string allowedScope, IEnumerable<UninstallLocation> locations)
@@ -192,7 +192,7 @@ namespace SoftwareInventory.Helper
             }
             if (!string.Equals(location.Scope, allowedScope, StringComparison.Ordinal))
             {
-                return location.Scope == "Machine" ? "MachineNotYet" : "WrongScope";
+                return location.Scope == "Machine" ? "MachineKeyInUserBackup" : "WrongScope";
             }
             return null;
         }

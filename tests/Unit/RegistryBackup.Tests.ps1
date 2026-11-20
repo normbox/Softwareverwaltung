@@ -256,8 +256,18 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             Mock -ModuleName SoftwareInventory Invoke-RegImport { 0 }
             $b = New-TestBackup -Root $script:MachineRoot
             $r = Restore-RegistryBackup $b.Id -Confirm:$false
-            $r.Message.Code | Should -Be 'BackupMachineNotYet'
+            $r.Message.Code | Should -Be 'BackupMachineKeyInUserBackup'
             Should -Invoke -ModuleName SoftwareInventory Invoke-RegImport -Times 0 -Exactly
+        }
+
+        It 'zeigt ältere Protokolleinträge mit dem früheren Code BackupMachineNotYet weiter mit Text' {
+            $texts = InModuleScope SoftwareInventory {
+                (ConvertFrom-MessageData @{ Code = 'BackupMachineNotYet'; Args = @() }).Text
+                (New-InventoryMessage BackupMachineKeyInUserBackup).Text
+            }
+            $texts[0] | Should -Not -BeNullOrEmpty
+            $texts[0] | Should -Not -BeLike '*MachineNotYet*'
+            $texts[0] | Should -Be $texts[1]
         }
 
         It 'lehnt ab, wenn der Schlüssel schon wieder existiert' {
