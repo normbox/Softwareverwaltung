@@ -8,6 +8,11 @@ function Clear-ExpiredRegistryBackup {
         mit eigenem Namensschema. -WhatIf nennt die Anzahl abgelaufener Sicherungen (Result Planned); gibt es keine,
         passiert nichts (Result NotInstalled, ClearExpiredBackupsNothing). Jede Ausführung wird protokolliert
         (Action ClearExpiredBackups). Sicherungen des Benutzers räumt die Selbstbereinigung beim Start auf.
+    .PARAMETER ConfirmedCommandLine
+        CommandLine aus dem -WhatIf-Ergebnis (der Admin-Ordner). Weicht sie ab, wird nichts gelöscht (Cancelled).
+    .PARAMETER ConfirmedActionId
+        ActionId aus dem -WhatIf-Ergebnis: Die Ausführung nutzt genau diese Kennung (Protokoll). Keine GUID oder schon
+        benutzt: nichts wird ausgeführt (Cancelled, ActionIdInvalid bzw. ActionIdUsed). Ohne Angabe eine neue Kennung.
     .PARAMETER LogNotExecutable
         Für Oberflächen, die mit -WhatIf planen: Ist die Aktion nicht ausführbar, wird das trotzdem protokolliert.
     .EXAMPLE
@@ -17,6 +22,8 @@ function Clear-ExpiredRegistryBackup {
     [OutputType('SoftwareInventory.ActionResult')]
     param(
         [string] $ConfirmedCommandLine,
+
+        [string] $ConfirmedActionId,
 
         [switch] $LogNotExecutable
     )
@@ -32,6 +39,7 @@ function Clear-ExpiredRegistryBackup {
         $plan.Result = 'NotInstalled'; $plan.Message = New-InventoryMessage ClearExpiredBackupsNothing
     }
     $plan = [pscustomobject] $plan
+    Set-ConfirmedActionId -Plan $plan -ActionId (Resolve-ConfirmedActionId $ConfirmedActionId)
     if (-not $plan.Result -and $ConfirmedCommandLine -and $plan.CommandLine -cne $ConfirmedCommandLine) {
         $plan.Result = 'Cancelled'
         $plan.Message = New-InventoryMessage CommandChanged $plan.CommandLine

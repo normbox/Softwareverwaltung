@@ -30,6 +30,10 @@ public sealed record RegistryBackupItem
     public bool Elevated { get; init; }
     /// <summary>Älter als 365 Tage.</summary>
     public bool Expired { get; init; }
+    /// <summary>Der Eintrag existiert schon wieder (vom Modul ohne UAC gelesen); dann nicht zurückspielbar.</summary>
+    public bool KeyPresent { get; init; }
+    /// <summary>Zum selben Schlüssel gibt es eine neuere Sicherung.</summary>
+    public bool NewerExists { get; init; }
     public PSObject? Source { get; init; }
 
     public string ScopeText => AppText.Get(ScopeCode == "Machine" ? "BackupsScopeMachine" : "BackupsScopeUser");
@@ -44,8 +48,23 @@ public sealed record RegistryBackupItem
     {
         get
         {
-            var text = CanRestore ? AppText.Get("BackupsRestorable") : ProblemText ?? ProblemCode ?? "";
-            return Expired ? AppText.Get("BackupsExpired") + (text.Length > 0 ? "; " + text : "") : text;
+            // Problem der Sicherung vor „Eintrag ist vorhanden“; Markierungen (älter als 365 Tage, ältere Sicherung) vorn.
+            var text = CanRestore ? AppText.Get("BackupsRestorable")
+                : ProblemText ?? ProblemCode ?? (KeyPresent ? AppText.Get("BackupsKeyPresent") : "");
+            var marks = new List<string>();
+            if (Expired)
+            {
+                marks.Add(AppText.Get("BackupsExpired"));
+            }
+            if (NewerExists)
+            {
+                marks.Add(AppText.Get("BackupsOlderBackup"));
+            }
+            if (text.Length > 0)
+            {
+                marks.Add(text);
+            }
+            return string.Join("; ", marks);
         }
     }
 
@@ -77,6 +96,8 @@ public sealed record RegistryBackupItem
             ScopeCode = ActionOutcome.Text(obj, "Scope"),
             Elevated = obj.Properties["Elevated"]?.Value is true,
             Expired = obj.Properties["Expired"]?.Value is true,
+            KeyPresent = obj.Properties["KeyPresent"]?.Value is true,
+            NewerExists = obj.Properties["NewerExists"]?.Value is true,
             Source = obj,
         };
     }

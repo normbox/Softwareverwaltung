@@ -36,10 +36,14 @@ function Get-RegistryBackupInfo {
         sonst ein Code (Missing, Empty, ..., MetadataMissing, MetadataInvalid); ProblemMessage ist die Meldung dazu.
         Scope (User/Machine) folgt aus dem Ort der Datei; Elevated ist bei Machine gesetzt (Aktionen nur mit UAC über
         den Helfer, der alles erneut prüft). Expired: älter als 365 Tage (Änderungszeit der .reg).
+        KeyPresent: Der Eintrag existiert schon wieder ($true; dann ist CanRestore $false, Problem bleibt $null),
+        fehlt ($false) oder ist unbekannt ($null: Sicherung mit Problem oder Schlüssel nicht lesbar).
+        IsLatest/NewerExists setzt erst Get-RegistryBackup (Vergleich über alle Sicherungen).
     #>
     param([System.IO.FileInfo] $File)
     $fileScope = if ($File.PSObject.Properties['BackupScope'] -and $File.BackupScope -eq 'Machine') { 'Machine' } else { 'User' }
-    $sidecar = Read-RegistryBackupSidecar -File $File.FullName
+    # Im Admin-Ordner so streng wie der Helfer (Typen, UTF-8, Feldnamen).
+    $sidecar = Read-RegistryBackupSidecar -File $File.FullName -Strict:($fileScope -eq 'Machine')
     $content = Get-RegistryBackupText -File $File.FullName
     if ($sidecar.Data) {
         $d = $sidecar.Data
@@ -57,6 +61,9 @@ function Get-RegistryBackupInfo {
         $problem = $sidecar.Problem
     }
     $scope = $fileScope
+    # Gibt es den Eintrag schon wieder? Nur lesend, ohne UAC (HKLM in der 64-Bit-Ansicht wie der Helfer); nur für Sicherungen
+    # ohne Problem, deren Schlüssel die Inhaltsprüfung also als Uninstall-Schlüssel bestätigt hat. Nicht lesbar = unbekannt ($null).
+    $keyPresent = if (-not $problem -and $key) { try { [bool] (Test-RegistryKeyPresent $key) } catch { $null } } else { $null }
     [pscustomobject] @{
         PSTypeName     = 'SoftwareInventory.RegistryBackup'
         Id             = Get-RegistryBackupId $File.Name
@@ -68,7 +75,10 @@ function Get-RegistryBackupInfo {
         Expired        = [bool] (Test-RegistryBackupExpired -File $File)
         Reasons        = @($reasons | ForEach-Object { New-InventoryMessage $_.Code @($_.Args) })
         IsLegacy       = -not $sidecar.Data
-        CanRestore     = -not $problem
+        KeyPresent     = $keyPresent
+        IsLatest       = $false
+        NewerExists    = $false
+        CanRestore     = -not $problem -and $keyPresent -ne $true
         Problem        = $problem
         ProblemMessage = if ($problem) { New-InventoryMessage "Backup$problem" } else { $null }
         FileName       = $File.Name
@@ -89,6 +99,64 @@ function New-BackupActionPlan {
         BackupFile = $BackupFile; NativeKey = $NativeKey; BackupId = $BackupId
         HelperInWritableFolder = $(if ($elevated) { [bool] (Test-HelperInWritableFolder) } else { $false })
         State = [pscustomobject] @{ Present = $true; Version = $null }
+    }
+}
+
+function Resolve-ConfirmedActionId {
+    <#
+    .SYNOPSIS
+        Kennung (ActionId) für den Plan einer Sicherungs- oder Entfernen-Aktion: neu, oder die aus dem -WhatIf-Plan
+        bestätigte, damit Dialog, Dateiname der Sicherung und Protokoll dieselbe Kennung zeigen.
+    .OUTPUTS
+        @{ Id; Problem }: Problem ist $null, ActionIdInvalid (keine GUID im Format D) oder ActionIdUsed (kommt schon im
+        Aktionsprotokoll oder als Sicherungsdatei vor). Mit Problem ist Id eine neue Kennung (für den Protokolleintrag
+        des Abbruchs), nie die abgelehnte.
+    #>
+    param([string] $ConfirmedActionId)
+    $fresh = [guid]::NewGuid().ToString()
+    if (-not $ConfirmedActionId) { return @{ Id = $fresh; Problem = $null } }
+    $guid = [guid]::Empty
+    if (-not [guid]::TryParseExact($ConfirmedActionId, 'D', [ref] $guid)) { return @{ Id = $fresh; Problem = 'ActionIdInvalid' } }
+    $id = $guid.ToString()
+    if (Test-ActionIdUsed -ActionId $id) { return @{ Id = $fresh; Problem = 'ActionIdUsed' } }
+    @{ Id = $id; Problem = $null }
+}
+
+function Test-ActionIdUsed {
+    <#
+    .SYNOPSIS
+        Kommt die Kennung schon vor? Im Text des Aktionsprotokolls (auch als Teil eines Dateinamens) oder als Anfang
+        eines Dateinamens in einem der beiden Sicherungsordner. Eine Protokolldatei, die sich nicht lesen lässt, zählt
+        als „benutzt“ (im Zweifel keine Kennung zweimal vergeben, sie wird Teil eines Dateinamens).
+    #>
+    param([Parameter(Mandatory)] [string] $ActionId)
+    $logs = Get-ActionLogDirectory
+    if (Test-Path -LiteralPath $logs -PathType Container) {
+        foreach ($file in Get-ChildItem -LiteralPath $logs -Filter '*.jsonl' -File -Force -ErrorAction SilentlyContinue) {
+            try {
+                $stream = [System.IO.FileStream]::new($file.FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                try { $content = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8).ReadToEnd() } finally { $stream.Dispose() }
+            }
+            catch { return $true }
+            if ($content.IndexOf($ActionId, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $true }
+        }
+    }
+    foreach ($directory in (Get-RegistryBackupDirectory), (Get-RegistryBackupMachineDirectory)) {
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) { continue }
+        foreach ($item in Get-ChildItem -LiteralPath $directory -Force -ErrorAction SilentlyContinue) {
+            if ($item.Name.StartsWith($ActionId, [StringComparison]::OrdinalIgnoreCase)) { return $true }
+        }
+    }
+    $false
+}
+
+function Set-ConfirmedActionId {
+    # Übernimmt die Kennung in einen Plan (pscustomobject); bei einem Problem wird der Plan abgebrochen (Cancelled).
+    param($Plan, [hashtable] $ActionId)
+    $Plan.ActionId = $ActionId.Id
+    if (-not $Plan.Result -and $ActionId.Problem) {
+        $Plan.Result = 'Cancelled'
+        $Plan.Message = New-InventoryMessage $ActionId.Problem
     }
 }
 

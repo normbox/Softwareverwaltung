@@ -236,6 +236,41 @@ public sealed class BackupsViewModelTests
     });
 
     [Fact]
+    public void AnExistingEntryIsShownAndCannotBeRestored() => RunOnDispatcher(async () =>
+    {
+        var present = RegistryBackupItem.FromPs(Ps(("Id", "id-p"), ("Name", "Jan"), ("CanRestore", false), ("KeyPresent", true)));
+        var (vm, _, _, _) = Create(true, present);
+        await vm.LoadAsync();
+
+        Assert.Equal(AppText.Get("BackupsKeyPresent"), vm.Items[0].StatusText);
+        vm.SelectedItem = vm.Items[0];
+        Assert.False(vm.RestoreCommand.CanExecute(null));
+        Assert.True(vm.DeleteCommand.CanExecute(null));
+    });
+
+    [Fact]
+    public void OlderBackupsOfTheSameKeyAreMarkedAfterTheExpiredMarkAndStayRestorable() => RunOnDispatcher(async () =>
+    {
+        var older = RegistryBackupItem.FromPs(Ps(("Id", "id-o"), ("Name", "Jan"), ("CanRestore", true), ("NewerExists", true), ("Expired", true)));
+        var latest = RegistryBackupItem.FromPs(Ps(("Id", "id-n"), ("Name", "Jan"), ("CanRestore", true), ("IsLatest", true)));
+        var (vm, _, _, _) = Create(true, latest, older);
+        await vm.LoadAsync();
+
+        Assert.Equal(AppText.Get("BackupsRestorable"), vm.Items[0].StatusText);
+        Assert.Equal(string.Join("; ", AppText.Get("BackupsExpired"), AppText.Get("BackupsOlderBackup"), AppText.Get("BackupsRestorable")), vm.Items[1].StatusText);
+        vm.SelectedItem = vm.Items[1];
+        Assert.True(vm.RestoreCommand.CanExecute(null));
+    });
+
+    [Fact]
+    public void AProblemOfTheBackupIsShownBeforeAnExistingEntry()
+    {
+        var item = RegistryBackupItem.FromPs(Ps(("Id", "id-x"), ("Name", "Jan"), ("CanRestore", false), ("KeyPresent", true), ("Problem", "KeyOutside"),
+            ("ProblemMessage", Message("BackupKeyOutside", "Fremder Schlüssel"))));
+        Assert.Equal("Fremder Schlüssel", item.StatusText);
+    }
+
+    [Fact]
     public void TheElevationSymbolIsTheShieldOnlyWhenAdminRightsAreNeeded()
     {
         var converter = new Softwareverwaltung.App.Converters.ElevationSymbolConverter();

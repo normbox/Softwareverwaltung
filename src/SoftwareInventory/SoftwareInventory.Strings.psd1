@@ -226,7 +226,9 @@ Regeln:
     ReasonBackupKeyMismatch                 = 'Der Schlüssel in der Sicherungsdatei passt nicht zu den Angaben der Sicherung'
     ReasonBackupKeyOutside                  = 'Die Sicherungsdatei enthält Schlüssel außerhalb des gesicherten Eintrags'
     ReasonBackupKeyNotUninstall             = 'Der Schlüssel liegt nicht direkt unter einem Uninstall-Zweig'
-    ReasonBackupMachineNotYet               = 'Die Sicherung im Benutzerordner enthält einen Eintrag für alle Benutzer; solche Sicherungen spielt nur der Helfer aus dem Admin-Ordner zurück, diese wird nicht zurückgespielt'
+    ReasonBackupMachineKeyInUserBackup      = 'Diese Sicherung im Benutzerordner enthält einen Eintrag für alle Benutzer und wird nicht zurückgespielt'
+    # Früherer Name desselben Codes (bis PR #74): nur noch für ältere Einträge im Aktionsprotokoll, deren Text neu entsteht.
+    ReasonBackupMachineNotYet               = 'Diese Sicherung im Benutzerordner enthält einen Eintrag für alle Benutzer und wird nicht zurückgespielt'
     ReasonBackupWrongScope                  = 'Der Schlüssel gehört nicht zum Bereich dieser Sicherung (Benutzer oder alle Benutzer)'
     ReasonBackupKeyNameUnsafe               = 'Der Schlüsselname enthält [ ], Anführungszeichen oder Steuerzeichen; solche Einträge werden nicht automatisch gesichert, entfernt oder zurückgespielt (Handarbeit)'
     ReasonBackupBadLine                     = 'Die Sicherungsdatei enthält eine Zeile in unbekanntem Format und wird nicht zurückgespielt'
@@ -300,6 +302,8 @@ Regeln:
     # Aktionen: Ausführung und Ergebnis
     ReasonNotConfirmed                      = 'Nicht bestätigt; es wurde nichts ausgeführt.'
     ReasonCommandChanged                    = 'Der Befehl hat sich seit der Bestätigung geändert; es wurde nichts ausgeführt. Bitte neu bestätigen. Jetzt: {0}'
+    ReasonActionIdInvalid                   = 'Die bestätigte Kennung der Aktion ist ungültig; es wurde nichts ausgeführt. Bitte neu bestätigen.'
+    ReasonActionIdUsed                      = 'Die bestätigte Kennung der Aktion wurde schon benutzt; es wurde nichts ausgeführt. Bitte neu bestätigen.'
     ReasonAppxRemoved                       = 'Store-App entfernt'
     ReasonAppxRemoveFailed                  = 'Store-App konnte nicht entfernt werden: {0}'
     ReasonActionTimeout                     = 'Keine Rückmeldung nach {0} Minuten; das Programm läuft eventuell noch. Zustand später prüfen.'

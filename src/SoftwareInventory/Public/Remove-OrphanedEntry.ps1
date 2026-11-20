@@ -21,6 +21,10 @@ function Remove-OrphanedEntry {
         Gründe (Reasons am Eingabeobjekt) übernimmt das Modul nur, wenn der Code bekannt ist.
     .PARAMETER ConfirmedCommandLine
         CommandLine aus dem -WhatIf-Ergebnis (der Schlüssel). Weicht sie ab, wird nichts entfernt (Cancelled).
+    .PARAMETER ConfirmedActionId
+        ActionId aus dem -WhatIf-Ergebnis: Die Ausführung nutzt genau diese Kennung, die Sicherung heißt also so wie im
+        Dialog angezeigt. Keine GUID oder schon benutzt (Protokoll oder vorhandene Sicherung): nichts wird entfernt
+        (Cancelled, ActionIdInvalid bzw. ActionIdUsed). Ohne Angabe eine neue Kennung.
     .PARAMETER LogNotExecutable
         Für Oberflächen, die mit -WhatIf planen: Ist die Aktion nicht ausführbar, wird das trotzdem protokolliert.
     .EXAMPLE
@@ -34,6 +38,8 @@ function Remove-OrphanedEntry {
 
         [string] $ConfirmedCommandLine,
 
+        [string] $ConfirmedActionId,
+
         [switch] $LogNotExecutable
     )
 
@@ -45,7 +51,9 @@ function Remove-OrphanedEntry {
                 Write-Error (Get-LocalizedString 'ErrorNotInventoryRecord')
                 continue
             }
-            $plan = New-RemoveEntryPlan -Record $record -Reasons (Get-RecordValue $item 'Reasons')
+            $actionId = Resolve-ConfirmedActionId $ConfirmedActionId
+            $plan = New-RemoveEntryPlan -Record $record -Reasons (Get-RecordValue $item 'Reasons') -ActionId $actionId.Id
+            Set-ConfirmedActionId -Plan $plan -ActionId $actionId
             if (-not $plan.Result -and $ConfirmedCommandLine -and $plan.CommandLine -cne $ConfirmedCommandLine) {
                 $plan.Result = 'Cancelled'
                 $plan.Message = New-InventoryMessage CommandChanged $plan.CommandLine
@@ -72,8 +80,8 @@ function Remove-OrphanedEntry {
 
 function New-RemoveEntryPlan {
     # Plan mit erneuter Prüfung des Schlüssels; Result gesetzt, wenn nichts zu entfernen ist.
-    param($Record, $Reasons)
-    $actionId = [guid]::NewGuid().ToString()
+    # ActionId: die bestätigte aus dem -WhatIf-Plan (Resolve-ConfirmedActionId), sonst neu; sie wird Teil des Dateinamens der Sicherung.
+    param($Record, $Reasons, [string] $ActionId = ([guid]::NewGuid().ToString()))
     $keyPath = Get-RecordValue $Record 'RegistryKey'
     $plan = [ordered]@{
         PSTypeName = 'SoftwareInventory.ActionPlan'; ActionId = $actionId; Action = 'RemoveEntry'; Name = $Record.Name

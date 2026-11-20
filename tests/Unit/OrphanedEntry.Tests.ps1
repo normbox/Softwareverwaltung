@@ -230,6 +230,65 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         $log[1].Result | Should -Be 'Succeeded'
     }
 
+    Context 'bestätigte Kennung (ConfirmedActionId)' {
+        BeforeEach {
+            # Test-ActionIdUsed liest beide Sicherungsordner: nie den echten Admin-Ordner unter Program Files.
+            Mock -ModuleName SoftwareInventory Get-RegistryBackupMachineDirectory { Join-Path $script:AppDir 'machine-backup' }
+        }
+
+        It 'legt die Sicherung unter genau der Kennung an, die der Dialog gezeigt hat' {
+            $plan = Get-Orphan | Remove-OrphanedEntry -WhatIf
+            $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedCommandLine $plan.CommandLine -ConfirmedActionId $plan.ActionId
+            $r.Result | Should -Be 'Succeeded'
+            $r.ActionId | Should -Be $plan.ActionId
+            $r.BackupFile | Should -Be $plan.Message.Args[1] -Because 'der Dialog nennt genau diese Datei'
+            Test-Path -LiteralPath $plan.Message.Args[1] | Should -BeTrue
+            $log = Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\actions') -Filter '*.jsonl' | Get-Content | ForEach-Object { $_ | ConvertFrom-Json }
+            @($log.ActionId | Select-Object -Unique) | Should -Be @($plan.ActionId)
+        }
+
+        It 'bricht ab, ohne etwas zu ändern, wenn die Kennung <Case>' -TestCases @(
+            @{ Case = 'keine GUID ist'; Mode = 'Invalid'; Code = 'ActionIdInvalid' }
+            @{ Case = 'schon im Protokoll steht'; Mode = 'Logged'; Code = 'ActionIdUsed' }
+            @{ Case = 'schon eine Sicherung benennt'; Mode = 'File'; Code = 'ActionIdUsed' }
+        ) {
+            $id = [guid]::NewGuid().ToString()
+            switch ($Mode) {
+                'Invalid' { $id = 'keine-guid' }
+                'Logged' {
+                    $dir = Join-Path $script:AppDir 'logs\actions'; New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                    Set-Content -LiteralPath (Join-Path $dir 'actions-alt.jsonl') -Value "{`"ActionId`":`"$($id.ToUpperInvariant())`",`"Phase`":`"Completed`"}"
+                }
+                'File' {
+                    $dir = Join-Path $script:AppDir 'logs\registry-backup'; New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                    Set-Content -LiteralPath (Join-Path $dir "${id}_Jan_0.5.16.json") -Value '{}'
+                }
+            }
+            $plan = Get-Orphan | Remove-OrphanedEntry -WhatIf
+            $r = Get-Orphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedCommandLine $plan.CommandLine -ConfirmedActionId $id
+            $r.Result | Should -Be 'Cancelled'
+            $r.Message.Code | Should -Be $Code
+            $r.ActionId | Should -Not -Be $id -Because 'der Abbruch wird unter einer neuen Kennung protokolliert'
+            Test-Path "$($script:User)\janold" | Should -BeTrue
+            Should -Invoke -ModuleName SoftwareInventory Invoke-RegExport -Times 0 -Exactly
+        }
+
+        It 'lässt eine Kennung nicht zweimal ausführen' {
+            $plan = Get-Orphan | Remove-OrphanedEntry -WhatIf
+            (Get-Orphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedActionId $plan.ActionId).Result | Should -Be 'Succeeded'
+            # Derselbe Eintrag taucht wieder auf (z. B. zurückgespielt): dieselbe Kennung darf nicht noch einmal laufen.
+            New-UninstallKey $script:User 'janold' @{
+                DisplayName = 'Jan 0.5.16'; DisplayVersion = '0.5.16'; Publisher = 'Jan'
+                DisplayIcon = "$($script:Programs)\uninstallerIcon.ico"; UninstallString = "`"$($script:Programs)\Uninstall Jan.exe`" /currentuser"
+            }
+            $again = Get-Orphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedActionId $plan.ActionId
+            $again.Result | Should -Be 'Cancelled'
+            $again.Message.Code | Should -Be 'ActionIdUsed'
+            Test-Path "$($script:User)\janold" | Should -BeTrue
+            @(Get-ChildItem -LiteralPath (Join-Path $script:AppDir 'logs\registry-backup') -Filter '*.reg').Count | Should -Be 1
+        }
+    }
+
     It 'entfernt nichts, wenn die Sicherung nicht passt (<Mode>)' -TestCases @(
         @{ Mode = 'Empty'; Expected = 'Empty' }
         @{ Mode = 'WrongKey'; Expected = 'KeyMismatch' }
@@ -442,6 +501,16 @@ Describe 'Remove-OrphanedEntry für alle Benutzer (HKLM über den Helfer)' {
         $log[1].Result | Should -Be 'Succeeded'
     }
 
+    It 'gibt dem Helfer die bestätigte Kennung, damit die Sicherung so heißt wie im Dialog' {
+        # Der Helfer-Nachbau rechnet mit dem echten Admin-Pfad; die Prüfung „schon benutzt“ (liest die Ordner) ist anderswo getestet.
+        Mock -ModuleName SoftwareInventory Test-ActionIdUsed { $false }
+        $plan = Get-MachineOrphan | Remove-OrphanedEntry -WhatIf
+        $r = Get-MachineOrphan | Remove-OrphanedEntry -Confirm:$false -ConfirmedCommandLine $plan.CommandLine -ConfirmedActionId $plan.ActionId
+        $r.ActionId | Should -Be $plan.ActionId
+        $r.BackupFile | Should -Be $plan.Message.Args[1]
+        Should -Invoke -ModuleName SoftwareInventory Start-ElevatedHelper -Times 1 -Exactly -ParameterFilter { $HelperPlan.ActionId -ceq $plan.ActionId }
+    }
+
     It 'prüft bei einem 32-Bit-Eintrag (WOW6432Node) genau diesen Schlüssel, wie der Helfer' {
         $r = Get-MachineOrphan -Root $script:Machine32 -Architecture 'X86' | Remove-OrphanedEntry -Confirm:$false
         $r.Result | Should -Be 'Succeeded'
@@ -581,7 +650,7 @@ Describe 'Test-RegistryBackupContent (strenge Prüfung)' {
         @{ Case = 'Hauptschlüssel zweimal'; Zone = 'User'; Keys = @('App', 'App'); Main = 'App'; Expected = 'KeyOutside' }
         @{ Case = 'anderer Schlüssel zuerst'; Zone = 'User'; Keys = @('Other', 'App'); Main = 'App'; Expected = 'KeyMismatch' }
         @{ Case = 'Hauptschlüssel außerhalb der Uninstall-Zweige'; Zone = 'Elsewhere'; Keys = @('App'); Main = 'App'; Expected = 'KeyNotUninstall' }
-        @{ Case = 'Eintrag für alle Benutzer (HKLM)'; Zone = 'Machine'; Keys = @('App'); Main = 'App'; Expected = 'MachineNotYet' }
+        @{ Case = 'Eintrag für alle Benutzer (HKLM)'; Zone = 'Machine'; Keys = @('App'); Main = 'App'; Expected = 'MachineKeyInUserBackup' }
         @{ Case = 'Hauptschlüssel eine Ebene zu tief'; Zone = 'User'; Keys = @('App\Sub'); Main = 'App\Sub'; Expected = 'KeyNotUninstall' }
     ) {
         $base = switch ($Zone) { 'User' { $script:UserNative } 'Machine' { $script:MachineNative } default { $script:ElsewhereNative } }

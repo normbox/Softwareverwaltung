@@ -22,6 +22,9 @@ function Restore-RegistryBackup {
         Kennung (GUID) oder ein Objekt von Get-RegistryBackup.
     .PARAMETER ConfirmedCommandLine
         CommandLine aus dem -WhatIf-Ergebnis (die Kennung). Weicht sie ab, wird nichts zurückgespielt (Cancelled).
+    .PARAMETER ConfirmedActionId
+        ActionId aus dem -WhatIf-Ergebnis: Die Ausführung nutzt genau diese Kennung (Protokoll). Keine GUID oder schon
+        benutzt: nichts wird ausgeführt (Cancelled, ActionIdInvalid bzw. ActionIdUsed). Ohne Angabe eine neue Kennung.
     .PARAMETER LogNotExecutable
         Für Oberflächen, die mit -WhatIf planen: Ist die Aktion nicht ausführbar, wird das trotzdem protokolliert.
     .EXAMPLE
@@ -35,6 +38,8 @@ function Restore-RegistryBackup {
 
         [string] $ConfirmedCommandLine,
 
+        [string] $ConfirmedActionId,
+
         [switch] $LogNotExecutable
     )
 
@@ -42,6 +47,7 @@ function Restore-RegistryBackup {
         foreach ($item in $InputObject) {
             if ($null -eq $item) { continue }
             $plan = New-RestoreBackupPlan -Id (Get-BackupActionInput $item)
+            Set-ConfirmedActionId -Plan $plan -ActionId (Resolve-ConfirmedActionId $ConfirmedActionId)
             if (-not $plan.Result -and $ConfirmedCommandLine -and $plan.CommandLine -cne $ConfirmedCommandLine) {
                 $plan.Result = 'Cancelled'
                 $plan.Message = New-InventoryMessage CommandChanged $plan.CommandLine

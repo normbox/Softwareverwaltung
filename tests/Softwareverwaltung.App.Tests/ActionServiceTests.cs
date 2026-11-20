@@ -25,6 +25,8 @@ public sealed class ActionServiceTests : IAsyncLifetime
                 $script:TestAppData = $Dir
                 function script:Get-AppDataDirectory { $script:TestAppData }
                 function script:Get-SettingsPath { Join-Path $script:TestAppData 'settings.json' }
+                # Nie den echten Admin-Ordner unter Program Files lesen.
+                function script:Get-RegistryBackupMachineDirectory { Join-Path $script:TestAppData 'machine-backup' }
             } $Dir
             """).AddParameter("Dir", _directory));
         Assert.Empty(result.Errors);
@@ -87,5 +89,31 @@ public sealed class ActionServiceTests : IAsyncLifetime
         Assert.Equal("NotInstalled", outcome.Result);
         var history = await _service.GetHistoryAsync("Nicht installiert");
         Assert.Equal("NotInstalled", Assert.Single(history).Result);
+    }
+
+    [Fact]
+    public async Task ExecuteUsesTheActionIdOfTheConfirmedPlanForBackupActions()
+    {
+        // Unbekannte Sicherung: das Modul führt nichts aus, übernimmt aber die bestätigte Kennung (Protokoll).
+        var backupId = Guid.NewGuid().ToString();
+        var confirmedId = Guid.NewGuid().ToString();
+        var plan = new ActionOutcome { Action = "RemoveBackup", Name = backupId, Result = "Planned", CommandLine = backupId, ActionId = confirmedId };
+
+        var outcome = await _service.ExecuteAsync(SoftwareActionKind.RemoveBackup, PSObject.AsPSObject(backupId), plan);
+
+        Assert.Equal("NotInstalled", outcome.Result);
+        Assert.Equal(confirmedId, outcome.ActionId);
+    }
+
+    [Fact]
+    public async Task ExecuteDoesNotPassTheActionIdForUpdatesAndUninstalls()
+    {
+        var plan = new ActionOutcome { Action = "Uninstall", Name = "Nicht installiert", Result = "Planned", ActionId = Guid.NewGuid().ToString() };
+
+        var outcome = await _service.ExecuteAsync(SoftwareActionKind.Uninstall, await MissingProgramAsync(), plan);
+
+        // Uninstall kennt -ConfirmedActionId nicht: übergäbe die App sie, scheiterte der Aufruf an der Parameterbindung.
+        Assert.Equal("NotInstalled", outcome.Result);
+        Assert.NotEqual(plan.ActionId, outcome.ActionId);
     }
 }

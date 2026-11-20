@@ -12,7 +12,7 @@
     { "name": "Groß-/Kleinschreibung egal", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\APP]\r\n", "expected": null },
     { "name": "Hauptschlüssel unter HKLM", "scope": "Machine", "key": "{M}\\App", "text": "{H}\r\n\r\n[{M}\\App]\r\n\"DisplayName\"=\"x\"\r\n", "expected": null },
     { "name": "Hauptschlüssel unter HKLM WOW6432Node", "scope": "Machine", "key": "{M32}\\App", "text": "{H}\r\n\r\n[{M32}\\App]\r\n\r\n[{M32}\\App\\Sub]\r\n", "expected": null },
-    { "name": "HKLM-Schlüssel, aber nur Benutzer erlaubt", "scope": "User", "key": "{M}\\App", "text": "{H}\r\n\r\n[{M}\\App]\r\n", "expected": "MachineNotYet" },
+    { "name": "HKLM-Schlüssel, aber nur Benutzer erlaubt", "scope": "User", "key": "{M}\\App", "text": "{H}\r\n\r\n[{M}\\App]\r\n", "expected": "MachineKeyInUserBackup" },
     { "name": "HKCU-Schlüssel, aber nur HKLM erlaubt", "scope": "Machine", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n", "expected": "WrongScope" },
     { "name": "Präfix-Trick: AppX ist kein Unterschlüssel von App", "scope": "User", "key": "{U}\\App", "text": "{H}\r\n\r\n[{U}\\App]\r\n\r\n[{U}\\AppX]\r\n", "expected": "KeyOutside" },
     { "name": "Präfix-Trick bei HKLM", "scope": "Machine", "key": "{M}\\App", "text": "{H}\r\n\r\n[{M}\\App]\r\n\r\n[{M}\\App2]\r\n", "expected": "KeyOutside" },
