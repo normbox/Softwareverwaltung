@@ -411,6 +411,48 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $script:HelperPlans.Count | Should -Be 0 -Because 'eine Sicherung, die der Helfer ablehnen würde, braucht keine UAC-Abfrage'
         }
 
+        It 'prüft die Begleitdatei im Admin-Ordner so streng wie der Helfer: <Case>' -TestCases @(
+            @{ Case = 'gültig wie vom Helfer (Gegenprobe)'; From = $null; To = $null; Mode = 'Text'; Valid = $true }
+            @{ Case = 'SchemaVersion als Zeichenkette'; From = '"SchemaVersion": 1,'; To = '"SchemaVersion": "1",'; Mode = 'Text'; Valid = $false }
+            @{ Case = 'SchemaVersion als Kommazahl'; From = '"SchemaVersion": 1,'; To = '"SchemaVersion": 1.0,'; Mode = 'Text'; Valid = $false }
+            @{ Case = 'Scope als Liste'; From = '"Scope": "Machine"'; To = '"Scope": ["Machine"]'; Mode = 'Text'; Valid = $false }
+            @{ Case = 'NativeKey als Zahl'; From = '"NativeKey": "'; To = '"NativeKey": 1, "Unused": "'; Mode = 'Text'; Valid = $false }
+            @{ Case = 'Feldname in anderer Schreibweise'; From = '"NativeKey"'; To = '"nativekey"'; Mode = 'Text'; Valid = $false }
+            @{ Case = 'mit BOM'; From = $null; To = $null; Mode = 'Bom'; Valid = $false }
+            @{ Case = 'ungültiges UTF-8'; From = $null; To = $null; Mode = 'BadUtf8'; Valid = $false }
+        ) {
+            $machine = New-MachineBackup -Name 'XX-Programm'
+            $text = [ordered]@{
+                SchemaVersion = 1; ActionId = $machine.Id; CreatedAt = '2026-11-20T10:00:00.0000000Z'; Name = 'XX-Programm'
+                NativeKey = $machine.Native; Scope = 'Machine'; Reasons = @()
+            } | ConvertTo-Json
+            if ($From) { $text.Contains($From) | Should -BeTrue -Because 'der Ersatz muss greifen'; $text = $text.Replace($From, $To) }
+            $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($text)
+            switch ($Mode) {
+                'Bom' { $bytes = [byte[]] (@(0xEF, 0xBB, 0xBF) + $bytes) }
+                'BadUtf8' {
+                    # "XX" im Namen durch eine ungültige UTF-8-Folge (C3 28) ersetzen.
+                    $at = [System.Text.Encoding]::ASCII.GetString($bytes).IndexOf('XX-Programm')
+                    $bytes[$at] = 0xC3; $bytes[$at + 1] = 0x28
+                }
+            }
+            [System.IO.File]::WriteAllBytes($machine.Sidecar, $bytes)
+            $item = Get-RegistryBackup -Id $machine.Id
+            $item.CanRestore | Should -Be $Valid
+            if (-not $Valid) {
+                $item.Problem | Should -Be 'MetadataInvalid'
+                (Restore-RegistryBackup $machine.Id -Confirm:$false).Result | Should -Be 'Unsupported'
+                $script:HelperPlans.Count | Should -Be 0
+            }
+        }
+
+        It 'bleibt im Benutzerordner bei der bisherigen Prüfung (eine Begleitdatei mit BOM gilt dort weiter)' {
+            $b = New-TestBackup
+            $text = [System.IO.File]::ReadAllText($b.Sidecar)
+            [System.IO.File]::WriteAllText($b.Sidecar, $text, [System.Text.UTF8Encoding]::new($true))
+            (Get-RegistryBackup -Id $b.Id).CanRestore | Should -BeTrue
+        }
+
         It 'überspringt im Admin-Ordner Dateien, die Links (Reparse-Points) sind' {
             $machine = New-MachineBackup
             $linkId = [guid]::NewGuid().ToString()

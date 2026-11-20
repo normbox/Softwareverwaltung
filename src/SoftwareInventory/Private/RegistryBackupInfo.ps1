@@ -39,7 +39,8 @@ function Get-RegistryBackupInfo {
     #>
     param([System.IO.FileInfo] $File)
     $fileScope = if ($File.PSObject.Properties['BackupScope'] -and $File.BackupScope -eq 'Machine') { 'Machine' } else { 'User' }
-    $sidecar = Read-RegistryBackupSidecar -File $File.FullName
+    # Im Admin-Ordner so streng wie der Helfer (Typen, UTF-8, Feldnamen).
+    $sidecar = Read-RegistryBackupSidecar -File $File.FullName -Strict:($fileScope -eq 'Machine')
     $content = Get-RegistryBackupText -File $File.FullName
     if ($sidecar.Data) {
         $d = $sidecar.Data

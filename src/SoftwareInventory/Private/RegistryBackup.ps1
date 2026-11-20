@@ -314,14 +314,37 @@ function Read-RegistryBackupSidecar {
     .OUTPUTS
         @{ Problem; Data }: Data mit ActionId, Name, NativeKey, Scope, CreatedAt (UTC) und Reasons (Code, Args),
         oder Problem mit MetadataMissing oder MetadataInvalid. Beide Schlüssel sind immer da (StrictMode).
+    .PARAMETER Strict
+        Für Sicherungen im Admin-Ordner: so streng wie der Helfer (SidecarParser, ReadSidecarChecked), damit die Liste
+        keine Sicherung als zurückspielbar zeigt, die der Helfer nach der UAC-Abfrage ablehnt. Gültiges UTF-8 ohne BOM;
+        SchemaVersion als Ganzzahl 1 (nicht "1" oder 1.0); ActionId, Name, NativeKey und Scope als Zeichenketten;
+        Feldnamen mit genauer Groß-/Kleinschreibung.
     #>
-    param([string] $File)
+    param([string] $File, [switch] $Strict)
+    $invalid = @{ Problem = 'MetadataInvalid'; Data = $null }
     $path = Get-RegistryBackupSidecarPath $File
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @{ Problem = 'MetadataMissing'; Data = $null } }
-    if ((Get-Item -LiteralPath $path).Length -gt $script:RegistryBackupSidecarMaxBytes) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
-    try { $d = [System.IO.File]::ReadAllText($path) | ConvertFrom-Json -ErrorAction Stop }
-    catch { return @{ Problem = 'MetadataInvalid'; Data = $null } }
-    if ($d -isnot [pscustomobject]) { return @{ Problem = 'MetadataInvalid'; Data = $null } }
+    if ((Get-Item -LiteralPath $path).Length -gt $script:RegistryBackupSidecarMaxBytes) { return $invalid }
+    try {
+        if ($Strict) {
+            $bytes = [System.IO.File]::ReadAllBytes($path)
+            if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { return $invalid }
+            $text = [System.Text.UTF8Encoding]::new($false, $true).GetString($bytes)
+        }
+        else { $text = [System.IO.File]::ReadAllText($path) }
+        $d = $text | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch { return $invalid }
+    if ($d -isnot [pscustomobject]) { return $invalid }
+    if ($Strict) {
+        # Feldnamen genau wie der Helfer (Dictionary mit Groß-/Kleinschreibung); Typen wie der JavaScriptSerializer sie liefert.
+        $field = { param($Name) foreach ($p in $d.PSObject.Properties) { if ($p.Name -ceq $Name) { return , $p.Value } } }
+        $version = & $field 'SchemaVersion'
+        if (-not (($version -is [long] -or $version -is [int]) -and $version -eq 1)) { return $invalid }
+        foreach ($name in 'ActionId', 'Name', 'NativeKey', 'Scope') {
+            if ((& $field $name) -isnot [string]) { return $invalid }
+        }
+    }
     $id = [string] (Get-RecordValue $d 'ActionId')
     $name = [string] (Get-RecordValue $d 'Name')
     $key = [string] (Get-RecordValue $d 'NativeKey')
