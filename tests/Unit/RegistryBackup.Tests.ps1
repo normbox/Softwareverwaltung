@@ -555,6 +555,28 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             }
         }
 
+        It 'bewertet Gründe nach der festen Tabelle, nicht nach dem Anzeigetext (Text mit zusätzlichem Platzhalter)' {
+            $b = New-TestBackup -Reasons @(
+                [pscustomobject] @{ Code = 'OrphanedEntry'; Args = @() }
+                [pscustomobject] @{ Code = 'NewerInstallNextTo'; Args = @('Jan', '0.8.8') })
+            # Eine spätere psd1 oder Übersetzung mit einem Platzhalter mehr darf intakte Sicherungen nicht ungültig machen.
+            $saved = InModuleScope SoftwareInventory {
+                $old = $script:Strings['ReasonNewerInstallNextTo']
+                $script:Strings['ReasonNewerInstallNextTo'] = 'Neuere Installation daneben: {0} {1} ({2})'
+                $old
+            }
+            try {
+                $item = @(Get-RegistryBackup -ErrorVariable failures) | Where-Object Id -EQ $b.Id
+                $failures | Should -BeNullOrEmpty
+                $item.Problem | Should -BeNullOrEmpty
+                $item.CanRestore | Should -BeTrue
+                @($item.Reasons.Code) | Should -Be @('OrphanedEntry', 'NewerInstallNextTo')
+            }
+            finally {
+                InModuleScope SoftwareInventory -Parameters @{ T = $saved } { $script:Strings['ReasonNewerInstallNextTo'] = $T }
+            }
+        }
+
         It 'bleibt im Benutzerordner bei der bisherigen Prüfung (eine Begleitdatei mit BOM gilt dort weiter)' {
             $b = New-TestBackup
             $text = [System.IO.File]::ReadAllText($b.Sidecar)
@@ -945,5 +967,46 @@ Describe 'Test-RegistryBackupContent: gemeinsame Fälletabelle mit dem Helfer' {
         $big = [byte[]]::new(16MB + 2)
         $big[0] = 0xFF; $big[1] = 0xFE
         (InModuleScope SoftwareInventory -Parameters @{ B = $big } { ConvertFrom-RegistryBackupByte -Bytes $B }).Problem | Should -Be 'TooLarge'
+    }
+}
+
+Describe 'Gründe einer Sicherung: gemeinsame Tabelle mit dem Helfer' {
+    BeforeDiscovery {
+        $table = Get-Content -Raw "$PSScriptRoot/../Data/backup-reason-cases.json" | ConvertFrom-Json
+        $ReasonCases = @($table.cases | ForEach-Object { @{ Name = $_.name; Code = $_.code; Arguments = @($_.args); Known = $_.known } })
+    }
+
+    It 'hat im Modul genau die Codes und Argumentzahlen der Tabelle' {
+        $table = Get-Content -Raw "$PSScriptRoot/../Data/backup-reason-cases.json" | ConvertFrom-Json
+        $expected = @($table.codes.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" } | Sort-Object)
+        $actual = InModuleScope SoftwareInventory { @($script:KnownBackupReasonCodes.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" } | Sort-Object) }
+        $actual | Should -Be $expected
+        $table.cases.Count | Should -BeGreaterThan 9
+    }
+
+    It 'liefert für "<Name>" das Ergebnis der Tabelle (schreiben und lesen)' -ForEach $ReasonCases {
+        $reason = [pscustomobject] @{ Code = $Code; Args = $Arguments }
+        InModuleScope SoftwareInventory -Parameters @{ C = $Code; A = $Arguments; R = $reason; K = $Known; N = $Name; D = $TestDrive } {
+            Test-KnownBackupReason -Code $C -Arguments $A | Should -Be $K -Because $N
+            @(ConvertTo-KnownBackupReason @($R)).Count | Should -Be ([int] $K) -Because $N
+
+            # Lesen: bekannter Code mit falscher Zahl = MetadataInvalid; unbekannter Code fällt still weg.
+            $dir = Join-Path $D ([guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $dir | Out-Null
+            $id = [guid]::NewGuid().ToString()
+            $file = Join-Path $dir "${id}_Jan.reg"
+            $json = [ordered]@{
+                SchemaVersion = 1; ActionId = $id; CreatedAt = [datetime]::UtcNow.ToString('o'); Name = 'Jan'
+                NativeKey = 'HKEY_CURRENT_USER\x'; Scope = 'User'; Reasons = @([ordered]@{ Code = $C; Args = $A })
+            }
+            [System.IO.File]::WriteAllText([System.IO.Path]::ChangeExtension($file, '.json'), ($json | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+            $read = Read-RegistryBackupSidecar -File $file
+            $knownCode = $C -cin @($script:KnownBackupReasonCodes.Keys)
+            if ($knownCode -and -not $K) { $read.Problem | Should -Be 'MetadataInvalid' -Because $N }
+            else {
+                $read.Problem | Should -BeNullOrEmpty -Because $N
+                @($read.Data.Reasons).Count | Should -Be ([int] $K) -Because $N
+            }
+        }
     }
 }

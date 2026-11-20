@@ -186,7 +186,9 @@ public sealed class RegistryRemovalTests
         var system = SystemWithOrphan();
         var reasons = new[]
         {
-            new BackupReason("NewerInstallNextTo", new object[] { "Old App 2.0", new string('x', 300), "c", "d", "e" }),
+            new BackupReason("NewerInstallNextTo", new object[] { "Old App", new string('x', 300) }),
+            new BackupReason("NewerInstallNextTo", new object[] { "Nur eins" }),
+            new BackupReason("NewerInstallNextTo", new object[] { "a", "b", "c", "d", "e" }),
             new BackupReason("Erfunden", new object[] { "nein" }),
             new BackupReason("orphanedentry", null!),
         };
@@ -203,7 +205,8 @@ public sealed class RegistryRemovalTests
         var codes = root.GetProperty("Reasons").EnumerateArray().Select(r => r.GetProperty("Code").GetString()).ToList();
         Assert.Equal(new[] { "OrphanedEntry", "NewerInstallNextTo" }, codes);
         var args = root.GetProperty("Reasons")[1].GetProperty("Args").EnumerateArray().Select(a => a.GetString()!).ToList();
-        Assert.Equal(4, args.Count);
+        Assert.Equal(2, args.Count);
+        Assert.Equal("Old App", args[0]);
         Assert.Equal(200, args[1].Length);
     }
 
@@ -498,12 +501,34 @@ public sealed class RegistryRemovalTests
     }
 
     [Fact]
-    public void TheReasonCodesMatchTheModule()
+    public void TheReasonArgCountsMatchTheSharedTable()
     {
-        var module = File.ReadAllText(Path.Combine(RepoRoot(), "src", "SoftwareInventory", "Private", "RegistryBackup.ps1"));
-        var line = module.Split('\n').Single(l => l.StartsWith("$script:KnownBackupReasonCodes", StringComparison.Ordinal));
-        var codes = System.Text.RegularExpressions.Regex.Matches(line, "'([A-Za-z]+)'").Cast<System.Text.RegularExpressions.Match>().Select(m => m.Groups[1].Value).ToArray();
-        Assert.Equal(codes, RegistryRemoval.KnownReasonCodes);
+        // Das Modul prüft dieselbe Tabelle in tests/Unit/RegistryBackup.Tests.ps1.
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "tests", "Data", "backup-reason-cases.json")));
+        var codes = doc.RootElement.GetProperty("codes").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetInt32());
+        Assert.Equal(codes.OrderBy(p => p.Key, StringComparer.Ordinal), RegistryRemoval.KnownReasonArgCounts.OrderBy(p => p.Key, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void KnownReasonsFollowTheSharedTable()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "tests", "Data", "backup-reason-cases.json")));
+        var cases = doc.RootElement.GetProperty("cases").EnumerateArray().ToList();
+        Assert.True(cases.Count >= 10);
+        foreach (var c in cases)
+        {
+            var name = c.GetProperty("name").GetString();
+            var code = c.GetProperty("code").GetString()!;
+            var args = c.GetProperty("args").EnumerateArray().Select(a => a.ValueKind == JsonValueKind.Null ? null : (object)a.GetString()!).ToArray();
+            var known = c.GetProperty("known").GetBoolean();
+            var reason = new BackupReason(code, args!);
+
+            Assert.True(known == RegistryRemoval.IsKnownReason(reason), name);
+            // OrphanedEntry ergänzt KnownReasons immer ohne Argumente; daher auf Code und Args zusammen prüfen.
+            var expectedArgs = args.Where(a => a is not null).Cast<string>().ToList();
+            var kept = RegistryRemoval.KnownReasons(new[] { reason }).Any(r => r.Code == code && r.Args.SequenceEqual(expectedArgs));
+            Assert.True(known == kept, name);
+        }
     }
 
     private static string RepoRoot([System.Runtime.CompilerServices.CallerFilePath] string sourceFile = "") =>

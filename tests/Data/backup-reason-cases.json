@@ -1,0 +1,18 @@
+{
+  "_comment": "Gemeinsame Tabelle der Gründe in einer Begleitdatei (.json neben der .reg-Sicherung). codes = bekannte Grund-Codes mit ihrer festen Argumentzahl; Modul ($script:KnownBackupReasonCodes, RegistryBackup.ps1) und Helfer (RegistryRemoval.KnownReasonArgCounts) müssen genau diese Tabelle haben. cases: known = true heißt, der Grund wird so in die Begleitdatei geschrieben und beim Lesen akzeptiert; false heißt, er wird beim Schreiben verworfen. null-Argumente zählen nicht mit. Die Zahl hängt nie am Anzeigetext.",
+  "codes": { "OrphanedEntry": 0, "NewerInstallNextTo": 2 },
+  "cases": [
+    { "name": "Verwaist ohne Argumente", "code": "OrphanedEntry", "args": [], "known": true },
+    { "name": "Verwaist mit überzähligem Argument", "code": "OrphanedEntry", "args": ["x"], "known": false },
+    { "name": "Neuere Installation mit Name und Version", "code": "NewerInstallNextTo", "args": ["Jan", "0.8.8"], "known": true },
+    { "name": "Neuere Installation, Version fehlt", "code": "NewerInstallNextTo", "args": ["Jan"], "known": false },
+    { "name": "Neuere Installation, Version ist null", "code": "NewerInstallNextTo", "args": ["Jan", null], "known": false },
+    { "name": "Neuere Installation ohne Argumente", "code": "NewerInstallNextTo", "args": [], "known": false },
+    { "name": "Neuere Installation mit drei Argumenten", "code": "NewerInstallNextTo", "args": ["Jan", "0.8.8", "x"], "known": false },
+    { "name": "Neuere Installation mit fünf Argumenten", "code": "NewerInstallNextTo", "args": ["a", "b", "c", "d", "e"], "known": false },
+    { "name": "Neuere Installation mit null zwischen zwei Argumenten", "code": "NewerInstallNextTo", "args": ["Jan", null, "0.8.8"], "known": true },
+    { "name": "Code in anderer Schreibweise", "code": "newerinstallnextto", "args": ["Jan", "0.8.8"], "known": false },
+    { "name": "Unbekannter Code", "code": "Erfunden", "args": [], "known": false },
+    { "name": "Leerer Code", "code": "", "args": [], "known": false }
+  ]
+}
