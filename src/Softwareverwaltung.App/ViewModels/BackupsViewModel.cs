@@ -29,7 +29,15 @@ public sealed partial class BackupsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RestoreCommand), nameof(DeleteCommand))]
+    [NotifyPropertyChangedFor(nameof(SelectedNeedsElevation), nameof(RestoreTooltip), nameof(DeleteTooltip))]
     private RegistryBackupItem? _selectedItem;
+
+    /// <summary>Die gewählte Sicherung gilt für alle Benutzer: Zurückspielen und Löschen fragen nach Administratorrechten (Schild).</summary>
+    public bool SelectedNeedsElevation => SelectedItem?.Elevated == true;
+
+    public string RestoreTooltip => AppText.Get(SelectedNeedsElevation ? "BackupsRestoreTooltipElevated" : "BackupsRestoreTooltip");
+
+    public string DeleteTooltip => AppText.Get(SelectedNeedsElevation ? "BackupsDeleteTooltipElevated" : "BackupsDeleteTooltip");
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RestoreCommand), nameof(DeleteCommand), nameof(LoadCommand), nameof(ClearExpiredCommand))]

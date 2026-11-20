@@ -51,8 +51,12 @@ function Clear-ExpiredRegistryBackup {
 
     Write-ActionLogEntry -Phase Started -Data (ConvertTo-ActionLogData $result)
     try {
+        # Vorher die abgelaufenen Paare merken: Erfolg nur, wenn danach keine abgelaufene .reg und keine ihrer .json übrig ist.
+        $expired = @(Get-RegistryBackupFile | Where-Object { $_.BackupScope -eq 'Machine' -and (Test-RegistryBackupExpired -File $_) })
         $run = Invoke-BackupHelper -HelperPlan @{ Operation = 'CleanupRegistryBackups' }
-        $left = (Get-RegistryBackupStatus).ExpiredMachineCount
+        $pairLeft = @(foreach ($file in $expired) { $file.FullName; Get-RegistryBackupSidecarPath $file.FullName }) |
+            Where-Object { Test-Path -LiteralPath $_ }
+        $left = @($pairLeft).Count + (Get-RegistryBackupStatus).ExpiredMachineCount
         $result.PresentAfter = $left -gt 0
         $deleted = if ($null -ne $run.Deleted) { [int] $run.Deleted } else { 0 }
         Complete-BackupHelperResult -Result $result -Run $run -Verified ($left -eq 0) -SuccessMessage (New-InventoryMessage ClearExpiredBackupsDone $deleted)

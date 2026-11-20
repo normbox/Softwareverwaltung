@@ -95,10 +95,19 @@
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                 <ui:Button Content="{loc:Text BackupsRefresh}" Icon="{ui:SymbolIcon ArrowClockwise24}" Margin="0,0,8,0"
                            Command="{Binding LoadCommand}" />
-                <ui:Button Content="{loc:Text BackupsRestore}" Icon="{ui:SymbolIcon ArrowUndo24}" Margin="0,0,8,0" Appearance="Primary"
-                           ToolTip="{loc:Text BackupsRestoreTooltip}" Command="{Binding RestoreCommand}" />
-                <ui:Button Content="{loc:Text BackupsDelete}" Icon="{ui:SymbolIcon Delete24}"
-                           ToolTip="{loc:Text BackupsDeleteTooltip}" Command="{Binding DeleteCommand}" />
+                <!-- Sicherungen für alle Benutzer: Schild statt des üblichen Symbols, weil Windows nach Administratorrechten fragt -->
+                <ui:Button Content="{loc:Text BackupsRestore}" Margin="0,0,8,0" Appearance="Primary"
+                           ToolTip="{Binding RestoreTooltip}" Command="{Binding RestoreCommand}">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="{Binding SelectedNeedsElevation, Converter={StaticResource ElevationSymbol}, ConverterParameter=ArrowUndo24}" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button Content="{loc:Text BackupsDelete}"
+                           ToolTip="{Binding DeleteTooltip}" Command="{Binding DeleteCommand}">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="{Binding SelectedNeedsElevation, Converter={StaticResource ElevationSymbol}, ConverterParameter=Delete24}" />
+                    </ui:Button.Icon>
+                </ui:Button>
             </StackPanel>
             <TextBlock Text="{Binding StatusText}" Margin="16,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </DockPanel>

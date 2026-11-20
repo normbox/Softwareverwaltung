@@ -215,6 +215,37 @@ public sealed class BackupsViewModelTests
     });
 
     [Fact]
+    public void MachineBackupsShowTheShieldAndTheAdminHintOnRestoreAndDelete() => RunOnDispatcher(async () =>
+    {
+        var machine = RegistryBackupItem.FromPs(Ps(("Id", "id-m"), ("Name", "Alt"), ("Scope", "Machine"), ("Elevated", true), ("CanRestore", true)));
+        var (vm, _, _, _) = Create(true, machine, Backup("id-1", "Jan"));
+        await vm.LoadAsync();
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.SelectedItem = vm.Items[0];
+        Assert.True(vm.SelectedNeedsElevation);
+        Assert.Equal(AppText.Get("BackupsRestoreTooltipElevated"), vm.RestoreTooltip);
+        Assert.Equal(AppText.Get("BackupsDeleteTooltipElevated"), vm.DeleteTooltip);
+        Assert.Contains(nameof(BackupsViewModel.SelectedNeedsElevation), changed);
+
+        vm.SelectedItem = vm.Items[1];
+        Assert.False(vm.SelectedNeedsElevation);
+        Assert.Equal(AppText.Get("BackupsRestoreTooltip"), vm.RestoreTooltip);
+        Assert.Equal(AppText.Get("BackupsDeleteTooltip"), vm.DeleteTooltip);
+    });
+
+    [Fact]
+    public void TheElevationSymbolIsTheShieldOnlyWhenAdminRightsAreNeeded()
+    {
+        var converter = new Softwareverwaltung.App.Converters.ElevationSymbolConverter();
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        Assert.Equal(Wpf.Ui.Controls.SymbolRegular.Shield24, converter.Convert(true, typeof(object), "Delete24", culture));
+        Assert.Equal(Wpf.Ui.Controls.SymbolRegular.Delete24, converter.Convert(false, typeof(object), "Delete24", culture));
+        Assert.Equal(Wpf.Ui.Controls.SymbolRegular.ArrowUndo24, converter.Convert(null, typeof(object), "ArrowUndo24", culture));
+    }
+
+    [Fact]
     public void ExpiredMachineBackupsShowANoticeAndCleanUpOnlyOnClickWithConfirmation() => RunOnDispatcher(async () =>
     {
         var (vm, backups, actions, confirm) = Create(true, Backup("id-1", "Jan"));

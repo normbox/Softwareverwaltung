@@ -346,6 +346,11 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
                         }
                     }
                     'ClaimsDone' { @{ Status = 'Completed'; Done = $true } }
+                    'RegOnly' {
+                        # Löscht beim Aufräumen nur die abgelaufenen .reg, nicht ihre .json, und meldet trotzdem Erfolg.
+                        Get-ChildItem -LiteralPath $script:MachineDir -File -Filter '*.reg' | Where-Object { $_.LastWriteTimeUtc -lt [datetime]::UtcNow.AddDays(-365) } | Remove-Item -Force
+                        @{ Status = 'Completed'; Done = $true }
+                    }
                     'Denied' { @{ Status = 'ElevationDenied'; Error = (& $message 'ElevationDenied') } }
                     'TooOld' { @{ Status = 'Failed'; Error = (& $message 'HelperTooOld') } }
                     'Partial' { @{ Status = 'Completed'; Done = $false; ErrorCode = 'RestorePartial'; Error = (& $message 'RestorePartial') } }
@@ -364,6 +369,7 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $m.CanRestore | Should -BeTrue
             $m.Expired | Should -BeFalse
             ($list | Where-Object Id -EQ $user.Id).Scope | Should -Be 'User'
+            $script:HelperPlans.Count | Should -Be 0 -Because 'die Liste braucht nie eine UAC-Abfrage'
         }
 
         It 'ignoriert im Admin-Ordner fremde Namen und die Zwischendateien des Helfers' {
@@ -456,6 +462,44 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $status.ExpiredMachineCount | Should -Be 1
             $status.RetentionDays | Should -Be 365
             (@(Get-RegistryBackup) | Where-Object Expired).Count | Should -Be 1
+            $script:HelperPlans.Count | Should -Be 0 -Because 'Zustand und Liste lesen nur, ohne UAC-Abfrage'
+        }
+
+        It 'meldet einen nicht lesbaren Admin-Ordner und räumt dann nicht auf' {
+            $null = New-MachineBackup -Key 'alt' -AgeDays 400
+            Mock -ModuleName SoftwareInventory Get-ChildItem { throw [System.UnauthorizedAccessException]::new('Zugriff verweigert') } -ParameterFilter {
+                $LiteralPath -contains $script:MachineDir -and $PSBoundParameters['ErrorAction'] -eq 'Stop'
+            }
+            $status = Get-RegistryBackupStatus
+            $status.MachineFolderState | Should -Be 'Unreadable'
+            $status.ExpiredMachineCount | Should -Be 0
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false
+            $r.Result | Should -Be 'Unsupported'
+            $r.Message.Code | Should -Be 'BackupFolderUnreadable'
+            $script:HelperPlans.Count | Should -Be 0
+        }
+
+        It 'meldet ElevationDenied beim <Action> und lässt die Dateien stehen' -TestCases @(
+            @{ Action = 'Löschen' }
+            @{ Action = 'Aufräumen' }
+        ) {
+            $machine = New-MachineBackup -Key 'alt' -AgeDays 400
+            $script:HelperMode = 'Denied'
+            $r = if ($Action -eq 'Löschen') { Remove-RegistryBackup $machine.Id -Confirm:$false } else { Clear-ExpiredRegistryBackup -Confirm:$false }
+            $r.Result | Should -Be 'ElevationDenied'
+            $r.Message.Code | Should -Be 'ElevationDenied'
+            Test-Path $machine.File | Should -BeTrue
+            Test-Path $machine.Sidecar | Should -BeTrue
+        }
+
+        It 'gilt beim Aufräumen nicht als Erfolg, wenn die .json einer abgelaufenen Sicherung übrig bleibt' {
+            $old = New-MachineBackup -Key 'alt' -AgeDays 400
+            $script:HelperMode = 'RegOnly'
+            $r = Clear-ExpiredRegistryBackup -Confirm:$false
+            $r.Result | Should -Be 'Failed'
+            $r.Message.Code | Should -Be 'BackupResultNotVerified'
+            $r.PresentAfter | Should -BeTrue
+            Test-Path $old.Sidecar | Should -BeTrue
         }
 
         It 'räumt abgelaufene Sicherungen nur auf Bestätigung über den Helfer auf' {

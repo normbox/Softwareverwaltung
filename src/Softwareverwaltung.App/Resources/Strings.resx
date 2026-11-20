@@ -253,6 +253,12 @@
   <data name="BackupsDeleteTooltip" xml:space="preserve">
     <value>Löscht die Sicherung (beide Dateien). Der Registry-Eintrag selbst bleibt unberührt.</value>
   </data>
+  <data name="BackupsRestoreTooltipElevated" xml:space="preserve">
+    <value>Sicherung für alle Benutzer: Windows fragt nach Administratorrechten. Der geschützte Helfer prüft die Sicherung erneut und schreibt den Eintrag zurück; die Sicherung bleibt erhalten. Der Eintrag erscheint beim nächsten Scan wieder in der Liste.</value>
+  </data>
+  <data name="BackupsDeleteTooltipElevated" xml:space="preserve">
+    <value>Sicherung für alle Benutzer: Windows fragt nach Administratorrechten. Der geschützte Helfer löscht beide Dateien; der Registry-Eintrag selbst bleibt unberührt.</value>
+  </data>
   <data name="BackupsLegacyReason" xml:space="preserve">
     <value>Ältere Sicherung</value>
   </data>
