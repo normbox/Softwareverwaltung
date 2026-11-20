@@ -36,6 +36,9 @@ function Get-RegistryBackupInfo {
         sonst ein Code (Missing, Empty, ..., MetadataMissing, MetadataInvalid); ProblemMessage ist die Meldung dazu.
         Scope (User/Machine) folgt aus dem Ort der Datei; Elevated ist bei Machine gesetzt (Aktionen nur mit UAC über
         den Helfer, der alles erneut prüft). Expired: älter als 365 Tage (Änderungszeit der .reg).
+        KeyPresent: Der Eintrag existiert schon wieder ($true; dann ist CanRestore $false, Problem bleibt $null),
+        fehlt ($false) oder ist unbekannt ($null: Sicherung mit Problem oder Schlüssel nicht lesbar).
+        IsLatest/NewerExists setzt erst Get-RegistryBackup (Vergleich über alle Sicherungen).
     #>
     param([System.IO.FileInfo] $File)
     $fileScope = if ($File.PSObject.Properties['BackupScope'] -and $File.BackupScope -eq 'Machine') { 'Machine' } else { 'User' }
@@ -58,6 +61,9 @@ function Get-RegistryBackupInfo {
         $problem = $sidecar.Problem
     }
     $scope = $fileScope
+    # Gibt es den Eintrag schon wieder? Nur lesend, ohne UAC (HKLM in der 64-Bit-Ansicht wie der Helfer); nur für Sicherungen
+    # ohne Problem, deren Schlüssel die Inhaltsprüfung also als Uninstall-Schlüssel bestätigt hat. Nicht lesbar = unbekannt ($null).
+    $keyPresent = if (-not $problem -and $key) { try { [bool] (Test-RegistryKeyPresent $key) } catch { $null } } else { $null }
     [pscustomobject] @{
         PSTypeName     = 'SoftwareInventory.RegistryBackup'
         Id             = Get-RegistryBackupId $File.Name
@@ -69,7 +75,10 @@ function Get-RegistryBackupInfo {
         Expired        = [bool] (Test-RegistryBackupExpired -File $File)
         Reasons        = @($reasons | ForEach-Object { New-InventoryMessage $_.Code @($_.Args) })
         IsLegacy       = -not $sidecar.Data
-        CanRestore     = -not $problem
+        KeyPresent     = $keyPresent
+        IsLatest       = $false
+        NewerExists    = $false
+        CanRestore     = -not $problem -and $keyPresent -ne $true
         Problem        = $problem
         ProblemMessage = if ($problem) { New-InventoryMessage "Backup$problem" } else { $null }
         FileName       = $File.Name

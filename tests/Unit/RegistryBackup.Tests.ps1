@@ -88,6 +88,53 @@ Describe 'Sicherungen anzeigen, löschen und zurückspielen (8b-3)' {
             $item.Problem | Should -Be 'KeyOutside'
         }
 
+        It 'zeigt, ob der Eintrag schon wieder existiert (<Case>)' -TestCases @(
+            @{ Case = 'fehlt'; Mode = 'Missing'; KeyPresent = $false; CanRestore = $true }
+            @{ Case = 'vorhanden'; Mode = 'Present'; KeyPresent = $true; CanRestore = $false }
+            @{ Case = 'nicht lesbar'; Mode = 'Unreadable'; KeyPresent = $null; CanRestore = $true }
+        ) {
+            $b = New-TestBackup
+            if ($Mode -eq 'Present') { New-Item -Path $b.Path -Force | Out-Null }
+            if ($Mode -eq 'Unreadable') { Mock -ModuleName SoftwareInventory Test-RegistryKeyPresent { throw [System.Security.SecurityException]::new('verweigert') } }
+            $item = Get-RegistryBackup -Id $b.Id
+            $item.KeyPresent | Should -Be $KeyPresent
+            $item.CanRestore | Should -Be $CanRestore
+            $item.Problem | Should -BeNullOrEmpty -Because 'ein vorhandener Eintrag ist kein Fehler der Sicherung'
+        }
+
+        It 'prüft den Eintrag nicht, wenn die Sicherung selbst ein Problem hat' {
+            $b = New-TestBackup -NoSidecar
+            Mock -ModuleName SoftwareInventory Test-RegistryKeyPresent { $true }
+            $item = Get-RegistryBackup -Id $b.Id
+            $item.KeyPresent | Should -BeNullOrEmpty
+            Should -Invoke -ModuleName SoftwareInventory Test-RegistryKeyPresent -Times 0 -Exactly
+        }
+
+        It 'markiert bei mehreren Sicherungen zum selben Schlüssel die älteren (Schreibweise egal)' {
+            $setCreated = {
+                param($Backup, [string] $When)
+                $json = Get-Content -LiteralPath $Backup.Sidecar -Raw | ConvertFrom-Json
+                $json.CreatedAt = $When
+                [System.IO.File]::WriteAllText($Backup.Sidecar, ($json | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+            }
+            $first = New-TestBackup -Key 'janold'; & $setCreated $first '2026-01-01T10:00:00.0000000Z'
+            $second = New-TestBackup -Key 'JANOLD'; & $setCreated $second '2026-02-01T10:00:00.0000000Z'
+            $newest = New-TestBackup -Key 'janold'; & $setCreated $newest '2026-03-01T10:00:00.0000000Z'
+            $other = New-TestBackup -Key 'anders'
+            $list = @(Get-RegistryBackup)
+            $byId = @{}; foreach ($i in $list) { $byId[$i.Id] = $i }
+            $byId[$newest.Id].IsLatest | Should -BeTrue
+            $byId[$newest.Id].NewerExists | Should -BeFalse
+            foreach ($older in $first, $second) {
+                $byId[$older.Id].NewerExists | Should -BeTrue
+                $byId[$older.Id].IsLatest | Should -BeFalse
+                $byId[$older.Id].CanRestore | Should -BeTrue -Because 'ältere Sicherungen bleiben zurückspielbar'
+            }
+            $byId[$other.Id].IsLatest | Should -BeFalse -Because 'eine einzelne Sicherung bekommt keine Markierung'
+            $byId[$other.Id].NewerExists | Should -BeFalse
+            (Get-RegistryBackup -Id $first.Id).NewerExists | Should -BeTrue -Because 'auch mit -Id über alle Sicherungen verglichen'
+        }
+
         It 'ignoriert Dateien ohne Kennung im Namen' {
             $dir = Join-Path $script:AppDir 'logs\registry-backup'
             New-Item -ItemType Directory -Path $dir -Force | Out-Null

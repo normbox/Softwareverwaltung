@@ -205,6 +205,12 @@
   <data name="BackupsExpired" xml:space="preserve">
     <value>Älter als 365 Tage</value>
   </data>
+  <data name="BackupsKeyPresent" xml:space="preserve">
+    <value>Eintrag ist vorhanden</value>
+  </data>
+  <data name="BackupsOlderBackup" xml:space="preserve">
+    <value>Ältere Sicherung</value>
+  </data>
   <data name="BackupsExpiredNotice" xml:space="preserve">
     <value>{0} Sicherung(en) für alle Benutzer sind älter als 365 Tage. Sie lassen sich nur mit Administratorrechten aufräumen.</value>
   </data>
