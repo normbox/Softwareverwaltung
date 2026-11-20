@@ -73,4 +73,39 @@ public sealed class HelperSidecarModuleTests : IAsyncLifetime
         Assert.Equal(name, backup.Properties["Name"]?.Value);
         Assert.Equal(Key, backup.Properties["NativeKey"]?.Value);
     }
+
+    [Fact]
+    public async Task TheListLoadsEvenIfOneBackupHasDamagedReasons()
+    {
+        var good = WriteMachineBackup(Key, [new BackupReason("NewerInstallNextTo", ["Neu", "2.0"])]);
+        // NewerInstallNextTo braucht zwei Argumente; mit einem wäre früher die ganze Liste abgebrochen. Der Helfer schreibt
+        // so etwas nie (KnownReasons verwirft es), deshalb wird eine gültige Begleitdatei nachträglich beschädigt.
+        var bad = WriteMachineBackup(Key + "Kaputt", [new BackupReason("NewerInstallNextTo", ["Nur eins", "WEG"])], ", \"WEG\"");
+
+        var list = await new BackupService(_host).GetBackupsAsync();
+
+        Assert.Equal(2, list.Count);
+        var broken = Assert.Single(list, b => b.Id == bad);
+        Assert.Equal("MetadataInvalid", broken.ProblemCode);
+        Assert.False(broken.CanRestore);
+        Assert.True(Assert.Single(list, b => b.Id == good).CanRestore);
+    }
+
+    private string WriteMachineBackup(string key, BackupReason[] reasons, string? removeFromSidecar = null)
+    {
+        var id = Guid.NewGuid().ToString();
+        var reg = Encoding.Unicode.GetPreamble()
+            .Concat(Encoding.Unicode.GetBytes($"Windows Registry Editor Version 5.00\r\n\r\n[{key}]\r\n\"DisplayName\"=\"x\"\r\n"))
+            .ToArray();
+        File.WriteAllBytes(Path.Combine(MachineFolder, id + ".reg"), reg);
+        var sidecar = RegistryRemoval.BuildSidecar(id, "Alt", key, DateTime.UtcNow, reasons);
+        if (removeFromSidecar is not null)
+        {
+            var text = new UTF8Encoding(false).GetString(sidecar);
+            Assert.Contains(removeFromSidecar, text);
+            sidecar = new UTF8Encoding(false).GetBytes(text.Replace(removeFromSidecar, string.Empty));
+        }
+        File.WriteAllBytes(Path.Combine(MachineFolder, id + ".json"), sidecar);
+        return id;
+    }
 }

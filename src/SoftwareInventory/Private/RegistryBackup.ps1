@@ -6,8 +6,11 @@
 $script:RegistryBackupRetentionDays = 365
 $script:RegistryBackupMaxBytes = 16MB
 $script:RegistryBackupSidecarMaxBytes = 64KB
-# Nur diese Gründe übernimmt das Modul in die Begleitdatei; alles andere wird verworfen.
-$script:KnownBackupReasonCodes = @('OrphanedEntry', 'NewerInstallNextTo')
+# Nur diese Gründe übernimmt das Modul in die Begleitdatei, je Code mit genau dieser Zahl Argumente; alles andere wird
+# verworfen. Die Zahl hängt bewusst nicht am Anzeigetext (psd1, spätere Übersetzungen), damit ein geänderter Text nie
+# gespeicherte Sicherungen ungültig macht. Dieselbe Tabelle steht im Helfer (RegistryRemoval.KnownReasonArgCounts);
+# beide prüfen gegen tests/Data/backup-reason-cases.json.
+$script:KnownBackupReasonCodes = @{ OrphanedEntry = 0; NewerInstallNextTo = 2 }
 # Ungewöhnliche Zeilenumbrüche: NUL, VT, FF, NEL, U+2028, U+2029 sowie einzelnes CR oder LF. Die Zeichen stehen als
 # Codepunkte, nie als Escape-Text im Quelltext (CLAUDE.md).
 $script:OddLineBreakPattern = '[' + (-join (0x00, 0x0B, 0x0C, 0x85, 0x2028, 0x2029 | ForEach-Object { '\u{0:X4}' -f $_ })) + ']|\r(?!\n)|(?<!\r)\n'
@@ -275,20 +278,42 @@ function Test-RegistryBackup {
     Test-RegistryBackupContent -Text $content.Text -NativeKey $NativeKey
 }
 
+function Get-BackupReasonPart {
+    # Code (Zeichenkette) und Args (ohne $null) eines Grundes. Gründe sind Objekte (Meldungen, aus JSON) oder
+    # Dictionaries (aus dem Plan).
+    param($Reason)
+    if ($Reason -is [System.Collections.IDictionary]) {
+        $code = if ($Reason.Contains('Code')) { $Reason['Code'] }
+        $reasonArgs = if ($Reason.Contains('Args')) { $Reason['Args'] }
+    }
+    else {
+        $code = Get-RecordValue $Reason 'Code'
+        $reasonArgs = Get-RecordValue $Reason 'Args'
+    }
+    @{ Code = [string] $code; Args = @(@($reasonArgs) | Where-Object { $null -ne $_ }) }
+}
+
+function Test-KnownBackupReason {
+    # Bekannter Code (genaue Schreibweise) mit genau der festen Zahl Argumente aus $script:KnownBackupReasonCodes.
+    # $null-Argumente zählen nicht mit.
+    param([string] $Code, [object[]] $Arguments = @())
+    if ($Code -cnotin @($script:KnownBackupReasonCodes.Keys)) { return $false }
+    @($Arguments | Where-Object { $null -ne $_ }).Count -eq $script:KnownBackupReasonCodes[$Code]
+}
+
 function ConvertTo-KnownBackupReason {
-    # Nur bekannte Grund-Codes mit ihren Argumenten (als kurze Texte); alles andere wird verworfen.
+    # Nur bekannte Grund-Codes mit genau ihrer Argumentzahl (Args als Texte, je höchstens 200 Zeichen); alles andere
+    # wird verworfen, damit nie eine Sicherung entsteht, die beim Lesen als ungültig gilt.
     param($Reasons)
-    # Gründe sind Objekte (Meldungen, aus JSON) oder Dictionaries (aus dem Plan).
-    $field = { param($o, $n) if ($o -is [System.Collections.IDictionary]) { if ($o.Contains($n)) { $o[$n] } } else { Get-RecordValue $o $n } }
     foreach ($reason in @($Reasons)) {
         if ($null -eq $reason) { continue }
-        $code = [string] (& $field $reason 'Code')
-        if ($code -cnotin $script:KnownBackupReasonCodes) { continue }
-        $reasonArgs = @(@(& $field $reason 'Args') | Where-Object { $null -ne $_ } | Select-Object -First 4 | ForEach-Object {
+        $part = Get-BackupReasonPart $reason
+        if (-not (Test-KnownBackupReason -Code $part.Code -Arguments $part.Args)) { continue }
+        $reasonArgs = @($part.Args | ForEach-Object {
                 $s = [string] $_
                 if ($s.Length -gt 200) { $s.Substring(0, 200) } else { $s }
             })
-        [ordered]@{ Code = $code; Args = $reasonArgs }
+        [ordered]@{ Code = $part.Code; Args = $reasonArgs }
     }
 }
 
@@ -359,11 +384,24 @@ function Read-RegistryBackupSidecar {
     if ((Get-RecordValue $d 'SchemaVersion') -ne 1 -or -not $id -or -not $name -or -not $key -or $id -ine (Get-RegistryBackupId $File)) {
         return @{ Problem = 'MetadataInvalid'; Data = $null }
     }
+    # Bekannter Grund mit anderer Argumentzahl als in $script:KnownBackupReasonCodes (z. B. zu wenige): Die Datei ist
+    # beschädigt, denn so schreiben Modul und Helfer nie. Nie die Liste abbrechen lassen, sondern nur diese Sicherung als
+    # ungültig zeigen (löschbar, nicht zurückspielbar). Geprüft wird gegen die feste Tabelle, nie gegen den Anzeigetext.
+    # Unbekannte Codes (etwa von einer späteren Version) fallen wie bisher still weg.
+    $rawReasons = @(Get-RecordValue $d 'Reasons')
+    foreach ($raw in $rawReasons) {
+        if ($null -eq $raw) { continue }
+        $part = Get-BackupReasonPart $raw
+        if ($part.Code -cin @($script:KnownBackupReasonCodes.Keys) -and -not (Test-KnownBackupReason -Code $part.Code -Arguments $part.Args)) {
+            return @{ Problem = 'MetadataInvalid'; Data = $null }
+        }
+    }
+    $reasons = @(ConvertTo-KnownBackupReason $rawReasons)
     @{
         Problem = $null
         Data    = [pscustomobject] @{
             ActionId = $id; Name = $name; NativeKey = $key; Scope = [string] (Get-RecordValue $d 'Scope'); CreatedAt = $createdAt
-            Reasons  = @(ConvertTo-KnownBackupReason (Get-RecordValue $d 'Reasons'))
+            Reasons  = $reasons
         }
     }
 }

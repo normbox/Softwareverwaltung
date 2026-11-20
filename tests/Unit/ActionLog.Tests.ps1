@@ -60,6 +60,21 @@ Describe 'Aktionsprotokoll' {
         $entry.Message.Text | Should -Be 'Das Programm meldet Erfolg, ist aber noch installiert. Nächste mögliche Methode: Msi (Aufruf mit -Method Msi).'
     }
 
+    It 'zeigt eine Meldung mit zu wenigen Argumenten mit ihrem gespeicherten Text, ohne die anderen Einträge zu stören' {
+        Write-TestEntry -Id 'ok' -Phase Completed -Data @{ Name = 'Gut'; Message = (InModuleScope SoftwareInventory { New-InventoryMessage RemoveEntryDone 'C:\x.reg' }) }
+        # Beschädigt: RemoveEntryDone braucht ein Argument ({0}), die Zeile hat keins.
+        Write-TestEntry -Id 'bad' -Phase Completed -Data @{ Name = 'Kaputt'; Message = @{ Code = 'RemoveEntryDone'; Args = @(); Text = 'Gespeicherter Text' } }
+        Write-TestEntry -Id 'bare' -Phase Completed -Data @{ Name = 'Ohne Text'; Message = @{ Code = 'NewerInstallNextTo'; Args = @('Nur eins') } }
+        $log = @(Get-ActionLog -WarningVariable warnings 3>$null)
+        $log.Count | Should -Be 3
+        $byName = @{}; foreach ($e in $log) { $byName[$e.Name] = $e }
+        $byName['Gut'].Message.Text | Should -BeLike 'Eintrag entfernt. Sicherung: C:\x.reg*'
+        $byName['Kaputt'].Message.Code | Should -Be 'RemoveEntryDone'
+        $byName['Kaputt'].Message.Text | Should -Be 'Gespeicherter Text'
+        $byName['Ohne Text'].Message.Code | Should -Be 'NewerInstallNextTo'
+        $byName['Ohne Text'].Message.Text | Should -Be 'Neuere Installation daneben: {0} {1}' -Because 'ohne gespeicherten Text bleibt der Text ohne eingesetzte Argumente'
+    }
+
     It 'kennzeichnet ältere Einträge ohne Code' {
         Write-TestEntry -Id 'o1' -Phase Started
         Write-TestEntry -Id 'o1' -Phase Completed -Data @{ Message = 'Store-App entfernt' }

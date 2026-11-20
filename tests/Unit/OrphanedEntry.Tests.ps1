@@ -360,6 +360,27 @@ Describe 'Remove-OrphanedEntry (8b-1, nur HKCU)' {
         @($json.Reasons[1].Args) | Should -Be @('Jan', '0.8.8')
     }
 
+    It 'verwirft Gründe mit falscher Argumentzahl, die Sicherung bleibt zurückspielbar' {
+        # Vorher schrieb NewerInstallNextTo mit ('Jan', $null) eine Sicherung, die beim Lesen sofort ungültig war.
+        Mock -ModuleName SoftwareInventory Get-RegistryBackupMachineDirectory { Join-Path $script:AppDir 'ProgramFiles\RegistryBackup' }
+        $rating = [pscustomobject] @{
+            Record  = Get-Orphan
+            Reasons = @(
+                [pscustomobject] @{ Code = 'OrphanedEntry'; Args = @() }
+                [pscustomobject] @{ Code = 'NewerInstallNextTo'; Args = @('Jan', $null) }
+                [pscustomobject] @{ Code = 'NewerInstallNextTo'; Args = @('Jan', '0.8.8', 'zu viel') }
+            )
+        }
+        $r = $rating | Remove-OrphanedEntry -Confirm:$false
+        $r.Result | Should -Be 'Succeeded'
+        $json = Get-Content -LiteralPath ([System.IO.Path]::ChangeExtension($r.BackupFile, '.json')) -Raw | ConvertFrom-Json
+        @($json.Reasons.Code) | Should -Be @('OrphanedEntry')
+        $item = @(Get-RegistryBackup) | Where-Object Id -EQ $r.ActionId
+        $item.Problem | Should -BeNullOrEmpty
+        $item.CanRestore | Should -BeTrue
+        (Restore-RegistryBackup $r.ActionId -WhatIf).Result | Should -Be 'Planned'
+    }
+
     It 'entfernt auch einen Schlüssel mit Unterschlüsseln, wenn die Sicherung ihn vollständig enthält' {
         New-Item -Path "$($script:User)\janold\Sub" -Force | Out-Null
         $script:ExportMode = 'Subkey'
@@ -484,7 +505,7 @@ Describe 'Remove-OrphanedEntry für alle Benutzer (HKLM über den Helfer)' {
 
     It 'schickt dem Helfer nur Schlüssel, ActionId und bekannte Gründe, ohne Wiederherstellungspunkt, und meldet Erfolg' {
         $record = Get-MachineOrphan
-        $record | Add-Member -NotePropertyName Reasons -NotePropertyValue @(@{ Code = 'NewerInstallNextTo'; Args = @('Jan 0.8.8') }, @{ Code = 'Erfunden'; Args = @() }) -Force
+        $record | Add-Member -NotePropertyName Reasons -NotePropertyValue @(@{ Code = 'NewerInstallNextTo'; Args = @('Jan', '0.8.8') }, @{ Code = 'NewerInstallNextTo'; Args = @('Nur eins') }, @{ Code = 'Erfunden'; Args = @() }) -Force
         $r = $record | Remove-OrphanedEntry -Confirm:$false
         $r.Result | Should -Be 'Succeeded'
         $r.Message.Code | Should -Be 'RemoveEntryDoneMachine'

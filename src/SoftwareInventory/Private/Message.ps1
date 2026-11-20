@@ -65,6 +65,7 @@ function ConvertFrom-MessageData {
     .DESCRIPTION
         Gespeichert sind Code und Args; der Text entsteht neu in der Sprache der Oberfläche. Reiner Text
         ohne Code stammt aus älteren Protokollen und wird als LegacyText („… (älterer Eintrag)“) gekennzeichnet.
+        Passen die Args nicht zum Text des Codes, gilt der gespeicherte Text (falls vorhanden); nie eine Ausnahme.
     #>
     param($Value)
     if ($null -eq $Value -or ($Value -is [string] -and -not $Value)) { return $null }
@@ -78,6 +79,15 @@ function ConvertFrom-MessageData {
                 else { $a }
             }
         })
+    # Passen die gespeicherten Argumente nicht zum Text (beschädigte Zeile, oder der Text verlangt inzwischen mehr), den
+    # gespeicherten Text nehmen statt neu zu formatieren; Code und Args bleiben. Ohne gespeicherten Text entsteht die
+    # Meldung wie sonst, nur mit dem Text ohne eingesetzte Argumente (Get-LocalizedString wirft nie).
+    if (-not (Test-InventoryMessageArgument -Code $code -Arguments $arguments)) {
+        $storedText = if ($Value -is [System.Collections.IDictionary]) { $Value['Text'] } else { $Value.PSObject.Properties['Text']?.Value }
+        if ($storedText -is [string] -and $storedText) {
+            return [pscustomobject] @{ PSTypeName = 'SoftwareInventory.Message'; Code = [string] $code; Args = @($arguments); Text = $storedText }
+        }
+    }
     New-InventoryMessage $code $arguments
 }
 

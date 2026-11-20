@@ -100,8 +100,16 @@ namespace SoftwareInventory.Helper
     {
         public const string Scope = "Machine";
 
-        /// <summary>Dieselben Codes wie $script:KnownBackupReasonCodes im Modul (RegistryBackup.ps1).</summary>
-        public static readonly string[] KnownReasonCodes = { "OrphanedEntry", "NewerInstallNextTo" };
+        /// <summary>
+        /// Bekannte Grund-Codes mit ihrer festen Argumentzahl, dieselbe Tabelle wie $script:KnownBackupReasonCodes im Modul
+        /// (RegistryBackup.ps1); beide prüfen gegen tests/Data/backup-reason-cases.json. Ein Grund mit anderer Zahl gilt
+        /// beim Lesen im Modul als beschädigt, deshalb schreibt der Helfer ihn nie.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, int> KnownReasonArgCounts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["OrphanedEntry"] = 0,
+            ["NewerInstallNextTo"] = 2,
+        };
 
         public static readonly UninstallLocation[] MachineLocations =
         {
@@ -320,12 +328,17 @@ namespace SoftwareInventory.Helper
             return null;
         }
 
-        /// <summary>Nur bekannte Codes, höchstens 4 Args mit je höchstens 200 Zeichen; OrphanedEntry steht immer dabei.</summary>
+        /// <summary>Bekannter Code (genaue Schreibweise) mit genau der festen Argumentzahl aus <see cref="KnownReasonArgCounts"/>.</summary>
+        public static bool IsKnownReason(BackupReason reason) =>
+            reason is not null && reason.Code is not null &&
+            KnownReasonArgCounts.TryGetValue(reason.Code, out var count) && reason.Args.Count == count;
+
+        /// <summary>Nur bekannte Gründe mit passender Argumentzahl, Args je höchstens 200 Zeichen; OrphanedEntry steht immer dabei.</summary>
         public static IReadOnlyList<BackupReason> KnownReasons(IEnumerable<BackupReason> reasons)
         {
             var known = (reasons ?? Enumerable.Empty<BackupReason>())
-                .Where(r => r is not null && KnownReasonCodes.Contains(r.Code, StringComparer.Ordinal))
-                .Select(r => new BackupReason(r.Code, r.Args.Take(4).Select(a => (object)(a.Length > 200 ? a.Substring(0, 200) : a))))
+                .Where(IsKnownReason)
+                .Select(r => new BackupReason(r.Code, r.Args.Select(a => (object)(a.Length > 200 ? a.Substring(0, 200) : a))))
                 .ToList();
             if (!known.Any(r => r.Code == "OrphanedEntry"))
             {

@@ -9,6 +9,26 @@ Describe 'Texte des Moduls' {
         InModuleScope SoftwareInventory { Get-LocalizedString 'GibtEsNicht' } | Should -Be 'GibtEsNicht'
     }
 
+    It 'wirft nie, wenn Argumente nicht zu den Platzhaltern passen, und vermerkt das im Fehlerprotokoll' {
+        $appData = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
+        Mock -ModuleName SoftwareInventory Get-AppDataDirectory { $appData }
+        $text = InModuleScope SoftwareInventory { Get-LocalizedString 'ReasonNewerInstallNextTo' @('Nur eins') }
+        $text | Should -Be 'Neuere Installation daneben: {0} {1}'
+        $message = InModuleScope SoftwareInventory { New-InventoryMessage NewerInstallNextTo 'Nur eins' }
+        $message.Code | Should -Be 'NewerInstallNextTo'
+        $message.Text | Should -Be 'Neuere Installation daneben: {0} {1}'
+        $errorLog = Get-ChildItem (Join-Path $appData 'logs') -Filter 'app-errors-*.log' | Get-Content -Raw
+        $errorLog | Should -Match 'ReasonNewerInstallNextTo'
+        $errorLog | Should -Not -Match 'Nur eins' -Because 'nur Schlüssel und Anzahl, keine Inhalte'
+        InModuleScope SoftwareInventory {
+            Test-InventoryMessageArgument -Code NewerInstallNextTo -Arguments @('Jan', '0.8.8') | Should -BeTrue
+            Test-InventoryMessageArgument -Code NewerInstallNextTo -Arguments @('Jan') | Should -BeFalse
+            Test-InventoryMessageArgument -Code NewerInstallNextTo | Should -BeFalse
+            Test-InventoryMessageArgument -Code OrphanedEntry | Should -BeTrue
+            Test-InventoryMessageArgument -Code GibtEsNicht -Arguments @('x') | Should -BeTrue
+        }
+    }
+
     It 'enthält jeden im Code fest genannten Schlüssel' {
         $used = Get-ChildItem $ModuleRoot -Recurse -Filter '*.ps1' | Select-String -Pattern "Get-LocalizedString\s+(?:-Name\s+)?'(?<key>\w+)'" -AllMatches |
             ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups['key'].Value } | Sort-Object -Unique
