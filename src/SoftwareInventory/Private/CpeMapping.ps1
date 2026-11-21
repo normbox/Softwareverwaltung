@@ -2,7 +2,7 @@
 # Gespeichert unter %APPDATA%\SoftwareInventory\cpe-map.json, je Programm ein Schlüssel.
 
 function Get-CpeMappingPath {
-    Join-Path $env:APPDATA 'SoftwareInventory\cpe-map.json'
+    Join-Path (Get-AppDataRoot -Scope Roaming) 'cpe-map.json'
 }
 
 function Get-CpeMappingKey {

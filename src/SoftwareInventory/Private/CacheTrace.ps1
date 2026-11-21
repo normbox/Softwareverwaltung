@@ -130,6 +130,7 @@ function Write-CheckIndex {
 function Write-CheckIndexFile {
     # Eigene Funktion, damit Tests die Schreibvorgänge zählen können.
     param([string] $Path, [string] $Text)
+    if (Test-AppDataRemoved) { return }
     New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force | Out-Null
     [System.IO.File]::WriteAllText($Path, $Text, [System.Text.UTF8Encoding]::new($false))
 }

@@ -64,6 +64,8 @@
         'Set-ServiceCredential'
         'Remove-ServiceCredential'
         'Get-ServiceCredentialStatus'
+        'Get-AppDataRemovalPlan'
+        'Remove-AppData'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

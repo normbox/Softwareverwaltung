@@ -8,7 +8,7 @@ $script:HelperFileName = 'SoftwareInventory.Helper.exe'
 $script:HelperCopyToolTimeoutSeconds = 120
 
 function Get-HelperCopyRoot {
-    Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'Softwareverwaltung\Helper'
+    Join-Path (Get-AppMachineDirectory) 'Helper'
 }
 
 function Get-HelperCopyPath {

@@ -4,6 +4,7 @@
 
 function Write-ModuleErrorLog {
     param([Parameter(Mandatory)] [string] $Origin, [Parameter(Mandatory)] [string] $Message)
+    if (Test-AppDataRemoved) { return }
     try {
         $directory = Join-Path (Get-AppDataDirectory) 'logs'
         New-Item -ItemType Directory -Path $directory -Force | Out-Null

@@ -44,7 +44,7 @@ $script:SettingSections = @('SchemaVersion', 'Usage', 'Sources', 'Traces', 'Serv
     'CacheHours', 'Rating', 'Advisor', 'PortableSearch', 'FileScan')
 
 function Get-SettingsPath {
-    Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
+    Join-Path (Get-AppDataRoot -Scope Roaming) 'settings.json'
 }
 
 function New-DefaultSetting {

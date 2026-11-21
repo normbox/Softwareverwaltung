@@ -33,6 +33,19 @@ function Read-StoredSecret {
     $value.Trim()
 }
 
+function Remove-StoredSecret {
+    # Löscht den Eintrag des Dienstes in der Anmeldeinformationsverwaltung; $true, wenn er danach fehlt.
+    param([Parameter(Mandatory)] [string] $Service)
+    try {
+        [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget $Service))
+        $true
+    }
+    catch {
+        Write-Verbose "Schlüssel nicht gelöscht ($Service): $($_.Exception.Message)"
+        $false
+    }
+}
+
 function Read-EnvironmentSecret {
     param([Parameter(Mandatory)] [string] $Service)
     $value = [Environment]::GetEnvironmentVariable($script:SecretVariable[$Service])

@@ -1,0 +1,315 @@
+BeforeAll {
+    Import-Module (Join-Path $PSScriptRoot '..\..\src\SoftwareInventory\SoftwareInventory.psd1') -Force
+}
+
+Describe 'App-Ordner zentral (Get-AppDataRoot)' {
+    BeforeEach {
+        $script:Saved = @{ APPDATA = $env:APPDATA; LOCALAPPDATA = $env:LOCALAPPDATA }
+    }
+    AfterEach {
+        $env:APPDATA = $script:Saved.APPDATA
+        $env:LOCALAPPDATA = $script:Saved.LOCALAPPDATA
+    }
+
+    It 'setzt den App-Ordner aus der Umgebungsvariablen zusammen' {
+        $env:APPDATA = Join-Path $TestDrive 'Roaming'
+        $env:LOCALAPPDATA = Join-Path $TestDrive 'Local'
+        InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Roaming } | Should -Be (Join-Path $TestDrive 'Roaming\SoftwareInventory')
+        InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local } | Should -Be (Join-Path $TestDrive 'Local\SoftwareInventory')
+        InModuleScope SoftwareInventory { Get-SettingsPath } | Should -Be (Join-Path $TestDrive 'Roaming\SoftwareInventory\settings.json')
+        InModuleScope SoftwareInventory { Get-CpeMappingPath } | Should -Be (Join-Path $TestDrive 'Roaming\SoftwareInventory\cpe-map.json')
+        InModuleScope SoftwareInventory { Get-CacheDirectory } | Should -Be (Join-Path $TestDrive 'Local\SoftwareInventory\cache')
+        InModuleScope SoftwareInventory { Get-DefaultSnapshotDirectory } | Should -Be (Join-Path $TestDrive 'Local\SoftwareInventory\scans')
+    }
+
+    It 'bricht bei ungültigem Wert mit AppDataRootInvalid ab: <Case>' -ForEach @(
+        @{ Case = 'leer'; Value = '' }
+        @{ Case = 'nur Leerzeichen'; Value = '   ' }
+        @{ Case = 'relativ'; Value = 'AppData\Roaming' }
+        @{ Case = 'Laufwerk ohne Wurzel'; Value = 'C:AppData' }
+        @{ Case = 'ohne Laufwerk'; Value = '\AppData' }
+        @{ Case = 'Gerätepfad'; Value = '\\?\C:\AppData' }
+        @{ Case = 'Gerätepfad mit Punkt'; Value = '\\.\C:\AppData' }
+    ) {
+        $env:APPDATA = $Value
+        $caught = $null
+        try { InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Roaming } } catch { $caught = $_.Exception }
+        $caught | Should -Not -BeNullOrEmpty
+        $caught.Data['Code'] | Should -Be 'AppDataRootInvalid'
+        $caught.Data['Args'][0] | Should -Be 'APPDATA'
+    }
+
+    It 'erlaubt UNC im Betrieb, lehnt es aber für das Entfernen ab' {
+        $env:LOCALAPPDATA = '\\server\freigabe\profil\AppData\Local'
+        InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local } | Should -Be '\\server\freigabe\profil\AppData\Local\SoftwareInventory'
+        $caught = $null
+        try { InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local -ForRemoval } } catch { $caught = $_.Exception }
+        $caught.Data['Code'] | Should -Be 'AppDataRootInvalid'
+    }
+
+    It 'lehnt ein Netzlaufwerk für das Entfernen ab' {
+        $env:LOCALAPPDATA = Join-Path $TestDrive 'Local'
+        Mock -ModuleName SoftwareInventory Get-AppDataDriveType { 'Network' }
+        $caught = $null
+        try { InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local -ForRemoval } } catch { $caught = $_.Exception }
+        $caught.Data['Code'] | Should -Be 'AppDataRootInvalid'
+    }
+
+    It 'löst „..“ für das Entfernen auf' {
+        $env:LOCALAPPDATA = Join-Path $TestDrive 'Local\x\..'
+        InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local -ForRemoval } | Should -Be (Join-Path $TestDrive 'Local\SoftwareInventory')
+    }
+
+    It 'Wächter: Nur AppData.ps1 setzt App-Ordner aus Umgebung oder Program Files zusammen' {
+        $root = Join-Path $PSScriptRoot '..\..\src\SoftwareInventory'
+        $hits = foreach ($file in Get-ChildItem -LiteralPath $root -Recurse -File -Include '*.ps1', '*.psm1') {
+            if ($file.Name -eq 'AppData.ps1') { continue }
+            $number = 0
+            foreach ($line in [System.IO.File]::ReadAllLines($file.FullName)) {
+                $number++
+                $fromEnvironment = $line -match '(?i)\$env:(LOCAL)?APPDATA|GetEnvironmentVariable\([''"](LOCAL)?APPDATA' -and $line -match 'SoftwareInventory'
+                $fromProgramFiles = $line -match '(?i)ProgramFiles' -and $line -match 'Softwareverwaltung'
+                if ($fromEnvironment -or $fromProgramFiles) { "$($file.Name):$number" }
+            }
+        }
+        $hits | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'App-Daten entfernen (8c-1)' {
+    BeforeAll {
+        function New-TestFile([string] $Path, [int] $Size = 10) {
+            New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force | Out-Null
+            [System.IO.File]::WriteAllBytes($Path, [byte[]]::new($Size))
+        }
+    }
+
+    BeforeEach {
+        $script:Saved = @{ APPDATA = $env:APPDATA; LOCALAPPDATA = $env:LOCALAPPDATA }
+        $base = Join-Path $TestDrive ([guid]::NewGuid().ToString('N').Substring(0, 8))
+        $env:APPDATA = Join-Path $base 'Roaming'
+        $env:LOCALAPPDATA = Join-Path $base 'Local'
+        $script:Roaming = Join-Path $env:APPDATA 'SoftwareInventory'
+        $script:Local = Join-Path $env:LOCALAPPDATA 'SoftwareInventory'
+        $script:Temp = Join-Path $base 'Temp'
+        $script:Machine = Join-Path $base 'ProgramFiles\Softwareverwaltung'
+        $script:Outside = Join-Path $base 'Outside'
+        New-Item -ItemType Directory -Path $script:Temp, $script:Outside -Force | Out-Null
+        Mock -ModuleName SoftwareInventory Get-AppTempDirectory { $script:Temp }
+        # Nie den echten Admin-Ordner lesen.
+        Mock -ModuleName SoftwareInventory Get-AppMachineDirectory { $script:Machine }
+        # Nie echte Schlüssel lesen oder löschen.
+        $script:Secrets = @{}
+        Mock -ModuleName SoftwareInventory Read-StoredSecret { $script:Secrets[$Service] }
+        Mock -ModuleName SoftwareInventory Remove-StoredSecret { $script:Secrets.Remove($Service); $true }
+    }
+    AfterEach {
+        InModuleScope SoftwareInventory { $script:AppDataRemoved = $false }
+        $env:APPDATA = $script:Saved.APPDATA
+        $env:LOCALAPPDATA = $script:Saved.LOCALAPPDATA
+    }
+
+    It 'zählt im Plan Orte, Sicherungen, CPE-Zuordnungen, Schlüssel und Temp-Reste' {
+        New-TestFile (Join-Path $script:Roaming 'settings.json') 100
+        Set-Content -LiteralPath (Join-Path $script:Roaming 'cpe-map.json') -Value '[{"Key":"a","Cpe":"cpe:2.3:a:x:y"},{"Key":"b","Cpe":"cpe:2.3:a:x:z"}]'
+        New-TestFile (Join-Path $script:Local 'cache\NVD\a.json') 50
+        $id = [guid]::NewGuid().ToString()
+        New-TestFile (Join-Path $script:Local "logs\registry-backup\${id}_Jan.reg") 20
+        $machineId = [guid]::NewGuid().ToString()
+        New-TestFile (Join-Path $script:Machine "RegistryBackup\$machineId.reg") 30
+        New-TestFile (Join-Path $script:Temp "SoftwareInventory-$([guid]::NewGuid().ToString('N')).log") 5
+        New-TestFile (Join-Path $script:Temp 'fremd.log') 5
+        $script:Secrets['NVD'] = 'x'
+
+        $plan = Get-AppDataRemovalPlan
+        ($plan.Locations | Where-Object Kind -EQ 'Roaming').State | Should -Be 'Present'
+        ($plan.Locations | Where-Object Kind -EQ 'Roaming').FileCount | Should -Be 2
+        ($plan.Locations | Where-Object Kind -EQ 'Local').FileCount | Should -Be 2
+        ($plan.Locations | Where-Object Kind -EQ 'Local').Size | Should -Be 70
+        ($plan.Locations | Where-Object Kind -EQ 'Temp').FileCount | Should -Be 1
+        ($plan.Locations | Where-Object Kind -EQ 'Machine').State | Should -Be 'Present'
+        $plan.UserBackupCount | Should -Be 1
+        $plan.MachineBackupCount | Should -Be 1
+        $plan.CpeMappingCount | Should -Be 2
+        $plan.StoredCredentials | Should -Be @('NVD')
+        $plan.TempFiles.Count | Should -Be 1
+    }
+
+    It '-WhatIf ändert nichts und liefert den Plan' {
+        New-TestFile (Join-Path $script:Roaming 'settings.json')
+        $script:Secrets['GitHub'] = 'x'
+        $result = Remove-AppData -WhatIf
+        $result.PSObject.TypeNames[0] | Should -Be 'SoftwareInventory.AppDataRemovalPlan'
+        Test-Path -LiteralPath (Join-Path $script:Roaming 'settings.json') | Should -BeTrue
+        Should -Invoke -ModuleName SoftwareInventory Remove-StoredSecret -Times 0
+    }
+
+    It 'entfernt beide App-Ordner, Schlüssel und Temp-Reste, lässt Fremdes stehen' {
+        New-TestFile (Join-Path $script:Roaming 'settings.json')
+        New-TestFile (Join-Path $script:Local 'logs\actions\2026-11-21.jsonl')
+        $ownLog = Join-Path $script:Temp "SoftwareInventory-$([guid]::NewGuid().ToString('N'))-2.log"
+        $ownReg = Join-Path $script:Temp "SoftwareInventory-restore-$([guid]::NewGuid()).reg"
+        New-TestFile $ownLog; New-TestFile $ownReg
+        $foreign = @(
+            (Join-Path $script:Temp 'SoftwareInventory-x.log')
+            (Join-Path $script:Temp "SoftwareInventory-$([guid]::NewGuid().ToString('N')).log.bak")
+            (Join-Path $script:Temp "SoftwareInventory-restore-$([guid]::NewGuid().ToString('N')).reg")
+            (Join-Path $script:Temp "Unterordner\SoftwareInventory-$([guid]::NewGuid().ToString('N')).log")
+            (Join-Path $env:LOCALAPPDATA 'AndereApp\daten.txt')
+        )
+        foreach ($path in $foreign) { New-TestFile $path }
+        $script:Secrets['NVD'] = 'x'; $script:Secrets['Advisor'] = 'y'
+
+        $result = Remove-AppData -Confirm:$false
+        $result.Result | Should -Be 'Removed'
+        $result.Message.Code | Should -Be 'AppDataRemovalDone'
+        Test-Path -LiteralPath $script:Roaming | Should -BeFalse
+        Test-Path -LiteralPath $script:Local | Should -BeFalse
+        Test-Path -LiteralPath $ownLog | Should -BeFalse
+        Test-Path -LiteralPath $ownReg | Should -BeFalse
+        foreach ($path in $foreign) { Test-Path -LiteralPath $path | Should -BeTrue }
+        $script:Secrets.Count | Should -Be 0
+        ($result.Items | Where-Object Kind -EQ 'Credentials').Message.Code | Should -Be 'AppDataCredentialRemoved'
+        ($result.Items | Where-Object Kind -EQ 'Temp').RemovedCount | Should -Be 2
+        $result.Items.Kind | Should -Be @('Credentials', 'Temp', 'Local', 'Roaming')
+    }
+
+    It 'meldet NotPresent, wenn nichts da ist' {
+        $result = Remove-AppData -Confirm:$false
+        $result.Result | Should -Be 'NotPresent'
+        $result.Message.Code | Should -Be 'AppDataRemovalNothing'
+    }
+
+    It 'entfernt eine Junction im App-Ordner als Link, ihr Ziel bleibt' {
+        New-TestFile (Join-Path $script:Outside 'wichtig.txt')
+        New-Item -ItemType Directory -Path $script:Local -Force | Out-Null
+        New-Item -ItemType Junction -Path (Join-Path $script:Local 'cache') -Target $script:Outside | Out-Null
+        $plan = Get-AppDataRemovalPlan
+        ($plan.Locations | Where-Object Kind -EQ 'Local').LinkCount | Should -Be 1
+        ($plan.Locations | Where-Object Kind -EQ 'Local').FileCount | Should -Be 0
+
+        $result = Remove-AppData -Confirm:$false
+        $result.Result | Should -Be 'Removed'
+        Test-Path -LiteralPath $script:Local | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $script:Outside 'wichtig.txt') | Should -BeTrue
+    }
+
+    It 'entfernt einen Datei-Symlink als Link, sein Ziel bleibt (sofern Symlinks erlaubt sind)' {
+        New-TestFile (Join-Path $script:Outside 'ziel.txt')
+        New-Item -ItemType Directory -Path $script:Local -Force | Out-Null
+        try { New-Item -ItemType SymbolicLink -Path (Join-Path $script:Local 'link.txt') -Target (Join-Path $script:Outside 'ziel.txt') -ErrorAction Stop | Out-Null }
+        catch { Set-ItResult -Skipped -Because 'ohne Recht für symbolische Links (Entwicklermodus oder Administrator)'; return }
+        (Remove-AppData -Confirm:$false).Result | Should -Be 'Removed'
+        Test-Path -LiteralPath (Join-Path $script:Outside 'ziel.txt') | Should -BeTrue
+    }
+
+    It 'lässt einen App-Ordner stehen, der selbst eine Junction ist (AppDataRootIsLink)' {
+        New-TestFile (Join-Path $script:Outside 'wichtig.txt')
+        New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
+        New-Item -ItemType Junction -Path $script:Local -Target $script:Outside | Out-Null
+        (Get-AppDataRemovalPlan).Locations | Where-Object Kind -EQ 'Local' | ForEach-Object State | Should -Be 'RootIsLink'
+
+        $result = Remove-AppData -Confirm:$false
+        $result.Result | Should -Be 'PartlyRemoved'
+        $local = $result.Items | Where-Object Kind -EQ 'Local'
+        $local.Result | Should -Be 'Skipped'
+        $local.Problems.Code | Should -Be 'AppDataRootIsLink'
+        Test-Path -LiteralPath (Join-Path $script:Outside 'wichtig.txt') | Should -BeTrue
+        Test-Path -LiteralPath $script:Local | Should -BeTrue
+    }
+
+    It 'entfernt den Rest, wenn eine Datei gesperrt ist (PartlyRemoved)' {
+        $locked = Join-Path $script:Local 'logs\offen.log'
+        New-TestFile $locked
+        New-TestFile (Join-Path $script:Local 'cache\a.json')
+        $stream = [System.IO.File]::Open($locked, 'Open', 'Read', 'None')
+        try { $result = Remove-AppData -Confirm:$false }
+        finally { $stream.Dispose() }
+        $local = $result.Items | Where-Object Kind -EQ 'Local'
+        $local.Result | Should -Be 'PartlyRemoved'
+        $local.FirstFailedPath | Should -Be $locked
+        $local.Message.Code | Should -Be 'AppDataPartlyRemoved'
+        Test-Path -LiteralPath (Join-Path $script:Local 'cache\a.json') | Should -BeFalse
+        Test-Path -LiteralPath $locked | Should -BeTrue
+    }
+
+    It 'entfernt auch schreibgeschützte Dateien' {
+        $file = Join-Path $script:Roaming 'settings.json'
+        New-TestFile $file
+        (Get-Item -LiteralPath $file).Attributes = 'ReadOnly'
+        (Remove-AppData -Confirm:$false).Result | Should -Be 'Removed'
+        Test-Path -LiteralPath $script:Roaming | Should -BeFalse
+    }
+
+    It 'löscht nichts in einem Ordner auf UNC und meldet AppDataRootInvalid' {
+        # localhost mit fehlender Freigabe: Der Plan liest cpe-map.json, das scheitert hier sofort statt nach einer Netzsuche.
+        $env:APPDATA = '\\localhost\SoftwareInventoryTestFehlt$\AppData\Roaming'
+        New-TestFile (Join-Path $script:Local 'cache\a.json')
+        $result = Remove-AppData -Confirm:$false
+        $roaming = $result.Items | Where-Object Kind -EQ 'Roaming'
+        $roaming.Result | Should -Be 'Skipped'
+        $roaming.Problems.Code | Should -Be 'AppDataRootInvalid'
+        ($result.Items | Where-Object Kind -EQ 'Local').Result | Should -Be 'Removed'
+        $result.Result | Should -Be 'PartlyRemoved'
+        ((Get-AppDataRemovalPlan).Locations | Where-Object Kind -EQ 'Roaming').State | Should -Be 'Invalid'
+    }
+
+    It 'meldet einen Schlüssel, der sich nicht löschen lässt' {
+        $script:Secrets['NVD'] = 'x'
+        Mock -ModuleName SoftwareInventory Remove-StoredSecret { $false }
+        $credentials = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Credentials'
+        $credentials.Result | Should -Be 'PartlyRemoved'
+        $credentials.Problems.Code | Should -Be 'AppDataCredentialFailed'
+    }
+
+    It 'lässt den Admin-Ordner stehen (kommt mit UAC in 8c-2)' {
+        New-TestFile (Join-Path $script:Machine 'Helper\0.1.0\SoftwareInventory.Helper.exe')
+        $result = Remove-AppData -Confirm:$false
+        $result.Items.Kind | Should -Not -Contain 'Machine'
+        Test-Path -LiteralPath (Join-Path $script:Machine 'Helper\0.1.0\SoftwareInventory.Helper.exe') | Should -BeTrue
+    }
+
+    It 'schreibt danach nichts mehr: Fehlerprotokoll, Hinweise, Aktionsprotokoll, Zwischenspeicher, Bereinigung' {
+        New-TestFile (Join-Path $script:Local 'logs\a.log')
+        [void] (Remove-AppData -Confirm:$false)
+        InModuleScope SoftwareInventory {
+            Write-ModuleErrorLog -Origin 'Test' -Message 'nach dem Entfernen'
+            Write-DataNote -Code 'CommitAsVersion' -Source 'Test' -CveId 'CVE-2026-0001' -Value 'x'
+            Write-ActionLogEntry -Phase Started -Data @{ ActionId = 'x'; Action = 'Test' }
+            Write-ServiceCache -Path (Join-Path (Get-CacheDirectory) 'NVD\x.json') -Content '{}'
+            Write-CheckIndexFile -Path (Join-Path (Get-CacheDirectory) 'index\x.json') -Text '{}'
+            Write-CirclStore -Path (Join-Path (Get-CacheDirectory) 'CIRCL\x.json') -Store @{ FullAt = [datetime]::UtcNow; FetchedAt = [datetime]::UtcNow; Records = @{} }
+            Write-EpssStore -Path (Join-Path (Get-CacheDirectory) 'EPSS\scores.json') -Store @{}
+            Invoke-AppDataCleanup | Should -Be 0
+        }
+        Test-Path -LiteralPath $script:Local | Should -BeFalse
+    }
+
+    It 'ist kein Werkzeug des KI-Beraters' {
+        (Get-AdvisorTool).Name | Should -Not -Match '(?i)app_?data|remove_app'
+    }
+}
+
+Describe 'Gespeicherte Schlüssel entfernen (echte Anmeldeinformationsverwaltung, eigener Präfix)' {
+    BeforeEach {
+        InModuleScope SoftwareInventory -Parameters @{ Prefix = "SoftwareInventory-Test-$([guid]::NewGuid())" } {
+            param($Prefix)
+            $script:SavedCredentialPrefix = $script:CredentialPrefix
+            $script:CredentialPrefix = $Prefix
+        }
+    }
+    AfterEach {
+        InModuleScope SoftwareInventory {
+            foreach ($service in $script:SecretVariable.Keys) { [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget $service)) }
+            $script:CredentialPrefix = $script:SavedCredentialPrefix
+        }
+    }
+
+    It 'Remove-StoredSecret löscht den Eintrag und ist ohne Eintrag ebenfalls erfolgreich' {
+        Set-ServiceCredential -Service CIRCL -Secret (ConvertTo-SecureString 'circl-test' -AsPlainText -Force) | Out-Null
+        InModuleScope SoftwareInventory { Get-AppStoredCredential } | Should -Be @('CIRCL')
+        InModuleScope SoftwareInventory { Remove-StoredSecret -Service CIRCL } | Should -BeTrue
+        InModuleScope SoftwareInventory { Get-AppStoredCredential } | Should -BeNullOrEmpty
+        InModuleScope SoftwareInventory { Remove-StoredSecret -Service CIRCL } | Should -BeTrue
+    }
+}

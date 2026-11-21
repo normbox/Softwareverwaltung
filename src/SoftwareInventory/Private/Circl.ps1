@@ -323,6 +323,7 @@ function Read-CirclStore {
 function Write-CirclStore {
     # Erst in eine Datei daneben schreiben, dann ersetzen: Bestand und Datum ändern sich nur gemeinsam.
     param([string] $Path, [hashtable] $Store)
+    if (Test-AppDataRemoved) { return }
     New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force | Out-Null
     $temp = "$Path.part"
     [pscustomobject] [ordered]@{

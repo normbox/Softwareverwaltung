@@ -24,7 +24,7 @@ function Get-RegistryBackupDirectory {
 
 function Get-RegistryBackupMachineDirectory {
     # HKLM-Sicherungen legt nur der erhöhte Helfer an, im Admin-Ordner (BackupFolderRules.FolderPath im Helfer).
-    Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'Softwareverwaltung\RegistryBackup'
+    Join-Path (Get-AppMachineDirectory) 'RegistryBackup'
 }
 
 function Test-MachineRegistryKeyPresent {
