@@ -119,6 +119,8 @@ Describe 'App-Daten entfernen (8c-1)' {
         Mock -ModuleName SoftwareInventory Get-AppMachineDirectory { $script:Machine }
         # Nie eine echte UAC-Abfrage: Der erhöhte Start wird immer ersetzt; ohne eigenen Mock gilt „abgelehnt“.
         Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { throw [System.ComponentModel.Win32Exception]::new(1223) }
+        # TestDrive ist immer beschreibbar; der echte Admin-Ordner nicht. Der Fall „beschreibbar“ hat einen eigenen Test.
+        Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
         # Nie echte Schlüssel lesen oder löschen.
         $script:Secrets = @{}
         Mock -ModuleName SoftwareInventory Read-StoredSecret { $script:Secrets[$Service] }
@@ -440,6 +442,36 @@ Describe 'App-Daten entfernen (8c-1)' {
             (Get-AppDataRemovalPlan).RequiresElevation | Should -BeFalse
             ((Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine').Result | Should -Be 'NotPresent'
             Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+        }
+
+        It 'fragt nicht, wenn ein Benutzer ohne Adminrechte den Ordner ändern kann (AppDataMachineWritable)' {
+            Mock -ModuleName SoftwareInventory Test-UserWritablePath { $Path -eq $script:Machine }
+            $plan = Get-AppDataRemovalPlan
+            $plan.RequiresElevation | Should -BeFalse
+            ($plan.Locations | Where-Object Kind -EQ 'Machine').Problems.Code | Should -Contain 'AppDataMachineWritable'
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'Skipped'
+            $machine.Problems.Code | Should -Be 'AppDataMachineWritable'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+            Test-Path -LiteralPath $script:HelperExe | Should -BeTrue
+        }
+
+        It 'meldet einen fehlgeschlagenen Start mit Code (AppDataMachineStartFailed)' {
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { throw [System.IO.FileNotFoundException]::new('cmd.exe fehlt') }
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'PartlyRemoved'
+            $machine.Problems.Code | Should -Be 'AppDataMachineStartFailed'
+            $machine.Problems[0].Args[1] | Should -Be 'cmd.exe fehlt'
+            $machine.FailedCount | Should -Be 2
+        }
+
+        It 'Plan und Entfernen sind sich bei einem Link als Unterordner einig' {
+            Remove-Item -LiteralPath (Join-Path $script:Machine 'Helper') -Recurse -Force
+            New-Item -ItemType Junction -Path (Join-Path $script:Machine 'Helper') -Target $script:Outside | Out-Null
+            $plan = Get-AppDataRemovalPlan
+            $plan.RequiresElevation | Should -BeFalse
+            $plan.HelperCopyPresent | Should -BeFalse
+            ($plan.Locations | Where-Object Kind -EQ 'Machine').Problems.Code | Should -Contain 'AppDataRootIsLink'
         }
 
         It 'fragt mit -SkipMachine nie nach Administratorrechten' {

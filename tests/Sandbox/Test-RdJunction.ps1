@@ -8,6 +8,8 @@
     Fall 1: Helper und RegistryBackup mit Junctions und einem Verzeichnis-Symlink auf C:\SandboxZiel, dazu eine fremde
     Datei direkt in Softwareverwaltung. Erwartet: Ziel unverändert, beide Unterordner weg, Softwareverwaltung bleibt.
     Fall 2: ohne fremde Datei. Erwartet: Softwareverwaltung ist danach weg.
+    Fall 3: Helper ist selbst eine Junction, RegistryBackup ein Verzeichnis-Symlink (Tausch kurz vor dem erhöhten Lauf,
+    an der Vorprüfung des Moduls vorbei). Erwartet: nur die Links sind weg, das Ziel bleibt unverändert.
     Ergebnis in der Konsole und in C:\Out\rd-junction-<Zeit>.txt. Ausgabe nur ASCII (Windows PowerShell 5.1).
 #>
 $ErrorActionPreference = 'Stop'
@@ -73,6 +75,17 @@ New-Case
 Invoke-RemovalCommand
 Test-TargetIntact
 Test-Expect 'Softwareverwaltung ist weg' (-not (Test-Path -LiteralPath $root))
+
+Write-Line 'Fall 3: Helper und RegistryBackup selbst sind Junctions (ohne die Vorpruefung des Moduls, wie bei einem Tausch kurz vor dem erhoehten Lauf)'
+New-Case
+cmd.exe /d /c rd /s /q "`"$(Join-Path $root 'Helper')`"" | Out-Null
+cmd.exe /d /c rd /s /q "`"$(Join-Path $root 'RegistryBackup')`"" | Out-Null
+New-Item -ItemType Junction -Path (Join-Path $root 'Helper') -Target $target | Out-Null
+New-Item -ItemType SymbolicLink -Path (Join-Path $root 'RegistryBackup') -Target $target | Out-Null
+Invoke-RemovalCommand
+Test-TargetIntact
+Test-Expect 'Junction Helper ist weg' (-not (Test-Path -LiteralPath (Join-Path $root 'Helper')))
+Test-Expect 'Symlink RegistryBackup ist weg' (-not (Test-Path -LiteralPath (Join-Path $root 'RegistryBackup')))
 
 if ($failed) { Write-Line "FEHLGESCHLAGEN ($failed Pruefungen)" } else { Write-Line 'BESTANDEN' }
 $out = 'C:\Out'

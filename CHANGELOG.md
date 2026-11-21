@@ -7,7 +7,7 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 ### App-Daten entfernen (8c-2, Admin-Ordner)
 
 - `Remove-AppData` entfernt zuerst mit **einer** UAC-Abfrage `Program Files\Softwareverwaltung\Helper` (Helfer-Kopie) und `…\RegistryBackup` (HKLM-Sicherungen aller Benutzer); `Softwareverwaltung` selbst nur, wenn der Ordner danach leer ist. Ergebnis prüft das Modul selbst; abgelehnt bleibt der Ordner (`AppDataMachineDenied`), der Rest wird trotzdem entfernt; Zeitüberschreitung `AppDataMachineTimeout`.
-- Keine UAC-Abfrage ohne Unterordner, bei einem Link (`AppDataRootIsLink`) oder bei Zeichen im Pfad, die cmd deutet (`AppDataRootInvalid`). cmd läuft mit `/d /v:off`.
+- Keine UAC-Abfrage ohne Unterordner, bei einem Link (`AppDataRootIsLink`), bei Zeichen im Pfad, die cmd deutet (`AppDataRootInvalid`), oder wenn ein Benutzer ohne Adminrechte die Ordner ändern kann (`AppDataMachineWritable`). Plan und Entfernen nutzen dieselbe Prüfung. Startet cmd nicht: `AppDataMachineStartFailed`. cmd läuft mit `/d /v:off`.
 - Neu `-SkipMachine` (nur Benutzerdaten, nie eine UAC-Abfrage). Plan: `RequiresElevation`, `HelperCopyPresent`.
 - Neue Sandbox-Prüfung `tests/Sandbox/Start-RdJunctionSandbox.ps1`: `rd /s` folgt keinen Junctions oder Verzeichnis-Symlinks.
 

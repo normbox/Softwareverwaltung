@@ -315,6 +315,50 @@ function Get-AppMachineRemovalCommand {
     '/d /v:off /c ' + ($commands -join ' & ')
 }
 
+function Get-AppMachineRemovalCheck {
+    <#
+    .SYNOPSIS
+        Gemeinsame Prüfung des Admin-Ordners für Plan und Entfernen, ohne Adminrechte: Root, Present (vorhandene
+        Unterordner der App), Problems (Meldungen; dann keine UAC-Abfrage) und Arguments (cmd-Zeile).
+    .DESCRIPTION
+        Abgelehnt wird, wenn der Ordner oder ein Unterordner ein Link oder keine Ordner ist (AppDataRootIsLink,
+        AppDataRootNotFolder), der Pfad Zeichen enthält, die cmd deutet (AppDataRootInvalid), oder ein Benutzer ohne
+        Adminrechte Program Files, Softwareverwaltung oder einen Unterordner ändern kann (AppDataMachineWritable): Dann
+        könnte er zwischen Prüfung und erhöhtem Lauf einen Ordner gegen eine Junction tauschen.
+    #>
+    $root = Get-AppMachineDirectory
+    $check = @{ Root = $root; Present = [System.Collections.Generic.List[string]]::new(); Problems = [System.Collections.Generic.List[object]]::new(); Arguments = $null }
+    $state = Get-AppDataFolderState -Path $root
+    if ($state -eq 'Missing') { return $check }
+    if ($state -ne 'Present') {
+        $code = if ($state -eq 'RootIsLink') { 'AppDataRootIsLink' } else { 'AppDataRootNotFolder' }
+        $check.Problems.Add((New-InventoryMessage $code $root))
+        return $check
+    }
+    foreach ($name in $script:AppMachineSubfolders) {
+        $path = [System.IO.Path]::Combine($root, $name)
+        switch (Get-AppDataFolderState -Path $path) {
+            'Present' { $check.Present.Add($path) }
+            'RootIsLink' { $check.Problems.Add((New-InventoryMessage AppDataRootIsLink $path)) }
+            'NotFolder' { $check.Problems.Add((New-InventoryMessage AppDataRootNotFolder $path)) }
+        }
+    }
+    if ($check.Problems.Count -or -not $check.Present.Count) { return $check }
+    $check.Arguments = Get-AppMachineRemovalCommand -Root $root
+    if (-not $check.Arguments) {
+        $check.Problems.Add((New-InventoryMessage AppDataRootInvalid 'ProgramFiles', $root))
+        return $check
+    }
+    # Test-UserWritablePath prüft den Pfad und seinen übergeordneten Ordner (hier also auch Program Files).
+    foreach ($path in @($root) + @($check.Present)) {
+        if (Test-UserWritablePath $path) {
+            $check.Problems.Add((New-InventoryMessage AppDataMachineWritable $path))
+            break
+        }
+    }
+    $check
+}
+
 function Remove-AppMachineData {
     <#
     .SYNOPSIS
@@ -324,31 +368,14 @@ function Remove-AppMachineData {
         die cmd deutet, gibt es keine UAC-Abfrage (AppDataRootIsLink, AppDataRootInvalid). Ohne Unterordner ebenfalls nicht
         (NotPresent). Das Ergebnis prüft das Modul danach selbst. Abgelehnt: AppDataMachineDenied, der Rest geht weiter.
     #>
-    $root = Get-AppMachineDirectory
+    $check = Get-AppMachineRemovalCheck
+    $root = $check.Root
     $item = New-AppDataRemovalItem -Kind 'Machine' -Path $root
-    $state = Get-AppDataFolderState -Path $root
-    if ($state -eq 'Missing') { return (Complete-AppDataRemovalItem $item 'NotPresent') }
-    if ($state -ne 'Present') {
-        $code = if ($state -eq 'RootIsLink') { 'AppDataRootIsLink' } else { 'AppDataRootNotFolder' }
-        $item.Problems.Add((New-InventoryMessage $code $root))
-        return (Complete-AppDataRemovalItem $item 'Skipped')
-    }
-    $present = [System.Collections.Generic.List[string]]::new()
-    foreach ($name in $script:AppMachineSubfolders) {
-        $path = [System.IO.Path]::Combine($root, $name)
-        switch (Get-AppDataFolderState -Path $path) {
-            'Present' { $present.Add($path) }
-            'RootIsLink' { $item.Problems.Add((New-InventoryMessage AppDataRootIsLink $path)) }
-            'NotFolder' { $item.Problems.Add((New-InventoryMessage AppDataRootNotFolder $path)) }
-        }
-    }
+    foreach ($problem in $check.Problems) { $item.Problems.Add($problem) }
     if ($item.Problems.Count) { return (Complete-AppDataRemovalItem $item 'Skipped') }
-    if (-not $present.Count) { return (Complete-AppDataRemovalItem $item 'NotPresent') }
-    $arguments = Get-AppMachineRemovalCommand -Root $root
-    if (-not $arguments) {
-        $item.Problems.Add((New-InventoryMessage AppDataRootInvalid 'ProgramFiles', $root))
-        return (Complete-AppDataRemovalItem $item 'Skipped')
-    }
+    if (-not $check.Present.Count) { return (Complete-AppDataRemovalItem $item 'NotPresent') }
+    $present = $check.Present
+    $arguments = $check.Arguments
 
     $started = $true
     $exit = $null
@@ -360,7 +387,7 @@ function Remove-AppMachineData {
         }
         # Nicht gestartet: Die Ordner sind dann noch da und zählen unten als nicht entfernt.
         $started = $false
-        Write-Verbose "Admin-Ordner nicht entfernt: $($_.Exception.Message)"
+        $item.Problems.Add((New-InventoryMessage AppDataMachineStartFailed $root, $_.Exception.Message))
     }
     if ($started -and $null -eq $exit) { $item.Problems.Add((New-InventoryMessage AppDataMachineTimeout $root)) }
     foreach ($path in $present) {
