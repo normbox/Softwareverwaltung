@@ -37,8 +37,8 @@ function Write-ActionLogEntry {
         [Parameter(Mandatory)] [ValidateSet('Started', 'Completed')] [string] $Phase,
         [Parameter(Mandatory)] [System.Collections.IDictionary] $Data
     )
-    # Nach Remove-AppData gibt es kein Protokoll mehr; es neu anzulegen hieße, die Daten wieder zu erzeugen.
-    if (Test-AppDataRemoved) { return }
+    # Nach Remove-AppData gibt es kein Protokoll mehr: abbrechen, damit keine Aktion ohne Protokoll läuft.
+    Assert-AppDataWritable
 
     $now = [datetime]::UtcNow
     $entry = [ordered]@{

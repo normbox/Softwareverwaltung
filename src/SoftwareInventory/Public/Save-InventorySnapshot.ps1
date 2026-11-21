@@ -28,6 +28,7 @@ function Save-InventorySnapshot {
         $now = [datetime]::UtcNow
         $path = Join-Path $Directory ($now.ToString('yyyyMMdd-HHmmss-fff') + '.json')
         if (-not $PSCmdlet.ShouldProcess($path, (Get-LocalizedString 'ConfirmSaveSnapshot'))) { return }
+        Assert-AppDataWritable
 
         New-Item -ItemType Directory -Path $Directory -Force | Out-Null
         $snapshot = [ordered]@{

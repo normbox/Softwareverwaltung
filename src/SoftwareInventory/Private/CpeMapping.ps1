@@ -29,6 +29,7 @@ function Read-CpeMapping {
 
 function Write-CpeMapping {
     param([hashtable] $Map)
+    Assert-AppDataWritable
     $path = Get-CpeMappingPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
     ConvertTo-Json -InputObject @($Map.Values | Sort-Object Key) -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM

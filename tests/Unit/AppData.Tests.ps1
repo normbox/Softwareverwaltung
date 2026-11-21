@@ -101,7 +101,9 @@ Describe 'App-Daten entfernen (8c-1)' {
         # Nie echte Schlüssel lesen oder löschen.
         $script:Secrets = @{}
         Mock -ModuleName SoftwareInventory Read-StoredSecret { $script:Secrets[$Service] }
-        Mock -ModuleName SoftwareInventory Remove-StoredSecret { $script:Secrets.Remove($Service); $true }
+        Mock -ModuleName SoftwareInventory Remove-StoredSecret {
+            if ($script:Secrets.ContainsKey($Service)) { $script:Secrets.Remove($Service); 'Removed' } else { 'NotPresent' }
+        }
     }
     AfterEach {
         InModuleScope SoftwareInventory { $script:AppDataRemoved = $false }
@@ -256,10 +258,52 @@ Describe 'App-Daten entfernen (8c-1)' {
 
     It 'meldet einen Schlüssel, der sich nicht löschen lässt' {
         $script:Secrets['NVD'] = 'x'
-        Mock -ModuleName SoftwareInventory Remove-StoredSecret { $false }
+        Mock -ModuleName SoftwareInventory Remove-StoredSecret { if ($Service -eq 'NVD') { 'Failed' } else { 'NotPresent' } }
         $credentials = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Credentials'
         $credentials.Result | Should -Be 'PartlyRemoved'
         $credentials.Problems.Code | Should -Be 'AppDataCredentialFailed'
+    }
+
+    It 'löscht jeden Dienst direkt, auch wenn der Eintrag nicht lesbar ist' {
+        # Read-StoredSecret liefert hier nichts (leerer oder unlesbarer Eintrag), gelöscht wird trotzdem.
+        Mock -ModuleName SoftwareInventory Remove-StoredSecret { if ($Service -eq 'GitHub') { 'Removed' } else { 'NotPresent' } }
+        $credentials = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Credentials'
+        $credentials.Result | Should -Be 'Removed'
+        Should -Invoke -ModuleName SoftwareInventory Remove-StoredSecret -Times 4 -Exactly
+    }
+
+    It 'lässt einen App-Ordner stehen, der eine Datei ist (AppDataRootNotFolder)' {
+        New-Item -ItemType Directory -Path $env:APPDATA -Force | Out-Null
+        [System.IO.File]::WriteAllText($script:Roaming, 'keine Ordner')
+        $roaming = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Roaming'
+        $roaming.Result | Should -Be 'Skipped'
+        $roaming.Problems.Code | Should -Be 'AppDataRootNotFolder'
+        Test-Path -LiteralPath $script:Roaming -PathType Leaf | Should -BeTrue
+    }
+
+    It 'kommt damit zurecht, dass APPDATA und LOCALAPPDATA derselbe Ordner sind' {
+        $env:APPDATA = $env:LOCALAPPDATA
+        New-TestFile (Join-Path $script:Local 'settings.json')
+        $result = Remove-AppData -Confirm:$false
+        ($result.Items | Where-Object Kind -EQ 'Local').Result | Should -Be 'Removed'
+        ($result.Items | Where-Object Kind -EQ 'Roaming').Result | Should -Be 'NotPresent'
+        $result.Result | Should -Be 'Removed'
+    }
+
+    It 'lehnt danach Aktionen und gespeicherte Daten mit AppDataAlreadyRemoved ab' {
+        [void] (Remove-AppData -Confirm:$false)
+        $codes = foreach ($call in @(
+                { InModuleScope SoftwareInventory { Write-ActionLogEntry -Phase Started -Data @{ ActionId = 'x'; Action = 'Test' } } }
+                { Set-InventorySetting -LogRetentionDays 10 -Confirm:$false }
+                { @([pscustomobject] @{ Name = 'x' }) | Save-InventorySnapshot -Confirm:$false }
+                { InModuleScope SoftwareInventory { Write-CpeMapping -Map @{} } }
+                { InModuleScope SoftwareInventory { Write-RegistryBackupSidecar -File 'x.reg' -ActionId 'x' -Name 'x' -NativeKey 'x' -Scope 'User' -Reasons @() } }
+            )) {
+            try { & $call; 'kein Abbruch' } catch { [string] $_.Exception.Data['Code'] + '|' + $_.Exception.GetType().Name + '|' + $_.Exception.Message }
+        }
+        ($codes | ForEach-Object { ($_ -split '\|')[0] }) -join ',' | Should -Be ((@('AppDataAlreadyRemoved') * 5) -join ',') -Because ($codes -join ' // ')
+        Test-Path -LiteralPath $script:Local | Should -BeFalse
+        Test-Path -LiteralPath $script:Roaming | Should -BeFalse
     }
 
     It 'lässt den Admin-Ordner stehen (kommt mit UAC in 8c-2)' {
@@ -275,7 +319,6 @@ Describe 'App-Daten entfernen (8c-1)' {
         InModuleScope SoftwareInventory {
             Write-ModuleErrorLog -Origin 'Test' -Message 'nach dem Entfernen'
             Write-DataNote -Code 'CommitAsVersion' -Source 'Test' -CveId 'CVE-2026-0001' -Value 'x'
-            Write-ActionLogEntry -Phase Started -Data @{ ActionId = 'x'; Action = 'Test' }
             Write-ServiceCache -Path (Join-Path (Get-CacheDirectory) 'NVD\x.json') -Content '{}'
             Write-CheckIndexFile -Path (Join-Path (Get-CacheDirectory) 'index\x.json') -Text '{}'
             Write-CirclStore -Path (Join-Path (Get-CacheDirectory) 'CIRCL\x.json') -Store @{ FullAt = [datetime]::UtcNow; FetchedAt = [datetime]::UtcNow; Records = @{} }
@@ -308,8 +351,8 @@ Describe 'Gespeicherte Schlüssel entfernen (echte Anmeldeinformationsverwaltung
     It 'Remove-StoredSecret löscht den Eintrag und ist ohne Eintrag ebenfalls erfolgreich' {
         Set-ServiceCredential -Service CIRCL -Secret (ConvertTo-SecureString 'circl-test' -AsPlainText -Force) | Out-Null
         InModuleScope SoftwareInventory { Get-AppStoredCredential } | Should -Be @('CIRCL')
-        InModuleScope SoftwareInventory { Remove-StoredSecret -Service CIRCL } | Should -BeTrue
+        InModuleScope SoftwareInventory { Remove-StoredSecret -Service CIRCL } | Should -Be 'Removed'
         InModuleScope SoftwareInventory { Get-AppStoredCredential } | Should -BeNullOrEmpty
-        InModuleScope SoftwareInventory { Remove-StoredSecret -Service CIRCL } | Should -BeTrue
+        InModuleScope SoftwareInventory { Remove-StoredSecret -Service CIRCL } | Should -Be 'NotPresent'
     }
 }

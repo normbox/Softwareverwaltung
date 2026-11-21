@@ -87,8 +87,23 @@ function Get-AppTempDirectory {
 }
 
 function Test-AppDataRemoved {
-    # Wahr nach Remove-AppData: Protokolle, Zwischenspeicher und Bereinigung schreiben dann nichts mehr.
+    # Wahr nach Remove-AppData: Fehlerprotokoll, Hinweise, Zwischenspeicher und Bereinigung schreiben dann still nichts.
     [bool] $script:AppDataRemoved
+}
+
+function Assert-AppDataWritable {
+    <#
+    .SYNOPSIS
+        Bricht nach Remove-AppData mit dem Code AppDataAlreadyRemoved ab (Exception.Data['Code']).
+    .DESCRIPTION
+        Für alles, was Nutzdaten schreibt oder eine Aktion protokolliert: Einstellungen, CPE-Zuordnungen, Scans,
+        Registry-Sicherungen und das Aktionsprotokoll. Weil jede Aktion zuerst „Started“ protokolliert, läuft nach dem
+        Entfernen keine Aktion mehr an (sie bliebe sonst ohne Protokoll, CLAUDE.md „Jede Aktion wird protokolliert“).
+    #>
+    if (-not $script:AppDataRemoved) { return }
+    $exception = [System.InvalidOperationException]::new((Get-LocalizedString 'ReasonAppDataAlreadyRemoved'))
+    $exception.Data['Code'] = 'AppDataAlreadyRemoved'
+    throw $exception
 }
 
 function Get-AppDataLocation {
@@ -194,6 +209,9 @@ function Remove-AppDataFolder {
         Ordner, bleibt alles stehen (AppDataRootIsLink, AppDataRootNotFolder). Einträge außerhalb des Ordners kommen beim
         Durchlaufen nicht vor; falls doch, werden sie übersprungen (AppDataOutsideSkipped). Gesperrte Dateien werden
         übersprungen und gezählt, der Rest wird trotzdem entfernt.
+        Nur ohne Erhöhung geeignet: Zwischen Auflisten und Löschen könnte ein Prozess desselben Benutzers einen Unterordner
+        gegen eine Junction tauschen; gelöscht würde dann nur, was dieser Benutzer ohnehin löschen darf. Ein erhöhtes
+        Entfernen (Admin-Ordner, 8c-2) braucht ein eigenes Verfahren (je Ordner prüfen und sofort löschen bzw. Handles).
     #>
     param([Parameter(Mandatory)] [string] $Kind, [Parameter(Mandatory)] [string] $Path)
     $item = New-AppDataRemovalItem -Kind $Kind -Path $Path
@@ -278,11 +296,14 @@ function Remove-AppStoredCredential {
     # Gespeicherte Schlüssel der App; Umgebungsvariablen bleiben (die hat der Benutzer selbst gesetzt).
     $item = New-AppDataRemovalItem -Kind 'Credentials' -Path "$script:CredentialPrefix/*"
     $removed = [System.Collections.Generic.List[string]]::new()
-    foreach ($service in Get-AppStoredCredential) {
-        if (Remove-StoredSecret -Service $service) { $removed.Add($service); $item.RemovedCount++ }
-        else {
-            $item.FailedCount++
-            $item.Problems.Add((New-InventoryMessage AppDataCredentialFailed $service))
+    # Jeden Dienst direkt löschen statt erst zu lesen: So fallen auch leere oder unlesbare Einträge weg.
+    foreach ($service in $script:SecretVariable.Keys | Sort-Object) {
+        switch (Remove-StoredSecret -Service $service) {
+            'Removed' { $removed.Add($service); $item.RemovedCount++ }
+            'Failed' {
+                $item.FailedCount++
+                $item.Problems.Add((New-InventoryMessage AppDataCredentialFailed $service))
+            }
         }
     }
     $result = if ($item.FailedCount) { 'PartlyRemoved' } elseif ($removed.Count) { 'Removed' } else { 'NotPresent' }

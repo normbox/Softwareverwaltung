@@ -34,15 +34,15 @@ function Read-StoredSecret {
 }
 
 function Remove-StoredSecret {
-    # Löscht den Eintrag des Dienstes in der Anmeldeinformationsverwaltung; $true, wenn er danach fehlt.
+    # Löscht den Eintrag des Dienstes in der Anmeldeinformationsverwaltung, ohne ihn vorher zu lesen (auch leere oder
+    # unlesbare Einträge): Removed, NotPresent oder Failed.
     param([Parameter(Mandatory)] [string] $Service)
     try {
-        [void] [SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget $Service))
-        $true
+        if ([SoftwareInventory.CredentialStore]::Delete((Get-CredentialTarget $Service))) { 'Removed' } else { 'NotPresent' }
     }
     catch {
         Write-Verbose "Schlüssel nicht gelöscht ($Service): $($_.Exception.Message)"
-        $false
+        'Failed'
     }
 }
 

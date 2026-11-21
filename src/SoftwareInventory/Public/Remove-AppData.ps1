@@ -16,9 +16,10 @@ function Remove-AppData {
         Nicht entfernt: Program Files\Softwareverwaltung (Helfer-Kopie, HKLM-Sicherungen; braucht Administratorrechte),
         Umgebungsvariablen mit Schlüsseln, Wiederherstellungspunkte und die Daten anderer Benutzer.
 
-        Danach schreiben Protokolle, Zwischenspeicher und Bereinigung in dieser Sitzung nichts mehr; das Ergebnis wird
-        nur zurückgegeben, nicht protokolliert (das Aktionsprotokoll ist mit gelöscht). Registry-Sicherungen sind danach
-        nicht mehr wiederherstellbar.
+        Danach schreiben Fehlerprotokoll, Hinweise, Zwischenspeicher und Bereinigung in dieser Sitzung still nichts mehr;
+        Aktionen, Einstellungen, CPE-Zuordnungen, Scans und Registry-Sicherungen brechen mit AppDataAlreadyRemoved ab
+        (keine Aktion ohne Protokoll). Das Ergebnis wird nur zurückgegeben, nicht protokolliert (das Aktionsprotokoll ist
+        mit gelöscht). Registry-Sicherungen sind danach nicht mehr wiederherstellbar.
     .OUTPUTS
         SoftwareInventory.AppDataRemoval: Result (Removed, PartlyRemoved, NotPresent), Message und Items (je Ort Kind,
         Path, Result, RemovedCount, FailedCount, FirstFailedPath, Message, Problems). Mit -WhatIf der Plan aus
@@ -32,8 +33,9 @@ function Remove-AppData {
     [OutputType('SoftwareInventory.AppDataRemoval', 'SoftwareInventory.AppDataRemovalPlan')]
     param()
 
+    $variables = @{ Roaming = '%APPDATA%'; Local = '%LOCALAPPDATA%' }
     $locations = @(Get-AppDataLocation)
-    if (-not $PSCmdlet.ShouldProcess((@($locations | Where-Object Kind -In 'Roaming', 'Local' | ForEach-Object { if ($_.Path) { $_.Path } else { "%$($_.Kind)%" } }) -join ', '), (Get-LocalizedString 'AppDataRemoveAction'))) {
+    if (-not $PSCmdlet.ShouldProcess((@($locations | Where-Object Kind -In 'Roaming', 'Local' | ForEach-Object { if ($_.Path) { $_.Path } else { $variables[$_.Kind] } }) -join ', '), (Get-LocalizedString 'AppDataRemoveAction'))) {
         return (Get-AppDataRemovalPlan)
     }
 
@@ -45,8 +47,7 @@ function Remove-AppData {
     foreach ($kind in 'Local', 'Roaming') {
         $location = $locations | Where-Object Kind -EQ $kind
         if ($location.Problem) {
-            $variable = if ($kind -eq 'Roaming') { '%APPDATA%' } else { '%LOCALAPPDATA%' }
-            $item = New-AppDataRemovalItem -Kind $kind -Path $variable
+            $item = New-AppDataRemovalItem -Kind $kind -Path $variables[$kind]
             $item.Problems.Add($location.Problem)
             $items.Add((Complete-AppDataRemovalItem $item 'Skipped'))
         }

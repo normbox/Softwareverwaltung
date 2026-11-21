@@ -371,6 +371,7 @@ Regeln:
     ReasonAppDataRemovalDone                = 'Alle App-Daten dieses Benutzers wurden entfernt.'
     ReasonAppDataRemovalPartial             = 'Die App-Daten wurden nur teilweise entfernt.'
     ReasonAppDataRemovalNothing             = 'Es waren keine App-Daten vorhanden.'
+    ReasonAppDataAlreadyRemoved             = 'Die App-Daten wurden in dieser Sitzung entfernt; es wird nichts mehr gespeichert oder ausgeführt. Bitte die App neu starten.'
     AppDataRemoveAction                     = 'Alle App-Daten dieses Benutzers entfernen (Einstellungen, CPE-Zuordnungen, Logs, Zwischenspeicher, Registry-Sicherungen, gespeicherte Schlüssel)'
     ReasonHelperCommandMismatch             = 'Der Befehl entspricht nicht dem, was der Helfer selbst bestätigen kann; es wurde nichts ausgeführt.'
     ReasonHelperStartFailed                 = 'Erhöhter Prozess konnte nicht gestartet werden: {0}'
