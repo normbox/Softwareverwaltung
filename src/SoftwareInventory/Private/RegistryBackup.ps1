@@ -24,7 +24,7 @@ function Get-RegistryBackupDirectory {
 
 function Get-RegistryBackupMachineDirectory {
     # HKLM-Sicherungen legt nur der erhöhte Helfer an, im Admin-Ordner (BackupFolderRules.FolderPath im Helfer).
-    Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'Softwareverwaltung\RegistryBackup'
+    Join-Path (Get-AppMachineDirectory) 'RegistryBackup'
 }
 
 function Test-MachineRegistryKeyPresent {
@@ -320,6 +320,7 @@ function ConvertTo-KnownBackupReason {
 function Write-RegistryBackupSidecar {
     # Begleitdatei neben der .reg: nur Codes und Daten, nie Anzeigetexte (die kommen aus der psd1).
     param([string] $File, [string] $ActionId, [string] $Name, [string] $NativeKey, [string] $Scope, $Reasons)
+    Assert-AppDataWritable
     $data = [ordered]@{
         SchemaVersion = 1
         ActionId      = $ActionId

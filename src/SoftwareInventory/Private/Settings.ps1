@@ -44,7 +44,7 @@ $script:SettingSections = @('SchemaVersion', 'Usage', 'Sources', 'Traces', 'Serv
     'CacheHours', 'Rating', 'Advisor', 'PortableSearch', 'FileScan')
 
 function Get-SettingsPath {
-    Join-Path $env:APPDATA 'SoftwareInventory\settings.json'
+    Join-Path (Get-AppDataRoot -Scope Roaming) 'settings.json'
 }
 
 function New-DefaultSetting {
@@ -200,6 +200,7 @@ function Read-InventorySetting {
 
 function Write-InventorySetting {
     param([Parameter(Mandatory)] $Setting)
+    Assert-AppDataWritable
     $path = Get-SettingsPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
     # Alle Bereiche der Einstellungen (ein Test prüft, dass jeder Bereich von New-DefaultSetting hier vorkommt).

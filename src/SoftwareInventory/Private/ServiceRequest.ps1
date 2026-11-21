@@ -24,7 +24,7 @@ $script:CheckTrace = $null
 $script:CacheHoursKey = @{ GitHub = 'LatestVersion'; WingetSearch = 'LatestVersion'; NVD = 'NVD'; CIRCL = 'CIRCL'; EPSS = 'EPSS'; KEV = 'KEV' }
 
 function Get-CacheDirectory {
-    Join-Path $env:LOCALAPPDATA 'SoftwareInventory\cache'
+    Join-Path (Get-AppDataDirectory) 'cache'
 }
 
 function Invoke-ServiceRequest {
@@ -189,6 +189,7 @@ function Read-ServiceCache {
 function Write-ServiceCache {
     # Gespeichert wird nur die Antwort, nie die Anfrage samt Kopfzeilen.
     param([string] $Path, [string] $Content)
+    if (Test-AppDataRemoved) { return }
     New-Item -ItemType Directory -Path (Split-Path -Parent $Path) -Force | Out-Null
     [pscustomobject] @{ FetchedAt = [datetime]::UtcNow.ToString('o'); Content = $Content } |
         ConvertTo-Json -Depth 2 -Compress | Set-Content -LiteralPath $Path -Encoding utf8NoBOM

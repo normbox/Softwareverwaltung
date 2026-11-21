@@ -2,7 +2,7 @@
 # Gespeichert unter %APPDATA%\SoftwareInventory\cpe-map.json, je Programm ein Schlüssel.
 
 function Get-CpeMappingPath {
-    Join-Path $env:APPDATA 'SoftwareInventory\cpe-map.json'
+    Join-Path (Get-AppDataRoot -Scope Roaming) 'cpe-map.json'
 }
 
 function Get-CpeMappingKey {
@@ -29,6 +29,7 @@ function Read-CpeMapping {
 
 function Write-CpeMapping {
     param([hashtable] $Map)
+    Assert-AppDataWritable
     $path = Get-CpeMappingPath
     New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
     ConvertTo-Json -InputObject @($Map.Values | Sort-Object Key) -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8NoBOM

@@ -4,6 +4,12 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/). Das Projek
 
 ## Unveröffentlicht
 
+### App-Daten entfernen (8c-1, Modul)
+
+- Neu `Get-AppDataRemovalPlan` (nur lesend): je Ablageort Pfad, Zustand, Größe, Dateien und Links, dazu Zahl der Registry-Sicherungen (eigene und für alle Benutzer), der bestätigten CPE-Zuordnungen, der gespeicherten Schlüssel und der Temp-Reste.
+- Neu `Remove-AppData` (`-WhatIf`, Bestätigung): entfernt gespeicherte Schlüssel, Temp-Reste mit den festen Namen der App, `%LOCALAPPDATA%\SoftwareInventory` und `%APPDATA%\SoftwareInventory`. Folgt keinem Link, löscht nur auf einem lokalen Laufwerk, lässt einen App-Ordner stehen, der selbst ein Link ist (`AppDataRootIsLink`), und entfernt bei gesperrten Dateien den Rest (`PartlyRemoved`). Danach schreiben Protokolle, Zwischenspeicher und Bereinigung nichts mehr; Aktionen und gespeicherte Daten brechen mit `AppDataAlreadyRemoved` ab, damit nichts ohne Protokoll läuft. Gespeicherte Schlüssel werden direkt gelöscht, ohne sie vorher zu lesen. Der Admin-Ordner `Program Files\Softwareverwaltung` folgt mit UAC, Knopf und Kommandozeile in der App folgen.
+- Alle Ablageorte stehen im Modul an einer Stelle (`Get-AppDataRoot`). **Strenger:** Ist `APPDATA` oder `LOCALAPPDATA` leer, relativ oder ungültig, bricht das Modul mit `AppDataRootInvalid` ab, statt in einen falschen Ordner (z. B. relativ zum Arbeitsordner) zu schreiben.
+
 ### Beschädigte Meldungsargumente brechen nichts mehr ab
 
 - **Behoben:** Eine Begleitdatei einer Sicherung, deren Gründe zu wenige Argumente hatten (z. B. `NewerInstallNextTo` mit nur einem), ließ die ganze Liste „Sicherungen“ scheitern. Jetzt gilt nur diese Sicherung als `MetadataInvalid` (löschbar, nicht zurückspielbar), alle anderen laden normal; in beiden Ordnern.

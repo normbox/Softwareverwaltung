@@ -13,10 +13,6 @@
 $script:ActionLogSchemaVersion = 1
 $script:ActionLogMutexName = 'Local\SoftwareInventory.ActionLog'
 
-function Get-AppDataDirectory {
-    Join-Path $env:LOCALAPPDATA 'SoftwareInventory'
-}
-
 function Get-ActionLogDirectory {
     Join-Path (Get-AppDataDirectory) 'logs\actions'
 }
@@ -41,6 +37,8 @@ function Write-ActionLogEntry {
         [Parameter(Mandatory)] [ValidateSet('Started', 'Completed')] [string] $Phase,
         [Parameter(Mandatory)] [System.Collections.IDictionary] $Data
     )
+    # Nach Remove-AppData gibt es kein Protokoll mehr: abbrechen, damit keine Aktion ohne Protokoll läuft.
+    Assert-AppDataWritable
 
     $now = [datetime]::UtcNow
     $entry = [ordered]@{
@@ -173,6 +171,7 @@ function Invoke-AppDataCleanup {
         [string] $Root = (Get-AppDataDirectory)
     )
 
+    if (Test-AppDataRemoved) { return 0 }
     $folders = @('logs', 'cache') | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path -LiteralPath $_ }
     if (-not $folders) { return 0 }
     $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()

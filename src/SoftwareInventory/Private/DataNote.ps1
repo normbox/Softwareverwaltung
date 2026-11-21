@@ -23,6 +23,7 @@ function Write-DataNote {
         [string] $Product,
         [string[]] $Value = @()
     )
+    if (Test-AppDataRemoved) { return }
     $key = "$Code|$Source|$CveId|$Product|$($Value -join ',')"
     if (-not $script:DataNotesSeen.Add($key)) { return }
     $now = [datetime]::UtcNow
