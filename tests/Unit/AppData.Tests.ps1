@@ -55,6 +55,25 @@ Describe 'App-Ordner zentral (Get-AppDataRoot)' {
         $caught.Data['Code'] | Should -Be 'AppDataRootInvalid'
     }
 
+    It 'lehnt für das Entfernen ein fehlendes Laufwerk ab, im Betrieb bleibt der Pfad erlaubt' {
+        $used = @([System.IO.DriveInfo]::GetDrives() | ForEach-Object { $_.Name.Substring(0, 1).ToUpperInvariant() })
+        $free = [char[]] ([int][char] 'D'..[int][char] 'Z') | Where-Object { [string] $_ -notin $used } | Select-Object -Last 1
+        if (-not $free) { Set-ItResult -Skipped -Because 'kein freier Laufwerksbuchstabe'; return }
+        $env:LOCALAPPDATA = "${free}:\AppData\Local"
+        InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local } | Should -Be "${free}:\AppData\Local\SoftwareInventory"
+        $caught = $null
+        try { InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local -ForRemoval } } catch { $caught = $_.Exception }
+        $caught.Data['Code'] | Should -Be 'AppDataRootInvalid'
+    }
+
+    It 'lehnt für das Entfernen ab, wenn sich die Laufwerksart nicht bestimmen lässt' {
+        $env:LOCALAPPDATA = Join-Path $TestDrive 'Local'
+        Mock -ModuleName SoftwareInventory Get-AppDataDriveType { throw [System.IO.IOException]::new('Laufwerk fehlt') }
+        $caught = $null
+        try { InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local -ForRemoval } } catch { $caught = $_.Exception }
+        $caught.Data['Code'] | Should -Be 'AppDataRootInvalid'
+    }
+
     It 'löst „..“ für das Entfernen auf' {
         $env:LOCALAPPDATA = Join-Path $TestDrive 'Local\x\..'
         InModuleScope SoftwareInventory { Get-AppDataRoot -Scope Local -ForRemoval } | Should -Be (Join-Path $TestDrive 'Local\SoftwareInventory')
@@ -98,6 +117,10 @@ Describe 'App-Daten entfernen (8c-1)' {
         Mock -ModuleName SoftwareInventory Get-AppTempDirectory { $script:Temp }
         # Nie den echten Admin-Ordner lesen.
         Mock -ModuleName SoftwareInventory Get-AppMachineDirectory { $script:Machine }
+        # Nie eine echte UAC-Abfrage: Der erhöhte Start wird immer ersetzt; ohne eigenen Mock gilt „abgelehnt“.
+        Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { throw [System.ComponentModel.Win32Exception]::new(1223) }
+        # TestDrive ist immer beschreibbar; der echte Admin-Ordner nicht. Der Fall „beschreibbar“ hat einen eigenen Test.
+        Mock -ModuleName SoftwareInventory Test-UserWritablePath { $false }
         # Nie echte Schlüssel lesen oder löschen.
         $script:Secrets = @{}
         Mock -ModuleName SoftwareInventory Read-StoredSecret { $script:Secrets[$Service] }
@@ -173,7 +196,9 @@ Describe 'App-Daten entfernen (8c-1)' {
         $script:Secrets.Count | Should -Be 0
         ($result.Items | Where-Object Kind -EQ 'Credentials').Message.Code | Should -Be 'AppDataCredentialRemoved'
         ($result.Items | Where-Object Kind -EQ 'Temp').RemovedCount | Should -Be 2
-        $result.Items.Kind | Should -Be @('Credentials', 'Temp', 'Local', 'Roaming')
+        $result.Items.Kind | Should -Be @('Machine', 'Credentials', 'Temp', 'Local', 'Roaming')
+        ($result.Items | Where-Object Kind -EQ 'Machine').Result | Should -Be 'NotPresent'
+        Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
     }
 
     It 'meldet NotPresent, wenn nichts da ist' {
@@ -233,6 +258,32 @@ Describe 'App-Daten entfernen (8c-1)' {
         $local.Message.Code | Should -Be 'AppDataPartlyRemoved'
         Test-Path -LiteralPath (Join-Path $script:Local 'cache\a.json') | Should -BeFalse
         Test-Path -LiteralPath $locked | Should -BeTrue
+    }
+
+    It 'meldet einen unlesbaren Unterordner und entfernt den Rest (AppDataUnreadable)' {
+        $blocked = Join-Path $script:Local 'cache\gesperrt'
+        New-TestFile (Join-Path $blocked 'a.json')
+        New-TestFile (Join-Path $script:Local 'logs\b.log')
+        $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+        $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'ListDirectory', 'Deny')
+        $acl = Get-Acl -LiteralPath $blocked
+        $acl.AddAccessRule($rule)
+        Set-Acl -LiteralPath $blocked -AclObject $acl
+        try {
+            $plan = Get-AppDataRemovalPlan
+            ($plan.Locations | Where-Object Kind -EQ 'Local').Problems.Code | Should -Contain 'AppDataUnreadable'
+            $local = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Local'
+            $local.Result | Should -Be 'PartlyRemoved'
+            $local.Problems.Code | Should -Contain 'AppDataUnreadable'
+            Test-Path -LiteralPath (Join-Path $script:Local 'logs\b.log') | Should -BeFalse
+            Test-Path -LiteralPath $blocked | Should -BeTrue
+        }
+        finally {
+            # Deny wieder entfernen, sonst lässt sich TestDrive nicht aufräumen.
+            $acl = Get-Acl -LiteralPath $blocked
+            [void] $acl.RemoveAccessRule($rule)
+            Set-Acl -LiteralPath $blocked -AclObject $acl
+        }
     }
 
     It 'entfernt auch schreibgeschützte Dateien' {
@@ -306,11 +357,170 @@ Describe 'App-Daten entfernen (8c-1)' {
         Test-Path -LiteralPath $script:Roaming | Should -BeFalse
     }
 
-    It 'lässt den Admin-Ordner stehen (kommt mit UAC in 8c-2)' {
-        New-TestFile (Join-Path $script:Machine 'Helper\0.1.0\SoftwareInventory.Helper.exe')
-        $result = Remove-AppData -Confirm:$false
-        $result.Items.Kind | Should -Not -Contain 'Machine'
-        Test-Path -LiteralPath (Join-Path $script:Machine 'Helper\0.1.0\SoftwareInventory.Helper.exe') | Should -BeTrue
+    Context 'Admin-Ordner (8c-2)' {
+        BeforeEach {
+            $script:HelperExe = Join-Path $script:Machine 'Helper\0.1.0\SoftwareInventory.Helper.exe'
+            $script:MachineReg = Join-Path $script:Machine "RegistryBackup\$([guid]::NewGuid()).reg"
+            New-TestFile $script:HelperExe; New-TestFile $script:MachineReg
+            New-TestFile (Join-Path $script:Roaming 'settings.json')
+            # Erfolgreicher erhöhter Lauf: die echte cmd-Zeile ohne Erhöhung ausführen (TestDrive ist beschreibbar).
+            $script:RunCmd = {
+                param($Tool, $Arguments)
+                $info = [System.Diagnostics.ProcessStartInfo]::new((Join-Path ([Environment]::GetFolderPath('System')) $Tool), $Arguments)
+                $info.UseShellExecute = $false; $info.CreateNoWindow = $true; $info.RedirectStandardError = $true
+                $process = [System.Diagnostics.Process]::Start($info)
+                [void] $process.StandardError.ReadToEnd()
+                $process.WaitForExit()
+                $process.ExitCode
+            }
+        }
+
+        It 'entfernt Helper und RegistryBackup in einem erhöhten Lauf, zuerst vor allem anderen' {
+            $script:Order = [System.Collections.Generic.List[string]]::new()
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { $script:Order.Add('Machine'); & $script:RunCmd $Tool $Arguments }
+            Mock -ModuleName SoftwareInventory Remove-StoredSecret { $script:Order.Add('Credentials'); 'NotPresent' }
+            $plan = Get-AppDataRemovalPlan
+            $plan.RequiresElevation | Should -BeTrue
+            $plan.HelperCopyPresent | Should -BeTrue
+            $plan.MachineBackupCount | Should -Be 1
+
+            $result = Remove-AppData -Confirm:$false
+            $result.Result | Should -Be 'Removed'
+            ($result.Items | Where-Object Kind -EQ 'Machine').Result | Should -Be 'Removed'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 1 -Exactly -ParameterFilter { $Tool -eq 'cmd.exe' }
+            $script:Order[0] | Should -Be 'Machine'
+            Test-Path -LiteralPath $script:Machine | Should -BeFalse
+        }
+
+        It 'lässt Softwareverwaltung stehen, wenn dort noch Fremdes liegt (spätere Installation)' {
+            $foreign = Join-Path $script:Machine 'Softwareverwaltung.exe'
+            New-TestFile $foreign
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { & $script:RunCmd $Tool $Arguments }
+            ($r = Remove-AppData -Confirm:$false).Result | Should -Be 'Removed'
+            Test-Path -LiteralPath $foreign | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path $script:Machine 'Helper') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $script:Machine 'RegistryBackup') | Should -BeFalse
+        }
+
+        It 'rd /s folgt einer Junction in Helper nicht (echte cmd-Zeile ohne Erhöhung)' {
+            New-TestFile (Join-Path $script:Outside 'wichtig.txt')
+            New-Item -ItemType Junction -Path (Join-Path $script:Machine 'Helper\link') -Target $script:Outside | Out-Null
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { & $script:RunCmd $Tool $Arguments }
+            (Remove-AppData -Confirm:$false).Result | Should -Be 'Removed'
+            Test-Path -LiteralPath (Join-Path $script:Outside 'wichtig.txt') | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path $script:Machine 'Helper') | Should -BeFalse
+        }
+
+        It 'entfernt bei abgelehnter UAC-Abfrage alles andere (AppDataMachineDenied)' {
+            $result = Remove-AppData -Confirm:$false
+            $machine = $result.Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'Skipped'
+            $machine.Problems.Code | Should -Be 'AppDataMachineDenied'
+            $result.Result | Should -Be 'PartlyRemoved'
+            Test-Path -LiteralPath $script:HelperExe | Should -BeTrue
+            Test-Path -LiteralPath $script:Roaming | Should -BeFalse
+        }
+
+        It 'meldet ein Zeitlimit und noch vorhandene Ordner' {
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { $null }
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'PartlyRemoved'
+            $machine.Problems.Code | Should -Contain 'AppDataMachineTimeout'
+            $machine.FailedCount | Should -Be 2
+        }
+
+        It 'meldet einen Teilerfolg, wenn ein Unterordner bleibt' {
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { Remove-Item -LiteralPath (Join-Path $script:Machine 'RegistryBackup') -Recurse -Force; 0 }
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'PartlyRemoved'
+            $machine.RemovedCount | Should -Be 1
+            $machine.FirstFailedPath | Should -Be (Join-Path $script:Machine 'Helper')
+        }
+
+        It 'fragt ohne Unterordner nicht nach Administratorrechten' {
+            Remove-Item -LiteralPath (Join-Path $script:Machine 'Helper'), (Join-Path $script:Machine 'RegistryBackup') -Recurse -Force
+            (Get-AppDataRemovalPlan).RequiresElevation | Should -BeFalse
+            ((Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine').Result | Should -Be 'NotPresent'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+        }
+
+        It 'fragt nicht, wenn ein Benutzer ohne Adminrechte den Ordner ändern kann (AppDataMachineWritable)' {
+            Mock -ModuleName SoftwareInventory Test-UserWritablePath { $Path -eq $script:Machine }
+            $plan = Get-AppDataRemovalPlan
+            $plan.RequiresElevation | Should -BeFalse
+            ($plan.Locations | Where-Object Kind -EQ 'Machine').Problems.Code | Should -Contain 'AppDataMachineWritable'
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'Skipped'
+            $machine.Problems.Code | Should -Be 'AppDataMachineWritable'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+            Test-Path -LiteralPath $script:HelperExe | Should -BeTrue
+        }
+
+        It 'meldet einen fehlgeschlagenen Start mit Code (AppDataMachineStartFailed)' {
+            Mock -ModuleName SoftwareInventory Invoke-ElevatedSystemTool { throw [System.IO.FileNotFoundException]::new('cmd.exe fehlt') }
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'PartlyRemoved'
+            $machine.Problems.Code | Should -Be 'AppDataMachineStartFailed'
+            $machine.Problems[0].Args[1] | Should -Be 'cmd.exe fehlt'
+            $machine.FailedCount | Should -Be 2
+        }
+
+        It 'Plan und Entfernen sind sich bei einem Link als Unterordner einig' {
+            Remove-Item -LiteralPath (Join-Path $script:Machine 'Helper') -Recurse -Force
+            New-Item -ItemType Junction -Path (Join-Path $script:Machine 'Helper') -Target $script:Outside | Out-Null
+            $plan = Get-AppDataRemovalPlan
+            $plan.RequiresElevation | Should -BeFalse
+            $plan.HelperCopyPresent | Should -BeFalse
+            ($plan.Locations | Where-Object Kind -EQ 'Machine').Problems.Code | Should -Contain 'AppDataRootIsLink'
+        }
+
+        It 'fragt mit -SkipMachine nie nach Administratorrechten' {
+            $result = Remove-AppData -SkipMachine -Confirm:$false
+            $result.Items.Kind | Should -Not -Contain 'Machine'
+            $result.Result | Should -Be 'Removed'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+            Test-Path -LiteralPath $script:HelperExe | Should -BeTrue
+        }
+
+        It 'fragt nicht, wenn <Which> eine Junction ist (AppDataRootIsLink)' -ForEach @(
+            @{ Which = 'Softwareverwaltung' }
+            @{ Which = 'Helper' }
+            @{ Which = 'RegistryBackup' }
+        ) {
+            New-TestFile (Join-Path $script:Outside 'wichtig.txt')
+            $path = if ($Which -eq 'Softwareverwaltung') { $script:Machine } else { Join-Path $script:Machine $Which }
+            Remove-Item -LiteralPath $path -Recurse -Force
+            New-Item -ItemType Junction -Path $path -Target $script:Outside | Out-Null
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'Skipped'
+            $machine.Problems.Code | Should -Contain 'AppDataRootIsLink'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+            Test-Path -LiteralPath (Join-Path $script:Outside 'wichtig.txt') | Should -BeTrue
+        }
+
+        It 'fragt nicht bei Zeichen, die cmd deutet (<Char>), und meldet AppDataRootInvalid' -ForEach @(
+            @{ Char = '%' }, @{ Char = '^' }, @{ Char = '&' }, @{ Char = '!' }
+        ) {
+            $script:Machine = Join-Path $TestDrive "Pro${Char}gram\Softwareverwaltung"
+            New-TestFile (Join-Path $script:Machine 'Helper\x.exe')
+            (Get-AppDataRemovalPlan).Locations | Where-Object Kind -EQ 'Machine' | ForEach-Object { $_.Problems.Code } | Should -Contain 'AppDataRootInvalid'
+            $machine = (Remove-AppData -Confirm:$false).Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'Skipped'
+            $machine.Problems.Code | Should -Be 'AppDataRootInvalid'
+            Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 0
+            Test-Path -LiteralPath (Join-Path $script:Machine 'Helper\x.exe') | Should -BeTrue
+        }
+
+        It 'baut keine cmd-Zeile mit <Char> im Pfad' -ForEach @(
+            @{ Char = '"' }, @{ Char = '%' }, @{ Char = '^' }, @{ Char = '&' }, @{ Char = '|' }, @{ Char = '<' }, @{ Char = '>' }, @{ Char = '!' }
+        ) {
+            InModuleScope SoftwareInventory -Parameters @{ Root = "C:\Pro${Char}gram\Softwareverwaltung" } { param($Root) Get-AppMachineRemovalCommand -Root $Root } | Should -BeNullOrEmpty
+        }
+
+        It 'baut die cmd-Zeile mit /d, /v:off und dem Ordner zuletzt ohne /s' {
+            $command = InModuleScope SoftwareInventory { Get-AppMachineRemovalCommand -Root 'C:\Program Files\Softwareverwaltung' }
+            $command | Should -Be '/d /v:off /c rd /s /q "C:\Program Files\Softwareverwaltung\Helper" & rd /s /q "C:\Program Files\Softwareverwaltung\RegistryBackup" & rd "C:\Program Files\Softwareverwaltung"'
+        }
     }
 
     It 'schreibt danach nichts mehr: Fehlerprotokoll, Hinweise, Aktionsprotokoll, Zwischenspeicher, Bereinigung' {
