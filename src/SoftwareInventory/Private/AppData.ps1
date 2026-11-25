@@ -281,11 +281,13 @@ function New-AppDataRemovalItem {
         FirstFailedPath = $null
         Message         = $null
         Problems        = [System.Collections.Generic.List[object]]::new()
+        # Hinweise ohne Einfluss auf das Ergebnis (z. B. AppDataMachineRootKept)
+        Notes           = [System.Collections.Generic.List[object]]::new()
     }
 }
 
 function Complete-AppDataRemovalItem {
-    # Ergebnis setzen und die passende Meldung erzeugen; Problems wird zur festen Liste.
+    # Ergebnis setzen und die passende Meldung erzeugen; Problems und Notes werden zu festen Listen.
     param($Item, [ValidateSet('Removed', 'NotPresent', 'PartlyRemoved', 'Skipped')] [string] $Result)
     $Item.Result = $Result
     $Item.Message = switch ($Result) {
@@ -295,6 +297,7 @@ function Complete-AppDataRemovalItem {
         'Skipped' { New-InventoryMessage AppDataSkipped $Item.Path }
     }
     $Item.Problems = @($Item.Problems)
+    $Item.Notes = @($Item.Notes)
     $Item
 }
 
@@ -366,7 +369,9 @@ function Remove-AppMachineData {
     .DESCRIPTION
         Vorher ohne Adminrechte geprüft: Ist der Ordner oder einer der Unterordner ein Link, oder enthält der Pfad Zeichen,
         die cmd deutet, gibt es keine UAC-Abfrage (AppDataRootIsLink, AppDataRootInvalid). Ohne Unterordner ebenfalls nicht
-        (NotPresent). Das Ergebnis prüft das Modul danach selbst. Abgelehnt: AppDataMachineDenied, der Rest geht weiter.
+        (NotPresent). Das Ergebnis prüft das Modul danach selbst, nicht über den Exit-Code (cmd meldet 145, wenn der
+        Ordner wegen fremder Dateien bleibt). Sind die Unterordner weg, der Ordner selbst aber nicht, bleibt das Ergebnis
+        Removed mit dem Hinweis AppDataMachineRootKept. Abgelehnt: AppDataMachineDenied, der Rest geht weiter.
     #>
     $check = Get-AppMachineRemovalCheck
     $root = $check.Root
@@ -397,6 +402,8 @@ function Remove-AppMachineData {
         }
         else { $item.RemovedCount++ }
     }
+    # Alles von der App ist weg, der Ordner blieb (rd ohne /s): Dort liegt noch Fremdes, z. B. eine spätere Installation.
+    if (-not $item.FailedCount -and (Test-Path -LiteralPath $root)) { $item.Notes.Add((New-InventoryMessage AppDataMachineRootKept $root)) }
     $result = if ($item.FailedCount -or $item.Problems.Count) { 'PartlyRemoved' } else { 'Removed' }
     Complete-AppDataRemovalItem $item $result
 }

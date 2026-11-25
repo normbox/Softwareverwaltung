@@ -387,6 +387,7 @@ Describe 'App-Daten entfernen (8c-1)' {
             $result = Remove-AppData -Confirm:$false
             $result.Result | Should -Be 'Removed'
             ($result.Items | Where-Object Kind -EQ 'Machine').Result | Should -Be 'Removed'
+            ($result.Items | Where-Object Kind -EQ 'Machine').Notes | Should -BeNullOrEmpty
             Should -Invoke -ModuleName SoftwareInventory Invoke-ElevatedSystemTool -Times 1 -Exactly -ParameterFilter { $Tool -eq 'cmd.exe' }
             $script:Order[0] | Should -Be 'Machine'
             Test-Path -LiteralPath $script:Machine | Should -BeFalse
@@ -400,6 +401,13 @@ Describe 'App-Daten entfernen (8c-1)' {
             Test-Path -LiteralPath $foreign | Should -BeTrue
             Test-Path -LiteralPath (Join-Path $script:Machine 'Helper') | Should -BeFalse
             Test-Path -LiteralPath (Join-Path $script:Machine 'RegistryBackup') | Should -BeFalse
+            # cmd endet mit 145 (Ordner nicht leer): kein Fehler, sondern ein Hinweis mit dem Pfad
+            $machine = $r.Items | Where-Object Kind -EQ 'Machine'
+            $machine.Result | Should -Be 'Removed'
+            $machine.Problems | Should -BeNullOrEmpty
+            $machine.Notes.Code | Should -Be @('AppDataMachineRootKept')
+            $machine.Notes[0].Args | Should -Be @($script:Machine)
+            $machine.Notes[0].Text | Should -Match 'bleibt, weil er noch andere Dateien enthält'
         }
 
         It 'rd /s folgt einer Junction in Helper nicht (echte cmd-Zeile ohne Erhöhung)' {

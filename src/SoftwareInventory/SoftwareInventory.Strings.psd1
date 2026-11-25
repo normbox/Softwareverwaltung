@@ -376,6 +376,7 @@ Regeln:
     ReasonAppDataMachineStartFailed         = 'Das Entfernen von {0} ließ sich nicht starten: {1}'
     ReasonAppDataMachineWritable            = '{0} kann ohne Administratorrechte verändert werden; der Admin-Teil wird deshalb nicht entfernt. Bitte von Hand prüfen.'
     ReasonAppDataMachineTimeout             ='Das Entfernen von {0} wurde nicht rechtzeitig fertig.'
+    ReasonAppDataMachineRootKept            = 'Der Ordner {0} bleibt, weil er noch andere Dateien enthält.'
     AppDataRemoveActionMachine              = 'Alle App-Daten dieses Benutzers entfernen und dazu mit Administratorrechten die Helfer-Kopie und die Registry-Sicherungen für alle Benutzer'
     AppDataRemoveAction                     = 'Alle App-Daten dieses Benutzers entfernen (Einstellungen, CPE-Zuordnungen, Logs, Zwischenspeicher, Registry-Sicherungen, gespeicherte Schlüssel)'
     ReasonHelperCommandMismatch             = 'Der Befehl entspricht nicht dem, was der Helfer selbst bestätigen kann; es wurde nichts ausgeführt.'

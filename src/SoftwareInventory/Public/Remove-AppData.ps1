@@ -25,7 +25,8 @@ function Remove-AppData {
         mit gelöscht). Registry-Sicherungen sind danach nicht mehr wiederherstellbar.
     .OUTPUTS
         SoftwareInventory.AppDataRemoval: Result (Removed, PartlyRemoved, NotPresent), Message und Items (je Ort Kind,
-        Path, Result, RemovedCount, FailedCount, FirstFailedPath, Message, Problems). Mit -WhatIf der Plan aus
+        Path, Result, RemovedCount, FailedCount, FirstFailedPath, Message, Problems, Notes). Notes sind Hinweise ohne
+        Einfluss auf das Ergebnis, z. B. AppDataMachineRootKept. Mit -WhatIf der Plan aus
         Get-AppDataRemovalPlan.
     .EXAMPLE
         Remove-AppData -WhatIf
