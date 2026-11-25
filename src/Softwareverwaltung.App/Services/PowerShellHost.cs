@@ -6,6 +6,17 @@ using Softwareverwaltung.App.Localization;
 
 namespace Softwareverwaltung.App.Services;
 
+/// <summary>Ergebnis von <see cref="PowerShellHost.Shutdown"/>.</summary>
+public enum ShutdownResult
+{
+    /// <summary>Kein Befehl lief (oder schon beendet).</summary>
+    Idle,
+    /// <summary>Der laufende Befehl wurde innerhalb der Frist angehalten.</summary>
+    Stopped,
+    /// <summary>Der laufende Befehl hielt nicht rechtzeitig an; die Runspace bleibt bis zum Prozessende offen.</summary>
+    TimedOut,
+}
+
 /// <summary>
 /// Eingebettete PowerShell-Engine (Microsoft.PowerShell.SDK) mit dem Kern-Modul.
 /// Eine Runspace wird wiederverwendet; Aufrufe laufen nacheinander im Hintergrund,
@@ -16,12 +27,21 @@ public sealed class PowerShellHost : IPowerShellHost
     public const string CoreModuleName = "SoftwareInventory";
     public const string WinGetModuleName = "Microsoft.WinGet.Client";
 
+    /// <summary>
+    /// Frist beim Beenden für den laufenden Befehl. Windows meldet ab etwa 5 s, dass die App das
+    /// Herunterfahren verzögert; danach bleibt die Runspace offen und das Prozessende räumt auf.
+    /// </summary>
+    public static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
+
     private readonly string _modulesDirectory;
     private readonly CultureInfo _culture;
     private readonly CultureInfo _uiCulture;
+    // Wird nie entsorgt: Ein laufender Aufruf gibt es in seinem finally noch frei (ohne WaitHandle nicht nötig).
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly object _currentSync = new();
+    private PowerShell? _current;
     private Runspace? _runspace;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     /// <param name="uiCulture">Sprache der Modultexte; Standard ist die Sprache der Oberfläche, damit Anzeige und Modul nie gemischt sind.</param>
     /// <param name="culture">Format für Datum und Zahlen; Standard ist das der App.</param>
@@ -101,9 +121,18 @@ public sealed class PowerShellHost : IPowerShellHost
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // Beim Beenden wartete der Aufruf vielleicht noch auf den vorigen: nicht mehr starten.
+            if (_disposed)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
             using var ps = PowerShell.Create();
             ps.Runspace = runspace;
             ps.Commands = command;
+            lock (_currentSync)
+            {
+                _current = ps;
+            }
             if (progress is not null)
             {
                 ps.Streams.Progress.DataAdded += (_, e) =>
@@ -135,7 +164,8 @@ public sealed class PowerShellHost : IPowerShellHost
 
             errors.AddRange(ps.Streams.Error.Select(e => e.ToString()));
             var warnings = ps.Streams.Warning.Select(w => w.Message).ToList();
-            if (cancelled || cancellationToken.IsCancellationRequested)
+            // Von außen angehalten (Shutdown) endet Invoke ohne Ausnahme, aber im Zustand Stopped.
+            if (cancelled || cancellationToken.IsCancellationRequested || ps.InvocationStateInfo.State == PSInvocationState.Stopped)
             {
                 throw new OperationCanceledException(cancellationToken);
             }
@@ -143,20 +173,63 @@ public sealed class PowerShellHost : IPowerShellHost
         }
         finally
         {
+            lock (_currentSync)
+            {
+                _current = null;
+            }
             _lock.Release();
         }
     }
 
-    public void Dispose()
+    /// <summary>
+    /// Beendet die Engine, ohne das Beenden der App zu blockieren: Ein laufender Befehl (z. B. ein Scan)
+    /// wird angehalten. Hält er innerhalb der Frist an, wird die Runspace geschlossen (Stopped). Sonst
+    /// bleibt sie offen (TimedOut); ihr Thread ist ein Hintergrund-Thread und hält den Prozess nicht am Leben.
+    /// Ein zweiter Aufruf tut nichts (Idle).
+    /// </summary>
+    public ShutdownResult Shutdown(TimeSpan timeout)
     {
         if (_disposed)
         {
-            return;
+            return ShutdownResult.Idle;
         }
         _disposed = true;
-        _runspace?.Dispose();
-        _lock.Dispose();
+        PowerShell? running;
+        lock (_currentSync)
+        {
+            running = _current;
+        }
+        var result = ShutdownResult.Idle;
+        if (running is not null)
+        {
+            var stop = Task.Run(() =>
+            {
+                try
+                {
+                    running.Stop();
+                }
+                catch (Exception)
+                {
+                    // Schon beendet oder entsorgt: nichts mehr anzuhalten.
+                }
+            });
+            result = stop.Wait(timeout) ? ShutdownResult.Stopped : ShutdownResult.TimedOut;
+        }
+        if (result != ShutdownResult.TimedOut)
+        {
+            try
+            {
+                _runspace?.Dispose();
+            }
+            catch (Exception)
+            {
+                // Beim Beenden ohne Folgen: Das Prozessende räumt auf.
+            }
+        }
+        return result;
     }
+
+    public void Dispose() => Shutdown(ShutdownTimeout);
 
     /// <summary>
     /// Modulpfad der eingebetteten Engine: nur die mitgelieferten Module und die Windows-Module aus
@@ -182,12 +255,15 @@ public sealed class PowerShellHost : IPowerShellHost
     /// <summary>
     /// Kultur der Runspace = Kultur der App. Die Runspace läuft auf einem eigenen, wiederverwendeten
     /// Thread (ReuseThread) mit der Kultur des Systems; deshalb einmal auf diesem Thread setzen.
+    /// Derselbe Thread wird zum Hintergrund-Thread: PowerShell legt ihn als Vordergrund-Thread an, und ein
+    /// Befehl, der beim Beenden nicht anhält, hielte sonst den Prozess am Leben (siehe Shutdown).
     /// </summary>
     private static Task SetCultureAsync(Runspace runspace, CultureInfo culture, CultureInfo uiCulture) => Task.Run(() =>
     {
         using var ps = PowerShell.Create();
         ps.Runspace = runspace;
-        ps.AddScript("param($Culture, $UiCulture) [cultureinfo]::CurrentCulture = $Culture; [cultureinfo]::CurrentUICulture = $UiCulture")
+        ps.AddScript("param($Culture, $UiCulture) [cultureinfo]::CurrentCulture = $Culture; [cultureinfo]::CurrentUICulture = $UiCulture; " +
+                "[System.Threading.Thread]::CurrentThread.IsBackground = $true")
             .AddParameter("Culture", culture).AddParameter("UiCulture", uiCulture);
         ps.Invoke();
     });

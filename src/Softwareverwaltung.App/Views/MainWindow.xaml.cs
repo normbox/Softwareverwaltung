@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using Softwareverwaltung.App.Localization;
+using Softwareverwaltung.App.Services;
 using Softwareverwaltung.App.ViewModels;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -42,6 +43,12 @@ public partial class MainWindow : FluentWindow
         {
             e.Cancel = true;
             return;
+        }
+        // Ein Scan ändert nichts am System: ohne Rückfrage abbrechen, damit die App sofort schließt.
+        if (DataContext is ShellViewModel { Programs: { ScanCommand.IsRunning: true } scanning })
+        {
+            scanning.ScanCancelCommand.Execute(null);
+            ErrorLog.WriteEvent("Shutdown", "ScanCancelled");
         }
         base.OnClosing(e);
     }

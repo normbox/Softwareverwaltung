@@ -37,9 +37,22 @@ public partial class App : Application
         _ = viewModel.InitializeAsync();
     }
 
+    /// <summary>
+    /// Läuft auch beim Herunterfahren von Windows (dann ohne Closing des Fensters). Ein laufender
+    /// Befehl wird angehalten, höchstens <see cref="PowerShellHost.ShutdownTimeout"/> lang; ein
+    /// Abbruch steht im Log, damit sich ein langsames Beenden später nachvollziehen lässt.
+    /// </summary>
     protected override void OnExit(ExitEventArgs e)
     {
-        _host?.Dispose();
+        var result = _host?.Shutdown(PowerShellHost.ShutdownTimeout) ?? ShutdownResult.Idle;
+        if (result == ShutdownResult.Stopped)
+        {
+            ErrorLog.WriteEvent("Shutdown", "RunningCommandStopped");
+        }
+        else if (result == ShutdownResult.TimedOut)
+        {
+            ErrorLog.WriteEvent("Shutdown", $"StopTimeout ({PowerShellHost.ShutdownTimeout.TotalSeconds:0} s)");
+        }
         base.OnExit(e);
     }
 
