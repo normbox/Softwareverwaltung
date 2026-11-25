@@ -20,6 +20,12 @@ $script:AppTempFilePatterns = @(
     '^SoftwareInventory-[0-9a-f]{32}(?:-[0-9]{1,4})?\.log\z'
     '^SoftwareInventory-restore-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.reg\z'
 )
+# Im Admin-Ordner gehören der App nur diese Unterordner. Den Ordner Softwareverwaltung selbst entfernt sie nur, wenn er
+# danach leer ist: Ein späterer Installer könnte die App selbst dorthin legen.
+$script:AppMachineSubfolders = @('Helper', 'RegistryBackup')
+# Zeichen, die cmd.exe in einer Befehlszeile deutet (auch in Anführungszeichen: % und bei verzögerter Erweiterung !).
+# Pfade damit gehen nie an die erhöhte cmd-Zeile.
+$script:CmdUnsafePathPattern = '["%^&|<>!]'
 
 function Test-AppDataBasePath {
     <#
@@ -275,11 +281,13 @@ function New-AppDataRemovalItem {
         FirstFailedPath = $null
         Message         = $null
         Problems        = [System.Collections.Generic.List[object]]::new()
+        # Hinweise ohne Einfluss auf das Ergebnis (z. B. AppDataMachineRootKept)
+        Notes           = [System.Collections.Generic.List[object]]::new()
     }
 }
 
 function Complete-AppDataRemovalItem {
-    # Ergebnis setzen und die passende Meldung erzeugen; Problems wird zur festen Liste.
+    # Ergebnis setzen und die passende Meldung erzeugen; Problems und Notes werden zu festen Listen.
     param($Item, [ValidateSet('Removed', 'NotPresent', 'PartlyRemoved', 'Skipped')] [string] $Result)
     $Item.Result = $Result
     $Item.Message = switch ($Result) {
@@ -289,7 +297,115 @@ function Complete-AppDataRemovalItem {
         'Skipped' { New-InventoryMessage AppDataSkipped $Item.Path }
     }
     $Item.Problems = @($Item.Problems)
+    $Item.Notes = @($Item.Notes)
     $Item
+}
+
+function Get-AppMachineRemovalCommand {
+    <#
+    .SYNOPSIS
+        Argumente für cmd.exe, das den Admin-Teil erhöht entfernt; $null, wenn ein Pfad Zeichen enthält, die cmd deutet.
+    .DESCRIPTION
+        /d: keine AutoRun-Befehle aus der Registry; /v:off: keine verzögerte Erweiterung, auch wenn sie in der Registry
+        eingeschaltet ist. rd /s /q entfernt Junctions im Ordner als Link, ohne ihnen zu folgen (Sandbox-Prüfung
+        tests/Sandbox/Test-RdJunction.ps1). Zuletzt rd ohne /s auf den Ordner selbst: scheitert still, wenn noch etwas
+        darin liegt. Läuft auch unter Windows PowerShell 5.1 (die Sandbox-Prüfung lädt nur diese Datei).
+    #>
+    param([Parameter(Mandatory)] [string] $Root)
+    $paths = @($script:AppMachineSubfolders | ForEach-Object { [System.IO.Path]::Combine($Root, $_) })
+    foreach ($path in @($paths) + $Root) { if ($path -match $script:CmdUnsafePathPattern) { return $null } }
+    $commands = @($paths | ForEach-Object { 'rd /s /q "{0}"' -f $_ }) + ('rd "{0}"' -f $Root)
+    '/d /v:off /c ' + ($commands -join ' & ')
+}
+
+function Get-AppMachineRemovalCheck {
+    <#
+    .SYNOPSIS
+        Gemeinsame Prüfung des Admin-Ordners für Plan und Entfernen, ohne Adminrechte: Root, Present (vorhandene
+        Unterordner der App), Problems (Meldungen; dann keine UAC-Abfrage) und Arguments (cmd-Zeile).
+    .DESCRIPTION
+        Abgelehnt wird, wenn der Ordner oder ein Unterordner ein Link oder keine Ordner ist (AppDataRootIsLink,
+        AppDataRootNotFolder), der Pfad Zeichen enthält, die cmd deutet (AppDataRootInvalid), oder ein Benutzer ohne
+        Adminrechte Program Files, Softwareverwaltung oder einen Unterordner ändern kann (AppDataMachineWritable): Dann
+        könnte er zwischen Prüfung und erhöhtem Lauf einen Ordner gegen eine Junction tauschen.
+    #>
+    $root = Get-AppMachineDirectory
+    $check = @{ Root = $root; Present = [System.Collections.Generic.List[string]]::new(); Problems = [System.Collections.Generic.List[object]]::new(); Arguments = $null }
+    $state = Get-AppDataFolderState -Path $root
+    if ($state -eq 'Missing') { return $check }
+    if ($state -ne 'Present') {
+        $code = if ($state -eq 'RootIsLink') { 'AppDataRootIsLink' } else { 'AppDataRootNotFolder' }
+        $check.Problems.Add((New-InventoryMessage $code $root))
+        return $check
+    }
+    foreach ($name in $script:AppMachineSubfolders) {
+        $path = [System.IO.Path]::Combine($root, $name)
+        switch (Get-AppDataFolderState -Path $path) {
+            'Present' { $check.Present.Add($path) }
+            'RootIsLink' { $check.Problems.Add((New-InventoryMessage AppDataRootIsLink $path)) }
+            'NotFolder' { $check.Problems.Add((New-InventoryMessage AppDataRootNotFolder $path)) }
+        }
+    }
+    if ($check.Problems.Count -or -not $check.Present.Count) { return $check }
+    $check.Arguments = Get-AppMachineRemovalCommand -Root $root
+    if (-not $check.Arguments) {
+        $check.Problems.Add((New-InventoryMessage AppDataRootInvalid 'ProgramFiles', $root))
+        return $check
+    }
+    # Test-UserWritablePath prüft den Pfad und seinen übergeordneten Ordner (hier also auch Program Files).
+    foreach ($path in @($root) + @($check.Present)) {
+        if (Test-UserWritablePath $path) {
+            $check.Problems.Add((New-InventoryMessage AppDataMachineWritable $path))
+            break
+        }
+    }
+    $check
+}
+
+function Remove-AppMachineData {
+    <#
+    .SYNOPSIS
+        Entfernt Helfer-Kopie und HKLM-Sicherungen (Program Files\Softwareverwaltung) mit einer UAC-Abfrage.
+    .DESCRIPTION
+        Vorher ohne Adminrechte geprüft: Ist der Ordner oder einer der Unterordner ein Link, oder enthält der Pfad Zeichen,
+        die cmd deutet, gibt es keine UAC-Abfrage (AppDataRootIsLink, AppDataRootInvalid). Ohne Unterordner ebenfalls nicht
+        (NotPresent). Das Ergebnis prüft das Modul danach selbst, nicht über den Exit-Code (cmd meldet 145, wenn der
+        Ordner wegen fremder Dateien bleibt). Sind die Unterordner weg, der Ordner selbst aber nicht, bleibt das Ergebnis
+        Removed mit dem Hinweis AppDataMachineRootKept. Abgelehnt: AppDataMachineDenied, der Rest geht weiter.
+    #>
+    $check = Get-AppMachineRemovalCheck
+    $root = $check.Root
+    $item = New-AppDataRemovalItem -Kind 'Machine' -Path $root
+    foreach ($problem in $check.Problems) { $item.Problems.Add($problem) }
+    if ($item.Problems.Count) { return (Complete-AppDataRemovalItem $item 'Skipped') }
+    if (-not $check.Present.Count) { return (Complete-AppDataRemovalItem $item 'NotPresent') }
+    $present = $check.Present
+    $arguments = $check.Arguments
+
+    $started = $true
+    $exit = $null
+    try { $exit = Invoke-ElevatedSystemTool -Tool 'cmd.exe' -Arguments $arguments }
+    catch {
+        if (Test-ElevationCancelled $_) {
+            $item.Problems.Add((New-InventoryMessage AppDataMachineDenied $root))
+            return (Complete-AppDataRemovalItem $item 'Skipped')
+        }
+        # Nicht gestartet: Die Ordner sind dann noch da und zählen unten als nicht entfernt.
+        $started = $false
+        $item.Problems.Add((New-InventoryMessage AppDataMachineStartFailed $root, $_.Exception.Message))
+    }
+    if ($started -and $null -eq $exit) { $item.Problems.Add((New-InventoryMessage AppDataMachineTimeout $root)) }
+    foreach ($path in $present) {
+        if (Test-Path -LiteralPath $path) {
+            $item.FailedCount++
+            if (-not $item.FirstFailedPath) { $item.FirstFailedPath = $path }
+        }
+        else { $item.RemovedCount++ }
+    }
+    # Alles von der App ist weg, der Ordner blieb (rd ohne /s): Dort liegt noch Fremdes, z. B. eine spätere Installation.
+    if (-not $item.FailedCount -and (Test-Path -LiteralPath $root)) { $item.Notes.Add((New-InventoryMessage AppDataMachineRootKept $root)) }
+    $result = if ($item.FailedCount -or $item.Problems.Count) { 'PartlyRemoved' } else { 'Removed' }
+    Complete-AppDataRemovalItem $item $result
 }
 
 function Remove-AppStoredCredential {
