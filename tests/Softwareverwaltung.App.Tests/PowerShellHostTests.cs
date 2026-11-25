@@ -140,6 +140,105 @@ public sealed class PowerShellHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ShutdownStopsRunningCommandWithinTimeout()
+    {
+        using var host = new PowerShellHost();
+        await host.InitializeAsync();
+        var key = NewMarkerKey();
+        var running = host.InvokeAsync(new PSCommand().AddScript(MarkStarted(key) + "Start-Sleep -Seconds 60"));
+        await WaitForMarkerAsync(key);
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var result = host.Shutdown(PowerShellHost.ShutdownTimeout);
+        watch.Stop();
+
+        Assert.Equal(ShutdownResult.Stopped, result);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"Beenden dauerte {watch.Elapsed}");
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+    }
+
+    [Fact]
+    public async Task ShutdownCancelsCommandsWaitingForTheRunningOne()
+    {
+        using var host = new PowerShellHost();
+        await host.InitializeAsync();
+        var key = NewMarkerKey();
+        var running = host.InvokeAsync(new PSCommand().AddScript(MarkStarted(key) + "Start-Sleep -Seconds 60"));
+        await WaitForMarkerAsync(key);
+        var secondKey = NewMarkerKey();
+        var waiting = host.InvokeAsync(new PSCommand().AddScript(MarkStarted(secondKey)));
+
+        Assert.Equal(ShutdownResult.Stopped, host.Shutdown(PowerShellHost.ShutdownTimeout));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
+        // Der wartende Befehl wurde nie gestartet.
+        Assert.Null(AppDomain.CurrentDomain.GetData(secondKey));
+    }
+
+    [Fact]
+    public async Task ShutdownAfterCancelledCommandIsIdle()
+    {
+        using var host = new PowerShellHost();
+        await host.InitializeAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => host.InvokeAsync(new PSCommand().AddScript("Start-Sleep -Seconds 30"), cancellationToken: cts.Token));
+
+        Assert.Equal(ShutdownResult.Idle, host.Shutdown(PowerShellHost.ShutdownTimeout));
+    }
+
+    [Fact]
+    public async Task ShutdownWithoutRunningCommandIsIdleAndRejectsNewCommands()
+    {
+        var host = new PowerShellHost();
+        await host.InitializeAsync();
+
+        Assert.Equal(ShutdownResult.Idle, host.Shutdown(PowerShellHost.ShutdownTimeout));
+        Assert.Equal(ShutdownResult.Idle, host.Shutdown(PowerShellHost.ShutdownTimeout));
+        host.Dispose();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => host.InvokeAsync(new PSCommand().AddScript("1")));
+    }
+
+    [Fact]
+    public async Task ShutdownGivesUpAfterTimeoutAndLeavesOnlyBackgroundThreads()
+    {
+        // Ein .NET-Aufruf lässt sich von PowerShell nicht unterbrechen: Die Frist läuft ab, die Runspace bleibt offen.
+        // Der Thread, auf dem der Befehl läuft, muss ein Hintergrund-Thread sein, sonst endet der Prozess nicht.
+        using var host = new PowerShellHost();
+        await host.InitializeAsync();
+        var key = NewMarkerKey();
+        var running = host.InvokeAsync(new PSCommand().AddScript(MarkStarted(key) + "[System.Threading.Thread]::Sleep(4000)"));
+        await WaitForMarkerAsync(key);
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var result = host.Shutdown(TimeSpan.FromMilliseconds(500));
+        watch.Stop();
+
+        Assert.Equal(ShutdownResult.TimedOut, result);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(2), $"Beenden dauerte {watch.Elapsed}");
+        Assert.Equal(true, AppDomain.CurrentDomain.GetData(key));
+        // Danach hält der Befehl an, sobald der .NET-Aufruf zurückkehrt.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+    }
+
+    private static string NewMarkerKey() => "PowerShellHostTests." + Guid.NewGuid().ToString("N");
+
+    // Vermerkt beim Start, ob der Befehl auf einem Hintergrund-Thread läuft.
+    private static string MarkStarted(string key) =>
+        $"[AppDomain]::CurrentDomain.SetData('{key}', [System.Threading.Thread]::CurrentThread.IsBackground); ";
+
+    private static async Task WaitForMarkerAsync(string key)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (AppDomain.CurrentDomain.GetData(key) is null)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "Befehl ist nicht gestartet");
+            await Task.Delay(50);
+        }
+    }
+
+    [Fact]
     public async Task ForwardsProgress()
     {
         var messages = new List<string>();

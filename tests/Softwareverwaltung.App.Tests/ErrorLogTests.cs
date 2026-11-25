@@ -29,4 +29,25 @@ public sealed class ErrorLogTests
             ErrorLog.Directory = saved;
         }
     }
+
+    [Fact]
+    public void WritesEventWithCode()
+    {
+        var saved = ErrorLog.Directory;
+        ErrorLog.Directory = Path.Combine(Path.GetTempPath(), "SoftwareverwaltungTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var path = ErrorLog.WriteEvent("Shutdown", "StopTimeout");
+
+            Assert.NotNull(path);
+            var text = File.ReadAllText(path);
+            Assert.Contains("Shutdown: StopTimeout", text);
+            Assert.DoesNotContain("(keine Ausnahme)", text);
+        }
+        finally
+        {
+            Directory.Delete(ErrorLog.Directory, recursive: true);
+            ErrorLog.Directory = saved;
+        }
+    }
 }
