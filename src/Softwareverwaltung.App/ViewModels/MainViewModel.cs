@@ -178,8 +178,20 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (await LoadModulesAsync())
         {
-            await ScanAsync(CancellationToken.None);
+            // Über den Befehl, damit auch der erste Scan abbrechbar ist (Knopf und Schließen der App).
+            await ScanCommand.ExecuteAsync(null);
         }
+    }
+
+    /// <summary>Bricht einen laufenden Scan ab, auch den ersten nach dem Start. Liefert true, wenn einer lief.</summary>
+    public bool CancelRunningScan()
+    {
+        if (!ScanCommand.IsRunning)
+        {
+            return false;
+        }
+        ScanCommand.Cancel();
+        return true;
     }
 
     /// <summary>Lädt Module und prüft winget, ohne zu scannen. Liefert false, wenn das Modul nicht bereit ist.</summary>

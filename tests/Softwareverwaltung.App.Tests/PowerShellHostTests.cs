@@ -158,6 +158,37 @@ public sealed class PowerShellHostTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ShutdownCancelsCommandsWaitingForTheRunningOne()
+    {
+        using var host = new PowerShellHost();
+        await host.InitializeAsync();
+        var key = NewMarkerKey();
+        var running = host.InvokeAsync(new PSCommand().AddScript(MarkStarted(key) + "Start-Sleep -Seconds 60"));
+        await WaitForMarkerAsync(key);
+        var secondKey = NewMarkerKey();
+        var waiting = host.InvokeAsync(new PSCommand().AddScript(MarkStarted(secondKey)));
+
+        Assert.Equal(ShutdownResult.Stopped, host.Shutdown(PowerShellHost.ShutdownTimeout));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
+        // Der wartende Befehl wurde nie gestartet.
+        Assert.Null(AppDomain.CurrentDomain.GetData(secondKey));
+    }
+
+    [Fact]
+    public async Task ShutdownAfterCancelledCommandIsIdle()
+    {
+        using var host = new PowerShellHost();
+        await host.InitializeAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => host.InvokeAsync(new PSCommand().AddScript("Start-Sleep -Seconds 30"), cancellationToken: cts.Token));
+
+        Assert.Equal(ShutdownResult.Idle, host.Shutdown(PowerShellHost.ShutdownTimeout));
+    }
+
+    [Fact]
     public async Task ShutdownWithoutRunningCommandIsIdleAndRejectsNewCommands()
     {
         var host = new PowerShellHost();

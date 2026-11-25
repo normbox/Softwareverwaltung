@@ -45,9 +45,8 @@ public partial class MainWindow : FluentWindow
             return;
         }
         // Ein Scan ändert nichts am System: ohne Rückfrage abbrechen, damit die App sofort schließt.
-        if (DataContext is ShellViewModel { Programs: { ScanCommand.IsRunning: true } scanning })
+        if (DataContext is ShellViewModel shell && shell.Programs.CancelRunningScan())
         {
-            scanning.ScanCancelCommand.Execute(null);
             ErrorLog.WriteEvent("Shutdown", "ScanCancelled");
         }
         base.OnClosing(e);

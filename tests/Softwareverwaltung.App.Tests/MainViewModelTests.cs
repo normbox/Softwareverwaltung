@@ -47,6 +47,41 @@ public sealed class MainViewModelTests
     });
 
     [Fact]
+    public void CancelRunningScanStopsTheScanStartedByTheButton() => RunOnDispatcher(async () =>
+    {
+        var vm = new MainViewModel(new FakeInventory { Items = [Firefox], WaitForCancel = true });
+        await vm.LoadModulesAsync();
+        Assert.False(vm.CancelRunningScan());
+
+        var scan = vm.ScanCommand.ExecuteAsync(null);
+        Assert.True(vm.CancelRunningScan());
+        await scan;
+
+        Assert.Equal(Localization.AppText.Get("StatusScanCancelled"), vm.StatusText);
+        Assert.False(vm.IsBusy);
+        Assert.False(vm.CancelRunningScan());
+    });
+
+    [Fact]
+    public void CancelRunningScanAlsoStopsTheScanOnStart() => RunOnDispatcher(async () =>
+    {
+        var vm = new MainViewModel(new FakeInventory { Items = [Firefox], WaitForCancel = true });
+
+        var start = vm.InitializeAsync();
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!vm.ScanCommand.IsRunning)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "Scan beim Start lief nicht an");
+            await Task.Delay(10);
+        }
+        Assert.True(vm.CancelRunningScan());
+        await start;
+
+        Assert.Equal(Localization.AppText.Get("StatusScanCancelled"), vm.StatusText);
+        Assert.Empty(vm.Items);
+    });
+
+    [Fact]
     public void FiltersBySearchUpdatesAndRisks() => RunOnDispatcher(async () =>
     {
         var vm = new MainViewModel(new FakeInventory { Items = [Firefox, SevenZip, OldTool, Unchecked] });
@@ -320,6 +355,8 @@ public sealed class MainViewModelTests
         public WingetStatus Winget { get; set; } = new(true, null, null);
         public Exception? StartupFailure { get; set; }
         public bool Cancel { get; set; }
+        // Scan wartet, bis er abgebrochen wird (wie ein langer Scan beim Schließen der App).
+        public bool WaitForCancel { get; set; }
 
         public Task<IReadOnlyList<string>> InitializeAsync(CancellationToken cancellationToken = default) =>
             StartupFailure is null ? Task.FromResult<IReadOnlyList<string>>([]) : Task.FromException<IReadOnlyList<string>>(StartupFailure);
@@ -336,6 +373,10 @@ public sealed class MainViewModelTests
         {
             Scans.Add(refresh);
             await Task.Yield();
+            if (WaitForCancel)
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
             if (Cancel)
             {
                 throw new OperationCanceledException();

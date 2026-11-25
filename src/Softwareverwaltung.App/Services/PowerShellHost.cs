@@ -121,16 +121,17 @@ public sealed class PowerShellHost : IPowerShellHost
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Beim Beenden wartete der Aufruf vielleicht noch auf den vorigen: nicht mehr starten.
-            if (_disposed)
-            {
-                throw new OperationCanceledException(cancellationToken);
-            }
             using var ps = PowerShell.Create();
             ps.Runspace = runspace;
             ps.Commands = command;
+            // Prüfen und Merken unter derselben Sperre wie in Shutdown: Entweder sieht Shutdown diesen
+            // Befehl und hält ihn an, oder der Befehl startet nicht mehr (beim Beenden wartete er noch auf den vorigen).
             lock (_currentSync)
             {
+                if (_disposed)
+                {
+                    throw new OperationCanceledException(cancellationToken);
+                }
                 _current = ps;
             }
             if (progress is not null)
@@ -157,9 +158,14 @@ public sealed class PowerShellHost : IPowerShellHost
             {
                 cancelled = true;
             }
-            catch (RuntimeException ex)
+            catch (RuntimeException ex) when (!_disposed)
             {
                 errors.Add(ex.ErrorRecord?.ToString() ?? ex.Message);
+            }
+            catch (Exception) when (_disposed)
+            {
+                // Runspace beim Beenden geschlossen, bevor der Befehl lief (z. B. InvalidRunspaceStateException).
+                cancelled = true;
             }
 
             errors.AddRange(ps.Streams.Error.Select(e => e.ToString()));
@@ -185,37 +191,50 @@ public sealed class PowerShellHost : IPowerShellHost
     /// Beendet die Engine, ohne das Beenden der App zu blockieren: Ein laufender Befehl (z. B. ein Scan)
     /// wird angehalten. Hält er innerhalb der Frist an, wird die Runspace geschlossen (Stopped). Sonst
     /// bleibt sie offen (TimedOut); ihr Thread ist ein Hintergrund-Thread und hält den Prozess nicht am Leben.
-    /// Ein zweiter Aufruf tut nichts (Idle).
+    /// Auch das Schließen der Runspace läuft innerhalb der Frist. Ein zweiter Aufruf tut nichts (Idle).
     /// </summary>
     public ShutdownResult Shutdown(TimeSpan timeout)
     {
-        if (_disposed)
-        {
-            return ShutdownResult.Idle;
-        }
-        _disposed = true;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         PowerShell? running;
         lock (_currentSync)
         {
+            if (_disposed)
+            {
+                return ShutdownResult.Idle;
+            }
+            _disposed = true;
             running = _current;
         }
         var result = ShutdownResult.Idle;
         if (running is not null)
         {
+            // Stopped nur, wenn wirklich ein Befehl lief; sonst (schon fertig oder noch nicht gestartet) Idle.
             var stop = Task.Run(() =>
             {
                 try
                 {
-                    running.Stop();
+                    if (running.InvocationStateInfo.State is PSInvocationState.Running or PSInvocationState.Stopping)
+                    {
+                        running.Stop();
+                        return true;
+                    }
                 }
                 catch (Exception)
                 {
-                    // Schon beendet oder entsorgt: nichts mehr anzuhalten.
+                    // Inzwischen beendet und entsorgt: nichts mehr anzuhalten.
                 }
+                return false;
             });
-            result = stop.Wait(timeout) ? ShutdownResult.Stopped : ShutdownResult.TimedOut;
+            if (!stop.Wait(timeout))
+            {
+                return ShutdownResult.TimedOut;
+            }
+            result = stop.Result ? ShutdownResult.Stopped : ShutdownResult.Idle;
         }
-        if (result != ShutdownResult.TimedOut)
+        // Close hält noch laufende Pipelines an und könnte sonst unbegrenzt warten (Befehl startete gerade erst).
+        var remaining = timeout - watch.Elapsed;
+        var close = Task.Run(() =>
         {
             try
             {
@@ -225,9 +244,12 @@ public sealed class PowerShellHost : IPowerShellHost
             {
                 // Beim Beenden ohne Folgen: Das Prozessende räumt auf.
             }
-        }
-        return result;
+        });
+        return close.Wait(remaining > MinimumCloseTime ? remaining : MinimumCloseTime) ? result : ShutdownResult.TimedOut;
     }
+
+    // Wenigstens so lange auf das Schließen warten, auch wenn das Anhalten die Frist fast aufgebraucht hat.
+    private static readonly TimeSpan MinimumCloseTime = TimeSpan.FromMilliseconds(200);
 
     public void Dispose() => Shutdown(ShutdownTimeout);
 
